@@ -6,6 +6,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/filesystem/device_video_source.dart';
 import '../../data/filesystem/saf_folder_source.dart';
+import 'smb_controller.dart';
 import '../settings/settings_controller.dart';
 import '../library/poster_grid.dart';
 
@@ -78,11 +79,12 @@ class LocalNetworkTab extends ConsumerWidget {
     final access = ref.watch(deviceAccessProvider);
 
     final picked = ref.watch(safFoldersProvider);
+    final shares = ref.watch(smbSharesProvider);
 
     // A picked folder is independent of the MediaStore permission: SAF grants
     // access to that folder specifically, so someone who declined the media
     // prompt can still use a folder they chose themselves.
-    if (access != true && picked.isEmpty) {
+    if (access != true && picked.isEmpty && shares.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -111,11 +113,9 @@ class LocalNetworkTab extends ConsumerWidget {
                 label: 'Or pick a folder instead',
                 onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
               ),
-              const SizedBox(height: 26),
-              Text(
-                'Network shares are not connectable in this build.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: t.inkDim, fontSize: 12.5),
+              RelayTextButton(
+                label: 'Add a network share',
+                onPressed: () => context.push('/smb/new'),
               ),
             ],
           ),
@@ -128,6 +128,18 @@ class LocalNetworkTab extends ConsumerWidget {
     return ListView(
       padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 28),
       children: [
+        if (shares.isNotEmpty) ...[
+          _Heading(label: 'Network shares'),
+          for (final share in shares)
+            _FolderRow(
+              label: share.name,
+              icon: Icons.lan_outlined,
+              onTap: () => context.push('/smb/${share.id}'),
+              onForget: () =>
+                  ref.read(smbSharesProvider.notifier).remove(share.id),
+            ),
+          const SizedBox(height: 18),
+        ],
         if (picked.isNotEmpty) ...[
           _Heading(label: 'Folders you picked'),
           for (final folder in picked)
@@ -184,6 +196,11 @@ class LocalNetworkTab extends ConsumerWidget {
                   size: 18, color: t.accent),
               label: Text('Add a folder', style: TextStyle(color: t.accent)),
             ),
+            TextButton.icon(
+              onPressed: () => context.push('/smb/new'),
+              icon: Icon(Icons.lan_outlined, size: 18, color: t.accent),
+              label: Text('Add a share', style: TextStyle(color: t.accent)),
+            ),
             if (access != true)
               TextButton.icon(
                 onPressed: () =>
@@ -228,12 +245,14 @@ class _FolderRow extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.onForget,
+    this.icon = Icons.folder_outlined,
   });
 
   final String label;
   final VoidCallback onTap;
   final String? trailing;
   final VoidCallback? onForget;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +269,7 @@ class _FolderRow extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
             child: Row(
               children: [
-                Icon(Icons.folder_outlined, color: t.inkDim),
+                Icon(icon, color: t.inkDim),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(

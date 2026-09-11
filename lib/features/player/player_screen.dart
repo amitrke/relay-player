@@ -16,6 +16,7 @@ import '../advanced_sources/xtream_controller.dart';
 import '../../data/filesystem/loopback_bridge.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
+import '../local_network/smb_controller.dart';
 import '../favorites_history/history_controller.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
@@ -68,7 +69,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
         assetId = null,
         safUri = null,
         safName = null,
-        safSize = 0;
+        safSize = 0,
+        smbShareId = null,
+        smbPath = null;
 
   /// A live channel is addressed by account and stream id, never by URL.
   ///
@@ -85,7 +88,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
         assetId = null,
         safUri = null,
         safName = null,
-        safSize = 0;
+        safSize = 0,
+        smbShareId = null,
+        smbPath = null;
 
   /// Panel VOD. [streamId] carries the container extension (`1234.mkv`) because
   /// §4 puts it in the URL and the panel does not hand it back later.
@@ -99,7 +104,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
         assetId = null,
         safUri = null,
         safName = null,
-        safSize = 0;
+        safSize = 0,
+        smbShareId = null,
+        smbPath = null;
 
   /// A panel series episode. §4 streams these from `/series/...`, a different
   /// path from films, so the two cannot share one route.
@@ -113,7 +120,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
         assetId = null,
         safUri = null,
         safName = null,
-        safSize = 0;
+        safSize = 0,
+        smbShareId = null,
+        smbPath = null;
 
   /// A video on this device, addressed by its MediaStore id.
   ///
@@ -128,9 +137,27 @@ class PlayerScreen extends ConsumerStatefulWidget {
         safUri = null,
         safName = null,
         safSize = 0,
+        smbShareId = null,
+        smbPath = null,
         kind = XtreamStreamKind.live;
 
   /// A file inside a folder the user granted through SAF.
+  /// A file on a network share. Like live TV, addressed by id and path rather
+  /// than by anything containing the credential.
+  const PlayerScreen.smb({
+    super.key,
+    required String this.smbShareId,
+    required String this.smbPath,
+  })  : serverId = null,
+        ratingKey = null,
+        accountId = null,
+        streamId = null,
+        assetId = null,
+        safUri = null,
+        safName = null,
+        safSize = 0,
+        kind = XtreamStreamKind.live;
+
   const PlayerScreen.saf({
     super.key,
     required String this.safUri,
@@ -138,6 +165,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
     int size = 0,
   })  : safName = name,
         safSize = size,
+        smbShareId = null,
+        smbPath = null,
         serverId = null,
         ratingKey = null,
         accountId = null,
@@ -158,6 +187,10 @@ class PlayerScreen extends ConsumerStatefulWidget {
   /// Known up front from the directory listing, and required: the bridge has to
   /// answer `Content-Length` and ranges before anything is read.
   final int safSize;
+
+  /// A file on a configured SMB share, addressed by share id and path.
+  final String? smbShareId;
+  final String? smbPath;
 
   final XtreamStreamKind kind;
 
@@ -228,6 +261,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<_Playable> _resolve() async {
+    final smbShareId = widget.smbShareId;
+    if (smbShareId != null) {
+      final share = ref
+          .read(smbSharesProvider)
+          .where((s) => s.id == smbShareId)
+          .firstOrNull;
+      if (share == null) {
+        throw StateError('That share is no longer configured.');
+      }
+      final session = await ref.read(smbSessionProvider(share).future);
+      final entries = await session.list(_parentOf(widget.smbPath!));
+      final entry =
+          entries.where((e) => e.path == widget.smbPath).firstOrNull;
+      if (entry == null) {
+        throw StateError('That file is no longer on the share.');
+      }
+
+      final bridge = LoopbackBridge();
+      _bridge = bridge;
+      return _Playable(
+        url: await bridge.serve(await session.bridgeSourceFor(entry)),
+        title: entry.name,
+        live: false,
+      );
+    }
+
     final safUri = widget.safUri;
     if (safUri != null) {
       // libmpv cannot open a `content://` URI — it answers "Failed to recognize
@@ -362,6 +421,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } catch (e) {
       _fail('$e');
     }
+  }
+
+  static String _parentOf(String path) {
+    final slash = path.lastIndexOf('/');
+    return slash <= 0 ? path : path.substring(0, slash);
   }
 
   /// Where to pick up, preferring the source's own answer over ours.

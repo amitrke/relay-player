@@ -65,7 +65,22 @@ this while it is unproven.
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
-## 5. Not started at all
+## 5. SMB — built, never seen a real share
+
+The client, browsing, and playback through §7.2's bridge are written and the
+add-share form rejects an unreachable host cleanly. None of it has spoken to an
+actual NAS in this app; Phase 0's Q3 numbers came from the spike harness, not
+this code.
+
+| # | What | Note |
+|---|---|---|
+| ⬜ | Connect to a real share and list its shares | Phase 0 saw 17 on a real NAS |
+| ⬜ | Browse folders and play a file through the bridge | The bridge is proven over SAF; SMB reuses it unchanged |
+| ⬜ | **NAS goes away mid-playback** | §7.2 calls the connection "real state to manage". Connect-time failure is handled; a share that vanishes *during* playback is not |
+| ⬜ | Wi-Fi drop and reconnect | Same |
+| ⬜ | A full episode without the connection dropping | Phase 0 listed this explicitly and it is still open |
+
+## 6. Not started at all
 
 | # | What |
 |---|---|

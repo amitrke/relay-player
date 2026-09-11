@@ -55,9 +55,10 @@ class AddSourceRoute extends ConsumerWidget {
         // The Local & Network tab owns the permission prompt, so send the user
         // there rather than asking for access from a screen they are leaving.
         context.go('/library?tab=local');
+      case SourceKind.smb:
+        context.push('/smb/new');
       case SourceKind.xtream:
         context.push('/advanced/xtream/new');
-      case SourceKind.smb:
       case SourceKind.m3u:
       case SourceKind.providerProfile:
         _notYet(context, kind);

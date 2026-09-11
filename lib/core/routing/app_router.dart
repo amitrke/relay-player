@@ -18,6 +18,7 @@ import '../../features/onboarding/onboarding_route.dart';
 import '../../features/settings/settings_controller.dart';
 import '../../features/local_network/local_network_tab.dart';
 import '../../features/local_network/saf_folder_screen.dart';
+import '../../features/local_network/smb_screens.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
@@ -149,6 +150,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/local/:folderId',
         builder: (_, state) => LocalFolderScreen(
           folderId: state.pathParameters['folderId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/smb/new',
+        builder: (_, _) => const AddSmbScreen(),
+      ),
+      GoRoute(
+        // Path travels as a query parameter rather than a path segment: an SMB
+        // path contains slashes, and encoding them into a segment is the same
+        // double-decode trap the SAF URIs fell into.
+        path: '/smb/:shareId',
+        builder: (_, state) => SmbBrowseScreen(
+          shareId: state.pathParameters['shareId']!,
+          path: state.uri.queryParameters['path'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/smbplay/:shareId',
+        builder: (_, state) => PlayerScreen.smb(
+          smbShareId: state.pathParameters['shareId']!,
+          smbPath: state.uri.queryParameters['path'] ?? '',
         ),
       ),
       GoRoute(
