@@ -10,6 +10,7 @@ import '../../domain/models/catalog_item.dart';
 import '../advanced_sources/xtream_controller.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
+import '../favorites_history/continue_watching_row.dart';
 import '../live_tv/live_tv_tab.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
@@ -262,7 +263,17 @@ class _TabBody extends ConsumerWidget {
               icon: tab.emptyIcon,
               message: 'Nothing in ${tab.label.toLowerCase()} yet.',
             )
-          : PosterGrid(items: list),
+          // The artboard puts the row above the Movies grid, and it is
+          // deliberately not repeated per tab — it is one list of what the user
+          // was in the middle of, not a per-category view.
+          : tab == LibraryTab.movies
+              ? Column(
+                  children: [
+                    const ContinueWatchingRow(),
+                    Expanded(child: PosterGrid(items: list)),
+                  ],
+                )
+              : PosterGrid(items: list),
     );
   }
 }

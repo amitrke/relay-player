@@ -23,11 +23,18 @@ class PlexPlayable {
     required this.url,
     required this.title,
     required this.duration,
+    this.posterUrl,
+    this.resumeFrom,
   });
 
   final String url;
   final String title;
   final Duration duration;
+  final String? posterUrl;
+
+  /// Plex's own `viewOffset`. The server is the better authority here: the user
+  /// may have watched part of this in the Plex app on another device.
+  final Duration? resumeFrom;
 }
 
 /// A Plex item together with the server it came from.
@@ -235,6 +242,26 @@ class PlexService {
   Future<PlexMetadata?> item(String ratingKey) =>
       _client.library.item(ratingKey);
 
+  /// Reports playback progress to Plex (§6).
+  ///
+  /// Not merely bookkeeping: without it Relay Player is a bad citizen on the
+  /// user's own server — the Plex app would show nothing watched, and
+  /// continue-watching would disagree between clients. Plex asks for a tick
+  /// roughly every 10s plus one on each state change.
+  Future<void> reportProgress({
+    required String ratingKey,
+    required String state,
+    required Duration position,
+    required Duration duration,
+  }) async {
+    await _client.playback.timeline(
+      ratingKey: ratingKey,
+      state: state,
+      timeMs: position.inMilliseconds,
+      durationMs: duration.inMilliseconds,
+    );
+  }
+
   /// Seasons of a show, or episodes of a season.
   Future<List<PlexMetadata>> children(String ratingKey) =>
       _client.library.children(ratingKey);
@@ -281,10 +308,13 @@ class PlexService {
       throw const PlexUnreachable('Not connected to a Plex server.');
     }
 
+    final offset = item.viewOffsetMs ?? 0;
     return PlexPlayable(
       url: '$base${part.key}?X-Plex-Token=$token',
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
+      posterUrl: posterUrl(item),
+      resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
     );
   }
 }

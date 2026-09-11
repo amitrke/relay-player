@@ -8,20 +8,40 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
+import '../../data/local/history_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
+import '../favorites_history/history_controller.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
 
-/// What the player was asked to play, before it is resolved to a URL.
+/// What the player was asked to play, once resolved.
 class _Playable {
-  const _Playable({required this.url, required this.title, required this.live});
+  const _Playable({
+    required this.url,
+    required this.title,
+    required this.live,
+    this.posterUrl,
+    this.historyKind,
+    this.historyId,
+    this.resumeFrom,
+  });
 
   final String url;
   final String title;
   final bool live;
+  final String? posterUrl;
+
+  /// Null for live, which has no position worth remembering.
+  final PlaybackKind? historyKind;
+  final String? historyId;
+
+  /// Where the *source* thinks the user got to. Plex knows this server-side,
+  /// so its answer beats ours — the user may have watched on another client.
+  final Duration? resumeFrom;
 }
 
 /// Playback surface (§6, §10).
@@ -104,6 +124,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _started = false;
   bool _live = false;
 
+  _Playable? _playable;
+  Timer? _progressTimer;
+
+  // Captured while the widget is alive. `dispose` still needs to write the
+  // final position, and reading a Riverpod ref during disposal throws — so the
+  // last write would be the one that crashes rather than the one that saves.
+  HistoryController? _history;
+  PlexService? _plexService;
+
+  /// Plex asks for roughly this cadence, and it doubles as how often local
+  /// history is written — often enough that a crash loses seconds, rare enough
+  /// that it is not a write per frame.
+  static const _progressInterval = Duration(seconds: 10);
+
   @override
   void initState() {
     super.initState();
@@ -116,6 +150,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void dispose() {
     _stallTimer?.cancel();
+    _progressTimer?.cancel();
+    // Record where they actually got to before tearing down. Without this the
+    // last up-to-ten-seconds is lost on every exit, which is exactly the moment
+    // the position matters most.
+    _recordProgress(state: 'stopped');
     for (final s in _subs) {
       unawaited(s.cancel());
     }
@@ -145,6 +184,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             url: client.seriesStreamUrl(id, ext),
             title: 'Episode',
             live: false,
+            historyKind: PlaybackKind.xtreamEpisode,
+            historyId: raw,
           );
         }
 
@@ -155,6 +196,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           url: client.vodStreamUrl(id, ext),
           title: match?.title ?? 'Film',
           live: false,
+          posterUrl: match?.posterUrl,
+          historyKind: PlaybackKind.xtreamVod,
+          historyId: raw,
         );
       }
 
@@ -170,14 +214,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     final playable = await plexServiceFor(ref, widget.serverId!)
         .directPlay(widget.ratingKey!);
-    return _Playable(url: playable.url, title: playable.title, live: false);
+    return _Playable(
+      url: playable.url,
+      title: playable.title,
+      live: false,
+      posterUrl: playable.posterUrl,
+      historyKind: PlaybackKind.plex,
+      historyId: widget.ratingKey,
+      resumeFrom: playable.resumeFrom,
+    );
   }
 
   Future<void> _load() async {
     try {
       final playable = await _resolve();
       if (!mounted) return;
+      _history = ref.read(historyProvider.notifier);
+      if (widget.serverId != null) {
+        _plexService = plexServiceFor(ref, widget.serverId!);
+      }
       setState(() {
+        _playable = playable;
         _title = playable.title;
         _live = playable.live;
       });
@@ -192,8 +249,73 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // client bug.
       await _player.stop();
       await _player.open(Media(playable.url));
+
+      final resume = _resumePoint(playable);
+      if (resume != null) {
+        // Seek after opening: libmpv needs the stream long enough to know it is
+        // seekable, and a seek issued before that is silently dropped.
+        await _player.stream.duration.firstWhere((d) => d > Duration.zero);
+        await _player.seek(resume);
+      }
+      _progressTimer =
+          Timer.periodic(_progressInterval, (_) => _recordProgress());
     } catch (e) {
       _fail('$e');
+    }
+  }
+
+  /// Where to pick up, preferring the source's own answer over ours.
+  Duration? _resumePoint(_Playable playable) {
+    if (playable.live || playable.historyKind == null) return null;
+    final fromSource = playable.resumeFrom;
+    if (fromSource != null && fromSource > const Duration(seconds: 60)) {
+      return fromSource;
+    }
+    final local = ref
+        .read(historyProvider.notifier)
+        .find(playable.historyKind!, _sourceIdOf(playable), playable.historyId!);
+    return (local != null && local.isResumable) ? local.position : null;
+  }
+
+  String _sourceIdOf(_Playable playable) =>
+      widget.accountId ?? widget.serverId ?? '';
+
+  /// Writes progress locally, and tells Plex when the item is theirs.
+  void _recordProgress({String state = 'playing'}) {
+    final playable = _playable;
+    final kind = playable?.historyKind;
+    if (playable == null || kind == null || !_started) return;
+
+    final position = _player.state.position;
+    final duration = _player.state.duration;
+    if (duration <= Duration.zero) return;
+
+    unawaited(_history?.record(
+          HistoryItem(
+            kind: kind,
+            sourceId: _sourceIdOf(playable),
+            itemId: playable.historyId!,
+            title: playable.title,
+            posterUrl: playable.posterUrl,
+            position: position,
+            duration: duration,
+            lastWatchedAt: DateTime.now(),
+          ),
+        ));
+
+    // Best effort: a server that has gone away must not break playback that is
+    // otherwise fine.
+    if (kind == PlaybackKind.plex) {
+      unawaited(
+        _plexService
+            ?.reportProgress(
+              ratingKey: playable.historyId!,
+              state: state,
+              position: position,
+              duration: duration,
+            )
+            .catchError((_) {}),
+      );
     }
   }
 
