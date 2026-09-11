@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Required in the main manifest, not just debug: every source this app
-         supports is reached over the network. See docs/architecture.md S7.1 --
+         supports is reached over the network. See docs/architecture.md S7.1:
          we deliberately do NOT request MANAGE_EXTERNAL_STORAGE, which Google
          Play lists under invalid uses for generic media playback. Local files
          come via MediaStore + the Storage Access Framework instead. -->
