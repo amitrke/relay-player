@@ -48,6 +48,7 @@ dependencies:
   flutter_secure_storage: ^11.1.0
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
+  photo_manager: ^3.12.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -12,6 +12,7 @@ import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
 import '../live_tv/live_tv_tab.dart';
+import '../local_network/local_network_tab.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 
@@ -240,6 +241,7 @@ class _TabBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (tab == LibraryTab.liveTv) return const LiveTvTab();
+    if (tab == LibraryTab.localNetwork) return const LocalNetworkTab();
 
     if (!tab.drawsFromPlex) {
       return LibraryEmptyState(

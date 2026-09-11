@@ -41,8 +41,8 @@ lack of hardware and still waiting.
 
 | # | What | Note |
 |---|---|---|
-| ⬜ | **SAF persisted folder permission survives a reboot** | §15 singles this out as *the one that fails*. Restart is not enough — reboot specifically |
-| ⬜ | `MediaStore` returns video without `MANAGE_EXTERNAL_STORAGE` | §7.1's Play-policy-compliant path. Play lists that permission under invalid uses for generic media playback, so there is no fallback if this does not work |
+| ⬜ | **SAF persisted folder permission survives a reboot** | §15 singles this out as *the one that fails*. Restart is not enough — reboot specifically. **Not yet testable: the SAF folder picker is not built.** Only the MediaStore half of §7.1 exists |
+| ✅ | `MediaStore` returns video without `MANAGE_EXTERNAL_STORAGE` | Verified 2026-09-11: scoped `READ_MEDIA_VIDEO` is sufficient, folders enumerate, and an id resolves to a playable path |
 | ⬜ | Hardware decode on device | Also listed above |
 | ✅ | Release APK size | 30.8 MB arm64. Measured 2026-09-11 |
 
@@ -86,6 +86,8 @@ Recorded to stop this becoming a list of everything.
 - **Xtream**: authentication against a real panel, live/VOD/series categories
   (466/156/83-scale confirmed), per-category channel and VOD fetch, channel
   search over 692 channels
+- **Local storage**: media permission flow including Android 14's partial-access
+  option, folder enumeration, and playing a device file end to end
 - **App**: Advanced Sources gate including the §8.2 acknowledgement, Live TV tab
   appearing and disappearing with it, favourites persisting, watch history
   surviving an emulator cold boot, settings persistence

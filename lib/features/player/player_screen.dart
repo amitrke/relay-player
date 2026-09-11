@@ -13,6 +13,7 @@ import '../accounts/plex_session.dart';
 import '../../data/local/history_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
+import '../local_network/local_network_tab.dart';
 import '../favorites_history/history_controller.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
@@ -61,7 +62,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.ratingKey,
   })  : accountId = null,
         streamId = null,
-        kind = XtreamStreamKind.live;
+        kind = XtreamStreamKind.live,
+        assetId = null;
 
   /// A live channel is addressed by account and stream id, never by URL.
   ///
@@ -74,7 +76,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
-        kind = XtreamStreamKind.live;
+        kind = XtreamStreamKind.live,
+        assetId = null;
 
   /// Panel VOD. [streamId] carries the container extension (`1234.mkv`) because
   /// §4 puts it in the URL and the panel does not hand it back later.
@@ -84,7 +87,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
-        kind = XtreamStreamKind.vod;
+        kind = XtreamStreamKind.vod,
+        assetId = null;
 
   /// A panel series episode. §4 streams these from `/series/...`, a different
   /// path from films, so the two cannot share one route.
@@ -94,12 +98,26 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
-        kind = XtreamStreamKind.episode;
+        kind = XtreamStreamKind.episode,
+        assetId = null;
+
+  /// A video on this device, addressed by its MediaStore id.
+  ///
+  /// The id is resolved to a path at play time rather than stored: MediaStore
+  /// hands back an id, not a path, and the file may not be materialised locally
+  /// until it is asked for.
+  const PlayerScreen.device({super.key, required String this.assetId})
+      : serverId = null,
+        ratingKey = null,
+        accountId = null,
+        streamId = null,
+        kind = XtreamStreamKind.live;
 
   final String? serverId;
   final String? ratingKey;
   final String? accountId;
   final String? streamId;
+  final String? assetId;
   final XtreamStreamKind kind;
 
   @override
@@ -164,6 +182,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<_Playable> _resolve() async {
+    final assetId = widget.assetId;
+    if (assetId != null) {
+      final source = ref.read(deviceVideoSourceProvider);
+      final path = await source.filePathOf(assetId);
+      if (path == null) {
+        throw StateError('That file is no longer on this device.');
+      }
+      final video = await source.videoById(assetId);
+      return _Playable(
+        url: path,
+        title: video?.title ?? 'Video',
+        live: false,
+      );
+    }
+
     final accountId = widget.accountId;
     if (accountId != null) {
       final accounts = ref.read(xtreamAccountsProvider);

@@ -14,6 +14,7 @@ import '../../data/xtream/xtream_account_store.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
+import '../../features/local_network/local_network_tab.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
@@ -121,6 +122,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => PlayerScreen.live(
           accountId: state.pathParameters['accountId']!,
           streamId: state.pathParameters['streamId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/local/:folderId',
+        builder: (_, state) => LocalFolderScreen(
+          folderId: state.pathParameters['folderId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/localplay/:assetId',
+        builder: (_, state) => PlayerScreen.device(
+          assetId: state.pathParameters['assetId']!,
         ),
       ),
       GoRoute(

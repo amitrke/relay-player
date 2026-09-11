@@ -710,8 +710,16 @@ Not answerable on desktop. Deferred from the probes above but still Phase 0.
 - [ ] **SAF persisted folder permission survives app restart AND device
       reboot** (§15 calls this out specifically — the reboot case is the one
       that fails)
-- [ ] `MediaStore` scan returns expected video without `MANAGE_EXTERNAL_STORAGE`
-      (§7.1 — the Play-policy-compliant path)
+- [x] **`MediaStore` scan returns video without `MANAGE_EXTERNAL_STORAGE`** —
+      verified 2026-09-11 on an Android 14 emulator. `READ_MEDIA_VIDEO` alone is
+      enough: the scoped dialog appears, folders enumerate, and a MediaStore id
+      resolves to a path media_kit opens and plays. §7.1's compliant path works,
+      so the permission Play forbids is genuinely not needed.
+
+      Android 14 also offers **partial** access ("Select photos and videos").
+      That is an authorised state, not a refusal — the app shows what it was
+      given rather than demanding everything, which is the behaviour Play
+      expects.
 - [ ] Hardware decode actually engages on device (compare CPU use vs desktop)
 - [x] **App size impact of bundling libmpv — measured 2026-09-11.**
 

@@ -6,6 +6,16 @@
          come via MediaStore + the Storage Access Framework instead. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Scoped media access for device video (S7.1). READ_MEDIA_VIDEO is the
+         Android 13+ permission; the legacy one is capped so it is not requested
+         on newer releases. MANAGE_EXTERNAL_STORAGE is deliberately absent and
+         must stay that way: Play lists it under invalid uses for generic
+         media playback, so it is not a fallback, it is a rejection. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:label="relay_player"
         android:name="${applicationName}"
