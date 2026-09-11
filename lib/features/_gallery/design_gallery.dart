@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/theme_controller.dart';
+import '../accounts/add_source_screen.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../settings/settings_screen.dart';
 
 /// A debug-only viewer for the implemented screens.
 ///
@@ -47,11 +49,51 @@ class _DesignGalleryState extends State<DesignGallery> {
         _Artboard('TV (10-foot)', 1920, 1080, _onboarding),
       ],
     ),
+    (
+      '02 · Add source',
+      [
+        // Both toggle states, because §8.2's requirement is about what is
+        // *absent* when Advanced sources is off — that is only checkable by
+        // looking at the two side by side.
+        _Artboard('Phone · advanced off', 390, 844,
+            (c) => _addSource(c, advanced: false)),
+        _Artboard('Phone · advanced on', 390, 844,
+            (c) => _addSource(c, advanced: true)),
+        _Artboard('Desktop · Plex pairing', 1440, 900,
+            (c) => _addSource(c, advanced: false)),
+      ],
+    ),
+    (
+      '09 · Settings',
+      [
+        _Artboard('Phone', 390, 844, _settings),
+        _Artboard('Desktop · AI features', 1440, 900, _settings),
+      ],
+    ),
   ];
+
+  /// Live settings state, so the toggles in the gallery actually work — the
+  /// Advanced sources acknowledgement dialog in particular is worth being able
+  /// to exercise rather than just look at.
+  SettingsState _settingsState = const SettingsState();
+
+  Widget _settings(BuildContext context) => SettingsScreen(
+        theme: widget.controller,
+        state: _settingsState,
+        onStateChanged: (s) => setState(() => _settingsState = s),
+      );
 
   Widget _onboarding(BuildContext context) => OnboardingScreen(
         onAddSource: () => _toast(context, 'Add source → screen 02'),
         onSkip: () => _toast(context, 'Skipped'),
+      );
+
+  Widget _addSource(BuildContext context, {required bool advanced}) =>
+      AddSourceScreen(
+        advancedEnabled: advanced,
+        onBack: () => _toast(context, 'Back'),
+        onPickSource: (kind) => _toast(context, 'Picked ${kind.title}'),
+        onOpenSettings: () => _toast(context, 'Settings → Advanced sources'),
       );
 
   void _toast(BuildContext context, String message) {
