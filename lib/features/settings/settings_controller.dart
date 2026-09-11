@@ -14,6 +14,7 @@ final appSettingsStoreProvider = Provider<AppSettingsStore>((ref) {
 const _kAdvancedSources = 'advancedSourcesEnabled';
 const _kCrashReporting = 'crashReportingEnabled';
 const _kLibraryMapping = 'plex.libraryMapping';
+const _kOnboardingSeen = 'onboardingSeen';
 
 final settingsProvider = NotifierProvider<SettingsController, SettingsState>(
   SettingsController.new,
@@ -45,6 +46,28 @@ class SettingsController extends Notifier<SettingsState> {
     if (next.crashReportingEnabled != previous.crashReportingEnabled) {
       _store.setBool(_kCrashReporting, next.crashReportingEnabled);
     }
+  }
+}
+
+/// Whether the user has been past first-run once.
+///
+/// Deliberately *not* "has a source configured". §12 screen 1 is general
+/// framing, and screen 2 makes Plex and Local & Network both optional — an app
+/// that re-demands setup on every launch until you connect something has turned
+/// one source into a gate.
+final onboardingSeenProvider =
+    NotifierProvider<OnboardingSeenController, bool>(
+  OnboardingSeenController.new,
+);
+
+class OnboardingSeenController extends Notifier<bool> {
+  @override
+  bool build() =>
+      ref.read(appSettingsStoreProvider).getBool(_kOnboardingSeen, fallback: false);
+
+  Future<void> markSeen() async {
+    state = true;
+    await ref.read(appSettingsStoreProvider).setBool(_kOnboardingSeen, true);
   }
 }
 

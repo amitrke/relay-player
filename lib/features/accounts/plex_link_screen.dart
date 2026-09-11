@@ -20,6 +20,16 @@ class PlexLinkScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: t.bg,
+      // Linking Plex is optional now, so there has to be a way out. Without
+      // this the screen is a dead end for anyone who opened it to look.
+      appBar: context.canPop()
+          ? AppBar(
+              backgroundColor: t.bg,
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: t.ink,
+              elevation: 0,
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

@@ -61,11 +61,18 @@ class LibraryEmptyState extends StatelessWidget {
     required this.icon,
     required this.message,
     this.onRetry,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String message;
   final VoidCallback? onRetry;
+
+  /// An action offered instead of a bare dead end — an empty library should say
+  /// what to do about it.
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +94,10 @@ class LibraryEmptyState extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: 18),
               RelayButton(label: 'Try again', onPressed: onRetry),
+            ],
+            if (onAction != null && actionLabel != null) ...[
+              const SizedBox(height: 18),
+              RelayButton(label: actionLabel!, onPressed: onAction),
             ],
           ],
         ),

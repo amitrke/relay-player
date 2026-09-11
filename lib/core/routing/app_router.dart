@@ -14,6 +14,8 @@ import '../../data/xtream/xtream_account_store.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
+import '../../features/onboarding/onboarding_route.dart';
+import '../../features/settings/settings_controller.dart';
 import '../../features/local_network/local_network_tab.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
@@ -36,22 +38,40 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (kDebugMode && state.matchedLocation.startsWith('/debug')) return null;
 
       final stage = ref.read(plexSessionProvider).stage;
-      final atLink = state.matchedLocation == '/link';
+      final location = state.matchedLocation;
 
-      return switch (stage) {
-        // Hold on the splash until the stored token has been checked, so a
-        // returning user never sees a flash of the sign-in screen.
-        PlexStage.restoring => '/splash',
-        PlexStage.ready => atLink || state.matchedLocation == '/splash'
-            ? '/library'
-            : null,
-        _ => atLink ? null : '/link',
-      };
+      // Hold on the splash until stored credentials have been read, so a
+      // returning user never sees a flash of first-run.
+      if (stage == PlexStage.restoring) return '/splash';
+
+      // First run goes to onboarding (§12 screen 1) — **not** to Plex.
+      // Plex is one source among several, and gating the whole app on it means
+      // device video and a panel are both unreachable until you link a server
+      // you may not even have.
+      if (!ref.read(onboardingSeenProvider)) {
+        return location == '/onboarding' || location == '/add-source'
+            ? null
+            : '/onboarding';
+      }
+
+      // Past first run, nothing is compulsory. Linking Plex returns to the
+      // library; everything else is reachable with no sources at all.
+      if (location == '/splash' || location == '/onboarding') return '/library';
+      if (location == '/link' && stage == PlexStage.ready) return '/library';
+      return null;
     },
     routes: [
       GoRoute(
         path: '/splash',
         builder: (_, _) => const _Splash(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, _) => const OnboardingRoute(),
+      ),
+      GoRoute(
+        path: '/add-source',
+        builder: (_, _) => const AddSourceRoute(),
       ),
       GoRoute(
         path: '/link',

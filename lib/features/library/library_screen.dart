@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../data/xtream/xtream_account_store.dart';
@@ -108,7 +109,20 @@ class LibraryScreen extends ConsumerStatefulWidget {
 }
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
-  LibraryTab _selected = LibraryTab.movies;
+  /// Null until the user picks one, so a `?tab=` deep link is not immediately
+  /// overwritten by a default.
+  LibraryTab? _selected;
+
+  static LibraryTab? _tabFromQuery(BuildContext context) {
+    final name = GoRouterState.of(context).uri.queryParameters['tab'];
+    return switch (name) {
+      'local' => LibraryTab.localNetwork,
+      'series' => LibraryTab.series,
+      'live' => LibraryTab.liveTv,
+      'movies' => LibraryTab.movies,
+      _ => null,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,11 +134,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     // The gate can retract the tab the user is standing on (§15's kill-switch
     // drill checks exactly this), so fall back rather than render a dead tab.
-    final selected = tabs.contains(_selected) ? _selected : LibraryTab.movies;
-    final servers = ref.watch(connectedServersProvider);
-    // Name the server only when there is exactly one; with several, a single
-    // name in the corner would be a lie about where these titles came from.
-    final serverName = servers.length == 1 ? servers.single.name : null;
+    final requested = _tabFromQuery(context);
+    final selected = tabs.contains(_selected ?? requested)
+        ? (_selected ?? requested)!
+        : LibraryTab.movies;
 
     return Scaffold(
       backgroundColor: t.bg,
@@ -148,11 +161,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       ),
                     ),
                   ),
-                  if (serverName != null)
+                  // A count, not a source name. Titles here are merged across
+                  // Plex servers, panels and this device, so naming one source
+                  // would misdescribe most of what is on screen.
+                  if (selected.drawsFromPlex)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        serverName,
+                        switch (ref.watch(_libraryProvider(selected))) {
+                          AsyncData(:final value) =>
+                            '${value.length} ${selected.label.toLowerCase()}',
+                          _ => '',
+                        },
                         style: TextStyle(color: t.inkDim, fontSize: 12),
                       ),
                     ),
@@ -263,7 +283,12 @@ class _TabBody extends ConsumerWidget {
       data: (list) => list.isEmpty
           ? LibraryEmptyState(
               icon: tab.emptyIcon,
-              message: 'Nothing in ${tab.label.toLowerCase()} yet.',
+              message: ref.watch(connectedServersProvider).isEmpty &&
+                      ref.watch(xtreamAccountsProvider).isEmpty
+                  ? 'No sources connected yet.'
+                  : 'Nothing in ${tab.label.toLowerCase()} yet.',
+              actionLabel: 'Add a source',
+              onAction: () => context.push('/add-source'),
             )
           // The artboard puts the row above the Movies grid, and it is
           // deliberately not repeated per tab — it is one list of what the user
