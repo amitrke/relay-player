@@ -63,7 +63,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : accountId = null,
         streamId = null,
         kind = XtreamStreamKind.live,
-        assetId = null;
+        assetId = null,
+        safUri = null,
+        safName = null;
 
   /// A live channel is addressed by account and stream id, never by URL.
   ///
@@ -77,7 +79,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         kind = XtreamStreamKind.live,
-        assetId = null;
+        assetId = null,
+        safUri = null,
+        safName = null;
 
   /// Panel VOD. [streamId] carries the container extension (`1234.mkv`) because
   /// §4 puts it in the URL and the panel does not hand it back later.
@@ -88,7 +92,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         kind = XtreamStreamKind.vod,
-        assetId = null;
+        assetId = null,
+        safUri = null,
+        safName = null;
 
   /// A panel series episode. §4 streams these from `/series/...`, a different
   /// path from films, so the two cannot share one route.
@@ -99,7 +105,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         kind = XtreamStreamKind.episode,
-        assetId = null;
+        assetId = null,
+        safUri = null,
+        safName = null;
 
   /// A video on this device, addressed by its MediaStore id.
   ///
@@ -111,6 +119,21 @@ class PlayerScreen extends ConsumerStatefulWidget {
         ratingKey = null,
         accountId = null,
         streamId = null,
+        safUri = null,
+        safName = null,
+        kind = XtreamStreamKind.live;
+
+  /// A file inside a folder the user granted through SAF.
+  const PlayerScreen.saf({
+    super.key,
+    required String this.safUri,
+    String? name,
+  })  : safName = name,
+        serverId = null,
+        ratingKey = null,
+        accountId = null,
+        streamId = null,
+        assetId = null,
         kind = XtreamStreamKind.live;
 
   final String? serverId;
@@ -118,6 +141,11 @@ class PlayerScreen extends ConsumerStatefulWidget {
   final String? accountId;
   final String? streamId;
   final String? assetId;
+
+  /// A `content://` URI from a SAF-granted folder.
+  final String? safUri;
+  final String? safName;
+
   final XtreamStreamKind kind;
 
   @override
@@ -182,6 +210,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<_Playable> _resolve() async {
+    final safUri = widget.safUri;
+    if (safUri != null) {
+      // Handed to libmpv as-is. Whether it can open a `content://` URI at all
+      // is the open question here; if it cannot, §7.2's loopback bridge is the
+      // answer, and it is already designed to be reused for exactly this.
+      return _Playable(
+        url: safUri,
+        title: widget.safName ?? 'Video',
+        live: false,
+      );
+    }
+
     final assetId = widget.assetId;
     if (assetId != null) {
       final source = ref.read(deviceVideoSourceProvider);

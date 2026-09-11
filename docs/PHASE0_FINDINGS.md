@@ -709,7 +709,19 @@ Not answerable on desktop. Deferred from the probes above but still Phase 0.
 
 - [ ] **SAF persisted folder permission survives app restart AND device
       reboot** (§15 calls this out specifically — the reboot case is the one
-      that fails)
+      that fails). Picker and persistence now exist, so this is finally
+      testable; the reboot itself has not been run.
+
+      **🔴 Found on the way: libmpv cannot open a `content://` URI.** Handing a
+      SAF document URI straight to media_kit fails with *"Failed to recognize
+      file format"* — it receives the string and cannot read it as a stream.
+
+      So **§7.2's loopback bridge is required for SAF, not only for SMB.** That
+      is the same conclusion Q3 reached for `smb://`, from a different
+      direction, and it confirms §7.2's note that the bridge "becomes reusable
+      infrastructure" rather than being SMB-specific. Picked folders are
+      browsable today and deliberately not playable, rather than offering a tap
+      that always fails.
 - [x] **`MediaStore` scan returns video without `MANAGE_EXTERNAL_STORAGE`** —
       verified 2026-09-11 on an Android 14 emulator. `READ_MEDIA_VIDEO` alone is
       enough: the scoped dialog appears, folders enumerate, and a MediaStore id

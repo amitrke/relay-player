@@ -17,6 +17,7 @@ import '../../features/library/library_screen.dart';
 import '../../features/onboarding/onboarding_route.dart';
 import '../../features/settings/settings_controller.dart';
 import '../../features/local_network/local_network_tab.dart';
+import '../../features/local_network/saf_folder_screen.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
@@ -148,6 +149,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/local/:folderId',
         builder: (_, state) => LocalFolderScreen(
           folderId: state.pathParameters['folderId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/saf/:uri',
+        builder: (_, state) => SafFolderScreen(
+          uri: Uri.decodeComponent(state.pathParameters['uri']!),
+          title: state.extra as String?,
+        ),
+      ),
+      GoRoute(
+        path: '/safplay/:uri',
+        builder: (_, state) => PlayerScreen.saf(
+          safUri: Uri.decodeComponent(state.pathParameters['uri']!),
+          name: state.extra as String?,
         ),
       ),
       GoRoute(

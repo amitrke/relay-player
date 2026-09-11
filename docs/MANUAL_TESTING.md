@@ -41,7 +41,7 @@ lack of hardware and still waiting.
 
 | # | What | Note |
 |---|---|---|
-| ⬜ | **SAF persisted folder permission survives a reboot** | §15 singles this out as *the one that fails*. Restart is not enough — reboot specifically. **Not yet testable: the SAF folder picker is not built.** Only the MediaStore half of §7.1 exists |
+| ⬜ | **SAF persisted folder permission survives a reboot** | §15 singles this out as *the one that fails*. Restart is not enough — reboot specifically. Picker and persistence now exist so this is testable; pick a folder, reboot the device, and check it still lists |
 | ✅ | `MediaStore` returns video without `MANAGE_EXTERNAL_STORAGE` | Verified 2026-09-11: scoped `READ_MEDIA_VIDEO` is sufficient, folders enumerate, and an id resolves to a playable path |
 | ⬜ | Hardware decode on device | Also listed above |
 | ✅ | Release APK size | 30.8 MB arm64. Measured 2026-09-11 |
@@ -62,6 +62,7 @@ this while it is unproven.
 
 | # | What |
 |---|---|
+| ❌ | **libmpv cannot open `content://` URIs.** Confirmed 2026-09-11: a SAF document URI fails with "Failed to recognize file format". Picked folders browse but do not play, pending §7.2's loopback bridge — the same one Phase 0 validated for SMB |
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
@@ -87,7 +88,8 @@ Recorded to stop this becoming a list of everything.
   (466/156/83-scale confirmed), per-category channel and VOD fetch, channel
   search over 692 channels
 - **Local storage**: media permission flow including Android 14's partial-access
-  option, folder enumeration, and playing a device file end to end
+  option, folder enumeration, and playing a device file end to end; SAF folder
+  picking with a persistable grant, and browsing subfolders and files inside it
 - **App**: Advanced Sources gate including the §8.2 acknowledgement, Live TV tab
   appearing and disappearing with it, favourites persisting, watch history
   surviving an emulator cold boot, settings persistence
