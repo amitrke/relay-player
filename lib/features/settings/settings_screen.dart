@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../advanced_sources/xtream_accounts_pane.dart';
 import 'sources_pane.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -197,10 +198,19 @@ class _PhoneSettings extends StatelessWidget {
 
         _Section(
           title: 'Advanced sources',
-          child: _AdvancedSourcesControl(
-            enabled: state.advancedSourcesEnabled,
-            onChanged: (v) =>
-                setAdvancedSources(context, state, onStateChanged, v),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _AdvancedSourcesControl(
+                enabled: state.advancedSourcesEnabled,
+                onChanged: (v) =>
+                    setAdvancedSources(context, state, onStateChanged, v),
+              ),
+              if (state.advancedSourcesEnabled) ...[
+                const SizedBox(height: 18),
+                const XtreamAccountsPane(),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 22),
@@ -550,10 +560,19 @@ class _DesktopSettings extends StatelessWidget {
                 ),
               SettingsSection.advancedSources => _DesktopPane(
                   title: 'Advanced sources',
-                  child: _AdvancedSourcesControl(
-                    enabled: state.advancedSourcesEnabled,
-                    onChanged: (v) => setAdvancedSources(
-                        context, state, onStateChanged, v),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _AdvancedSourcesControl(
+                        enabled: state.advancedSourcesEnabled,
+                        onChanged: (v) => setAdvancedSources(
+                            context, state, onStateChanged, v),
+                      ),
+                      if (state.advancedSourcesEnabled) ...[
+                        const SizedBox(height: 22),
+                        const XtreamAccountsPane(),
+                      ],
+                    ],
                   ),
                 ),
               SettingsSection.privacy => _DesktopPane(

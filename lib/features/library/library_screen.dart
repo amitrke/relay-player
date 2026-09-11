@@ -8,6 +8,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
+import '../live_tv/live_tv_tab.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 
@@ -208,6 +209,8 @@ class _TabBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (tab == LibraryTab.liveTv) return const LiveTvTab();
+
     if (!tab.drawsFromPlex) {
       return LibraryEmptyState(
         icon: tab.emptyIcon,

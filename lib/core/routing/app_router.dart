@@ -7,6 +7,8 @@ import '../../features/_debug/debug_menu_screen.dart';
 import '../../features/_gallery/design_gallery.dart';
 import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
+import '../../features/advanced_sources/add_xtream_screen.dart';
+import '../../features/advanced_sources/category_picker_screen.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
@@ -76,6 +78,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/advanced/xtream/new',
+        builder: (_, _) => const AddXtreamScreen(),
+      ),
+      GoRoute(
+        path: '/advanced/xtream/:accountId/categories',
+        builder: (_, state) => CategoryPickerScreen(
+          accountId: state.pathParameters['accountId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/live/:accountId/:streamId',
+        builder: (_, state) => PlayerScreen.live(
+          accountId: state.pathParameters['accountId']!,
+          streamId: state.pathParameters['streamId']!,
+        ),
+      ),
+      GoRoute(
         path: '/show/:serverId/:ratingKey',
         builder: (_, state) => ShowDetailScreen(
           serverId: state.pathParameters['serverId']!,
@@ -84,7 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/play/:serverId/:ratingKey',
-        builder: (_, state) => PlayerScreen(
+        builder: (_, state) => PlayerScreen.plex(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
         ),
