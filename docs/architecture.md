@@ -686,6 +686,13 @@ session on every user's server — and a second, worse Xtream panel to settle
 
 ## 15. Testing plan
 
+**What is actually outstanding lives in
+[MANUAL_TESTING.md](MANUAL_TESTING.md).** This section is the plan; that file is
+the gap between the plan and reality, and it is the one to read before assuming
+a feature works. The short version: the Android emulator cannot render video at
+all, so everything downstream of a frame reaching the screen is unverified
+regardless of how finished it looks.
+
 - Unit tests: Xtream client response parsing, M3U parser edge cases (missing attributes, malformed lines), Plex PIN-flow state machine and transcode-session lifecycle, SMB connection/reconnect handling, Provider Profile schema validation (including malformed/hostile input), Advanced Sources toggle state (routes/tabs correctly appear and disappear), AI provider client parsing/error handling per provider, consent-flow state (correct dialog shown exactly once per provider × feature, revocation works), repository layer against all source types
 - Widget tests: category grid, folder-tree browser, player controls, TV focus traversal
 - Manual device matrix: 1 real Android TV box, 1 Fire TV stick, 2 Android phones (different Android versions), 1–2 iOS devices, against at least 2 different real Xtream panels, one M3U source, one real Plex server (direct-play and forced-transcode content), one real SMB share (NAS or Windows PC), and each of the AI provider configurations (Anthropic, OpenAI, Gemini, a generic-compatible endpoint pointed at a real self-hosted server, and local Ollama) — behavior varies enough across all of these that "works on the emulator" tells you very little
