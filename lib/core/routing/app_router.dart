@@ -8,8 +8,11 @@ import '../../features/_gallery/design_gallery.dart';
 import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
 import '../../features/accounts/plex_session.dart';
+import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
 import '../../features/player/player_screen.dart';
+import '../../features/search/search_screen.dart';
+import '../../features/settings/settings_route.dart';
 import '../theme/theme_controller.dart';
 
 /// Routes, with sign-in state as the only gate for now.
@@ -48,9 +51,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/link',
         builder: (_, _) => const PlexLinkScreen(),
       ),
-      GoRoute(
-        path: '/library',
-        builder: (_, _) => const LibraryScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => HomeShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/library',
+              builder: (_, _) => const LibraryScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/search',
+              builder: (_, _) => const SearchScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/settings',
+              builder: (_, _) => const SettingsRoute(),
+            ),
+          ]),
+        ],
       ),
       GoRoute(
         path: '/play/:ratingKey',

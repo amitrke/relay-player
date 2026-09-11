@@ -158,6 +158,40 @@ class PlexService {
     return container.items;
   }
 
+  /// Every item of [type], merged across all sections of that type.
+  ///
+  /// §12 screen 3: Plex libraries merge into Movies and Series rather than
+  /// showing one tab per section. Someone with both "Films" and "4K Films"
+  /// thinks of the contents as movies, not as two libraries.
+  Future<List<PlexMetadata>> itemsOfType(
+    PlexLibraryType type, {
+    int perSection = 60,
+  }) async {
+    final wanted = (await sections()).where((s) => s.type == type);
+    final pages =
+        await Future.wait(wanted.map((s) => items(s, size: perSection)));
+    return pages.expand((page) => page).toList()
+      ..sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
+  }
+
+  /// Server-side search across every library (§12 screen 8).
+  ///
+  /// Uses Plex's own index rather than filtering a local list — the catalogue
+  /// is far too large to hold in memory, which is the §4.1 lesson applied to
+  /// Plex rather than Xtream.
+  Future<List<PlexMetadata>> search(String query, {int limit = 40}) async {
+    if (query.trim().isEmpty) return const [];
+    final results = await _client.search.flat(query: query, limit: limit);
+    const playable = {
+      PlexMetadataType.movie,
+      PlexMetadataType.show,
+      PlexMetadataType.episode,
+    };
+    return results.where((m) => playable.contains(m.type)).toList();
+  }
+
   Future<PlexMetadata?> item(String ratingKey) =>
       _client.library.item(ratingKey);
 

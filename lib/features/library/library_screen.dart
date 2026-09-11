@@ -3,20 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
-import '../../core/theme/relay_widgets.dart';
 import '../accounts/plex_session.dart';
-import 'poster_tile.dart';
+import '../settings/settings_controller.dart';
+import 'library_tab.dart';
+import 'poster_grid.dart';
 
-final _sectionsProvider = FutureProvider<List<PlexLibrarySection>>((ref) {
-  return ref.watch(plexServiceProvider).sections();
+final _libraryProvider =
+    FutureProvider.family<List<PlexMetadata>, PlexLibraryType>((ref, type) {
+  return ref.watch(plexServiceProvider).itemsOfType(type);
 });
 
-final _itemsProvider = FutureProvider.family<List<PlexMetadata>,
-    PlexLibrarySection>((ref, section) {
-  return ref.watch(plexServiceProvider).items(section);
-});
-
-/// Browse the connected server's video libraries (§6).
+/// Home (§12 screen 3).
+///
+/// The tabs are content types, not Plex sections: §12 merges every Plex movie
+/// library into Movies and every show library into Series. Local & Network
+/// stays separate because a folder tree has no movie/series structure to merge
+/// into, and Live TV exists only behind the §8.2 gate.
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
@@ -25,91 +27,77 @@ class LibraryScreen extends ConsumerStatefulWidget {
 }
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
-  PlexLibrarySection? _selected;
+  LibraryTab _selected = LibraryTab.movies;
 
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    final sections = ref.watch(_sectionsProvider);
+    final tabs = LibraryTab.visible(
+      advancedSources: ref.watch(advancedSourcesEnabledProvider),
+    );
+
+    // The gate can retract the tab the user is standing on (§15's kill-switch
+    // drill checks exactly this), so fall back rather than render a dead tab.
+    final selected = tabs.contains(_selected) ? _selected : LibraryTab.movies;
     final serverName = ref.watch(plexSessionProvider).serverName;
 
     return Scaffold(
       backgroundColor: t.bg,
-      appBar: AppBar(
-        backgroundColor: t.bg,
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: RelayLayout.pagePadding(f).left,
-        title: Column(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Library',
-              style: TextStyle(
-                color: t.ink,
-                fontSize: RelayLayout.titleSize(f) - 6,
-                fontWeight: FontWeight.w700,
+            Padding(
+              padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Library',
+                      style: TextStyle(
+                        color: t.ink,
+                        fontSize: RelayLayout.titleSize(f) - 4,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (serverName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        serverName,
+                        style: TextStyle(color: t.inkDim, fontSize: 12),
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (serverName != null)
-              Text(
-                serverName,
-                style: TextStyle(color: t.inkDim, fontSize: 12),
-              ),
+            _TabBar(
+              tabs: tabs,
+              selected: selected,
+              onSelect: (tab) => setState(() => _selected = tab),
+            ),
+            Expanded(child: _TabBody(tab: selected)),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Disconnect',
-            icon: Icon(Icons.logout, color: t.inkDim),
-            onPressed: () => ref.read(plexSessionProvider.notifier).signOut(),
-          ),
-          SizedBox(width: RelayLayout.pagePadding(f).right - 12),
-        ],
-      ),
-      body: sections.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: t.accent),
-        ),
-        error: (e, _) => _Failure(
-          message: '$e',
-          onRetry: () => ref.invalidate(_sectionsProvider),
-        ),
-        data: (list) {
-          if (list.isEmpty) {
-            return const _Failure(
-              message: 'This server has no movie or TV libraries.',
-            );
-          }
-          final selected = _selected ?? list.first;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SectionTabs(
-                sections: list,
-                selected: selected,
-                onSelect: (s) => setState(() => _selected = s),
-              ),
-              Expanded(child: _ItemGrid(section: selected)),
-            ],
-          );
-        },
       ),
     );
   }
 }
 
-class _SectionTabs extends StatelessWidget {
-  const _SectionTabs({
-    required this.sections,
+class _TabBar extends StatelessWidget {
+  const _TabBar({
+    required this.tabs,
     required this.selected,
     required this.onSelect,
   });
 
-  final List<PlexLibrarySection> sections;
-  final PlexLibrarySection selected;
-  final ValueChanged<PlexLibrarySection> onSelect;
+  final List<LibraryTab> tabs;
+  final LibraryTab selected;
+  final ValueChanged<LibraryTab> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -117,118 +105,81 @@ class _SectionTabs extends StatelessWidget {
     final f = RelayLayout.of(context);
 
     return SizedBox(
-      height: 52,
-      child: ListView.separated(
+      height: 46,
+      child: ListView(
         scrollDirection: Axis.horizontal,
         padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
-        itemCount: sections.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final section = sections[i];
-          final isSelected = section.id == selected.id;
-          return Center(
-            child: GestureDetector(
-              onTap: () => onSelect(section),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? t.accent : t.surface,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: isSelected ? t.accent : t.line),
-                ),
-                child: Text(
-                  section.title,
-                  style: TextStyle(
-                    color: isSelected ? t.accentInk : t.inkDim,
-                    fontSize: RelayLayout.bodySize(f),
-                    fontWeight: FontWeight.w600,
-                  ),
+        children: [
+          for (final tab in tabs)
+            GestureDetector(
+              onTap: () => onSelect(tab),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 22),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          tab.label,
+                          style: TextStyle(
+                            color: tab == selected ? t.ink : t.inkDim,
+                            fontSize: RelayLayout.bodySize(f) + 1,
+                            fontWeight: tab == selected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      height: 2,
+                      width: 100,
+                      color:
+                          tab == selected ? t.accent : Colors.transparent,
+                    ),
+                  ],
                 ),
               ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
 }
 
-class _ItemGrid extends ConsumerWidget {
-  const _ItemGrid({required this.section});
+class _TabBody extends ConsumerWidget {
+  const _TabBody({required this.tab});
 
-  final PlexLibrarySection section;
+  final LibraryTab tab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = RelayTheme.of(context);
-    final f = RelayLayout.of(context);
-    final items = ref.watch(_itemsProvider(section));
+    final plexType = tab.plexType;
+    if (plexType == null) {
+      return LibraryEmptyState(
+        icon: tab.emptyIcon,
+        message: tab.emptyMessage,
+      );
+    }
 
+    final items = ref.watch(_libraryProvider(plexType));
     return items.when(
-      loading: () => Center(child: CircularProgressIndicator(color: t.accent)),
-      error: (e, _) => _Failure(
+      loading: () => Center(
+        child: CircularProgressIndicator(color: RelayTheme.of(context).accent),
+      ),
+      error: (e, _) => LibraryEmptyState(
+        icon: Icons.cloud_off_outlined,
         message: '$e',
-        onRetry: () => ref.invalidate(_itemsProvider(section)),
+        onRetry: () => ref.invalidate(_libraryProvider(plexType)),
       ),
-      data: (list) {
-        if (list.isEmpty) {
-          return const _Failure(message: 'Nothing in this library yet.');
-        }
-        final columns = switch (f) {
-          RelayFormFactor.phone => 3,
-          RelayFormFactor.tablet => 5,
-          RelayFormFactor.desktop => 6,
-          RelayFormFactor.tv => 7,
-        };
-        return GridView.builder(
-          padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 32),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            childAspectRatio: 0.52,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: list.length,
-          itemBuilder: (context, i) => PosterTile(item: list[i]),
-        );
-      },
-    );
-  }
-}
-
-class _Failure extends StatelessWidget {
-  const _Failure({required this.message, this.onRetry});
-
-  final String message;
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.cloud_off_outlined, color: t.inkDim, size: 34),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: t.inkDim, height: 1.5),
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 18),
-              RelayButton(label: 'Try again', onPressed: onRetry),
-            ],
-          ],
-        ),
-      ),
+      data: (list) => list.isEmpty
+          ? LibraryEmptyState(
+              icon: tab.emptyIcon,
+              message: 'Nothing in ${tab.label.toLowerCase()} yet.',
+            )
+          : PosterGrid(items: list),
     );
   }
 }

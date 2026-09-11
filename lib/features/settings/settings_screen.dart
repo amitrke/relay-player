@@ -219,7 +219,8 @@ class _PhoneSettings extends StatelessWidget {
           title: 'Advanced sources',
           child: _AdvancedSourcesControl(
             enabled: state.advancedSourcesEnabled,
-            onChanged: (v) => _setAdvanced(context, v),
+            onChanged: (v) =>
+                setAdvancedSources(context, state, onStateChanged, v),
           ),
         ),
         const SizedBox(height: 22),
@@ -240,18 +241,6 @@ class _PhoneSettings extends StatelessWidget {
     );
   }
 
-  /// Turning it ON requires the §8.2 acknowledgement. Turning it OFF is free
-  /// and non-destructive — configured accounts survive.
-  Future<void> _setAdvanced(BuildContext context, bool value) async {
-    if (!value) {
-      onStateChanged(state.copyWith(advancedSourcesEnabled: false));
-      return;
-    }
-    final accepted = await showAdvancedSourcesDialog(context);
-    if (accepted == true) {
-      onStateChanged(state.copyWith(advancedSourcesEnabled: true));
-    }
-  }
 }
 
 /// The §8.2 acknowledgement. Separate from, and additional to, the general
@@ -614,6 +603,26 @@ class _DesktopSettings extends StatelessWidget {
                   onStateChanged: onStateChanged),
               SettingsSection.appearance => SingleChildScrollView(
                   child: _AppearanceControls(theme: theme)),
+              SettingsSection.advancedSources => _DesktopPane(
+                  title: 'Advanced sources',
+                  child: _AdvancedSourcesControl(
+                    enabled: state.advancedSourcesEnabled,
+                    onChanged: (v) => setAdvancedSources(
+                        context, state, onStateChanged, v),
+                  ),
+                ),
+              SettingsSection.privacy => _DesktopPane(
+                  title: 'Privacy and data',
+                  child: _ToggleRow(
+                    title: 'Send crash reports',
+                    subtitle:
+                        'Off by default. Reports contain no library or account '
+                        'data. Relay Player has no backend and no analytics.',
+                    value: state.crashReportingEnabled,
+                    onChanged: (v) => onStateChanged(
+                        state.copyWith(crashReportingEnabled: v)),
+                  ),
+                ),
               _ => _PlaceholderPane(section: state.section),
             },
           ),
@@ -655,6 +664,52 @@ class _RailRow extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Turning Advanced Sources ON requires the §8.2 acknowledgement; turning it
+/// OFF is free and non-destructive, and configured accounts survive.
+///
+/// Shared by both layouts so the acknowledgement cannot be bypassed by whichever
+/// one happens to be on screen.
+Future<void> setAdvancedSources(
+  BuildContext context,
+  SettingsState state,
+  ValueChanged<SettingsState> onStateChanged,
+  bool value,
+) async {
+  if (!value) {
+    onStateChanged(state.copyWith(advancedSourcesEnabled: false));
+    return;
+  }
+  final accepted = await showAdvancedSourcesDialog(context);
+  if (accepted == true) {
+    onStateChanged(state.copyWith(advancedSourcesEnabled: true));
+  }
+}
+
+/// A titled pane in the desktop rail layout.
+class _DesktopPane extends StatelessWidget {
+  const _DesktopPane({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(
+                  color: t.ink, fontSize: 24, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+          child,
+        ],
       ),
     );
   }
