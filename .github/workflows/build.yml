@@ -1,0 +1,104 @@
+name: Build
+
+# Artifacts for testing on real hardware, which is the bottleneck this exists
+# to remove: docs/MANUAL_TESTING.md lists a pile of things that can only be
+# checked on a device, and building each one by hand is the reason they keep
+# getting deferred.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push makes an in-flight build irrelevant. Release builds here take
+  # minutes, so not cancelling just queues work nobody wants.
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned to the version this has actually been built and verified with, not
+  # to "latest" -- otherwise an unrelated Flutter release becomes a surprise CI
+  # failure on a day you were doing something else.
+  FLUTTER_VERSION: '3.47.0'
+
+jobs:
+  check:
+    name: Analyse and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Android APK
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      # Split per ABI: the universal APK is 89.9 MB against 30.8 MB for arm64,
+      # purely from carrying libmpv three times (PHASE0_FINDINGS.md Q5).
+      - run: flutter build apk --release --split-per-abi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      # flutter_secure_storage_windows compiles a C++ plugin that includes
+      # <atlstr.h>, so the runner needs Visual Studio's C++ ATL component. It
+      # cost a while to diagnose locally (PHASE0_FINDINGS.md, incidental
+      # findings), so fail loudly here rather than inside a CMake log.
+      - name: Check the ATL headers are present
+        shell: pwsh
+        run: |
+          $found = Get-ChildItem 'C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC' -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Join-Path $_.FullName 'atlmfc\include\atlstr.h' } |
+            Where-Object { Test-Path $_ }
+          if (-not $found) {
+            Write-Error "atlstr.h not found. flutter_secure_storage_windows needs the VC ATL component."
+            exit 1
+          }
+          Write-Host "ATL headers found: $($found[0])"
+
+      - run: flutter build windows --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 14
