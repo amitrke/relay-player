@@ -1,0 +1,102 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/_debug/debug_menu_screen.dart';
+import '../../features/_gallery/design_gallery.dart';
+import '../../features/_spike/spike_app.dart';
+import '../../features/accounts/plex_link_screen.dart';
+import '../../features/accounts/plex_session.dart';
+import '../../features/library/library_screen.dart';
+import '../../features/player/player_screen.dart';
+import '../theme/theme_controller.dart';
+
+/// Routes, with sign-in state as the only gate for now.
+///
+/// §2 picks go_router partly so gated routes can be kept out of the tree
+/// entirely rather than hidden — the Advanced Sources gate (§8.2) will hang off
+/// the same redirect once Phase 3 lands.
+final routerProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
+    initialLocation: '/library',
+    refreshListenable: _SessionRefresh(ref),
+    redirect: (context, state) {
+      // Developer tools are reachable without a Plex link — they exist partly
+      // to debug the link itself.
+      if (kDebugMode && state.matchedLocation.startsWith('/debug')) return null;
+
+      final stage = ref.read(plexSessionProvider).stage;
+      final atLink = state.matchedLocation == '/link';
+
+      return switch (stage) {
+        // Hold on the splash until the stored token has been checked, so a
+        // returning user never sees a flash of the sign-in screen.
+        PlexStage.restoring => '/splash',
+        PlexStage.ready => atLink || state.matchedLocation == '/splash'
+            ? '/library'
+            : null,
+        _ => atLink ? null : '/link',
+      };
+    },
+    routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (_, _) => const _Splash(),
+      ),
+      GoRoute(
+        path: '/link',
+        builder: (_, _) => const PlexLinkScreen(),
+      ),
+      GoRoute(
+        path: '/library',
+        builder: (_, _) => const LibraryScreen(),
+      ),
+      GoRoute(
+        path: '/play/:ratingKey',
+        builder: (_, state) => PlayerScreen(
+          ratingKey: state.pathParameters['ratingKey']!,
+        ),
+      ),
+      // Never registered in a release build, so neither screen can be reached
+      // even by typing the route. `kDebugMode` is a compile-time constant, so
+      // the branch and its widgets are tree-shaken out of the release binary.
+      if (kDebugMode) ...[
+        GoRoute(
+          path: '/debug',
+          builder: (_, _) => const DebugMenuScreen(),
+        ),
+        GoRoute(
+          path: '/debug/spike',
+          builder: (_, _) => const SpikeHome(),
+        ),
+        GoRoute(
+          path: '/debug/gallery',
+          builder: (_, _) => DesignGallery(
+            controller: ref.read(themeControllerProvider),
+          ),
+        ),
+      ],
+    ],
+  );
+});
+
+/// Bridges the Riverpod session into go_router's [Listenable] redirect trigger.
+class _SessionRefresh extends ChangeNotifier {
+  _SessionRefresh(Ref ref) {
+    ref.listen(plexSessionProvider, (previous, next) {
+      if (previous?.stage != next.stage) notifyListeners();
+    });
+  }
+}
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}

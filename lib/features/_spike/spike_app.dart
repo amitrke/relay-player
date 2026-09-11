@@ -11,11 +11,16 @@ import 'spike_config.dart';
 /// Phase 0 spike harness -- see docs/architecture.md S13 and
 /// docs/PHASE0_FINDINGS.md.
 ///
-/// This screen exists to answer four questions with evidence and then be
-/// deleted. It is debug-only and must never be reachable from a release
-/// build; `main.dart` enforces that with a `kDebugMode` check.
-class SpikeApp extends StatelessWidget {
-  const SpikeApp({super.key});
+/// Phase 0 is closed, but this stays until its two loose ends are tied off: the
+/// Plex transcode lifecycle (decision -> ping -> stop, with the `hasMDE=1` fix
+/// in place) and the Q5 Android-device questions. Deleting it before those are
+/// answered would mean rebuilding it to answer them.
+///
+/// Debug-only, and it must never be reachable from a release build. The
+/// `kDebugMode` guard that enforces that lives in `core/routing/app_router.dart`,
+/// which is the only thing that routes here.
+class SpikeHome extends StatelessWidget {
+  const SpikeHome({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +34,12 @@ class SpikeApp extends StatelessWidget {
     ]);
     // The Plex auth token is acquired at runtime, so PlexProbe registers it
     // the moment pollPin returns it.
-    return MaterialApp(
-      title: 'Relay Player -- Phase 0 Spike',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
-      home: const _SpikeHome(),
+    //
+    // The probes were written against a dark Material surface and read their
+    // colours from it, not from RelayTokens — they are scaffolding, not app UI.
+    return Theme(
+      data: ThemeData.dark(useMaterial3: true),
+      child: const _SpikeHome(),
     );
   }
 }

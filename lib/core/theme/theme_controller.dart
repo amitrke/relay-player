@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'relay_theme.dart';
 import 'relay_tokens.dart';
+
+/// The app-wide Appearance selection.
+///
+/// A [Provider] rather than a `ChangeNotifierProvider` because nothing *reads*
+/// this reactively — [RelayApp] subscribes to the notifier directly, and the
+/// design gallery mutates the same instance.
+final themeControllerProvider = Provider<ThemeController>((ref) {
+  final controller = ThemeController();
+  ref.onDispose(controller.dispose);
+  return controller;
+});
 
 /// Holds the Appearance selection (§12.2) and rebuilds the app when it changes.
 ///
@@ -46,12 +58,21 @@ class RelayApp extends StatelessWidget {
   const RelayApp({
     super.key,
     required this.controller,
-    required this.builder,
+    this.builder,
+    this.routerConfig,
     this.title = 'Relay Player',
-  });
+  }) : assert(builder != null || routerConfig != null,
+            'RelayApp needs either a builder or a routerConfig.');
 
   final ThemeController controller;
-  final WidgetBuilder builder;
+
+  /// Single-screen mode, used by the design gallery.
+  final WidgetBuilder? builder;
+
+  /// Routed mode. [RelayTheme] is installed above the router so every route
+  /// reads the same tokens without each screen re-wrapping itself.
+  final RouterConfig<Object>? routerConfig;
+
   final String title;
 
   @override
@@ -74,14 +95,31 @@ class RelayApp extends StatelessWidget {
                   ? platformIsDark
                   : controller.palette.isDarkPalette;
 
+              final theme = relayThemeData(tokens, isDark: isDark);
+              final router = routerConfig;
+
+              if (router != null) {
+                return MaterialApp.router(
+                  title: title,
+                  debugShowCheckedModeBanner: false,
+                  theme: theme,
+                  routerConfig: router,
+                  builder: (context, child) => RelayTheme(
+                    tokens: tokens,
+                    palette: controller.palette,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              }
+
               return MaterialApp(
                 title: title,
                 debugShowCheckedModeBanner: false,
-                theme: relayThemeData(tokens, isDark: isDark),
+                theme: theme,
                 home: RelayTheme(
                   tokens: tokens,
                   palette: controller.palette,
-                  child: Builder(builder: builder),
+                  child: Builder(builder: builder!),
                 ),
               );
             },

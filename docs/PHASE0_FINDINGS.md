@@ -675,13 +675,32 @@ Not answerable on desktop. Deferred from the probes above but still Phase 0.
 
 Things learned during scaffolding that aren't among the four questions:
 
-- **`flutter_secure_storage` does not build on Windows** without Visual
-  Studio's "C++ ATL for v143 build tools" component (`atlstr.h` missing). It
-  was removed from `pubspec.yaml` because Phase 0 doesn't use it. It is still
-  the right choice for Android/iOS per §3 — re-add it in Phase 1, and either
-  install the VS ATL component or accept that desktop builds are Phase-0-only.
-  Worth knowing before §14's "media_kit supports desktop too, which costs
-  nothing now" is taken at face value: desktop support has a toolchain cost.
+- **`flutter_secure_storage` does not build on Windows** without Visual Studio's
+  C++ ATL component (`atlstr.h` missing). It was removed from `pubspec.yaml`
+  because Phase 0 doesn't use it, and re-added in Phase 1 where §3 requires it
+  for the Plex token.
+
+  **Resolved 2026-09-11 by installing ATL**, not by dropping the dependency.
+  Two corrections to the original note, both of which cost time to rediscover:
+
+  - The component is **not** the "v143 build tools" one. This machine runs
+    **Visual Studio Build Tools 2019 (v142, MSVC 14.29.30133)**, so the fix is
+    `Microsoft.VisualStudio.Component.VC.ATL` applied to the *2019 BuildTools*
+    install path. Looking for a VS 2022 component finds nothing.
+  - `vs_installer.exe modify --quiet` (or `--passive`) **fails with exit code
+    5007 when not elevated**, and the failure does not say so on stdout — only
+    the log in `%TEMP%\dd_installer_*.log` names the cause: *"Commands with
+    --quiet or --passive should be run elevated from the beginning."* Run it
+    elevated from the start.
+
+  Upgrading is not an alternative: `flutter_secure_storage_windows` 4.2.2 is
+  current, and its `windows/CMakeLists.txt` still compiles a C++ plugin that
+  includes `atlstr.h` despite the 3.0.0 changelog claiming a migration to the
+  `win32` package.
+
+  The standing point still holds for anyone setting up a fresh machine, and it
+  is the concrete cost behind §14's "media_kit supports desktop too, which costs
+  nothing now": desktop support has a toolchain cost, just a one-time one.
 - **`smb_connect` resolved to 0.0.9**, not the version implied by §7.2's
   description. Treat the reliability question as correspondingly more open.
 - **`dart_plex` 0.1.2 does expose the full transcode lifecycle**
