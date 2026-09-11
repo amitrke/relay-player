@@ -20,13 +20,27 @@ flutter run -d <android-device> # required for the platform questions
 
 Status legend: ⬜ not started · 🟡 in progress · ✅ answered · ❌ blocked
 
+> **Recording rule — this repo is public.**
+>
+> Never write a real provider host, username, password, token, server
+> identifier or LAN address into this file, into a test fixture, or into a
+> commit message. Use `<panel-host>`, `<lan-ip>`, `<redacted>`.
+>
+> This is not only credential hygiene. §1 and §8.3 turn on the project not
+> looking like it points at, curates, or is associated with any particular IPTV
+> provider — naming one in a public repo undercuts the same primary-purpose
+> argument that §8.3 refuses a provider directory to protect.
+>
+> Numbers, timings, response shapes and failure modes are the valuable part of
+> a finding, and none of them require naming the source.
+
 ---
 
 ## Q1 — Does media_kit/libmpv tolerate real IPTV streams? (§10)
 
 **Status:** 🟡 live Xtream playback confirmed working; more panels needed
 
-**Result 2026-09-11 (`ogold.org:8080`, Tab 5):** ✅ libmpv plays this panel's
+**Result 2026-09-11 (a real Xtream panel, Tab 5):** ✅ libmpv plays this panel's
 live `.ts` reliably.
 
 | Channel | Stream id | Result |
@@ -187,7 +201,7 @@ The earlier guess that libmpv might be failing TLS against `*.plex.direct` was
 
 | Check | Result |
 |---|---|
-| DNS `192-168-1-253.<hash>.plex.direct` | resolves to `192.168.1.253` |
+| DNS `<lan-ip-dashed>.<hash>.plex.direct` | resolves to `<lan-ip>` |
 | HTTPS `/identity` | **200**, TLS handshake 146 ms |
 | Plain-HTTP LAN `/identity` | **200**, 63 ms |
 | Direct file via Part key, `Range: 0-65535` | **206**, `video/mp4`, valid `ftyp`, **81 ms TTFB** |
@@ -305,7 +319,7 @@ Two candidate causes, and the run so far cannot tell them apart:
 1. **The transcoder** — plausible, since the decision call had failed, so no
    session had been negotiated.
 2. **The transport** — `bestConnection()` selected
-   `https://192-168-1-253.<hash>.plex.direct:32400`. That hostname resolves to
+   `https://<lan-ip-dashed>.<hash>.plex.direct:32400`. That hostname resolves to
    the LAN IP and serves a real certificate, but **libmpv validates TLS with
    its own CA store**, not the OS one. If that fails, *every* Plex stream fails
    and nothing about the transcoder is wrong. This would be a much more serious
@@ -354,50 +368,80 @@ did forcing `directPlay: false` genuinely produce a transcode?
 
 ## Q3 — Does `smb://` work natively, or is the loopback bridge needed? (§7.2)
 
-**Status:** ⬜
+**Status:** ✅ **answered 2026-09-11. The bridge is needed, and it works.**
 
-**Why it matters:** §7.2 says this answer *changes the design*. If libmpv opens
-SMB directly, the whole bridge disappears. If not, the bridge becomes shared
-infrastructure that FTP/WebDAV would later reuse.
+### Step 1 — native `smb://` does not work
 
-**Probe:** Tab 3, steps 1 → 3.
+Predicted outcome, but not for the predicted reason. libmpv did not report a
+missing `libsmbclient`; it refused the URL outright:
 
-**Step 1 — native `smb://`:** _(expected: fails; prebuilt libmpv rarely bundles
-libsmbclient)_
+```
+player error: Refusing to load potentially unsafe URL from a playlist.
+player error: Use the --load-unsafe-playlists option to load it anyway.
+```
 
-> _(record here)_
+So the blocker is an mpv safety policy, not a missing protocol handler. In
+principle `--load-unsafe-playlists` might get past it — **do not do this.** It
+relaxes a safety check globally for every source the app ever opens, including
+untrusted IPTV playlists, to avoid work the bridge does properly. Treat native
+`smb://` as unavailable and move on.
 
-**Step 2 — `smb_connect` 0.0.9 reliability.** Note this is an even earlier
-version than §7.2 assumed. Record exceptions verbatim.
+### Step 2 — `smb_connect` 0.0.9 works, including random access
 
-| Operation | Works? | Timing | Notes |
-|---|---|---|---|
-| `connectAuth` | | | |
-| `listShares` | | | |
-| `listFiles` | | | |
-| Random-access read at 50% | | | |
+Despite the version number, every operation succeeded first try:
 
-**Step 3 — loopback bridge.** The log prints a `bridge:` line per HTTP range
-request. **Multiple distinct ranges = libmpv is seeking correctly through the
-bridge**, which is the actual success criterion — a bridge that ignores Range
-looks fine until a user scrubs.
+| Operation | Result | Timing |
+|---|---|---|
+| `connectAuth` | ✅ | 177 ms |
+| `listShares` | ✅ 17 shares | 124 ms |
+| `listFiles /media` | ✅ 24 entries | 134 ms |
+| **Random-access read** (seek to 50%, read 64 KB) | ✅ full 65,536 bytes from offset 121,929,919 | 142 ms |
 
-> _(record here)_
+The random-access row is the make-or-break one — without working seeks the
+bridge could only stream start-to-finish and scrubbing would be impossible.
 
-**Reconnect behaviour:** disconnect the NAS / drop wifi mid-playback. What
-happens? §7.2 calls this "real state to manage" — characterize it now.
+§7.2's scepticism about this package is now **partly discharged**: the happy
+path is solid. What remains untested is failure behaviour — see below.
 
-> _(record here)_
+### Step 3 — the loopback bridge works, and libmpv seeks through it
 
-**Decision — bridge needed? Is `smb_connect` good enough to ship on?**
+```
+bridge listening on http://127.0.0.1:53278/stream
+media_kit open via bridge OK (54 ms)
+  bridge: bytes=0-           -> serving 0-243859838 (243859839 bytes)
+  bridge: bytes=243843788-   -> serving 243843788-243859838 (16051 bytes)
+  bridge: bytes=5963-        -> serving 5963-243859838 (243853876 bytes)
+```
 
-> _(record here)_
+**Three distinct ranges, and the middle one is the proof.** libmpv jumped to
+the last 16 KB of the file — that is it reading the MKV/MP4 index at the end of
+the container — then came back to 5,963 to start playing. A bridge that ignored
+`Range` would have looked fine on the first request and failed exactly here.
+Video played with subtitles rendering correctly.
+
+**Conclusion:** §7.2's design is correct as written. Implement the
+`smb_connect` + `shelf` loopback bridge, and it becomes reusable infrastructure
+for FTP/WebDAV later as §7.2 anticipates.
+
+### Still untested — failure behaviour, not the happy path
+
+The remaining risk in `smb_connect` is not whether it reads a file, but what it
+does when the network misbehaves. §7.2 calls the connection lifecycle "real
+state to manage". Untested:
+
+- [ ] NAS goes away mid-playback (unplug, or sleep the drive)
+- [ ] Wi-Fi drop and reconnect
+- [ ] Whether a dropped connection surfaces an error or hangs
+- [ ] Long playback — does the connection survive a full episode?
+
+These are Phase 2 concerns rather than Phase 0 blockers: they change how much
+error handling Phase 2 needs, not whether the design is right.
 
 ---
 
 ## Q6 — Xtream panel reality check (§4)
 
-**Status:** ✅ answered 2026-09-11 against a real panel (`ogold.org:8080`).
+**Status:** ✅ answered 2026-09-11 against a real panel (a real Xtream panel).
 
 Not one of the original four questions, but it produced the most consequential
 findings of Phase 0 so far. Measured directly against the API, not inferred.
@@ -439,8 +483,10 @@ it is a constraint the player lifecycle has to be built around.
 | categories (live/vod/series) | 466 / 156 / 83 | — |
 
 Single JSON responses. §5 requires isolate parsing for XMLTV; **this extends
-that requirement to the Xtream client itself**, which §4 does not currently
-mention. Decoding 26 MB of JSON into Dart objects on the main isolate will
+that requirement to the Xtream client itself**. **Addressed by §4.1
+(category filtering), added 2026-09-11**: fetch categories only, let the user
+select, then fetch streams per selected category — so the 26 MB is never
+transferred at all. Decoding 26 MB of JSON into Dart objects on the main isolate will
 freeze the UI outright, and on a Fire TV stick (§11) memory is a real risk, not
 just latency. Plan for streaming/paged parsing and on-disk caching rather than
 holding the whole catalogue in memory.
@@ -469,7 +515,7 @@ than guessing wrong"; this is the concrete case.
 a tokenised path:
 
 ```
-Location: http://94.26.105.59:8080/live/play/<opaque-token>/3
+Location: http://<different-host>:8080/live/play/<opaque-token>/<id>
 ```
 
 The player must follow redirects (libmpv does by default — confirm the same for

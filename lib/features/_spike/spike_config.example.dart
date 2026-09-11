@@ -8,6 +8,12 @@
 // the kind of thing docs/architecture.md S1 spends its whole risk budget
 // avoiding. The probes read these values but never persist or transmit them
 // anywhere other than the host you point them at.
+//
+// The same rule applies to anything you write ABOUT a run: never put a real
+// provider host, token or LAN address into docs/PHASE0_FINDINGS.md, a test
+// fixture, or a commit message. Use <panel-host> / <lan-ip> / <redacted>.
+// Naming a provider in a public repo undercuts the primary-purpose argument in
+// S1 just as much as leaking the password does.
 
 class SpikeConfig {
   // --- Xtream (S4) -----------------------------------------------------
