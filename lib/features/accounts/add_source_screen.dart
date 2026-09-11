@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -324,7 +323,7 @@ class _DesktopAddSource extends StatelessWidget {
                   title: 'Plex server',
                   subtitle: 'Link with a code',
                   icon: Icons.dns_outlined,
-                  selected: true,
+                  selected: false,
                   onTap: () => onPickSource(SourceKind.plex),
                 ),
                 _RailItem(
@@ -356,11 +355,11 @@ class _DesktopAddSource extends StatelessWidget {
                 ],
                 const Spacer(),
                 Text(
-                  // Platform-specific wording from the desktop artboard. The
-                  // principle generalises: secrets go to the OS keystore, never
-                  // into the Hive/Isar database (§3).
-                  'Credentials are stored in Windows Credential Manager, '
-                  'never in the app database.',
+                  // The artboard said "Windows Credential Manager", which is
+                  // wrong on every other platform this ships to. §3's rule is
+                  // what actually matters and it is platform-neutral.
+                  'Credentials are stored in your device keystore, never in '
+                  'the app database.',
                   style:
                       TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
                 ),
@@ -368,8 +367,39 @@ class _DesktopAddSource extends StatelessWidget {
             ),
           ),
         ),
-        const Expanded(child: PlexPairingPanel()),
+        // NOT the canvas's PlexPairingPanel. That draws a mock pairing step
+        // with a hardcoded code, and wiring it into the real app showed a
+        // fabricated code a user could actually try to enter at plex.tv/link.
+        // Picking Plex opens the real link screen instead.
+        const Expanded(child: _PickAPrompt()),
       ],
+    );
+  }
+}
+
+/// The right-hand pane before a source type is chosen.
+class _PickAPrompt extends StatelessWidget {
+  const _PickAPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_link, color: t.inkDim, size: 34),
+            const SizedBox(height: 16),
+            Text(
+              'Choose a source type to get started.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.5),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -436,160 +466,3 @@ class _RailItem extends StatelessWidget {
   }
 }
 
-/// Step 1 of the Plex PIN flow (§6): show the code, poll, and expire.
-///
-/// The canvas draws the waiting state with a live countdown, which is the right
-/// emphasis — this screen's whole job is to hold the user's attention for the
-/// few seconds between "here is a code" and the poll resolving. Step 2, the
-/// server picker, appears only when the account can reach more than one server.
-class PlexPairingPanel extends StatefulWidget {
-  const PlexPairingPanel({
-    super.key,
-    this.code = 'K7M4',
-    this.expiresIn = const Duration(minutes: 4, seconds: 52),
-    this.onOpenLink,
-    this.onNewCode,
-  });
-
-  final String code;
-  final Duration expiresIn;
-  final VoidCallback? onOpenLink;
-  final VoidCallback? onNewCode;
-
-  @override
-  State<PlexPairingPanel> createState() => _PlexPairingPanelState();
-}
-
-class _PlexPairingPanelState extends State<PlexPairingPanel> {
-  late Duration _remaining = widget.expiresIn;
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        _remaining = _remaining - const Duration(seconds: 1);
-        if (_remaining.isNegative) _remaining = Duration.zero;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  String get _clock {
-    final m = _remaining.inMinutes;
-    final s = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    final expired = _remaining == Duration.zero;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text('Step 1 of 2 · Approve this device',
-                style: TextStyle(color: t.inkDim, fontSize: 13)),
-            const SizedBox(height: 18),
-            Text('Enter this code at plex.tv/link',
-                style: TextStyle(
-                    color: t.ink,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            Text(
-              'Sign in with your own Plex account in the browser. This window '
-              'will continue on its own once the code is approved.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.6),
-            ),
-            const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final ch in widget.code.split('')) ...[
-                  _CodeCell(char: ch, dimmed: expired),
-                  const SizedBox(width: 12),
-                ],
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!expired) ...[
-                  SizedBox(
-                    width: 13,
-                    height: 13,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: t.accent),
-                  ),
-                  const SizedBox(width: 10),
-                  Text('Waiting for approval · code expires in $_clock',
-                      style: TextStyle(color: t.inkDim, fontSize: 13)),
-                ] else
-                  Text('Code expired',
-                      style: TextStyle(color: t.inkDim, fontSize: 13)),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                RelayButton(
-                    label: 'Open plex.tv/link',
-                    onPressed: widget.onOpenLink),
-                const SizedBox(width: 10),
-                RelayTextButton(
-                    label: 'New code', onPressed: widget.onNewCode),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CodeCell extends StatelessWidget {
-  const _CodeCell({required this.char, this.dimmed = false});
-
-  final String char;
-  final bool dimmed;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    return Container(
-      width: 62,
-      height: 76,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border.all(color: dimmed ? t.line : t.accent),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        char,
-        style: TextStyle(
-          color: dimmed ? t.inkDim : t.ink,
-          fontSize: 34,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'monospace',
-        ),
-      ),
-    );
-  }
-}
