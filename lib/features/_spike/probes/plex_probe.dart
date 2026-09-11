@@ -205,6 +205,119 @@ class _PlexProbeState extends State<PlexProbe> {
     setState(() {});
   }
 
+  /// Hides the auth token so a transcript can be pasted into FINDINGS.
+  String _redact(String url) =>
+      url.replaceAll(RegExp(r'X-Plex-Token=[^&]+'), 'X-Plex-Token=••••');
+
+  /// Opens [url] and waits for a real outcome.
+  ///
+  /// `player.open()` returns as soon as the command is queued, so timing it
+  /// reports "OK" in ~140 ms even when the stream then fails to open — the
+  /// error arrives later on a different stream. That made the earlier
+  /// transcript read as a success followed by an unexplained error. This waits
+  /// for whichever comes first: a frame, or an error.
+  Future<bool> _openAndAwait(String url, String label,
+      {Duration timeout = const Duration(seconds: 15)}) async {
+    final done = Completer<bool>();
+    final sw = Stopwatch()..start();
+
+    late final StreamSubscription<String> errSub;
+    late final StreamSubscription<VideoParams> frameSub;
+
+    void finish(bool ok) {
+      if (done.isCompleted) return;
+      sw.stop();
+      done.complete(ok);
+    }
+
+    errSub = _player.stream.error.listen((e) {
+      _log.bad('$label FAILED after ${sw.elapsedMilliseconds} ms');
+      _log.bad('  $e');
+      finish(false);
+    });
+    frameSub = _player.stream.videoParams.listen((p) {
+      if (p.w != null) {
+        _log.good('$label PLAYING after ${sw.elapsedMilliseconds} ms '
+            '— ${p.w}x${p.h}');
+        finish(true);
+      }
+    });
+
+    _log.info('$label: opening ...');
+    try {
+      await _player.open(Media(url));
+      final ok = await done.future.timeout(timeout, onTimeout: () {
+        _log.bad('$label: no frame and no error after ${timeout.inSeconds}s');
+        return false;
+      });
+      return ok;
+    } catch (e) {
+      _log.bad('$label: open() threw: $e');
+      return false;
+    } finally {
+      await errSub.cancel();
+      await frameSub.cancel();
+    }
+  }
+
+  /// Step 3.5 — direct play, before forcing a transcode.
+  ///
+  /// This exists to split one failure into two distinct findings. If direct
+  /// play works and transcode does not, the transcoder is the problem. If
+  /// neither works, the problem is reaching the server at all — most likely
+  /// TLS against the `*.plex.direct` hostname, which libmpv has to validate
+  /// with its own CA store. Without this step both look identical.
+  Future<void> _directPlay() async {
+    final ratingKey = _sampleRatingKey;
+    if (ratingKey == null) {
+      _log.warn('Run Step 3 first -- no item selected.');
+      return;
+    }
+    _log.info('--- STEP 3.5: DIRECT PLAY (isolates transcode from transport)');
+
+    final url = _client().streaming.universalVideoUrl(
+          ratingKey: ratingKey,
+          session: 'phase0-direct-${DateTime.now().millisecondsSinceEpoch}',
+          directPlay: true,
+          directStream: true,
+        );
+    _log.info(_redact(url));
+    final ok = await _openAndAwait(url, 'direct play');
+    await _player.stop();
+
+    if (ok) {
+      _log.good('Transport is fine. A transcode failure after this is a '
+          'transcoder problem, not a connection problem.');
+    } else {
+      _log.bad('Direct play ALSO failed -- suspect the connection, not the '
+          'transcoder.');
+      _log.warn('Most likely cause: libmpv could not validate TLS against the '
+          '*.plex.direct hostname. Try the plain-HTTP LAN connection below.');
+      _logConnectionCandidates();
+    }
+  }
+
+  /// bestConnection() picks one URI; when it fails the others are worth
+  /// trying by hand, especially the plain-http local one.
+  void _logConnectionCandidates() {
+    if (_servers.isEmpty) {
+      _log.info('(run Step 2 first to list connections)');
+      return;
+    }
+    final server = _servers.first;
+    _log.info('connection candidates for "${server.name}":');
+    for (final c in server.connections) {
+      _log.info('  ${c.protocol}  local=${c.local} relay=${c.relay}  '
+          '${c.uri}');
+      if (c.protocol == 'https' && c.local) {
+        _log.warn('    plain-HTTP equivalent to try: '
+            'http://${c.address}:${c.port}');
+      }
+    }
+    _log.info('To force one, note it here and set it in code: '
+        'plex.connect("<uri>", accessToken: ...)');
+  }
+
   // --- Step 4: transcode lifecycle (the real test) ---------------------
   Future<void> _transcodeLifecycle() async {
     final ratingKey = _sampleRatingKey;
@@ -228,28 +341,46 @@ class _PlexProbeState extends State<PlexProbe> {
           videoResolution: '640x360',
           videoBitrate: 1000,
         );
-    _log.info('universalVideoUrl -> $url');
+    _log.info('universalVideoUrl -> ${_redact(url)}');
 
+    // The decision call MUST carry the same parameter set as the start URL.
+    // Plex rejects it with HTTP 400 if mediaIndex/partIndex are missing, and
+    // an incomplete set makes the server decide about a different request than
+    // the one you are about to make -- which is worse than not asking.
     await _log.time('decisionUniversal (what will the server actually do?)',
         () async {
       final decision = await _client().streaming.decisionUniversal(
-        params: {
+        params: <String, dynamic>{
           'path': '/library/metadata/$ratingKey',
-          'session': session,
+          'mediaIndex': '0',
+          'partIndex': '0',
+          'protocol': 'hls',
+          'container': 'mpegts',
           'directPlay': '0',
           'directStream': '0',
+          'fastSeek': '1',
+          'offset': '0',
+          'audioBoost': '100',
           'videoResolution': '640x360',
           'maxVideoBitrate': '1000',
+          'session': session,
         },
       );
-      _log.info('  decision code: ${decision.code}');
+      final raw = decision.raw;
+      _log.info('  generalDecisionCode:     ${decision.code}');
+      _log.info('  directPlayDecisionCode:  ${raw['directPlayDecisionCode']}');
+      _log.info('  transcodeDecisionCode:   ${raw['transcodeDecisionCode']}');
+      final text = raw['generalDecisionText'] ?? raw['transcodeDecisionText'];
+      if (text != null) _log.info('  server says: $text');
+      final code = decision.code;
+      if (code != null && (code < 1000 || code >= 2000)) {
+        _log.bad('  decision code $code is outside [1000,2000) -- the server '
+            'says this is NOT playable. Playback below will fail.');
+      }
       return decision;
     });
 
-    await _log.time('media_kit open transcode HLS', () async {
-      await _player.open(Media(url));
-      return true;
-    });
+    await _openAndAwait(url, 'transcode HLS');
 
     // The keep-alive. S6: "Plex sessions time out without them."
     _pingCount = 0;
@@ -260,7 +391,19 @@ class _PlexProbeState extends State<PlexProbe> {
         await _client().streaming.pingUniversal(session);
         _log.good('ping #$_pingCount OK (session alive)');
       } catch (e) {
+        final is404 = e.toString().contains('404') ||
+            e.toString().contains('notFound');
         _log.bad('ping #$_pingCount FAILED: $e');
+        if (is404 && _pingCount == 1) {
+          // Distinguish cause from symptom. Plex has no session to keep alive
+          // if the transcode never started, so a 404 here after a failed
+          // decision/open is expected fallout -- not independent evidence that
+          // pingUniversal is broken. Only a 404 while playback is running
+          // would indict the package.
+          _log.warn('  404 means the server has no such session. If the '
+              'decision or the open above failed, this is a SYMPTOM of that, '
+              'not a separate bug -- fix those first and re-run.');
+        }
       }
     });
     _log.warn('Pinging every 10s. Let this run 60s+, confirm playback does '
@@ -314,6 +457,9 @@ class _PlexProbeState extends State<PlexProbe> {
                   child: const Text('2. Servers')),
               FilledButton(
                   onPressed: _browseLibrary, child: const Text('3. Library')),
+              FilledButton(
+                  onPressed: _directPlay,
+                  child: const Text('3.5 Direct play')),
               FilledButton(
                   onPressed: _transcodeLifecycle,
                   child: const Text('4. Transcode')),

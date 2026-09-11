@@ -64,14 +64,19 @@ expensive if discovered in Phase 1.
 
 | Step | Works? | Notes / exceptions verbatim |
 |---|---|---|
-| `createPin` / `pollPin` | partly — see below | Works, but the default argument is wrong for this flow |
-| `fetchResources` + `bestConnection()` | | |
-| `library.sections()` | | |
-| `library.allByType()` | | |
-| `decisionUniversal` | | |
-| Playback of transcode URL | | |
-| `pingUniversal` — survives 60s+ | | |
-| `stopUniversal` — session actually gone | | |
+| `createPin` / `pollPin` | ✅ with `strong: false` | 4-char code (`9SRW`), 347 ms. Poll returned a 20-char token, 243 ms |
+| `fetchResources` + `bestConnection()` | ✅ | 444 ms, 5 servers found (2 owned, 3 shared). Picked the local-https `*.plex.direct` URI |
+| `library.sections()` | ✅ | 956 ms, 13 sections, types correctly mapped (movie/show/music/photo) |
+| `library.allByType()` | ✅ | Returned items with usable `ratingKey`/`title`/`year` |
+| `decisionUniversal` | ❌ HTTP 400 | **Probe bug, now fixed** — see below |
+| Playback of transcode URL | ❌ | "Failed to open" `start.m3u8` — cause not yet isolated |
+| `pingUniversal` — survives 60s+ | ❌ HTTP 404 | Likely a *symptom* of the two above, not an independent defect |
+| `stopUniversal` — session actually gone | not reached | |
+
+**Reading of the 2026-09-10 run:** everything up to and including library
+browsing works, and works quickly. That is most of the package's surface, and
+it is genuine evidence *for* `dart_plex`. The failures are clustered entirely
+in the transcode lifecycle, and at least one of them was mine.
 
 #### Confirmed finding — `createPin` default produces an unusable code
 
@@ -98,10 +103,66 @@ directly contradicted by its own default parameter.
   transcode lifecycle below with matching suspicion, and do not assume the
   docstrings are load-bearing.
 
-**The decisive one is the last row.** After pressing "Stop session", check the
-Plex server dashboard directly. A session still listed means teardown is
-broken, which is a blocking finding — the app would leak transcode sessions on
-every user's server.
+#### Probe bug — `decisionUniversal` needs the *same* params as the start URL
+
+**Status:** ✅ fixed 2026-09-10, needs a re-run.
+
+The decision call returned **HTTP 400**. Cause was in the probe, not the
+package: it passed a hand-written subset (`path`, `session`, `directPlay`,
+`directStream`, `videoResolution`, `maxVideoBitrate`) while
+`universalVideoUrl` sends considerably more — `mediaIndex`, `partIndex`,
+`protocol`, `container`, `fastSeek`, `offset`, `audioBoost`.
+
+Plex rejects the decision endpoint outright without `mediaIndex`/`partIndex`.
+**The general rule, which matters for Phase 1:** the decision request must
+mirror the start request exactly. An incomplete set does not just risk a 400 —
+it makes the server decide about a *different* request than the one you are
+about to issue, which is worse than not asking at all.
+
+#### Open — `start.m3u8` "Failed to open"
+
+**Status:** 🟡 not yet isolated.
+
+Two candidate causes, and the run so far cannot tell them apart:
+
+1. **The transcoder** — plausible, since the decision call had failed, so no
+   session had been negotiated.
+2. **The transport** — `bestConnection()` selected
+   `https://192-168-1-253.<hash>.plex.direct:32400`. That hostname resolves to
+   the LAN IP and serves a real certificate, but **libmpv validates TLS with
+   its own CA store**, not the OS one. If that fails, *every* Plex stream fails
+   and nothing about the transcoder is wrong. This would be a much more serious
+   finding, and it would also apply to §10's engine choice.
+
+A **Step 3.5 · Direct play** button now splits these: direct play exercises the
+same connection with no transcoder involved.
+
+- Direct play works, transcode fails → transcoder problem.
+- Both fail → transport problem. The probe then prints every connection
+  candidate, including the plain-HTTP LAN equivalent (`http://<ip>:32400`) to
+  try as a control.
+
+#### The `pingUniversal` 404 is probably a symptom, not a defect
+
+Plex has no session to keep alive if the transcode never started, so a 404
+after a failed decision *and* a failed open is expected fallout. Only a 404
+**while playback is actually running** would indict the package. The probe now
+says so inline rather than logging three identical red stack traces.
+
+#### Probe reporting bug — "OK" before the failure
+
+The transcript read `media_kit open transcode HLS OK (141 ms)` immediately
+followed by `player error: Failed to open`. `player.open()` returns as soon as
+the command is queued, so timing it measures nothing useful; the error arrives
+later on a separate stream. Replaced with a helper that waits for whichever
+comes first — a frame or an error — and reports that. Worth remembering in
+Phase 1: **`await player.open(...)` completing is not evidence that anything
+played.**
+
+**The decisive test is still `stopUniversal`.** After pressing "Stop session",
+check the Plex server dashboard directly. A session still listed means teardown
+is broken, which is a blocking finding — the app would leak transcode sessions
+on every user's server.
 
 **Direct play vs transcode:** did direct play work for compatible files, and
 did forcing `directPlay: false` genuinely produce a transcode?
