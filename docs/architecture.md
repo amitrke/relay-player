@@ -119,6 +119,65 @@ Stream URLs are constructed client-side, not returned by the API:
 
 Wrap all of this in `XtreamClient` with typed response models (`json_serializable` or manual `fromJson`), timeouts, and retry-once-on-5xx logic — IPTV panels are frequently flaky. This entire client is only reachable through the Advanced Sources gate (§8).
 
+### 4.1 Catalogue scale and category filtering
+
+Phase 0 measured a real panel and the numbers are far past what a naive
+implementation survives (see PHASE0_FINDINGS.md Q6):
+
+| Call | Items | Payload |
+|---|---|---|
+| `get_live_streams` | 15,951 | 5.3 MB |
+| `get_vod_streams` | 69,397 | **26.2 MB** |
+| `get_series` | 7,375 | — |
+| categories (live / vod / series) | 466 / 156 / 83 | small |
+
+Fetching, decoding and holding ~100,000 catalogue items is not viable on a
+phone and is hostile on a Fire TV stick (§11). **The user does not want most of
+it either** — 706 distinct groups, of which any given person cares about a
+handful.
+
+**The design: filter at the category level, and never fetch the rest.**
+
+The ordering matters, because it is what turns this from a storage optimisation
+into a bandwidth one:
+
+1. Fetch **categories only** — `get_live_categories` / `get_vod_categories` /
+   `get_series_categories`. Small, fast, and enough to show the user what
+   exists.
+2. Let the user choose which categories to keep.
+3. Fetch streams **per selected category** — `get_vod_streams&category_id=N`,
+   which §4 already lists — and never call the unfiltered endpoint at all.
+
+This is strictly better than fetching everything and filtering afterwards: the
+26 MB is never transferred, so the saving is in network, memory *and* storage
+rather than storage alone.
+
+**Selection UI — checkboxes first, patterns as a power tool.** A list of
+categories with checkboxes is usable by everyone; a regex box is not, and this
+app's primary-purpose framing (§1) is a general media player, not a developer
+tool. So:
+
+- The primary control is a searchable, checkable category list.
+- A **pattern field is offered alongside it as a bulk selector** — type
+  `^(NL|DE):` or `4K` to toggle many at once. It acts on the selection, it does
+  not replace it, and the user always sees the resulting checkbox state before
+  committing. Support plain substring matching as well as regex, and never let
+  an invalid pattern fail anything — just match nothing and say so.
+- Selection is **opt-in, not opt-out**. Default to nothing selected with a
+  prompt to choose, rather than everything selected with a prompt to prune.
+  With 706 groups, opt-out means a first run that downloads everything, which
+  is the case being avoided. It also avoids a first-launch screen full of
+  brand-named categories (PHASE0_FINDINGS.md Q4 — a real store-screenshot
+  hazard under §1.6).
+- Re-openable from Settings → Sources; changing it re-syncs only the delta.
+
+**Even filtered, parse off the main isolate** — but see §5's revised guidance,
+which Phase 0 also corrected: the rule is *don't move bulk data across an
+isolate boundary*, not *always use `compute()`*.
+
+This applies to Live and Series as much as VOD, and it lives behind the
+Advanced Sources gate (§8) like the rest of the Xtream client.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.
