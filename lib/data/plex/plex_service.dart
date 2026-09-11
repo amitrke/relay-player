@@ -158,16 +158,17 @@ class PlexService {
     return container.items;
   }
 
-  /// Every item of [type], merged across all sections of that type.
+  /// Items from [wanted], merged and sorted by title.
   ///
-  /// §12 screen 3: Plex libraries merge into Movies and Series rather than
-  /// showing one tab per section. Someone with both "Films" and "4K Films"
-  /// thinks of the contents as movies, not as two libraries.
-  Future<List<PlexMetadata>> itemsOfType(
-    PlexLibraryType type, {
+  /// §12 screen 3 merges libraries into Movies and Series rather than showing
+  /// one tab per section, so someone with "Films" and "4K Films" sees one list.
+  /// *Which* libraries feed a tab is the caller's decision — Plex's library type
+  /// is only a default, and the user can override it.
+  Future<List<PlexMetadata>> itemsFrom(
+    List<PlexLibrarySection> wanted, {
     int perSection = 60,
   }) async {
-    final wanted = (await sections()).where((s) => s.type == type);
+    if (wanted.isEmpty) return const [];
     final pages =
         await Future.wait(wanted.map((s) => items(s, size: perSection)));
     return pages.expand((page) => page).toList()

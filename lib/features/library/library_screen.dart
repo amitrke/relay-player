@@ -8,9 +8,19 @@ import '../settings/settings_controller.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 
+/// The server's video libraries. Shared by the tabs and by Settings → Sources,
+/// so the mapping UI lists exactly what the tabs draw from.
+final plexSectionsProvider = FutureProvider<List<PlexLibrarySection>>((ref) {
+  return ref.watch(plexServiceProvider).sections();
+});
+
 final _libraryProvider =
-    FutureProvider.family<List<PlexMetadata>, PlexLibraryType>((ref, type) {
-  return ref.watch(plexServiceProvider).itemsOfType(type);
+    FutureProvider.family<List<PlexMetadata>, LibraryTab>((ref, tab) async {
+  final sections = await ref.watch(plexSectionsProvider.future);
+  final mapping = ref.watch(libraryMappingProvider);
+  return ref
+      .watch(plexServiceProvider)
+      .itemsFrom(mapping.sectionsFor(tab, sections));
 });
 
 /// Home (§12 screen 3).
@@ -156,15 +166,14 @@ class _TabBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final plexType = tab.plexType;
-    if (plexType == null) {
+    if (!tab.drawsFromPlex) {
       return LibraryEmptyState(
         icon: tab.emptyIcon,
         message: tab.emptyMessage,
       );
     }
 
-    final items = ref.watch(_libraryProvider(plexType));
+    final items = ref.watch(_libraryProvider(tab));
     return items.when(
       loading: () => Center(
         child: CircularProgressIndicator(color: RelayTheme.of(context).accent),
@@ -172,7 +181,7 @@ class _TabBody extends ConsumerWidget {
       error: (e, _) => LibraryEmptyState(
         icon: Icons.cloud_off_outlined,
         message: '$e',
-        onRetry: () => ref.invalidate(_libraryProvider(plexType)),
+        onRetry: () => ref.invalidate(_libraryProvider(tab)),
       ),
       data: (list) => list.isEmpty
           ? LibraryEmptyState(

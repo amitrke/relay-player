@@ -1,23 +1,51 @@
+import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/local/app_settings_store.dart';
+import '../library/library_mapping.dart';
 import 'settings_screen.dart';
 
-/// Holds [SettingsState] for the running app.
-///
-/// Not yet persisted. §3 puts non-secret settings in the Hive/Isar box, which
-/// does not exist yet — deliberately not smuggled into secure storage instead,
-/// since establishing "secrets and preferences share a store" is the exact
-/// confusion §3's credential rule exists to prevent. The cost today is that the
-/// Advanced Sources toggle resets on relaunch.
+/// Set once at startup, before `runApp`, so settings are readable synchronously
+/// and the first frame never renders a default the user already changed.
+final appSettingsStoreProvider = Provider<AppSettingsStore>((ref) {
+  throw StateError('appSettingsStoreProvider was not overridden in main().');
+});
+
+const _kAdvancedSources = 'advancedSourcesEnabled';
+const _kCrashReporting = 'crashReportingEnabled';
+const _kLibraryMapping = 'plex.libraryMapping';
+
 final settingsProvider = NotifierProvider<SettingsController, SettingsState>(
   SettingsController.new,
 );
 
 class SettingsController extends Notifier<SettingsState> {
-  @override
-  SettingsState build() => const SettingsState();
+  AppSettingsStore get _store => ref.read(appSettingsStoreProvider);
 
-  void update(SettingsState next) => state = next;
+  @override
+  SettingsState build() {
+    return SettingsState(
+      advancedSourcesEnabled:
+          _store.getBool(_kAdvancedSources, fallback: false),
+      crashReportingEnabled:
+          _store.getBool(_kCrashReporting, fallback: false),
+    );
+  }
+
+  /// Persists whatever changed. [SettingsState] also carries transient UI state
+  /// (which section the desktop rail has open), which deliberately is not
+  /// written — reopening Settings on the section you last viewed is not a
+  /// preference worth surviving a restart.
+  void update(SettingsState next) {
+    final previous = state;
+    state = next;
+    if (next.advancedSourcesEnabled != previous.advancedSourcesEnabled) {
+      _store.setBool(_kAdvancedSources, next.advancedSourcesEnabled);
+    }
+    if (next.crashReportingEnabled != previous.crashReportingEnabled) {
+      _store.setBool(_kCrashReporting, next.crashReportingEnabled);
+    }
+  }
 }
 
 /// §8.2's gate, as the rest of the app sees it.
@@ -29,3 +57,25 @@ class SettingsController extends Notifier<SettingsState> {
 final advancedSourcesEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider.select((s) => s.advancedSourcesEnabled));
 });
+
+final libraryMappingProvider =
+    NotifierProvider<LibraryMappingController, LibraryMapping>(
+  LibraryMappingController.new,
+);
+
+class LibraryMappingController extends Notifier<LibraryMapping> {
+  AppSettingsStore get _store => ref.read(appSettingsStoreProvider);
+
+  @override
+  LibraryMapping build() =>
+      LibraryMapping.fromStorage(_store.getStringMap(_kLibraryMapping));
+
+  Future<void> setPlacement(
+    PlexLibrarySection section,
+    LibraryPlacement placement,
+  ) async {
+    final next = state.withPlacement(section, placement);
+    state = next;
+    await _store.setStringMap(_kLibraryMapping, next.toStorage());
+  }
+}

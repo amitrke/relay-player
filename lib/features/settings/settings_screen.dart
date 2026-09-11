@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'sources_pane.dart';
+
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
@@ -134,20 +136,6 @@ class ConsentRow {
       ConsentRow(feature, provider, data, value ? granted : '', value);
 }
 
-/// A connected source, as shown in the Sources section.
-@immutable
-class SourceRowData {
-  const SourceRowData(this.name, this.meta);
-  final String name;
-  final String meta;
-
-  static const List<SourceRowData> demo = [
-    SourceRowData('Living room server', 'Plex · 412 movies, 38 series'),
-    SourceRowData(r'SYNOLOGY\media', 'SMB · connected'),
-    SourceRowData('This device', 'Two folders · 94 files'),
-  ];
-}
-
 /// A configured AI provider.
 @immutable
 class ProviderRowData {
@@ -204,15 +192,7 @@ class _PhoneSettings extends StatelessWidget {
         _Section(title: 'Appearance', child: _AppearanceControls(theme: theme)),
         const SizedBox(height: 22),
 
-        _Section(
-          title: 'Sources',
-          child: Column(
-            children: [
-              for (final s in SourceRowData.demo)
-                _NavRow(title: s.name, meta: s.meta, onTap: () {}),
-            ],
-          ),
-        ),
+        const _Section(title: 'Sources', child: SourcesPane()),
         const SizedBox(height: 22),
 
         _Section(
@@ -468,45 +448,6 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _NavRow extends StatelessWidget {
-  const _NavRow({required this.title, required this.meta, required this.onTap});
-
-  final String title;
-  final String meta;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: TextStyle(
-                          color: t.ink,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(meta,
-                      style: TextStyle(color: t.inkDim, fontSize: 12)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: t.inkDim),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ToggleRow extends StatelessWidget {
   const _ToggleRow({
     required this.title,
@@ -603,6 +544,10 @@ class _DesktopSettings extends StatelessWidget {
                   onStateChanged: onStateChanged),
               SettingsSection.appearance => SingleChildScrollView(
                   child: _AppearanceControls(theme: theme)),
+              SettingsSection.sources => const _DesktopPane(
+                  title: 'Sources',
+                  child: SourcesPane(),
+                ),
               SettingsSection.advancedSources => _DesktopPane(
                   title: 'Advanced sources',
                   child: _AdvancedSourcesControl(

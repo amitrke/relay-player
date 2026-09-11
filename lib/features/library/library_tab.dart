@@ -1,21 +1,21 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 
 /// The Home tabs (§12 screen 3).
 ///
-/// Movies and Series map onto Plex library types. Local & Network and Live TV
-/// do not — they are separate source shapes, which is why [plexType] is
-/// nullable rather than every tab pretending to be a Plex query.
+/// Movies and Series are fed by Plex libraries, but *which* libraries is a user
+/// decision rather than a property of the tab — see [LibraryMapping]. Local &
+/// Network and Live TV are different source shapes entirely and draw from Plex
+/// not at all.
 enum LibraryTab {
-  movies('Movies', PlexLibraryType.movie),
-  series('Series', PlexLibraryType.show),
-  localNetwork('Local & Network', null),
-  liveTv('Live TV', null);
+  movies('Movies', drawsFromPlex: true),
+  series('Series', drawsFromPlex: true),
+  localNetwork('Local & Network', drawsFromPlex: false),
+  liveTv('Live TV', drawsFromPlex: false);
 
-  const LibraryTab(this.label, this.plexType);
+  const LibraryTab(this.label, {required this.drawsFromPlex});
 
   final String label;
-  final PlexLibraryType? plexType;
+  final bool drawsFromPlex;
 
   /// §8.2: Live TV exists only while Advanced Sources is on. The tab is absent
   /// from the tree rather than disabled, so there is nothing to discover when
