@@ -4,6 +4,7 @@ import 'probes/parse_probe.dart';
 import 'probes/player_probe.dart';
 import 'probes/plex_probe.dart';
 import 'probes/smb_probe.dart';
+import 'probes/xtream_probe.dart';
 
 /// Phase 0 spike harness -- see docs/architecture.md S13 and
 /// docs/PHASE0_FINDINGS.md.
@@ -31,7 +32,7 @@ class _SpikeHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Phase 0 Spike'),
@@ -41,6 +42,7 @@ class _SpikeHome extends StatelessWidget {
               Tab(text: '2. Plex'),
               Tab(text: '3. SMB'),
               Tab(text: '4. Parse'),
+              Tab(text: '5. Xtream'),
             ],
           ),
           actions: [
@@ -86,6 +88,7 @@ class _SpikeHome extends StatelessWidget {
             PlexProbe(),
             SmbProbe(),
             ParseProbe(),
+            XtreamProbe(),
           ],
         ),
       ),
