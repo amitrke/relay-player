@@ -355,13 +355,28 @@ class _PlexProbeState extends State<PlexProbe> {
     _log.info(_redact(url));
 
     final ok = await _openAndAwait(url, 'direct play (Part key, https)');
-    await _player.stop();
 
     if (ok) {
+      // Deliberately do NOT stop. An earlier version tore playback down the
+      // instant verification passed, so the only three seconds it ever played
+      // were a film's black opening leader — correct playback that looked
+      // exactly like a failure.
+      //
+      // Seek past the titles so there is a visible frame to confirm by eye,
+      // and leave it running until "Stop session" is pressed.
+      final target = _player.state.duration * 0.15;
+      if (target > Duration.zero) {
+        await _player.seek(target);
+        _log.info('seeked to ${target.inMinutes}m to get past the opening '
+            'titles — you should now see picture');
+      }
       _log.good('Transport and direct play are BOTH fine. A transcode failure '
           'after this is a transcoder/URL problem, not a connection problem.');
+      _log.info('Still playing. Press "Stop session" when you have seen it.');
       return;
     }
+
+    await _player.stop();
 
     // Automatic control. curl reaches this server over HTTPS without trouble,
     // but curl uses the OS certificate store and libmpv ships its own. If the
@@ -609,7 +624,7 @@ class _PlexProbeState extends State<PlexProbe> {
             ),
           ),
         SizedBox(
-          height: 150,
+          height: 260,
           child: Container(
             color: Colors.black,
             child: Video(controller: _controller),

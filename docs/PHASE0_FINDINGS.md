@@ -81,7 +81,7 @@ The second is a perfectly good argument. It is just a different one from what
 
 ## Q2 — Is `dart_plex` 0.1.2 viable? (§6)
 
-**Status:** 🟡 in progress — two package defects found, both worked around; transcode re-run pending
+**Status:** 🟡 direct play confirmed working; two package defects found and worked around; transcode lifecycle re-run pending
 
 **Why it matters:** This is the flagship integration sitting on a package that
 was days old and at ~118 downloads when chosen. §6 costs the fallback
@@ -96,6 +96,7 @@ expensive if discovered in Phase 1.
 | `fetchResources` + `bestConnection()` | ✅ | 444 ms, 5 servers found (2 owned, 3 shared). Picked the local-https `*.plex.direct` URI |
 | `library.sections()` | ✅ | 956 ms, 13 sections, types correctly mapped (movie/show/music/photo) |
 | `library.allByType()` | ✅ | Returned items with usable `ratingKey`/`title`/`year` |
+| `library.item()` + direct play by Part key | ✅ | 244 ms to header, position advances, 3 audio + 3 video tracks, correct duration |
 | `decisionUniversal` | ⚠️ needs `hasMDE=1` | 400 without it. Probe passed an incomplete param set *and* the package omits `hasMDE` — both fixed |
 | Playback of transcode URL | ⚠️ needs `hasMDE=1` | 400 was the server rejecting the URL the package builds. Workaround in place, re-run pending |
 | `pingUniversal` — survives 60s+ | ⏳ re-run | The 404s were a symptom: no session existed because the transcode never started |
@@ -209,7 +210,41 @@ treats like any progressive source. Step 3.5 now fetches the item, walks
 `media → parts`, and streams that. It is also the correct isolation test, since
 it touches no transcoder machinery at all.
 
-#### 🔴 Plex content opens but does not actually play
+#### ✅ RESOLVED — Plex direct play works; the probe was hiding it
+
+**Status:** ✅ answered 2026-09-11. Direct play is fine.
+
+Instrumenting `position` settled it immediately:
+
+```
+position samples 500, 1000, 1501, 2001, 2502, 3003 ms
+playing=true  buffering=false  duration=5781s  audioTracks=3  videoTracks=3
+ACTUALLY PLAYING — position advanced 2503 ms over 3s (header at 244ms)
+```
+
+The clock advances in real time, three audio and three video tracks decode, and
+`duration=5781s` is 96 minutes — correct for the test film. **Transport, TLS and
+direct play are all working.** The TLS hypothesis is dead; no CA-bundle work is
+needed.
+
+Nothing was visible on screen for two compounding reasons, both in the probe:
+
+1. It called `_player.stop()` the instant verification passed, so playback
+   lasted exactly the three-second sampling window.
+2. Those three seconds were the **black opening leader of a 1957 film**. Correct
+   playback that looked precisely like a failure.
+
+Fixed: on success the probe now seeks to 15% (past the titles) and leaves
+playback running until "Stop session", and the video area is larger.
+
+**The lesson is about instrumentation, not Plex.** Two probe bugs in a row
+produced confident, wrong conclusions — "OK (141 ms)" before an async error, and
+"PLAYING" from a parsed header. Both were cases of measuring something
+*adjacent* to the thing that mattered. In Phase 1, "is it playing?" must mean
+the position advanced, and any success message should be traceable to evidence
+that specific.
+
+#### (superseded) Earlier hypothesis — libmpv TLS against `*.plex.direct`
 
 **Status:** 🟡 instrumented 2026-09-11, awaiting a re-run.
 
@@ -229,7 +264,8 @@ are now distinguishable in the transcript.
 trustworthy signal, and any "is it playing?" check in the real app needs to use
 it too.
 
-#### Hypothesis under test — libmpv TLS against `*.plex.direct`
+**Ruled out by the result above.** Kept for the record, and because the
+bundled-binary observations remain relevant to §10.
 
 curl reaches this server over HTTPS without difficulty, but curl uses the
 Windows certificate store and libmpv ships its own TLS stack. Inspecting the
