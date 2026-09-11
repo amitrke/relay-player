@@ -713,7 +713,22 @@ Not answerable on desktop. Deferred from the probes above but still Phase 0.
 - [ ] `MediaStore` scan returns expected video without `MANAGE_EXTERNAL_STORAGE`
       (§7.1 — the Play-policy-compliant path)
 - [ ] Hardware decode actually engages on device (compare CPU use vs desktop)
-- [ ] App size impact of bundling libmpv — measure the release APK/AAB
+- [x] **App size impact of bundling libmpv — measured 2026-09-11.**
+
+      | Build | Size |
+      |---|---|
+      | `arm64-v8a` release | **30.8 MB** |
+      | `armeabi-v7a` release | 27.8 MB |
+      | `x86_64` release | 35.5 MB |
+      | universal release | 89.9 MB |
+
+      So libmpv costs roughly **25 MB per ABI**, and the universal APK is 3×
+      an arm64 one purely from carrying three copies. Ship split APKs or an
+      AAB; a 90 MB universal binary is a bad first impression and, on a Fire
+      TV stick (§11), a real storage cost.
+
+      Not alarming for §10's engine choice — a media player that bundles its
+      own decoder pays this, and 31 MB is unremarkable for the category.
 
 ---
 
