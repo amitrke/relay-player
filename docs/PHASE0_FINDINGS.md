@@ -80,12 +80,58 @@ which ExoPlayer would too. To actually settle Q1, either:
 The second is a perfectly good argument. It is just a different one from what
 §10 currently says.
 
+### 🔴 The Android emulator cannot show video at all — do not test playback there
+
+**Found 2026-09-11.** On the `Pixel_Tablet` AVD (API 34, x86_64), Plex direct
+play decodes correctly and the position clock advances, but the picture stays
+black. The cause is in the emulator, not the app:
+
+```
+media_kit: Emulator detected.
+media_kit: Enforcing S/W rendering.
+VideoOutput: onSurfaceAvailable            <- surface obtained, sized 1920x816
+E EGL_emulation: eglCreateContext(1755): error 0x3004 (EGL_BAD_ATTRIBUTE)
+```
+
+media_kit gets its surface but cannot create a GL context to draw into, so
+decoded frames have nowhere to go. This is a known upstream bug
+([media-kit#1343](https://github.com/media-kit/media-kit/issues/1343),
+[#462](https://github.com/media-kit/media-kit/issues/462),
+[#1255](https://github.com/media-kit/media-kit/issues/1255)), reported as **not**
+affecting real devices.
+
+Ruled out by experiment, so nobody repeats them:
+
+| Hypothesis | Test | Result |
+|---|---|---|
+| Missing Android video libs | `media_kit_libs_android_video` in lockfile | present — not the cause |
+| Flutter's Impeller backend | Disabled via manifest `EnableImpeller=false` | **identical failure** — not the cause |
+| media_kit's emulator heuristic | `enableHardwareAcceleration: true` | ineffective; that flag only sets `hwdec`, and S/W *decoding* still produces frames |
+| Emulator using a software GL path | `hw.gpu.mode` `auto` → `host`, AVD restarted | **identical failure** — not the cause |
+
+**Consequence for the workflow:** test video on Windows or a real Android
+device. The emulator is fine for everything else, and remains useful for UI,
+navigation and API work.
+
+### 🟡 An advancing clock proves playback, but NOT a visible picture
+
+A refinement of the instrumentation lesson below, which this bug found the hard
+way. §Q1 concluded that "the clock moving is the only trustworthy signal" for
+*is it playing* — and that is still right. But this failure has the position
+advancing normally while nothing is on screen, because the failure is in the
+**render** path rather than the decode path.
+
+So the player's stall guard, which watches for the position to advance, cannot
+catch a black picture and should not be expected to. Anything claiming to verify
+"the user can see video" needs evidence from the render path — or a human eye.
+
 ### Still to test on this question
 
 - [ ] `.m3u8` variant of a working channel (button present, not yet run)
 - [ ] VOD `.mp4` playback and seeking
 - [ ] A second panel, ideally a worse one
-- [ ] Playback on a real Android device / Fire TV, not just desktop
+- [ ] Playback on a real Android device / Fire TV, not just desktop —
+      **blocked on hardware; the emulator cannot answer this one**
 
 **Decision — media_kit or better_player as primary?**
 

@@ -165,8 +165,12 @@ class _Controls extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: StreamBuilder<Duration>(
                 stream: player.stream.position,
+                // Seed from the player's own state: a stream's first snapshot
+                // is null until an event arrives, and falling back to a
+                // constant makes the controls contradict what is on screen.
+                initialData: player.state.position,
                 builder: (context, snapshot) {
-                  final position = snapshot.data ?? Duration.zero;
+                  final position = snapshot.data ?? player.state.position;
                   final total = player.state.duration;
                   return Column(
                     children: [
@@ -196,8 +200,9 @@ class _Controls extends StatelessWidget {
                       ),
                       StreamBuilder<bool>(
                         stream: player.stream.playing,
+                        initialData: player.state.playing,
                         builder: (context, snapshot) {
-                          final playing = snapshot.data ?? false;
+                          final playing = snapshot.data ?? player.state.playing;
                           return IconButton(
                             iconSize: 44,
                             icon: Icon(
