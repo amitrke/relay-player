@@ -264,39 +264,64 @@ class _PlexProbeState extends State<PlexProbe> {
     }
   }
 
-  /// Step 3.5 — direct play, before forcing a transcode.
+  /// Step 3.5 — REAL direct play, via the media Part key.
   ///
-  /// This exists to split one failure into two distinct findings. If direct
-  /// play works and transcode does not, the transcoder is the problem. If
-  /// neither works, the problem is reaching the server at all — most likely
-  /// TLS against the `*.plex.direct` hostname, which libmpv has to validate
-  /// with its own CA store. Without this step both look identical.
+  /// An earlier version of this probe called `universalVideoUrl(directPlay:
+  /// true)`, which is not direct play at all — it still goes through
+  /// `/video/:/transcode/universal/`, just asking the transcoder to pass the
+  /// file through. The server's own decision confirms it: *"App cannot direct
+  /// play this item. Direct play is disabled."*
+  ///
+  /// Genuine direct play is the Part key — a plain file served with byte
+  /// ranges, which is what §6 describes and what media_kit handles like any
+  /// progressive source. It is also the correct isolation test, because it
+  /// touches no transcoder machinery at all.
   Future<void> _directPlay() async {
     final ratingKey = _sampleRatingKey;
     if (ratingKey == null) {
       _log.warn('Run Step 3 first -- no item selected.');
       return;
     }
-    _log.info('--- STEP 3.5: DIRECT PLAY (isolates transcode from transport)');
+    _log.info('--- STEP 3.5: DIRECT PLAY via Part key (real direct play)');
 
-    final url = _client().streaming.universalVideoUrl(
-          ratingKey: ratingKey,
-          session: 'phase0-direct-${DateTime.now().millisecondsSinceEpoch}',
-          directPlay: true,
-          directStream: true,
-        );
+    final item = await _log.time('library.item($ratingKey)', () async {
+      return _client().library.item(ratingKey);
+    });
+    if (item == null) return;
+
+    final part = item.media
+        .expand((m) => m.parts)
+        .where((p) => (p.key ?? '').isNotEmpty)
+        .firstOrNull;
+    if (part == null) {
+      _log.bad('No media Part with a key — cannot direct play this item.');
+      return;
+    }
+
+    final media = item.media.first;
+    _log.info('  container=${media.container} video=${media.videoCodec} '
+        'audio=${media.audioCodec} '
+        '${media.width ?? "?"}x${media.height ?? "?"}');
+    _log.info('  part ${part.id}  ${part.size ?? "?"} bytes  key=${part.key}');
+
+    final base = _client().baseUrl;
+    final token = _client().token;
+    if (base == null || token == null) {
+      _log.bad('Not connected.');
+      return;
+    }
+    final url = '$base${part.key}?X-Plex-Token=$token';
     _log.info(_redact(url));
-    final ok = await _openAndAwait(url, 'direct play');
+
+    final ok = await _openAndAwait(url, 'direct play (Part key)');
     await _player.stop();
 
     if (ok) {
-      _log.good('Transport is fine. A transcode failure after this is a '
-          'transcoder problem, not a connection problem.');
+      _log.good('Transport and direct play are BOTH fine. A transcode failure '
+          'after this is a transcoder/URL problem, not a connection problem.');
     } else {
-      _log.bad('Direct play ALSO failed -- suspect the connection, not the '
-          'transcoder.');
-      _log.warn('Most likely cause: libmpv could not validate TLS against the '
-          '*.plex.direct hostname. Try the plain-HTTP LAN connection below.');
+      _log.bad('Direct play of a plain file failed -- this IS a transport '
+          'problem, not a transcoder one.');
       _logConnectionCandidates();
     }
   }
@@ -337,15 +362,25 @@ class _PlexProbeState extends State<PlexProbe> {
 
     // Force a transcode by disallowing direct play/stream and asking for a
     // low resolution. Direct play would bypass exactly what we want to test.
-    final url = _client().streaming.universalVideoUrl(
-          ratingKey: ratingKey,
-          session: session,
-          directPlay: false,
-          directStream: false,
-          videoResolution: '640x360',
-          videoBitrate: 1000,
-        );
-    _log.info('universalVideoUrl -> ${_redact(url)}');
+    // BLOCKING dart_plex DEFECT, worked around here.
+    //
+    // universalVideoUrl omits `hasMDE=1`, and Plex Media Server 1.43 rejects
+    // the universal transcode endpoint with a bare HTTP 400 without it. The
+    // parameter tells the server the client speaks the Media Decision Engine
+    // protocol. Verified by bisection against a real server: identical URL,
+    // 400 without the flag and 200 with it.
+    //
+    // The package contains no occurrence of "hasMDE" at all, so nothing it
+    // builds can drive the transcoder. See docs/PHASE0_FINDINGS.md Q2.
+    final url = '${_client().streaming.universalVideoUrl(
+      ratingKey: ratingKey,
+      session: session,
+      directPlay: false,
+      directStream: false,
+      videoResolution: '640x360',
+      videoBitrate: 1000,
+    )}&hasMDE=1';
+    _log.info('universalVideoUrl + hasMDE -> ${_redact(url)}');
 
     // The decision call MUST carry the same parameter set as the start URL.
     // Plex rejects it with HTTP 400 if mediaIndex/partIndex are missing, and
@@ -355,6 +390,8 @@ class _PlexProbeState extends State<PlexProbe> {
         () async {
       final decision = await _client().streaming.decisionUniversal(
         params: <String, dynamic>{
+          // Same defect as the start URL — 400 without it.
+          'hasMDE': '1',
           'path': '/library/metadata/$ratingKey',
           'mediaIndex': '0',
           'partIndex': '0',

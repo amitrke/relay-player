@@ -73,34 +73,15 @@ The second is a perfectly good argument. It is just a different one from what
 - [ ] A second panel, ideally a worse one
 - [ ] Playback on a real Android device / Fire TV, not just desktop
 
-**Why it matters:** §10 picks media_kit over `video_player`/`better_player`
-*specifically* because libmpv is claimed to be more tolerant of malformed
-MPEG-TS from cheap panels. If that tolerance doesn't materialize, the primary
-argument for the heavier dependency collapses and `better_player` becomes the
-default rather than the fallback.
-
-**Probe:** Tab 1. Feed it, in order: an Xtream live `.ts` URL, an Xtream VOD
-`.mp4`, a raw `.m3u8`, and 2–3 channels pulled from the M3U dump in Tab 4.
-
-| Stream | Type | First frame (ms) | Codec (v/a) | mpv warnings | Verdict |
-|---|---|---|---|---|---|
-| | live .ts | | | | |
-| | VOD .mp4 | | | | |
-| | .m3u8 | | | | |
-| | M3U ch. | | | | |
-
-**Seek behaviour on live:** _(§10 assumes live has no seek — confirm rather
-than assume; some panels do serve seekable TS)_
-
 **Decision — media_kit or better_player as primary?**
 
-> _(record here)_
+> _(record here — see "What is still unevidenced" above before deciding)_
 
 ---
 
 ## Q2 — Is `dart_plex` 0.1.2 viable? (§6)
 
-**Status:** 🟡 in progress — PIN flow reached; one defect found (below)
+**Status:** 🟡 in progress — two package defects found, both worked around; transcode re-run pending
 
 **Why it matters:** This is the flagship integration sitting on a package that
 was days old and at ~118 downloads when chosen. §6 costs the fallback
@@ -115,9 +96,9 @@ expensive if discovered in Phase 1.
 | `fetchResources` + `bestConnection()` | ✅ | 444 ms, 5 servers found (2 owned, 3 shared). Picked the local-https `*.plex.direct` URI |
 | `library.sections()` | ✅ | 956 ms, 13 sections, types correctly mapped (movie/show/music/photo) |
 | `library.allByType()` | ✅ | Returned items with usable `ratingKey`/`title`/`year` |
-| `decisionUniversal` | ❌ HTTP 400 | **Probe bug, now fixed** — see below |
-| Playback of transcode URL | ❌ | "Failed to open" `start.m3u8` — cause not yet isolated |
-| `pingUniversal` — survives 60s+ | ❌ HTTP 404 | Likely a *symptom* of the two above, not an independent defect |
+| `decisionUniversal` | ⚠️ needs `hasMDE=1` | 400 without it. Probe passed an incomplete param set *and* the package omits `hasMDE` — both fixed |
+| Playback of transcode URL | ⚠️ needs `hasMDE=1` | 400 was the server rejecting the URL the package builds. Workaround in place, re-run pending |
+| `pingUniversal` — survives 60s+ | ⏳ re-run | The 404s were a symptom: no session existed because the transcode never started |
 | `stopUniversal` — session actually gone | not reached | |
 
 **Reading of the 2026-09-10 run:** everything up to and including library
@@ -166,9 +147,71 @@ mirror the start request exactly. An incomplete set does not just risk a 400 —
 it makes the server decide about a *different* request than the one you are
 about to issue, which is worse than not asking at all.
 
-#### Open — `start.m3u8` "Failed to open"
+#### 🔴 BLOCKING finding — `universalVideoUrl` omits `hasMDE=1`, so transcode never works
 
-**Status:** 🟡 not yet isolated.
+**Status:** ✅ root-caused 2026-09-11 by bisection against PMS 1.43.3.
+
+`dart_plex`'s `universalVideoUrl` builds a URL that **Plex rejects with a bare
+`HTTP 400 Bad Request`**. The missing parameter is `hasMDE=1`, which tells the
+server the client speaks the Media Decision Engine protocol. Modern PMS refuses
+the universal transcode endpoint without it.
+
+Bisected with curl against the real server — identical URL, one parameter apart:
+
+| Request | Result |
+|---|---|
+| `start.m3u8?path=…&mediaIndex=0&partIndex=0&protocol=hls&…` | **400** |
+| …plus full `X-Plex-*` client identification | **400** |
+| …plus **`hasMDE=1`** | **200**, valid `#EXTM3U` master playlist |
+| `decision?…&hasMDE=1` | **200**, `generalDecisionCode 1001` |
+
+**The package contains no occurrence of the string `hasMDE` anywhere**, so
+nothing it builds can drive the transcoder. This is not a wrong default like
+the `createPin` issue — it is a feature that cannot work as shipped.
+
+- **Workaround (in the probe now):** append `&hasMDE=1` to the returned URL and
+  add `'hasMDE': '1'` to the decision params.
+- **Weight for the Q2 decision:** this is the second defect found in the
+  package's two most important flows, and the more serious one. Both were found
+  within an hour of first use. That is a strong signal about how much of this
+  package has been exercised against a real server. It does not force
+  hand-rolling — the workaround is one string — but it means **every dart_plex
+  call path must be verified against a real server before Phase 1 relies on
+  it**, and the ~1 week hand-rolled fallback in §6 should stay costed and ready.
+
+#### Transport is fine — the TLS hypothesis was wrong
+
+The earlier guess that libmpv might be failing TLS against `*.plex.direct` was
+**wrong**, and worth recording so nobody re-opens it:
+
+| Check | Result |
+|---|---|
+| DNS `192-168-1-253.<hash>.plex.direct` | resolves to `192.168.1.253` |
+| HTTPS `/identity` | **200**, TLS handshake 146 ms |
+| Plain-HTTP LAN `/identity` | **200**, 63 ms |
+| Direct file via Part key, `Range: 0-65535` | **206**, `video/mp4`, valid `ftyp`, **81 ms TTFB** |
+
+Every failure was the server returning 400 to a malformed request. The 109 ms
+"failure" was not a timeout — it was a fast, correct rejection.
+
+#### Probe bug — "direct play" was not direct play
+
+Step 3.5 originally called `universalVideoUrl(directPlay: true)`, which still
+goes through `/video/:/transcode/universal/`. The server said so itself once
+the decision call worked:
+
+> `directPlayDecisionText: App cannot direct play this item. Direct play is
+> disabled.`
+
+**Real direct play is the media Part key** — `/library/parts/{id}/{ts}/file.mp4`
+— a plain file with byte ranges, which is what §6 describes and what media_kit
+treats like any progressive source. Step 3.5 now fetches the item, walks
+`media → parts`, and streams that. It is also the correct isolation test, since
+it touches no transcoder machinery at all.
+
+#### Open — does transcode playback actually run end to end?
+
+**Status:** 🟡 workaround in place, needs a re-run.
 
 Two candidate causes, and the run so far cannot tell them apart:
 
