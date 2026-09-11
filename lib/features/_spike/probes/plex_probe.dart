@@ -75,13 +75,33 @@ class _PlexProbeState extends State<PlexProbe> {
   // --- Step 1: PIN flow ------------------------------------------------
   Future<void> _createPin() async {
     _log.info('--- STEP 1: PIN flow (S6)');
-    final pin = await _log.time('account.createPin', () async {
-      return _client().account.createPin();
+    final pin = await _log.time('account.createPin(strong: false)', () async {
+      // MUST be strong: false for the plex.tv/link flow.
+      //
+      // dart_plex defaults to `strong: true`, which makes Plex issue a
+      // JWT-grade token with a long opaque code (25+ chars). plex.tv/link
+      // only accepts the 4-character code, so the default silently produces
+      // a PIN the user cannot enter anywhere.
+      //
+      // The package's own docstring says "Plex returns a PlexPin with a
+      // 4-character code" while its default guarantees the opposite. See
+      // docs/PHASE0_FINDINGS.md Q2.
+      return _client().account.createPin(strong: false);
     });
     if (pin == null) return;
     _pin = pin;
-    _log.good('LINK CODE: ${pin.code}');
-    _log.warn('Go to https://plex.tv/link and enter: ${pin.code}');
+
+    // Guard the regression rather than trusting the parameter: if a future
+    // version changes the default or the response shape, this says so loudly
+    // instead of printing an unusable code.
+    if (pin.code.length != 4) {
+      _log.bad('EXPECTED a 4-character link code, got ${pin.code.length} '
+          'characters: "${pin.code}"');
+      _log.bad('plex.tv/link will not accept this. Check the `strong` flag.');
+    } else {
+      _log.good('LINK CODE: ${pin.code}');
+      _log.warn('Go to https://plex.tv/link and enter: ${pin.code}');
+    }
     _log.info('(code copied to clipboard; expires ${pin.expiresAt.toLocal()})');
     await Clipboard.setData(ClipboardData(text: pin.code));
     setState(() {});

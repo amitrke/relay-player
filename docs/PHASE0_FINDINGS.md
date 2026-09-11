@@ -53,7 +53,7 @@ than assume; some panels do serve seekable TS)_
 
 ## Q2 — Is `dart_plex` 0.1.2 viable? (§6)
 
-**Status:** ⬜
+**Status:** 🟡 in progress — PIN flow reached; one defect found (below)
 
 **Why it matters:** This is the flagship integration sitting on a package that
 was days old and at ~118 downloads when chosen. §6 costs the fallback
@@ -64,7 +64,7 @@ expensive if discovered in Phase 1.
 
 | Step | Works? | Notes / exceptions verbatim |
 |---|---|---|
-| `createPin` / `pollPin` | | |
+| `createPin` / `pollPin` | partly — see below | Works, but the default argument is wrong for this flow |
 | `fetchResources` + `bestConnection()` | | |
 | `library.sections()` | | |
 | `library.allByType()` | | |
@@ -72,6 +72,31 @@ expensive if discovered in Phase 1.
 | Playback of transcode URL | | |
 | `pingUniversal` — survives 60s+ | | |
 | `stopUniversal` — session actually gone | | |
+
+#### Confirmed finding — `createPin` default produces an unusable code
+
+**Status:** ✅ found and worked around, 2026-09-10.
+
+`dart_plex`'s `createPin({bool strong = true})` defaults to `strong: true`,
+which makes Plex issue a JWT-grade token whose `code` is a long opaque string
+(observed: `zygvhan6tvjbi3psfq9sl865m`, 25 characters). **plex.tv/link only
+accepts the 4-character code**, so the default silently yields a PIN the user
+cannot enter anywhere. The flow does not error — it just hands you a code that
+does not work.
+
+The package's own docstring on that method reads *"Plex returns a `PlexPin`
+with a 4-character `code` that the user must enter at https://plex.tv/link"* —
+directly contradicted by its own default parameter.
+
+- **Fix:** call `createPin(strong: false)` for the link flow.
+- The probe now also asserts the code is exactly 4 characters and logs loudly
+  if not, so a future version changing this cannot regress silently.
+- **Weight for the Q2 decision:** not disqualifying on its own — one wrong
+  default, easily worked around. But it is evidence about maturity: a
+  days-old package whose documentation and defaults disagree on its
+  best-known flow has not had many users through that path. Treat the
+  transcode lifecycle below with matching suspicion, and do not assume the
+  docstrings are load-bearing.
 
 **The decisive one is the last row.** After pressing "Stop session", check the
 Plex server dashboard directly. A session still listed means teardown is
