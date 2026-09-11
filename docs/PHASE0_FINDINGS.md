@@ -20,13 +20,27 @@ flutter run -d <android-device> # required for the platform questions
 
 Status legend: ⬜ not started · 🟡 in progress · ✅ answered · ❌ blocked
 
+> **Recording rule — this repo is public.**
+>
+> Never write a real provider host, username, password, token, server
+> identifier or LAN address into this file, into a test fixture, or into a
+> commit message. Use `<panel-host>`, `<lan-ip>`, `<redacted>`.
+>
+> This is not only credential hygiene. §1 and §8.3 turn on the project not
+> looking like it points at, curates, or is associated with any particular IPTV
+> provider — naming one in a public repo undercuts the same primary-purpose
+> argument that §8.3 refuses a provider directory to protect.
+>
+> Numbers, timings, response shapes and failure modes are the valuable part of
+> a finding, and none of them require naming the source.
+
 ---
 
 ## Q1 — Does media_kit/libmpv tolerate real IPTV streams? (§10)
 
 **Status:** 🟡 live Xtream playback confirmed working; more panels needed
 
-**Result 2026-09-11 (`ogold.org:8080`, Tab 5):** ✅ libmpv plays this panel's
+**Result 2026-09-11 (a real Xtream panel, Tab 5):** ✅ libmpv plays this panel's
 live `.ts` reliably.
 
 | Channel | Stream id | Result |
@@ -187,7 +201,7 @@ The earlier guess that libmpv might be failing TLS against `*.plex.direct` was
 
 | Check | Result |
 |---|---|
-| DNS `192-168-1-253.<hash>.plex.direct` | resolves to `192.168.1.253` |
+| DNS `<lan-ip-dashed>.<hash>.plex.direct` | resolves to `<lan-ip>` |
 | HTTPS `/identity` | **200**, TLS handshake 146 ms |
 | Plain-HTTP LAN `/identity` | **200**, 63 ms |
 | Direct file via Part key, `Range: 0-65535` | **206**, `video/mp4`, valid `ftyp`, **81 ms TTFB** |
@@ -305,7 +319,7 @@ Two candidate causes, and the run so far cannot tell them apart:
 1. **The transcoder** — plausible, since the decision call had failed, so no
    session had been negotiated.
 2. **The transport** — `bestConnection()` selected
-   `https://192-168-1-253.<hash>.plex.direct:32400`. That hostname resolves to
+   `https://<lan-ip-dashed>.<hash>.plex.direct:32400`. That hostname resolves to
    the LAN IP and serves a real certificate, but **libmpv validates TLS with
    its own CA store**, not the OS one. If that fails, *every* Plex stream fails
    and nothing about the transcoder is wrong. This would be a much more serious
@@ -427,7 +441,7 @@ error handling Phase 2 needs, not whether the design is right.
 
 ## Q6 — Xtream panel reality check (§4)
 
-**Status:** ✅ answered 2026-09-11 against a real panel (`ogold.org:8080`).
+**Status:** ✅ answered 2026-09-11 against a real panel (a real Xtream panel).
 
 Not one of the original four questions, but it produced the most consequential
 findings of Phase 0 so far. Measured directly against the API, not inferred.
@@ -501,7 +515,7 @@ than guessing wrong"; this is the concrete case.
 a tokenised path:
 
 ```
-Location: http://94.26.105.59:8080/live/play/<opaque-token>/3
+Location: http://<different-host>:8080/live/play/<opaque-token>/<id>
 ```
 
 The player must follow redirects (libmpv does by default — confirm the same for
