@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/local/favorites_store.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
+import '../favorites_history/favorites_controller.dart';
 
 /// One library item: poster, title, year.
 class PosterTile extends ConsumerWidget {
@@ -34,20 +36,46 @@ class PosterTile extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: double.infinity,
-                color: t.surface,
-                child: poster == null
-                    ? Icon(Icons.movie_outlined, color: t.inkDim)
-                    : Image.network(
-                        poster,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            Icon(Icons.movie_outlined, color: t.inkDim),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: double.infinity,
+                    color: t.surface,
+                    child: poster == null
+                        ? Icon(Icons.movie_outlined, color: t.inkDim)
+                        : Image.network(
+                            poster,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                Icon(Icons.movie_outlined, color: t.inkDim),
+                          ),
+                  ),
+                ),
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  // Artwork is unpredictable, so the star needs its own
+                  // backing to stay legible on a bright poster.
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: t.stage.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: FavoriteButton(
+                      dense: true,
+                      size: 18,
+                      item: FavoriteItem(
+                        kind: isShow ? FavoriteKind.show : FavoriteKind.movie,
+                        sourceId: item.serverId,
+                        itemId: metadata.ratingKey,
                       ),
-              ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),

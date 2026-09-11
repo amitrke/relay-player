@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/local/favorites_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
+import '../favorites_history/favorites_controller.dart';
 import '../library/poster_grid.dart';
 
 /// The Live TV tab (§12 screen 3), reachable only behind the §8.2 gate.
@@ -48,15 +50,30 @@ class LiveTvTab extends ConsumerWidget {
   }
 }
 
-class _ChannelList extends ConsumerWidget {
+class _ChannelList extends ConsumerStatefulWidget {
   const _ChannelList({required this.account});
 
   final XtreamAccount account;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ChannelList> createState() => _ChannelListState();
+}
+
+class _ChannelListState extends ConsumerState<_ChannelList> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
+    final account = widget.account;
 
     if (account.selectedCategoryIds.isEmpty) {
       return Center(
@@ -101,11 +118,83 @@ class _ChannelList extends ConsumerWidget {
             message: 'Those categories returned no channels.',
           );
         }
-        return ListView.builder(
-          padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 28),
-          itemCount: list.length,
+        // Filtered in memory, not over the wire. The channels for the chosen
+        // categories are already here, and the Xtream API has no channel-search
+        // endpoint — asking the panel again would be slower and no better.
+        final query = _query.trim().toLowerCase();
+        final matching = query.isEmpty
+            ? list
+            : [
+                for (final c in list)
+                  if (c.name.toLowerCase().contains(query)) c,
+              ];
+
+        final favorites = ref.watch(favoritesProvider);
+        final ordered = favouritesFirst(
+          matching,
+          favorites,
+          (c) => FavoriteItem(
+            kind: FavoriteKind.channel,
+            sourceId: account.id,
+            itemId: c.streamId,
+          ),
+        );
+
+        return Column(
+          children: [
+            Padding(
+              padding: RelayLayout.pagePadding(f).copyWith(top: 10, bottom: 4),
+              child: TextField(
+                controller: _search,
+                onChanged: (v) => setState(() => _query = v),
+                autocorrect: false,
+                style: TextStyle(color: t.ink),
+                decoration: InputDecoration(
+                  hintText: 'Search ${list.length} channels',
+                  hintStyle: TextStyle(color: t.inkDim),
+                  prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: Icon(Icons.close, color: t.inkDim, size: 18),
+                          onPressed: () {
+                            _search.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: t.surface,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: t.line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: t.line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: t.accent),
+                  ),
+                ),
+              ),
+            ),
+            if (ordered.isEmpty)
+              Expanded(
+                child: LibraryEmptyState(
+                  icon: Icons.search_off,
+                  message: 'No channel matching "$_query".',
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+          padding: RelayLayout.pagePadding(f).copyWith(top: 8, bottom: 28),
+          itemCount: ordered.length,
           itemBuilder: (context, i) {
-            final channel = list[i];
+            final channel = ordered[i];
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Material(
@@ -155,6 +244,14 @@ class _ChannelList extends ConsumerWidget {
                             ),
                           ),
                         ),
+                        FavoriteButton(
+                          dense: true,
+                          item: FavoriteItem(
+                            kind: FavoriteKind.channel,
+                            sourceId: account.id,
+                            itemId: channel.streamId,
+                          ),
+                        ),
                         Icon(Icons.play_arrow, color: t.inkDim),
                       ],
                     ),
@@ -163,6 +260,9 @@ class _ChannelList extends ConsumerWidget {
               ),
             );
           },
+                ),
+              ),
+          ],
         );
       },
     );
