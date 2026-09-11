@@ -5,6 +5,8 @@ import 'probes/player_probe.dart';
 import 'probes/plex_probe.dart';
 import 'probes/smb_probe.dart';
 import 'probes/xtream_probe.dart';
+import 'probe_log.dart';
+import 'spike_config.dart';
 
 /// Phase 0 spike harness -- see docs/architecture.md S13 and
 /// docs/PHASE0_FINDINGS.md.
@@ -17,6 +19,16 @@ class SpikeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Before any probe can log. Covers exception text from media_kit, Dio and
+    // smb_connect, none of which know these strings are secret.
+    ProbeLog.registerSecrets([
+      SpikeConfig.xtreamPassword,
+      SpikeConfig.xtreamUsername,
+      SpikeConfig.smbPassword,
+      SpikeConfig.smbUsername,
+    ]);
+    // The Plex auth token is acquired at runtime, so PlexProbe registers it
+    // the moment pollPin returns it.
     return MaterialApp(
       title: 'Relay Player -- Phase 0 Spike',
       debugShowCheckedModeBanner: false,

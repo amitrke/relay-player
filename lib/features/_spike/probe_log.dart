@@ -24,8 +24,38 @@ class ProbeLog extends ChangeNotifier {
 
   List<LogLine> get lines => List.unmodifiable(_lines);
 
+  /// Secrets scrubbed from every line, registered once at startup.
+  ///
+  /// Masking at each call site does not work: the most dangerous strings come
+  /// from *other people's* code. media_kit's `Failed to open <url>` and Dio's
+  /// exception text both embed the full URL, password and all, and those reach
+  /// the log verbatim through `_log.bad('$e')`. Since these transcripts exist
+  /// to be pasted into docs/PHASE0_FINDINGS.md — in a public repo — scrubbing
+  /// has to happen at the sink, where nothing can bypass it.
+  static final List<String> _secrets = [];
+
+  /// Registers strings to mask. Call once, before any probe runs.
+  static void registerSecrets(Iterable<String> secrets) {
+    for (final s in secrets) {
+      // Very short values would mangle unrelated text; a real credential is
+      // never 3 characters.
+      if (s.trim().length >= 4 && !_secrets.contains(s)) _secrets.add(s);
+    }
+    // Longest first, so a password that contains another secret as a substring
+    // is still fully replaced.
+    _secrets.sort((a, b) => b.length.compareTo(a.length));
+  }
+
+  static String scrub(String text) {
+    var out = text;
+    for (final s in _secrets) {
+      out = out.replaceAll(s, '••••');
+    }
+    return out;
+  }
+
   void _add(LogLevel level, String message) {
-    _lines.add(LogLine(DateTime.now(), level, message));
+    _lines.add(LogLine(DateTime.now(), level, scrub(message)));
     notifyListeners();
   }
 

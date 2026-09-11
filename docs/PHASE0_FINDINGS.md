@@ -24,7 +24,54 @@ Status legend: ⬜ not started · 🟡 in progress · ✅ answered · ❌ blocke
 
 ## Q1 — Does media_kit/libmpv tolerate real IPTV streams? (§10)
 
-**Status:** ⬜
+**Status:** 🟡 live Xtream playback confirmed working; more panels needed
+
+**Result 2026-09-11 (`ogold.org:8080`, Tab 5):** ✅ libmpv plays this panel's
+live `.ts` reliably.
+
+| Channel | Stream id | Result |
+|---|---|---|
+| `US: GOLF CHANNEL` | 244978 | ✅ first frame **1824 ms**, 1280×720 |
+| `US: GOLF CHANNEL` (replay) | 244978 | ✅ first frame **1856 ms** — consistent |
+| `\|SE\| C MORE GOLF HD` | 244987 | ❌ no frame after 10 s |
+
+API timings on the same run: `get_live_categories` 965 ms (466 categories),
+`get_live_streams` **2317 ms** (15,951 streams, 5.3 MB).
+
+### Dead channels are normal, and the UI has to say so
+
+One of two channels tried simply did not respond. That is routine for IPTV
+panels — listings outrun reality — but it is a **UX requirement, not a
+curiosity**: a channel that never yields a frame must reach a clear "not
+responding, try again" state rather than spinning forever. With
+`max_connections: 1` (Q6) the app must also *release the connection* on that
+timeout, or a dead channel burns the user's only slot.
+
+Pick a timeout deliberately. 10 s was enough to distinguish the two cases here;
+first frame on a working channel landed at ~1.8 s, so a 10 s ceiling has ample
+headroom.
+
+### What is still unevidenced
+
+§10's central claim is that libmpv tolerates **malformed** TS where ExoPlayer
+fails. This panel emits *clean* TS (Q6: 100/100 sync bytes), so it does not
+test that claim at all — it only shows libmpv handles a well-formed stream,
+which ExoPlayer would too. To actually settle Q1, either:
+
+- test a second, worse panel, or
+- accept that the tolerance argument is unproven and re-justify media_kit on
+  the grounds that *are* evidenced here — one engine across Plex direct-play,
+  Plex HLS transcode, SMB-via-bridge and IPTV, plus container breadth.
+
+The second is a perfectly good argument. It is just a different one from what
+§10 currently says.
+
+### Still to test on this question
+
+- [ ] `.m3u8` variant of a working channel (button present, not yet run)
+- [ ] VOD `.mp4` playback and seeking
+- [ ] A second panel, ideally a worse one
+- [ ] Playback on a real Android device / Fire TV, not just desktop
 
 **Why it matters:** §10 picks media_kit over `video_player`/`better_player`
 *specifically* because libmpv is claimed to be more tolerant of malformed

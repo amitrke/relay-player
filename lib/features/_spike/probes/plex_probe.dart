@@ -125,6 +125,10 @@ class _PlexProbeState extends State<PlexProbe> {
       _log.warn('Not linked yet -- approve at plex.tv/link, then poll again.');
       return;
     }
+    // Register before anything can echo it back. universalVideoUrl embeds the
+    // token as X-Plex-Token, and media_kit's "Failed to open <url>" error
+    // reproduces that URL in full.
+    ProbeLog.registerSecrets([token]);
     _log.good('AUTH TOKEN acquired (${token.length} chars, not logged)');
     _client().setToken(token);
   }
