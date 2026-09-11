@@ -57,6 +57,63 @@ class XtreamChannel {
   final String? epgChannelId;
 }
 
+class XtreamVodItem {
+  const XtreamVodItem({
+    required this.streamId,
+    required this.name,
+    required this.containerExtension,
+    this.posterUrl,
+    this.year,
+  });
+
+  final String streamId;
+  final String name;
+
+  /// Panels disagree — mkv is as common as mp4 — and the extension is part of
+  /// the URL, so guessing one would break half a catalogue.
+  final String containerExtension;
+
+  final String? posterUrl;
+  final int? year;
+}
+
+class XtreamSeriesItem {
+  const XtreamSeriesItem({
+    required this.seriesId,
+    required this.name,
+    this.posterUrl,
+    this.year,
+    this.plot,
+  });
+
+  final String seriesId;
+  final String name;
+  final String? posterUrl;
+  final int? year;
+  final String? plot;
+}
+
+class XtreamSeason {
+  const XtreamSeason({required this.number, required this.episodes});
+
+  final int number;
+  final List<XtreamEpisode> episodes;
+}
+
+class XtreamEpisode {
+  const XtreamEpisode({
+    required this.id,
+    required this.title,
+    required this.containerExtension,
+    this.episodeNumber,
+  });
+
+  final String id;
+  final String title;
+  final String containerExtension;
+  final int? episodeNumber;
+}
+
 class XtreamException implements Exception {
   const XtreamException(this.message);
   final String message;
@@ -211,6 +268,113 @@ class XtreamClient {
     ];
   }
 
+  Future<List<XtreamCategory>> vodCategories() =>
+      _categories('get_vod_categories');
+
+  Future<List<XtreamCategory>> seriesCategories() =>
+      _categories('get_series_categories');
+
+  Future<List<XtreamCategory>> _categories(String action) async {
+    final response = await _get({..._auth, 'action': action});
+    final data = response.data;
+    if (data is! List) return const [];
+    return [
+      for (final entry in data)
+        if (entry is Map)
+          XtreamCategory(
+            id: '${entry['category_id']}',
+            name: '${entry['category_name'] ?? 'Unnamed'}',
+          ),
+    ];
+  }
+
+  /// VOD in one category. Required id, for the same reason as [liveStreams] —
+  /// the unfiltered call measured 26.2 MB across 69,397 items in Phase 0.
+  Future<List<XtreamVodItem>> vodStreams(String categoryId) async {
+    final response = await _get({
+      ..._auth,
+      'action': 'get_vod_streams',
+      'category_id': categoryId,
+    });
+    final data = response.data;
+    if (data is! List) return const [];
+    return [
+      for (final entry in data)
+        if (entry is Map)
+          XtreamVodItem(
+            streamId: '${entry['stream_id']}',
+            name: '${entry['name'] ?? 'Unnamed'}',
+            posterUrl: _asNonEmpty(entry['stream_icon']),
+            year: _year(entry['year'] ?? entry['releaseDate']),
+            // §4 builds VOD URLs with this extension, and panels vary — mkv is
+            // as common as mp4, so guessing one would break half a catalogue.
+            containerExtension:
+                _asNonEmpty(entry['container_extension']) ?? 'mp4',
+          ),
+    ];
+  }
+
+  Future<List<XtreamSeriesItem>> series(String categoryId) async {
+    final response = await _get({
+      ..._auth,
+      'action': 'get_series',
+      'category_id': categoryId,
+    });
+    final data = response.data;
+    if (data is! List) return const [];
+    return [
+      for (final entry in data)
+        if (entry is Map)
+          XtreamSeriesItem(
+            seriesId: '${entry['series_id']}',
+            name: '${entry['name'] ?? 'Unnamed'}',
+            posterUrl: _asNonEmpty(entry['cover']),
+            year: _year(entry['year'] ?? entry['releaseDate']),
+            plot: _asNonEmpty(entry['plot']),
+          ),
+    ];
+  }
+
+  /// Seasons and episodes for one series.
+  ///
+  /// `get_series_info` returns episodes keyed by season number in an object,
+  /// not a list, and panels disagree about whether those keys are strings or
+  /// ints — so this reads the map defensively rather than assuming a shape.
+  Future<List<XtreamSeason>> seriesInfo(String seriesId) async {
+    final response = await _get({
+      ..._auth,
+      'action': 'get_series_info',
+      'series_id': seriesId,
+    });
+    final data = response.data;
+    if (data is! Map) return const [];
+    final episodes = data['episodes'];
+    if (episodes is! Map) return const [];
+
+    final seasons = <XtreamSeason>[];
+    for (final entry in episodes.entries) {
+      final number = int.tryParse('${entry.key}');
+      final list = entry.value;
+      if (list is! List) continue;
+      seasons.add(XtreamSeason(
+        number: number ?? 0,
+        episodes: [
+          for (final e in list)
+            if (e is Map)
+              XtreamEpisode(
+                id: '${e['id']}',
+                title: '${e['title'] ?? 'Episode'}',
+                episodeNumber: _asInt(e['episode_num']),
+                containerExtension:
+                    _asNonEmpty(e['container_extension']) ?? 'mp4',
+              ),
+        ],
+      ));
+    }
+    seasons.sort((a, b) => a.number.compareTo(b.number));
+    return seasons;
+  }
+
   /// §4: stream URLs are built client-side, never returned by the API.
   ///
   /// Phase 0 found these 302-redirect to a different host with a tokenised
@@ -220,11 +384,25 @@ class XtreamClient {
   String liveStreamUrl(String streamId, {String ext = 'ts'}) =>
       '$host/live/$username/$password/$streamId.$ext';
 
+  String vodStreamUrl(String streamId, String ext) =>
+      '$host/movie/$username/$password/$streamId.$ext';
+
+  String seriesStreamUrl(String episodeId, String ext) =>
+      '$host/series/$username/$password/$episodeId.$ext';
+
   static int? _asInt(Object? value) => switch (value) {
         final int v => v,
         final String v => int.tryParse(v),
         _ => null,
       };
+
+  /// Panels put a bare year in one field and a full date in another, so take
+  /// the first four digits of whatever arrived.
+  static int? _year(Object? value) {
+    final text = value?.toString() ?? '';
+    final match = RegExp(r'(19|20)\d{2}').firstMatch(text);
+    return match == null ? null : int.tryParse(match.group(0)!);
+  }
 
   static String? _asNonEmpty(Object? value) {
     final text = value?.toString().trim() ?? '';

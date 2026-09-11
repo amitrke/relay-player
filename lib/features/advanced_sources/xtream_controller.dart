@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
+import '../../domain/models/catalog_item.dart';
 import '../settings/settings_controller.dart';
 
 final xtreamAccountStoreProvider = Provider<XtreamAccountStore>((ref) {
@@ -56,26 +57,30 @@ final xtreamClientProvider =
   );
 });
 
+/// (account, catalogue) — Riverpod families take one argument.
+typedef XtreamScope = (XtreamAccount, XtreamCatalogue);
+
 final xtreamCategoriesProvider =
-    FutureProvider.family<List<XtreamCategory>, XtreamAccount>(
-        (ref, account) async {
+    FutureProvider.family<List<XtreamCategory>, XtreamScope>(
+        (ref, scope) async {
+  final (account, catalogue) = scope;
   final client = await ref.watch(xtreamClientProvider(account).future);
-  return client.liveCategories();
+  return switch (catalogue) {
+    XtreamCatalogue.live => client.liveCategories(),
+    XtreamCatalogue.vod => client.vodCategories(),
+    XtreamCatalogue.series => client.seriesCategories(),
+  };
 });
 
 /// Channels for the categories the user actually chose (§4.1).
-///
-/// Never calls the unfiltered endpoint — Phase 0 measured that at 5.3 MB for
-/// live and 26.2 MB for VOD on a real panel. Nothing selected means nothing
-/// fetched, which is the point of opt-in.
 final xtreamChannelsProvider =
     FutureProvider.family<List<XtreamChannel>, XtreamAccount>(
         (ref, account) async {
-  if (account.selectedCategoryIds.isEmpty) return const [];
+  if (account.liveCategoryIds.isEmpty) return const [];
   final client = await ref.watch(xtreamClientProvider(account).future);
 
   final pages = await Future.wait(
-    account.selectedCategoryIds.map((id) async {
+    account.liveCategoryIds.map((id) async {
       try {
         return await client.liveStreams(id);
       } catch (_) {
@@ -85,4 +90,65 @@ final xtreamChannelsProvider =
     }),
   );
   return pages.expand((page) => page).toList();
+});
+
+/// Panel movies and series, as catalogue items for the shared grid.
+///
+/// Never calls the unfiltered endpoints — Phase 0 measured those at 26.2 MB
+/// across 69,397 items for VOD alone. Nothing selected means nothing fetched,
+/// which is what opt-in is for.
+final xtreamCatalogProvider =
+    FutureProvider.family<List<CatalogItem>, XtreamScope>((ref, scope) async {
+  final (account, catalogue) = scope;
+  final ids = account.categoriesFor(catalogue);
+  if (ids.isEmpty) return const [];
+
+  final client = await ref.watch(xtreamClientProvider(account).future);
+
+  final pages = await Future.wait(
+    ids.map((id) async {
+      try {
+        return switch (catalogue) {
+          XtreamCatalogue.vod => [
+              for (final v in await client.vodStreams(id))
+                CatalogItem(
+                  source: CatalogSource.xtream,
+                  sourceId: account.id,
+                  kind: CatalogKind.movie,
+                  // The container extension is part of the playback URL and is
+                  // not recoverable later, so it rides along in the id.
+                  id: '${v.streamId}.${v.containerExtension}',
+                  title: v.name,
+                  year: v.year,
+                  posterUrl: v.posterUrl,
+                ),
+            ],
+          XtreamCatalogue.series => [
+              for (final s in await client.series(id))
+                CatalogItem(
+                  source: CatalogSource.xtream,
+                  sourceId: account.id,
+                  kind: CatalogKind.show,
+                  id: s.seriesId,
+                  title: s.name,
+                  year: s.year,
+                  posterUrl: s.posterUrl,
+                ),
+            ],
+          XtreamCatalogue.live => const <CatalogItem>[],
+        };
+      } catch (_) {
+        return const <CatalogItem>[];
+      }
+    }),
+  );
+  return pages.expand((page) => page).toList();
+});
+
+/// Seasons and episodes of one panel series.
+final xtreamSeriesInfoProvider =
+    FutureProvider.family<List<XtreamSeason>, (XtreamAccount, String)>(
+        (ref, arg) async {
+  final client = await ref.watch(xtreamClientProvider(arg.$1).future);
+  return client.seriesInfo(arg.$2);
 });

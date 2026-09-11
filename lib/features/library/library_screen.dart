@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
-import '../../data/plex/plex_service.dart';
+import '../../data/xtream/xtream_account_store.dart';
+import '../../domain/models/catalog_item.dart';
+import '../advanced_sources/xtream_controller.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../live_tv/live_tv_tab.dart';
@@ -38,30 +40,57 @@ const _perServerTimeout = Duration(seconds: 10);
 /// or stalling must not blank the tab — it should cost you its own titles, not
 /// everyone else's.
 final _libraryProvider =
-    FutureProvider.family<List<SourcedItem>, LibraryTab>((ref, tab) async {
+    FutureProvider.family<List<CatalogItem>, LibraryTab>((ref, tab) async {
   final servers = ref.watch(connectedServersProvider);
   final mapping = ref.watch(libraryMappingProvider);
 
-  final perServer = await Future.wait(
-    servers.map((server) async {
-      try {
-        final sections = await ref.watch(plexSectionsProvider(server.id).future);
-        return await server.service
-            .itemsFrom(mapping.sectionsFor(tab, server.id, sections));
-      } catch (_) {
-        return const <SourcedItem>[];
-      }
-    }).map((f) => f.timeout(
+  final perSource = <Future<List<CatalogItem>>>[
+    for (final server in servers)
+      () async {
+        try {
+          final sections =
+              await ref.watch(plexSectionsProvider(server.id).future);
+          final items = await server.service
+              .itemsFrom(mapping.sectionsFor(tab, server.id, sections));
+          return [
+            for (final i in items) server.service.toCatalogItem(i.metadata),
+          ];
+        } catch (_) {
+          return const <CatalogItem>[];
+        }
+      }(),
+
+    // Panel catalogues merge into the same tabs: a VOD title is a movie and a
+    // panel series is a series, so splitting them out would make the user
+    // remember which source something came from in order to find it.
+    for (final account in ref.watch(xtreamAccountsProvider))
+      if (_catalogueFor(tab) case final catalogue?)
+        () async {
+          try {
+            return await ref
+                .watch(xtreamCatalogProvider((account, catalogue)).future);
+          } catch (_) {
+            return const <CatalogItem>[];
+          }
+        }(),
+  ];
+
+  final gathered = await Future.wait(
+    perSource.map((f) => f.timeout(
           _perServerTimeout,
-          onTimeout: () => const <SourcedItem>[],
+          onTimeout: () => const <CatalogItem>[],
         )),
   );
 
-  return perServer.expand((items) => items).toList()
-    ..sort((a, b) => a.metadata.title
-        .toLowerCase()
-        .compareTo(b.metadata.title.toLowerCase()));
+  return gathered.expand((items) => items).toList()
+    ..sort((a, b) => a.sortKey.compareTo(b.sortKey));
 });
+
+XtreamCatalogue? _catalogueFor(LibraryTab tab) => switch (tab) {
+      LibraryTab.movies => XtreamCatalogue.vod,
+      LibraryTab.series => XtreamCatalogue.series,
+      _ => null,
+    };
 
 /// Home (§12 screen 3).
 ///

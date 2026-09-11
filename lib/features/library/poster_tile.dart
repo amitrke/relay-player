@@ -1,37 +1,25 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../data/local/favorites_store.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
+import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
 
-/// One library item: poster, title, year.
+/// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
   const PosterTile({super.key, required this.item});
 
-  final SourcedItem item;
+  final CatalogItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final metadata = item.metadata;
-    final poster =
-        plexServiceFor(ref, item.serverId).posterUrl(metadata);
-    final isShow = metadata.type == PlexMetadataType.show;
+    final poster = item.posterUrl;
 
     return GestureDetector(
-      // A show has no file of its own — it resolves to seasons and episodes,
-      // so it opens a detail screen. A movie resolves straight to a file.
-      // Both routes carry the server: a ratingKey means nothing without it.
-      onTap: () => context.push(
-        isShow
-            ? '/show/${item.serverId}/${metadata.ratingKey}'
-            : '/play/${item.serverId}/${metadata.ratingKey}',
-      ),
+      onTap: () => context.push(item.route),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -68,9 +56,11 @@ class PosterTile extends ConsumerWidget {
                       dense: true,
                       size: 18,
                       item: FavoriteItem(
-                        kind: isShow ? FavoriteKind.show : FavoriteKind.movie,
-                        sourceId: item.serverId,
-                        itemId: metadata.ratingKey,
+                        kind: item.kind == CatalogKind.show
+                            ? FavoriteKind.show
+                            : FavoriteKind.movie,
+                        sourceId: item.sourceId,
+                        itemId: item.id,
                       ),
                     ),
                   ),
@@ -80,7 +70,7 @@ class PosterTile extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            metadata.title,
+            item.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -90,9 +80,9 @@ class PosterTile extends ConsumerWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (metadata.year != null)
+          if (item.year != null)
             Text(
-              '${metadata.year}',
+              '${item.year}',
               style: TextStyle(color: t.inkDim, fontSize: 11),
             ),
         ],

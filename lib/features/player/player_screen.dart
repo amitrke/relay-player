@@ -9,7 +9,11 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../accounts/plex_session.dart';
+import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
+
+/// Which §4 stream path a panel item uses — live, movie, or series.
+enum XtreamStreamKind { live, vod, episode }
 
 /// What the player was asked to play, before it is resolved to a URL.
 class _Playable {
@@ -36,7 +40,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.serverId,
     required String this.ratingKey,
   })  : accountId = null,
-        streamId = null;
+        streamId = null,
+        kind = XtreamStreamKind.live;
 
   /// A live channel is addressed by account and stream id, never by URL.
   ///
@@ -48,12 +53,34 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.accountId,
     required String this.streamId,
   })  : serverId = null,
-        ratingKey = null;
+        ratingKey = null,
+        kind = XtreamStreamKind.live;
+
+  /// Panel VOD. [streamId] carries the container extension (`1234.mkv`) because
+  /// §4 puts it in the URL and the panel does not hand it back later.
+  const PlayerScreen.vod({
+    super.key,
+    required String this.accountId,
+    required String this.streamId,
+  })  : serverId = null,
+        ratingKey = null,
+        kind = XtreamStreamKind.vod;
+
+  /// A panel series episode. §4 streams these from `/series/...`, a different
+  /// path from films, so the two cannot share one route.
+  const PlayerScreen.episode({
+    super.key,
+    required String this.accountId,
+    required String this.streamId,
+  })  : serverId = null,
+        ratingKey = null,
+        kind = XtreamStreamKind.episode;
 
   final String? serverId;
   final String? ratingKey;
   final String? accountId;
   final String? streamId;
+  final XtreamStreamKind kind;
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
@@ -106,6 +133,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         throw StateError('That line is no longer configured.');
       }
       final client = await ref.read(xtreamClientProvider(account).future);
+
+      if (widget.kind != XtreamStreamKind.live) {
+        final raw = widget.streamId!;
+        final dot = raw.lastIndexOf('.');
+        final id = dot == -1 ? raw : raw.substring(0, dot);
+        final ext = dot == -1 ? 'mp4' : raw.substring(dot + 1);
+
+        if (widget.kind == XtreamStreamKind.episode) {
+          return _Playable(
+            url: client.seriesStreamUrl(id, ext),
+            title: 'Episode',
+            live: false,
+          );
+        }
+
+        final items = await ref
+            .read(xtreamCatalogProvider((account, XtreamCatalogue.vod)).future);
+        final match = items.where((i) => i.id == raw).firstOrNull;
+        return _Playable(
+          url: client.vodStreamUrl(id, ext),
+          title: match?.title ?? 'Film',
+          live: false,
+        );
+      }
+
       final channels = await ref.read(xtreamChannelsProvider(account).future);
       final channel =
           channels.where((c) => c.streamId == widget.streamId).firstOrNull;

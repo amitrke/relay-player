@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:dart_plex/dart_plex.dart';
 
+import '../../domain/models/catalog_item.dart';
+
 /// A 4-character code the user types at plex.tv/link.
 class PlexLinkCode {
   const PlexLinkCode({
@@ -194,6 +196,22 @@ class PlexService {
 
   SourcedItem sourced(PlexMetadata metadata) =>
       SourcedItem(serverId: serverId, metadata: metadata);
+
+  /// Plex metadata as the shared catalogue shape (§2).
+  ///
+  /// Artwork is resolved here because a Plex thumb needs the server's token on
+  /// the query string — the widget that renders it has no way to rebuild that.
+  CatalogItem toCatalogItem(PlexMetadata metadata) => CatalogItem(
+        source: CatalogSource.plex,
+        sourceId: serverId,
+        kind: metadata.type == PlexMetadataType.show
+            ? CatalogKind.show
+            : CatalogKind.movie,
+        id: metadata.ratingKey,
+        title: metadata.title,
+        year: metadata.year,
+        posterUrl: posterUrl(metadata),
+      );
 
   /// Server-side search across every library (§12 screen 8).
   ///

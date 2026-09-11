@@ -9,6 +9,8 @@ import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
 import '../../features/advanced_sources/add_xtream_screen.dart';
 import '../../features/advanced_sources/category_picker_screen.dart';
+import '../../features/advanced_sources/xtream_series_screen.dart';
+import '../../data/xtream/xtream_account_store.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
@@ -82,9 +84,36 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const AddXtreamScreen(),
       ),
       GoRoute(
-        path: '/advanced/xtream/:accountId/categories',
+        path: '/advanced/xtream/:accountId/categories/:catalogue',
         builder: (_, state) => CategoryPickerScreen(
           accountId: state.pathParameters['accountId']!,
+          catalogue: XtreamCatalogue.values.firstWhere(
+            (c) => c.name == state.pathParameters['catalogue'],
+            orElse: () => XtreamCatalogue.live,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/advanced/xtream/:accountId/series/:seriesId',
+        builder: (_, state) => XtreamSeriesScreen(
+          accountId: state.pathParameters['accountId']!,
+          seriesId: state.pathParameters['seriesId']!,
+        ),
+      ),
+      GoRoute(
+        // The id carries the container extension, which is part of the URL §4
+        // builds and is not recoverable from the panel afterwards.
+        path: '/vod/:accountId/:streamId',
+        builder: (_, state) => PlayerScreen.vod(
+          accountId: state.pathParameters['accountId']!,
+          streamId: state.pathParameters['streamId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/episode/:accountId/:episodeId',
+        builder: (_, state) => PlayerScreen.episode(
+          accountId: state.pathParameters['accountId']!,
+          streamId: state.pathParameters['episodeId']!,
         ),
       ),
       GoRoute(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/xtream/xtream_account_store.dart';
 import 'xtream_controller.dart';
 
 /// The configured lines, shown under Settings → Advanced sources.
@@ -46,22 +47,23 @@ class XtreamAccountsPane extends ConsumerWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        account.selectedCategoryIds.isEmpty
-                            ? 'No categories chosen'
-                            : '${account.selectedCategoryIds.length} '
-                                'categories',
+                        [
+                          for (final c in XtreamCatalogue.values)
+                            '${c.label} ${account.categoriesFor(c).length}',
+                        ].join(' · '),
                         style: TextStyle(color: t.inkDim, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => context.push(
-                    '/advanced/xtream/${account.id}/categories',
+                for (final c in XtreamCatalogue.values)
+                  TextButton(
+                    onPressed: () => context.push(
+                      '/advanced/xtream/${account.id}/categories/${c.name}',
+                    ),
+                    child: Text(c.label,
+                        style: TextStyle(color: t.accent, fontSize: 13)),
                   ),
-                  child: Text('Categories',
-                      style: TextStyle(color: t.accent, fontSize: 13)),
-                ),
                 IconButton(
                   tooltip: 'Remove',
                   icon: Icon(Icons.delete_outline, color: t.inkDim, size: 20),

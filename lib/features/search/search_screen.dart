@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
-import '../../data/plex/plex_service.dart';
+import '../../domain/models/catalog_item.dart';
 import '../accounts/plex_session.dart';
 import '../library/poster_grid.dart';
 
@@ -23,7 +23,7 @@ class _QueryController extends Notifier<String> {
 ///
 /// One unreachable server must not blank the results — it should cost you its
 /// own matches, not everyone else's.
-final _resultsProvider = FutureProvider<List<SourcedItem>>((ref) async {
+final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final query = ref.watch(_queryProvider);
   if (query.trim().length < 2) return const [];
 
@@ -31,13 +31,16 @@ final _resultsProvider = FutureProvider<List<SourcedItem>>((ref) async {
   final perServer = await Future.wait(
     servers.map((server) async {
       try {
-        return await server.service.search(query);
+        final found = await server.service.search(query);
+        return [
+          for (final i in found) server.service.toCatalogItem(i.metadata),
+        ];
       } catch (_) {
-        return const <SourcedItem>[];
+        return const <CatalogItem>[];
       }
     }).map((f) => f.timeout(
           const Duration(seconds: 10),
-          onTimeout: () => const <SourcedItem>[],
+          onTimeout: () => const <CatalogItem>[],
         )),
   );
   return perServer.expand((items) => items).toList();

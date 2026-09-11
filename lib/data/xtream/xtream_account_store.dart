@@ -4,6 +4,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../local/app_settings_store.dart';
 
+/// The three catalogues a panel exposes, each with its own categories.
+enum XtreamCatalogue {
+  live('Live TV'),
+  vod('Movies'),
+  series('Series');
+
+  const XtreamCatalogue(this.label);
+
+  final String label;
+}
+
 /// A configured Xtream line, minus its password.
 class XtreamAccount {
   const XtreamAccount({
@@ -11,7 +22,9 @@ class XtreamAccount {
     required this.name,
     required this.host,
     required this.username,
-    this.selectedCategoryIds = const [],
+    this.liveCategoryIds = const [],
+    this.vodCategoryIds = const [],
+    this.seriesCategoryIds = const [],
   });
 
   final String id;
@@ -23,15 +36,35 @@ class XtreamAccount {
 
   /// §4.1: opt-in, not opt-out. Empty means the user has not chosen yet, which
   /// is a prompt to choose rather than a licence to fetch everything.
-  final List<String> selectedCategoryIds;
+  ///
+  /// Split by kind because they are three separate catalogues with their own
+  /// category lists — Phase 0 counted 466 live, 156 VOD and 83 series
+  /// categories on one panel, and a single shared selection would conflate them.
+  final List<String> liveCategoryIds;
+  final List<String> vodCategoryIds;
+  final List<String> seriesCategoryIds;
 
-  XtreamAccount copyWith({String? name, List<String>? selectedCategoryIds}) =>
+  List<String> categoriesFor(XtreamCatalogue catalogue) => switch (catalogue) {
+        XtreamCatalogue.live => liveCategoryIds,
+        XtreamCatalogue.vod => vodCategoryIds,
+        XtreamCatalogue.series => seriesCategoryIds,
+      };
+
+  XtreamAccount withCategories(
+    XtreamCatalogue catalogue,
+    List<String> ids,
+  ) =>
       XtreamAccount(
         id: id,
-        name: name ?? this.name,
+        name: name,
         host: host,
         username: username,
-        selectedCategoryIds: selectedCategoryIds ?? this.selectedCategoryIds,
+        liveCategoryIds:
+            catalogue == XtreamCatalogue.live ? ids : liveCategoryIds,
+        vodCategoryIds:
+            catalogue == XtreamCatalogue.vod ? ids : vodCategoryIds,
+        seriesCategoryIds:
+            catalogue == XtreamCatalogue.series ? ids : seriesCategoryIds,
       );
 
   Map<String, dynamic> toJson() => {
@@ -39,7 +72,9 @@ class XtreamAccount {
         'name': name,
         'host': host,
         'username': username,
-        'categories': selectedCategoryIds,
+        'live': liveCategoryIds,
+        'vod': vodCategoryIds,
+        'series': seriesCategoryIds,
       };
 
   static XtreamAccount? fromJson(Object? raw) {
@@ -53,8 +88,15 @@ class XtreamAccount {
       name: raw['name'] is String ? raw['name'] as String : host,
       host: host,
       username: username,
-      selectedCategoryIds: [
-        for (final c in (raw['categories'] as List? ?? const [])) '$c',
+      // `categories` is the pre-split key and meant live channels. Read it so
+      // an existing selection is not silently thrown away.
+      liveCategoryIds: [
+        for (final c in (raw['live'] ?? raw['categories']) as List? ?? const [])
+          '$c',
+      ],
+      vodCategoryIds: [for (final c in raw['vod'] as List? ?? const []) '$c'],
+      seriesCategoryIds: [
+        for (final c in raw['series'] as List? ?? const []) '$c',
       ],
     );
   }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/plex/plex_service.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
 import '../../data/local/favorites_store.dart';
 import 'poster_tile.dart';
@@ -12,7 +12,7 @@ import 'poster_tile.dart';
 class PosterGrid extends ConsumerWidget {
   const PosterGrid({super.key, required this.items});
 
-  final List<SourcedItem> items;
+  final List<CatalogItem> items;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,11 +21,11 @@ class PosterGrid extends ConsumerWidget {
       items,
       ref.watch(favoritesProvider),
       (item) => FavoriteItem(
-        kind: item.metadata.type.wire == 'show'
+        kind: item.kind == CatalogKind.show
             ? FavoriteKind.show
             : FavoriteKind.movie,
-        sourceId: item.serverId,
-        itemId: item.metadata.ratingKey,
+        sourceId: item.sourceId,
+        itemId: item.id,
       ),
     );
     final columns = switch (f) {

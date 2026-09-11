@@ -75,7 +75,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
     final f = RelayLayout.of(context);
     final account = widget.account;
 
-    if (account.selectedCategoryIds.isEmpty) {
+    if (account.liveCategoryIds.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -93,8 +93,8 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
               const SizedBox(height: 18),
               RelayButton(
                 label: 'Choose categories',
-                onPressed: () => context
-                    .push('/advanced/xtream/${account.id}/categories'),
+                onPressed: () => context.push(
+                    '/advanced/xtream/${account.id}/categories/live'),
               ),
             ],
           ),

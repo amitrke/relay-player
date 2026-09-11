@@ -92,7 +92,8 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
       });
       // Straight into category selection: §4.1 is opt-in, so a line with
       // nothing chosen yet shows an empty Live TV tab until the user picks.
-      context.pushReplacement('/advanced/xtream/${account.id}/categories');
+      context.pushReplacement(
+          '/advanced/xtream/${account.id}/categories/live');
     } on XtreamException catch (e) {
       setState(() {
         _busy = false;

@@ -20,9 +20,14 @@ import 'xtream_controller.dart';
 /// and would open on a screen full of brand-named categories, which §1.6 calls
 /// out as a store-screenshot hazard.
 class CategoryPickerScreen extends ConsumerStatefulWidget {
-  const CategoryPickerScreen({super.key, required this.accountId});
+  const CategoryPickerScreen({
+    super.key,
+    required this.accountId,
+    required this.catalogue,
+  });
 
   final String accountId;
+  final XtreamCatalogue catalogue;
 
   @override
   ConsumerState<CategoryPickerScreen> createState() =>
@@ -87,13 +92,13 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
   }
 
   Set<String> get _current =>
-      _selected ?? {...?_account?.selectedCategoryIds};
+      _selected ?? {...?_account?.categoriesFor(widget.catalogue)};
 
   Future<void> _save() async {
     final account = _account;
     if (account == null) return;
     await ref.read(xtreamAccountsProvider.notifier).save(
-          account.copyWith(selectedCategoryIds: _current.toList()),
+          account.withCategories(widget.catalogue, _current.toList()),
         );
     if (mounted) Navigator.of(context).maybePop();
   }
@@ -112,7 +117,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
       );
     }
 
-    final categories = ref.watch(xtreamCategoriesProvider(account));
+    final categories = ref.watch(xtreamCategoriesProvider((account, widget.catalogue)));
 
     return Scaffold(
       backgroundColor: t.bg,
@@ -120,7 +125,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: const Text('Choose categories'),
+        title: Text('${widget.catalogue.label} categories'),
         actions: [
           TextButton(
             onPressed: _save,
