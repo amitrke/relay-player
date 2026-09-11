@@ -62,7 +62,6 @@ this while it is unproven.
 
 | # | What |
 |---|---|
-| ❌ | **libmpv cannot open `content://` URIs.** Confirmed 2026-09-11: a SAF document URI fails with "Failed to recognize file format". Picked folders browse but do not play, pending §7.2's loopback bridge — the same one Phase 0 validated for SMB |
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
@@ -89,7 +88,9 @@ Recorded to stop this becoming a list of everything.
   search over 692 channels
 - **Local storage**: media permission flow including Android 14's partial-access
   option, folder enumeration, and playing a device file end to end; SAF folder
-  picking with a persistable grant, and browsing subfolders and files inside it
+  picking with a persistable grant, browsing subfolders and files inside it, and
+  playing one through §7.2's loopback bridge — with the same three-range request
+  pattern Phase 0 saw over SMB
 - **App**: Advanced Sources gate including the §8.2 acknowledgement, Live TV tab
   appearing and disappearing with it, favourites persisting, watch history
   surviving an emulator cold boot, settings persistence
@@ -100,11 +101,16 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-15 tests, all covering theme tokens and probe-log scrubbing. §15 asks for unit
-tests on Xtream response parsing, the Plex PIN state machine, M3U parser edge
-cases and Advanced Sources toggle state; none exist. The Xtream client in
-particular parses defensively against exactly one panel's JSON, so a second
-panel is as likely to break it as to confirm it.
+23 tests. The loopback bridge now has real coverage — ranges, suffix ranges, the
+unsatisfiable case, HEAD, and path rejection — which is the first piece of this
+app tested rather than demonstrated, and it paid for itself immediately by
+proving the bridge was correct while the Android path was still broken.
+
+Everything else is still thin. §15 asks for unit tests on Xtream response
+parsing, the Plex PIN state machine, M3U parser edge cases and Advanced Sources
+toggle state; none exist. The Xtream client in particular parses defensively
+against exactly one panel's JSON, so a second panel is as likely to break it as
+to confirm it.
 
 Manual verification on hardware does not substitute for that, and neither
 substitutes for the other.

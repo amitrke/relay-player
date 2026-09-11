@@ -76,24 +76,17 @@ class SafFolderScreen extends ConsumerWidget {
                     extra: folder.name,
                   ),
                 ),
-              // Listed but not playable yet. libmpv cannot open a `content://`
-              // URI — it reports "Failed to recognize file format" — so these
-              // need §7.2's loopback bridge, the same one Phase 0 validated for
-              // SMB. Offering a tap that always fails would be worse than
-              // saying so.
+              // Played through §7.2's loopback bridge: libmpv cannot open a
+              // `content://` URI directly, so the size travels with the route
+              // because the bridge must answer Content-Length before any read.
               for (final video in data.videos)
                 _Row(
                   icon: Icons.movie_outlined,
                   label: video.name,
                   trailing: _size(video.sizeBytes),
-                  enabled: false,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Picked folders can be browsed but not played yet — '
-                        'that needs the local streaming bridge.',
-                      ),
-                    ),
+                  onTap: () => context.push(
+                    '/safplay/${Uri.encodeComponent(video.uri)}',
+                    extra: (video.name, video.sizeBytes),
                   ),
                 ),
             ],
@@ -118,14 +111,12 @@ class _Row extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.trailing,
-    this.enabled = true,
   });
 
   final IconData icon;
   final String label;
   final String? trailing;
   final VoidCallback onTap;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +142,7 @@ class _Row extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: enabled ? t.ink : t.inkDim,
+                      color: t.ink,
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -163,8 +154,7 @@ class _Row extends StatelessWidget {
                     style: TextStyle(color: t.inkDim, fontSize: 12.5),
                   ),
                 const SizedBox(width: 10),
-                Icon(enabled ? Icons.chevron_right : Icons.block,
-                    color: t.inkDim, size: enabled ? 24 : 18),
+                Icon(Icons.chevron_right, color: t.inkDim),
               ],
             ),
           ),

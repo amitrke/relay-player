@@ -719,9 +719,22 @@ Not answerable on desktop. Deferred from the probes above but still Phase 0.
       So **§7.2's loopback bridge is required for SAF, not only for SMB.** That
       is the same conclusion Q3 reached for `smb://`, from a different
       direction, and it confirms §7.2's note that the bridge "becomes reusable
-      infrastructure" rather than being SMB-specific. Picked folders are
-      browsable today and deliberately not playable, rather than offering a tap
-      that always fails.
+      infrastructure" rather than being SMB-specific.
+
+      **✅ Built and working, 2026-09-11.** The bridge now serves SAF over
+      `http://127.0.0.1`, and libmpv played a file from a picked folder. The
+      request pattern matched Q3's SMB run exactly, which is the part worth
+      recording:
+
+      ```
+      GET range=bytes=0-           <- opens
+      GET range=bytes=1302914-     <- jumps to the tail for the MP4 index
+      GET range=bytes=48-          <- comes back to play
+      ```
+
+      That middle request is the proof. A bridge that ignored `Range` would look
+      fine on the first request and fail precisely there — which is why byte
+      ranges are a requirement rather than an optimisation.
 - [x] **`MediaStore` scan returns video without `MANAGE_EXTERNAL_STORAGE`** —
       verified 2026-09-11 on an Android 14 emulator. `READ_MEDIA_VIDEO` alone is
       enough: the scoped dialog appears, folders enumerate, and a MediaStore id

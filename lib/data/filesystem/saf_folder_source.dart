@@ -1,8 +1,12 @@
 import 'dart:convert';
 
+import 'dart:typed_data';
+
+import 'package:saf_stream/saf_stream.dart';
 import 'package:saf_util/saf_util.dart';
 
 import '../local/app_settings_store.dart';
+import 'loopback_bridge.dart';
 
 /// A folder the user granted access to through the Storage Access Framework.
 class SafFolder {
@@ -134,6 +138,10 @@ class SafFolderSource {
     ];
   }
 
+  /// A SAF file, as something the loopback bridge can serve.
+  Future<BridgeSource> bridgeSourceFor(SafVideo video) async =>
+      _SafBridgeSource(video);
+
   /// SAF reports MIME types inconsistently across providers, so the extension
   /// is the more reliable signal here.
   static bool _looksLikeVideo(String name) {
@@ -141,4 +149,43 @@ class SafFolderSource {
     if (dot == -1) return false;
     return _videoExtensions.contains(name.substring(dot + 1).toLowerCase());
   }
+}
+
+/// Random-access reads from a `content://` URI.
+///
+/// `readFileBytes(start:, count:)` is the whole reason this works: SAF can be
+/// read at an offset, so the bridge can answer a range rather than only
+/// streaming forwards from zero.
+class _SafBridgeSource implements BridgeSource {
+  _SafBridgeSource(this._video);
+
+  final SafVideo _video;
+  final SafStream _stream = SafStream();
+
+  @override
+  String get name => _video.name;
+
+  @override
+  int get length => _video.sizeBytes;
+
+  @override
+  String get contentType {
+    final dot = _video.name.lastIndexOf('.');
+    final ext = dot == -1 ? '' : _video.name.substring(dot + 1).toLowerCase();
+    return switch (ext) {
+      'mp4' || 'm4v' => 'video/mp4',
+      'mkv' => 'video/x-matroska',
+      'webm' => 'video/webm',
+      'ts' || 'm2ts' => 'video/mp2t',
+      'avi' => 'video/x-msvideo',
+      'mov' => 'video/quicktime',
+      // libmpv sniffs the container itself, so an unknown type is not fatal —
+      // it just stops the type being a useful hint.
+      _ => 'application/octet-stream',
+    };
+  }
+
+  @override
+  Future<Uint8List> read(int start, int count) =>
+      _stream.readFileBytes(_video.uri, start: start, count: count);
 }

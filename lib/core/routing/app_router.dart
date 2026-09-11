@@ -153,17 +153,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/saf/:uri',
+        // Not decoded again: go_router has already decoded the path parameter,
+        // and a second pass collapses the %2F inside a SAF document id into a
+        // real slash — which silently turns the file's URI into its parent
+        // directory's. That surfaces as EISDIR when the bytes are read.
         builder: (_, state) => SafFolderScreen(
-          uri: Uri.decodeComponent(state.pathParameters['uri']!),
+          uri: state.pathParameters['uri']!,
           title: state.extra as String?,
         ),
       ),
       GoRoute(
         path: '/safplay/:uri',
-        builder: (_, state) => PlayerScreen.saf(
-          safUri: Uri.decodeComponent(state.pathParameters['uri']!),
-          name: state.extra as String?,
-        ),
+        builder: (_, state) {
+          final extra = state.extra as (String, int)?;
+          return PlayerScreen.saf(
+            safUri: state.pathParameters['uri']!,
+            name: extra?.$1,
+            size: extra?.$2 ?? 0,
+          );
+        },
       ),
       GoRoute(
         path: '/localplay/:assetId',

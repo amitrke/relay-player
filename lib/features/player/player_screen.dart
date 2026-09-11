@@ -13,6 +13,8 @@ import '../accounts/plex_session.dart';
 import '../../data/local/history_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
+import '../../data/filesystem/loopback_bridge.dart';
+import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../favorites_history/history_controller.dart';
 
@@ -65,7 +67,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
         kind = XtreamStreamKind.live,
         assetId = null,
         safUri = null,
-        safName = null;
+        safName = null,
+        safSize = 0;
 
   /// A live channel is addressed by account and stream id, never by URL.
   ///
@@ -81,7 +84,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
         kind = XtreamStreamKind.live,
         assetId = null,
         safUri = null,
-        safName = null;
+        safName = null,
+        safSize = 0;
 
   /// Panel VOD. [streamId] carries the container extension (`1234.mkv`) because
   /// §4 puts it in the URL and the panel does not hand it back later.
@@ -94,7 +98,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
         kind = XtreamStreamKind.vod,
         assetId = null,
         safUri = null,
-        safName = null;
+        safName = null,
+        safSize = 0;
 
   /// A panel series episode. §4 streams these from `/series/...`, a different
   /// path from films, so the two cannot share one route.
@@ -107,7 +112,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
         kind = XtreamStreamKind.episode,
         assetId = null,
         safUri = null,
-        safName = null;
+        safName = null,
+        safSize = 0;
 
   /// A video on this device, addressed by its MediaStore id.
   ///
@@ -121,6 +127,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
         streamId = null,
         safUri = null,
         safName = null,
+        safSize = 0,
         kind = XtreamStreamKind.live;
 
   /// A file inside a folder the user granted through SAF.
@@ -128,7 +135,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
     super.key,
     required String this.safUri,
     String? name,
+    int size = 0,
   })  : safName = name,
+        safSize = size,
         serverId = null,
         ratingKey = null,
         accountId = null,
@@ -145,6 +154,10 @@ class PlayerScreen extends ConsumerStatefulWidget {
   /// A `content://` URI from a SAF-granted folder.
   final String? safUri;
   final String? safName;
+
+  /// Known up front from the directory listing, and required: the bridge has to
+  /// answer `Content-Length` and ranges before anything is read.
+  final int safSize;
 
   final XtreamStreamKind kind;
 
@@ -179,6 +192,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   HistoryController? _history;
   PlexService? _plexService;
 
+  /// Torn down with the player. Left running it would keep a port open and hold
+  /// the SAF read handle for a file nobody is watching.
+  LoopbackBridge? _bridge;
+
   /// Plex asks for roughly this cadence, and it doubles as how often local
   /// history is written — often enough that a crash loses seconds, rare enough
   /// that it is not a write per frame.
@@ -205,6 +222,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       unawaited(s.cancel());
     }
     _player.dispose();
+    unawaited(_bridge?.stop());
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -212,11 +230,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<_Playable> _resolve() async {
     final safUri = widget.safUri;
     if (safUri != null) {
-      // Handed to libmpv as-is. Whether it can open a `content://` URI at all
-      // is the open question here; if it cannot, §7.2's loopback bridge is the
-      // answer, and it is already designed to be reused for exactly this.
+      // libmpv cannot open a `content://` URI — it answers "Failed to recognize
+      // file format". §7.2's loopback bridge puts an HTTP server in front so the
+      // player gets something it can actually read.
+      final source = await ref.read(safFolderSourceProvider).bridgeSourceFor(
+            SafVideo(
+              uri: safUri,
+              name: widget.safName ?? 'Video',
+              sizeBytes: widget.safSize,
+            ),
+          );
+      final bridge = LoopbackBridge();
+      _bridge = bridge;
       return _Playable(
-        url: safUri,
+        url: await bridge.serve(source),
         title: widget.safName ?? 'Video',
         live: false,
       );
