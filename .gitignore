@@ -85,8 +85,5 @@ app.*.map.json
 **/windows/flutter/generated_plugin_registrant.h
 **/windows/flutter/generated_plugins.cmake
 
-# Phase 0 spike: local credentials for probe runs. NEVER commit these.
-# See lib/features/_spike/spike_config.example.dart
-spike_config.dart
-**/spike_config.dart
+# Probe credentials are passed with --dart-define, never written to a file.
 .env
