@@ -423,42 +423,106 @@ before the iOS submission, not during it.**
 
 ## Q4 — M3U/XMLTV parse cost and data quality (§5)
 
-**Status:** ⬜
+**Status:** ✅ answered 2026-09-11. Both parsers work. One result contradicts
+§5's prescription and is the most useful finding here.
 
-**Probe:** Tab 4.
+### Measurements
 
-**M3U:**
-
-| Metric | Value |
-|---|---|
-| Entries parsed | |
-| Missing `tvg-id` (cannot be EPG-linked) | |
-| Missing `group-title` | |
-| Distinct groups | |
-| Any movie/series-looking groups? | |
-
-§5 says treat M3U as "Live only" unless `group-title` clearly separates
-Movies/Series. Does this playlist support that default?
-
-> _(record here)_
-
-**XMLTV:**
+**M3U** (`get.php?type=m3u_plus`):
 
 | Metric | Value |
 |---|---|
-| Download size (compressed / decompressed) | |
-| Channels / programmes | |
-| Parse on **main isolate** (ms) | |
-| Parse via `compute()` (ms) | |
-| Did the UI visibly freeze? | |
+| Download | **40.07 MB** (42,011,924 bytes) in 7,079 ms |
+| Entries parsed | **167,862** |
+| Parse on **main isolate** | **422 ms** |
+| Parse via **`compute()`** | **1,033 ms** |
+| Missing `tvg-id` | **166,402 / 167,862 (99.1%)** |
+| Missing `group-title` | 9 / 167,862 (0.005%) |
+| Missing `tvg-logo` | 72,878 |
+| Distinct groups | 706 |
 
-**Then re-run this same probe on the weakest device you target (Fire TV, §11).**
-Desktop timings understate this badly, and §5's isolate requirement stands or
-falls on the slow-device number, not the fast one.
+**XMLTV** (`xmltv.php`):
 
-> _(record here)_
+| Metric | Value |
+|---|---|
+| Download | 0.24 MB in 1,406 ms |
+| Parse on main isolate | 57 ms |
+| Parse via `compute()` | 37 ms |
+| Channels / programmes | **1,544 / 0** |
 
----
+### 🔴 `compute()` made the M3U parse 2.4× *slower* — §5's advice needs refining
+
+This is the finding worth keeping. §5 (and my own note in §11) says to parse in
+a background isolate. Measured, naive `compute()` is **worse**: 1,033 ms versus
+422 ms on the main isolate.
+
+The reason is that `compute()` spawns an isolate and **copies data across the
+boundary** — a 40 MB string in, and a 167,862-element list of objects back.
+That copy dominates; the parse itself is comparatively cheap.
+
+**Both numbers are bad, for different reasons:**
+
+- 422 ms on the main isolate is roughly **25 dropped frames** at 60 Hz — a
+  visible, janky freeze. So "just parse on the main isolate" is not the answer
+  either.
+- 1,033 ms in an isolate is worse in total, even though the UI stays smooth.
+
+**What the architecture should actually say:** the goal is not "use an isolate",
+it is **don't move bulk data across an isolate boundary**. Concretely:
+
+- Stream the download *into* a long-lived isolate rather than materialising a
+  40 MB string and handing it over.
+- Parse there and send back only what the UI needs — compact records, or better,
+  write straight into the on-disk cache from the isolate and return a count.
+- Never `compute()` a large payload. `compute()` suits CPU-heavy work on small
+  inputs, which is the opposite of this shape.
+
+§5 and §11 should both be amended: the current wording would lead a developer
+to the slower implementation and call it the fix.
+
+*(Note the XMLTV row shows the opposite — `compute()` was faster, 37 ms vs
+57 ms. That file is 0.24 MB. The crossover is about payload size, which is
+exactly the point.)*
+
+### 🔴 99.1% of M3U entries have no `tvg-id`
+
+Worse than the API's 91% (Q6), on the same provider. Combined with an XMLTV
+export containing **zero programmes**, the EPG is not merely sparse for this
+provider — it cannot function at all. §12 screen 7 needs an honest empty state.
+
+`group-title`, by contrast, is present on all but 9 of 167,862 entries, so
+**category navigation is viable even though the guide is not**.
+
+### 🟡 The M3U is the whole catalogue, not just live
+
+167,862 entries against the API's 15,951 live streams. `m3u_plus` includes VOD
+and series episodes too. Two consequences: the 40 MB figure is what a real
+import costs, and §5's "treat M3U as Live only" default would hide the large
+majority of what this playlist contains.
+
+90 of the 706 groups look like VOD/series. §5 says not to guess, and that
+remains right — but "Live only" is clearly the wrong default *for this
+playlist*, so the UI needs to let the user decide rather than pick for them.
+
+### 🔴 Store-policy hazard: group names are streaming-service brands
+
+The largest groups are, in order: **NETFLIX (19,611)**, **NETFLIX (MULTI
+LANGUAGE) (8,720)**, `PAK: GEO ENTERTAINMENT`, `PAK: HUM TV`, `GERMANY MOVIES`,
+… and **AMAZON PRIME (2,491)**.
+
+These are user-supplied strings, so rendering them is no different from any
+other player showing a playlist's own labels — that is not the risk. The risk
+is §1.6: *"Don't use real broadcaster/channel names, logos, or sports branding
+anywhere in your own marketing, screenshots, or app icon."*
+
+**A single App Store or Play screenshot showing a category list reading
+"NETFLIX" would be exactly the trigger §1 warns about.** This is a concrete,
+easily-made mistake that no amount of careful architecture prevents.
+
+**Action:** add to the §13 Phase 6 store checklist — every screenshot must come
+from Plex, local files or SMB content, never from an IPTV playlist, and the
+Advanced-sources UI must never appear in store assets at all. Worth writing
+down now rather than discovering it at submission.
 
 ## Q5 — Platform questions (Android device required)
 
