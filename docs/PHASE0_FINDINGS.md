@@ -209,6 +209,57 @@ treats like any progressive source. Step 3.5 now fetches the item, walks
 `media → parts`, and streams that. It is also the correct isolation test, since
 it touches no transcoder machinery at all.
 
+#### 🔴 Plex content opens but does not actually play
+
+**Status:** 🟡 instrumented 2026-09-11, awaiting a re-run.
+
+Direct play via the Part key reported success and showed **a black picture**.
+The probe was wrong, not the report: it treated `videoParams` (libmpv having
+parsed the stream header and learned the dimensions) as proof of playback.
+**It is not.** libmpv populates that after reading the header even when
+decoding then stalls.
+
+`_openAndAwait` now samples `Player.state.position` six times over three
+seconds and requires it to actually advance, logging the samples plus
+`playing`, `buffering`, `duration` and track counts. "Opened" and "playing"
+are now distinguishable in the transcript.
+
+**Carry this into Phase 1:** neither `await player.open(...)` returning nor
+`videoParams` arriving means anything played. The clock moving is the only
+trustworthy signal, and any "is it playing?" check in the real app needs to use
+it too.
+
+#### Hypothesis under test — libmpv TLS against `*.plex.direct`
+
+curl reaches this server over HTTPS without difficulty, but curl uses the
+Windows certificate store and libmpv ships its own TLS stack. Inspecting the
+bundled binary:
+
+| Property | Value |
+|---|---|
+| `libmpv-2.dll` | 28 MB, **dated 2023-09-24** — over two years old |
+| TLS backend | **GnuTLS** (no OpenSSL strings present) |
+| Options present | `tls-ca-file`, `tls-verify` |
+| CA bundle shipped with the app | **none** |
+
+GnuTLS on Windows does not read the OS certificate store; it expects a CA file
+at a compile-time path that does not exist on Windows. That is a plausible
+mechanism for a silent stall — though not proven, since `schannel` strings are
+also present (ffmpeg may fall back to it) and mpv's `tls-verify` has
+historically defaulted to off.
+
+**Step 3.5 now settles it automatically.** If HTTPS does not progress, the probe
+retries the *identical* file over `http://<lan-ip>:32400` and reports:
+
+- plain HTTP plays, HTTPS does not → **libmpv TLS**. That affects every Plex
+  stream, is a media_kit/libmpv issue rather than a `dart_plex` one, and bears
+  on §10. Fixes: ship a CA bundle, set `tls-ca-file`, or prefer the plain-HTTP
+  LAN connection for local servers.
+- neither plays → not TLS; look at byte-range serving and the file itself.
+
+**Incidental:** the bundled libmpv being two years stale is worth noting on its
+own for §10 — it bounds codec support and carries whatever CVEs 2023 had.
+
 #### Open — does transcode playback actually run end to end?
 
 **Status:** 🟡 workaround in place, needs a re-run.

@@ -220,18 +220,24 @@ class _PlexProbeState extends State<PlexProbe> {
   /// error arrives later on a different stream. That made the earlier
   /// transcript read as a success followed by an unexplained error. This waits
   /// for whichever comes first: a frame, or an error.
+  /// **`videoParams` is not proof of playback.** It fires when libmpv has
+  /// parsed the stream header and knows the dimensions — which happens even
+  /// when decoding then stalls and the surface stays black. An earlier version
+  /// of this probe reported "PLAYING" on that signal and was wrong.
+  ///
+  /// The only trustworthy evidence is the clock moving, so this samples
+  /// [Player.state.position] and requires it to actually advance.
   Future<bool> _openAndAwait(String url, String label,
       {Duration timeout = const Duration(seconds: 15)}) async {
-    final done = Completer<bool>();
+    final opened = Completer<bool>();
     final sw = Stopwatch()..start();
+    int? headerMs;
 
     late final StreamSubscription<String> errSub;
-    late final StreamSubscription<VideoParams> frameSub;
+    late final StreamSubscription<VideoParams> paramSub;
 
     void finish(bool ok) {
-      if (done.isCompleted) return;
-      sw.stop();
-      done.complete(ok);
+      if (!opened.isCompleted) opened.complete(ok);
     }
 
     errSub = _player.stream.error.listen((e) {
@@ -239,10 +245,11 @@ class _PlexProbeState extends State<PlexProbe> {
       _log.bad('  $e');
       finish(false);
     });
-    frameSub = _player.stream.videoParams.listen((p) {
-      if (p.w != null) {
-        _log.good('$label PLAYING after ${sw.elapsedMilliseconds} ms '
-            '— ${p.w}x${p.h}');
+    paramSub = _player.stream.videoParams.listen((p) {
+      if (p.w != null && headerMs == null) {
+        headerMs = sw.elapsedMilliseconds;
+        _log.info('$label: header parsed at ${headerMs}ms '
+            '— ${p.w}x${p.h} (NOT yet proof of playback)');
         finish(true);
       }
     });
@@ -250,17 +257,51 @@ class _PlexProbeState extends State<PlexProbe> {
     _log.info('$label: opening ...');
     try {
       await _player.open(Media(url));
-      final ok = await done.future.timeout(timeout, onTimeout: () {
-        _log.bad('$label: no frame and no error after ${timeout.inSeconds}s');
+      final headerOk = await opened.future.timeout(timeout, onTimeout: () {
+        _log.bad('$label: no header and no error after ${timeout.inSeconds}s');
         return false;
       });
-      return ok;
+      if (!headerOk) return false;
+
+      // Now the real test: does the clock move?
+      final samples = <Duration>[];
+      for (var i = 0; i < 6; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        samples.add(_player.state.position);
+      }
+      final advanced = samples.last > samples.first;
+      final s = _player.state;
+      _log.info('$label: position samples '
+          '${samples.map((d) => d.inMilliseconds).join(", ")} ms');
+      _log.info('$label: playing=${s.playing} buffering=${s.buffering} '
+          'duration=${s.duration.inSeconds}s '
+          'audioTracks=${s.tracks.audio.length} '
+          'videoTracks=${s.tracks.video.length}');
+
+      if (advanced) {
+        _log.good('$label ACTUALLY PLAYING — position advanced '
+            '${samples.last.inMilliseconds - samples.first.inMilliseconds} ms '
+            'over 3s (header at ${headerMs}ms)');
+        return true;
+      }
+
+      _log.bad('$label OPENED BUT STALLED — libmpv parsed the header but the '
+          'position never advanced. This is why the picture is black.');
+      if (s.buffering) {
+        _log.warn('  still buffering: the server is accepting the request but '
+            'not delivering data fast enough, or at all.');
+      }
+      if (s.duration == Duration.zero) {
+        _log.warn('  duration is 0 — libmpv may not have a seekable/complete '
+            'stream. Check the server is serving byte ranges (206).');
+      }
+      return false;
     } catch (e) {
       _log.bad('$label: open() threw: $e');
       return false;
     } finally {
       await errSub.cancel();
-      await frameSub.cancel();
+      await paramSub.cancel();
     }
   }
 
@@ -313,17 +354,60 @@ class _PlexProbeState extends State<PlexProbe> {
     final url = '$base${part.key}?X-Plex-Token=$token';
     _log.info(_redact(url));
 
-    final ok = await _openAndAwait(url, 'direct play (Part key)');
+    final ok = await _openAndAwait(url, 'direct play (Part key, https)');
     await _player.stop();
 
     if (ok) {
       _log.good('Transport and direct play are BOTH fine. A transcode failure '
           'after this is a transcoder/URL problem, not a connection problem.');
+      return;
+    }
+
+    // Automatic control. curl reaches this server over HTTPS without trouble,
+    // but curl uses the OS certificate store and libmpv ships its own. If the
+    // identical request succeeds over plain HTTP, the difference is TLS
+    // validation inside libmpv -- which would affect every Plex stream and is
+    // a far bigger finding than anything transcoder-specific.
+    _log.warn('HTTPS direct play did not progress. Retrying the SAME file over '
+        'plain HTTP to isolate libmpv TLS ...');
+
+    final plain = _plainHttpBase();
+    if (plain == null) {
+      _log.bad('No plain-HTTP candidate available to test with.');
+      _logConnectionCandidates();
+      return;
+    }
+
+    final plainUrl = '$plain${part.key}?X-Plex-Token=$token';
+    _log.info(_redact(plainUrl));
+    final plainOk = await _openAndAwait(plainUrl, 'direct play (Part key, http)');
+    await _player.stop();
+
+    if (plainOk) {
+      _log.bad('DIAGNOSIS: plain HTTP plays, HTTPS does not.');
+      _log.bad('libmpv cannot validate the *.plex.direct certificate. This '
+          'affects EVERY Plex stream, not just transcode, and is a '
+          'media_kit/libmpv issue rather than a dart_plex one.');
+      _log.warn('Options: ship a CA bundle with the app, configure libmpv with '
+          'tls-ca-file, or prefer the plain-HTTP LAN connection when the '
+          'server is local. Record this in Q2 and revisit S10.');
     } else {
-      _log.bad('Direct play of a plain file failed -- this IS a transport '
-          'problem, not a transcoder one.');
+      _log.bad('Neither HTTPS nor HTTP progressed. The problem is not TLS. '
+          'Check whether the server is serving byte ranges and whether this '
+          'file is playable at all.');
       _logConnectionCandidates();
     }
+  }
+
+  /// A `http://<address>:<port>` form of the connected server, for the control
+  /// test above.
+  String? _plainHttpBase() {
+    for (final server in _servers) {
+      for (final c in server.connections) {
+        if (c.local) return 'http://${c.address}:${c.port}';
+      }
+    }
+    return null;
   }
 
   /// bestConnection() picks one URI; when it fails the others are worth
