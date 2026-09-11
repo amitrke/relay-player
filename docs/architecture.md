@@ -106,7 +106,25 @@ Local persistence: **Isar** or **Hive** for these (fast, no native SQL needed); 
 
 Core endpoints you'll call against `{host}/player_api.php`:
 
-- `?username=&password=` — auth + account/server info (expiry, max connections, etc. — worth surfacing in Settings)
+- `?username=&password=` — auth + account/server info (expiry, status, `is_trial`, `allowed_output_formats`)
+
+**🔴 `max_connections` is a player-lifecycle constraint, not a Settings detail.**
+Phase 0 measured a real line with `max_connections: 1`, which is the common
+case. One concurrent stream, total. The player must therefore guarantee it
+never holds two open at once:
+
+- **Channel zapping must stop the current stream before opening the next**, not
+  open-then-stop. The natural implementation — start the new one, then tear the
+  old one down — is the wrong one here, and fails in a way that looks like a
+  flaky provider rather than a client bug.
+- No preview-while-playing, no second window on desktop, no picture-in-picture
+  of a *different* channel.
+- A dead channel that never yields a frame must **release the connection on
+  timeout** (§10), or it burns the user's only slot.
+- A crash or force-quit can leave the connection held server-side until it
+  times out, so the next launch fails with no visible cause. Surface
+  `active_cons` and `max_connections` in Settings so the user can see this
+  rather than guess.
 - `&action=get_live_categories` / `get_live_streams&category_id=`
 - `&action=get_vod_categories` / `get_vod_streams&category_id=` / `get_vod_info&vod_id=`
 - `&action=get_series_categories` / `get_series&category_id=` / `get_series_info&series_id=`
@@ -181,8 +199,70 @@ Advanced Sources gate (§8) like the rest of the Xtream client.
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.
-- Parse XMLTV (`.xml`/`.xml.gz`) for EPG; `xml` package + manual gzip decode covers it. **Do this in a background isolate, streaming, never on the main isolate** — full-guide XMLTV exports routinely run to tens or hundreds of megabytes uncompressed, and a synchronous parse will lock the UI for seconds. Use `compute()`/`Isolate.run()` with the `xml` package's event/streaming parser rather than building a full DOM, and persist to the EPG cache incrementally as you go. This lands hardest on Fire TV (§11), the weakest hardware in the target matrix, so treat it as a correctness requirement rather than an optimization to revisit.
+- Parse XMLTV (`.xml`/`.xml.gz`) for EPG; `xml` package + manual gzip decode covers it. Use the event/streaming parser, never a full DOM.
+
+**Parsing rule — corrected by Phase 0 measurement. Read this before reaching for `compute()`.**
+
+An earlier version of this plan said "always parse in a background isolate via
+`compute()`". Measured against a real 40 MB playlist (167,862 entries), that
+advice produces the *slower* implementation:
+
+| | Main isolate | `compute()` |
+|---|---|---|
+| M3U, 40 MB | **422 ms** | **1,033 ms** ← 2.4× slower |
+| XMLTV, 0.24 MB | 57 ms | 37 ms |
+
+`compute()` spawns an isolate and **copies data across the boundary** — the
+whole payload in, the whole result list back. On a large payload that copy
+dominates and the parse itself is comparatively cheap. The crossover is payload
+size, which is why the small XMLTV file shows the opposite result.
+
+Both figures above are unacceptable for different reasons: 422 ms on the main
+isolate is ~25 dropped frames, a visible freeze, so staying on the main isolate
+is not the answer either.
+
+**The actual rule is: don't move bulk data across an isolate boundary.**
+
+- Stream the download *into* a long-lived isolate rather than materialising a
+  40 MB string and handing it over.
+- Parse there, and return only what the UI needs — compact records, or better,
+  write straight into the on-disk cache from inside the isolate and return a
+  count.
+- Reserve `compute()` for CPU-heavy work on *small* inputs, which is the
+  opposite of this shape.
+- Combine with §4.1 category filtering so the bulk payload is never fetched at
+  all — the cheapest parse is the one you skip.
+
+This lands hardest on Fire TV (§11), the weakest hardware in the matrix, so
+treat it as a correctness requirement rather than an optimisation to revisit.
 - Because M3U carries no VOD/series structure, treat M3U-sourced content as "Live only" in the UI unless `group-title` conventions clearly separate Movies/Series (common but not guaranteed) — set expectations in onboarding copy rather than guessing wrong.
+
+**🔴 EPG data quality: plan for an empty guide, because it is the likely case.**
+
+Phase 0 measured one real provider and the guide could not function at all:
+
+| Measure | Result |
+|---|---|
+| Live channels with no `tvg-id` (M3U) | **166,402 / 167,862 — 99.1%** |
+| Live channels with no `epg_channel_id` (API) | 14,491 / 15,951 — 91% |
+| XMLTV export | 1,544 `<channel>`, **0 `<programme>`** |
+| Channel id quality | `AMC.us` reused for every "ESPN+ EVENT" entry |
+
+Two independent failures — almost nothing is linkable, and there is no schedule
+data to link it to. This is a provider-data problem rather than an app bug, but
+the app owns the consequence:
+
+- The EPG guide (§12 screen 7) **must have an explicit, explained empty state**.
+  An empty grid with no explanation reads as broken software, and this will be
+  many users' first impression of the feature.
+- Say which of the two failed — "this provider supplies no guide data" is
+  different from "none of your channels carry a guide id", and only the first
+  is worth contacting the provider about.
+- Do not gate access to channels on guide data. Category navigation is
+  independent and *does* work: `group-title` was present on all but 9 of
+  167,862 entries.
+- Treat a populated guide as the exception when estimating the value of EPG
+  work in §13.
 - Also gated behind Advanced Sources (§8).
 
 ## 6. Plex integration (personal library)
@@ -191,7 +271,33 @@ Scope decision: **personal library only** (Movies/TV Shows/Music from a user's o
 
 **Status of the API:** Plex exposes a developer portal (`developer.plex.tv`) but is explicit that it is "not officially reviewing, approving, or endorsing community developer-built tools at this time" — so there's no certification gate blocking basic access with a user's own token (same trust model as Xtream credentials), but also no official support guarantee or SLA. Treat it like a well-documented community API, not a formal partner integration.
 
-**Candidate package — validate before committing:** [`dart_plex`](https://pub.dev/packages/dart_plex) is a pure-Dart client (no native plugins, so it works across all target platforms) whose documented surface covers PIN-flow auth, server discovery, library browsing/search/filtering, streaming URLs, transcode session management, playback reporting, and playlists. On paper it's exactly the right shape and would avoid re-implementing the protocol from scratch.
+**✅ Phase 0 verdict: adopt `dart_plex`, with two mandatory workarounds and standing caution.**
+
+Validated against a real server: PIN flow, server discovery, library browse and
+direct play all work, and quickly (PIN 347 ms, resources 444 ms, sections
+956 ms, direct play to first frame 244 ms). Two defects were found within an
+hour of first use, **both of which silently produce a broken flow rather than
+an error**:
+
+1. **`createPin()` must be called with `strong: false`.** The default
+   (`strong: true`) yields a 25-character code, but `plex.tv/link` accepts only
+   the 4-character form — so the default hands the user a code they cannot
+   enter anywhere. The package's own docstring promises a 4-character code,
+   contradicting its own default.
+2. **`universalVideoUrl()` omits `hasMDE=1`, so transcode cannot work at all.**
+   PMS 1.43 rejects the universal endpoint with a bare `HTTP 400` without it.
+   Append `&hasMDE=1` to the returned URL and add `'hasMDE': '1'` to the
+   decision params. The string `hasMDE` appears nowhere in the package.
+
+**Also: "direct play" is not the universal endpoint.** `universalVideoUrl(directPlay: true)` still routes through `/video/:/transcode/universal/`; the server reports *"App cannot direct play this item. Direct play is disabled."* Real direct play is the media **Part key** (`/library/parts/{id}/{ts}/file.mp4`) — a plain byte-range file, which is what this section describes and what media_kit handles like any progressive source. Walk `metadata → media → parts` to get it.
+
+**Standing caution:** two defects in the two most important flows, found
+immediately, says how little of this package has been exercised against a real
+server. Verify every `dart_plex` call path against a real server before relying
+on it, do not treat the docstrings as load-bearing, and keep the ~1 week
+hand-rolled fallback costed and ready.
+
+**Original assessment, retained for context:** [`dart_plex`](https://pub.dev/packages/dart_plex) is a pure-Dart client (no native plugins, so it works across all target platforms) whose documented surface covers PIN-flow auth, server discovery, library browsing/search/filtering, streaming URLs, transcode session management, playback reporting, and playlists. On paper it's exactly the right shape and would avoid re-implementing the protocol from scratch.
 
 **But apply the same skepticism here that §7.2 applies to `smb_connect` — more, in fact, because this is the flagship integration.** As of this writing `dart_plex` is at **v0.1.2, first published only days ago, with 4 likes and ~118 downloads**. It is pre-1.0, essentially unproven in the field, and has no track record of responding to breaking changes in Plex's API. A well-documented README is not evidence that the transcode-session lifecycle works against a real server under real conditions. Concretely:
 
@@ -229,6 +335,30 @@ Per §1.7, this must avoid `MANAGE_EXTERNAL_STORAGE`. Two complementary pieces, 
 - **iOS also needs a second, separate path for video already in Photos.** The document picker does not see the Photos library, which on iOS is where a large share of a user's own video actually lives — so "play what's on my device" is half-broken without it. Use `PHPickerViewController` (the modern, permission-free picker: the user selects, and you receive only what they picked, with no library-wide authorization prompt). This is the closest iOS analogue to Android's `MediaStore` scan and should be treated as a required piece of §7.1 rather than an extra.
 
 ### 7.2 SMB/CIFS — the harder case
+
+**✅ Phase 0 verdict: the design below is correct. Build it as written.**
+
+- **Native `smb://` does not work** — but not for the reason predicted. libmpv
+  does not report a missing `libsmbclient`; it refuses the URL as a safety
+  policy: *"Refusing to load potentially unsafe URL from a playlist."*
+  `--load-unsafe-playlists` would bypass that and **must not be used** (§10).
+- **`smb_connect` 0.0.9 works**, first try, on every operation: `connectAuth`
+  177 ms, 17 shares in 124 ms, `listFiles` 134 ms, and — the make-or-break case
+  — a random-access read returning the full 64 KB from offset 121,929,919 in
+  142 ms. Without working seeks the bridge could only stream start-to-finish.
+- **The loopback bridge works and libmpv seeks through it.** Three distinct
+  range requests were observed, and the middle one is the proof: libmpv jumped
+  to the final 16 KB to read the container index, then returned to byte 5,963
+  to begin playback. A bridge that ignored `Range` would have looked correct on
+  the first request and failed precisely there. **Implementing `Range` is not
+  optional.**
+
+**Still untested — failure behaviour, not the happy path.** The remaining risk
+is what `smb_connect` does when the network misbehaves, which is Phase 2 scope:
+NAS disappearing mid-playback, Wi-Fi drop and reconnect, whether a dropped
+connection surfaces an error or hangs, and whether a connection survives a full
+episode. Budget error-handling time for these rather than assuming the clean
+results above generalise.
 
 - media_kit/libmpv documents local file and HTTP/HTTPS support; it does **not** document SMB support, and prebuilt libmpv binaries typically aren't compiled with `libsmbclient`. Treat "does `smb://` just work" as unvalidated, not assumed — test it directly in the Phase 0 spike before building anything else around it, since the answer changes the design.
 - If direct support isn't there (likely outcome): implement the SMB client in Dart with [`smb_connect`](https://pub.dev/packages/smb_connect) (cross-platform, SMB 1.0/CIFS/2.0/2.1 — but lightly maintained: 15 likes, ~750 downloads, last published ~19 months ago as of this writing, so budget spike time to confirm it actually works reliably rather than trusting the package description outright), and bridge playback through a **local loopback HTTP server**: spin up a tiny server on `127.0.0.1` (the `shelf` package is enough) that reads bytes from the SMB client and re-serves them as a normal HTTP byte-range stream; media_kit then just opens `http://127.0.0.1:PORT/...` like any other HTTP source. This is the same pattern VLC itself uses internally, and it means every non-catalog protocol you add later (FTP, WebDAV if it also turns out to need it) reuses the same bridge instead of teaching the player engine new protocols one at a time.
@@ -315,7 +445,7 @@ AI features are independent of Advanced Sources (§8) — they apply across Plex
 
 **Recommendation: [`media_kit`](https://github.com/media-kit/media-kit)** (libmpv-backed) over `video_player`/`better_player` (ExoPlayer/AVPlayer-backed) as the primary engine, specifically *because* this is a multi-source app:
 
-- IPTV streams are frequently raw MPEG-TS over HTTP with inconsistent muxing, non-standard HLS variants, and mid-stream codec/bitrate hiccups from cheap panels. `libmpv` (via media_kit) tolerates this far better than ExoPlayer/AVFoundation, which are pickier about spec conformance and more prone to hard failures on malformed streams.
+- IPTV streams are frequently raw MPEG-TS over HTTP with inconsistent muxing, non-standard HLS variants, and mid-stream codec/bitrate hiccups from cheap panels. `libmpv` (via media_kit) is *reported* to tolerate this better than ExoPlayer/AVFoundation. **⚠️ Phase 0 did not evidence this claim** — the panel tested emitted clean, well-formed TS (100/100 packets carried the `0x47` sync byte), so it exercised nothing ExoPlayer would have failed. Either test a worse panel before relying on this argument, or drop it and stand on the evidenced reasons below, which are sufficient on their own.
 - It also handles Plex's two playback modes (direct-play byte-range files in almost any container, and HLS transcode output), arbitrary local files, and the local-proxy HTTP streams from §7 without needing a second engine — one player pipeline for every source type in this plan.
 - media_kit supports desktop too, which costs nothing now and is useful if you ever want a companion desktop build.
 - Trade-off: slightly bigger binary size (bundles libmpv) and you lose iOS/tvOS's native hardware-decode-everywhere guarantees that AVPlayer gives you — worth a short spike (3–5 days, covering Plex and SMB as well as Xtream) against 2–3 real provider streams, a real Plex server, and a real SMB share before committing, since this is the one architectural decision worth validating empirically before building the rest.
@@ -323,6 +453,38 @@ AI features are independent of Advanced Sources (§8) — they apply across Plex
 - **The ffmpeg licensing decision belongs here, in Phase 0 — not in Phase 3.5.** §14 flags the LGPL-vs-GPL choice against the transcription pipeline, but that framing is wrong on sequencing: **media_kit bundles libmpv, which bundles ffmpeg**, so you take on the dependency and its license the moment you pick the player engine — before any AI feature exists. Resolve it once, at engine selection, and let the transcription pipeline inherit that decision rather than re-litigating it later. The practical rule: use an **LGPL** build and link it **dynamically**, keeping any GPL-only components (notably `libx264`/`libx265` encoders, which this app has no reason to need — it decodes, it doesn't encode) out of the build entirely. A statically-linked GPL build would impose GPL terms on the whole app, which is incompatible both with a permissively-licensed public repo and with App Store distribution.
 
 **DRM is explicitly out of scope.** No Widevine, no FairPlay, no PlayReady. This bounds what "plays anything" means and should be stated plainly in onboarding copy and the store description: the app plays unencrypted media from sources the user connects. It cannot play protected commercial catalogs (Netflix, Disney+, and similar), and no amount of configuration will change that. Worth saying out loud because it is a recurring support question, and because it is quietly helpful to the §1 primary-purpose argument — an app with no DRM stack is transparently not attempting to be a commercial-catalog substitute.
+
+**Phase 0 outcome: media_kit confirmed, on evidenced grounds.** It played, in
+one pipeline: Xtream live MPEG-TS (first frame ~1.8 s, consistent across runs),
+Plex direct play by Part key over HTTPS, and an SMB file through the §7.2
+loopback bridge with correct byte-range seeking. That breadth — one engine for
+every source in this plan — is the argument that survived contact with reality.
+
+Two caveats recorded from the same work:
+
+- **The bundled `libmpv-2.dll` is dated 2023-09-24** — over two years stale as
+  of this writing. It bounds codec support and carries whatever CVEs that
+  vintage has. Check for a newer media_kit before Phase 1 and re-check before
+  release.
+- **`smb://` is refused by libmpv** ("Refusing to load potentially unsafe URL
+  from a playlist"), which is a safety policy rather than a missing protocol.
+  `--load-unsafe-playlists` would bypass it and **must not be used** — it
+  relaxes the check globally, for every source including untrusted IPTV
+  playlists. Use the bridge (§7.2).
+
+**🔴 Detecting playback: only the position counts.** Phase 0 produced two
+confidently wrong conclusions from bad signals, and both are easy to repeat:
+
+- `await player.open(url)` returning means the command was *queued*, not that
+  anything opened. Errors arrive later on a separate stream.
+- `videoParams` arriving means libmpv parsed the header and knows the
+  dimensions. It fires even when decoding then stalls and the surface stays
+  black.
+
+The only trustworthy evidence that playback is happening is
+**`player.state.position` advancing**. Any "is it playing", buffering
+indicator, dead-channel timeout (§4) or error state in the app must be built on
+that, not on the two signals above.
 
 Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U live has no seek), audio/subtitle track selection (including AI-generated/translated tracks from §9), aspect ratio toggle, PiP (both platforms support it), background audio continuation, resume-from-history prompt, and the transcode/SMB session keep-alive/stop lifecycle from §6/§7.
 
@@ -338,7 +500,35 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 - **It is the weakest hardware in the matrix.** A Fire TV stick has substantially less CPU and RAM than the phones you'll develop on. This is the device that makes the XMLTV isolate requirement (§5) non-negotiable, that will expose any main-isolate JSON parsing of large Xtream category responses, and where libmpv's software-decode fallback paths will hurt most. Profile here, not on a flagship phone.
 - **Separate store, separate submission.** The Amazon Appstore is its own listing, its own review process, and its own policy surface — distinct from the Play Console work in §13 Phase 6. It is also, usefully, a third distribution channel that is not affected by a Play or App Store takedown, which is worth something given §1.5.
 
-**iOS** — background audio entitlement + PiP entitlement need explicit setup; App Store review risk is the main iOS-specific item (§1, §8.4, §15). Also the one platform where the Files-app SMB integration from §7.1 might let you skip a custom SMB client entirely — validate this early since it changes iOS scope meaningfully. tvOS is a natural follow-on later but is *not* the same codebase as Android TV's Flutter view — treat it as a future phase, not part of this build.
+**iOS** — background audio entitlement + PiP entitlement need explicit setup; App Store review risk is the main iOS-specific item (§1, §8.4, §15).
+
+**🔴 App Transport Security will block cleartext providers — decide the position before submission, not during.**
+
+Phase 0 measured a real Xtream panel that is **HTTP-only** (`server_protocol:
+http`, no `https_port`), and whose stream URLs **302-redirect to a second
+cleartext host**. iOS ATS blocks cleartext HTTP by default, so a provider like
+this simply will not load on iOS.
+
+The available responses are all uncomfortable:
+
+- **`NSAllowsArbitraryLoads`** — works, but Apple scrutinises it at review and
+  expects written justification, and it weakens transport security for *every*
+  connection the app makes, not just IPTV.
+- **Per-domain exceptions** — impossible here, because the user supplies the
+  domain at runtime and the stream redirects to a host neither they nor we knew
+  in advance.
+- **Refuse cleartext on iOS** — clean, defensible, and means some providers
+  simply do not work on iOS while working on Android.
+
+The awkward part is the justification itself: "users connect arbitrary
+self-hosted servers, many of which are HTTP-only" is true, and it draws a
+reviewer's attention to exactly the feature §8 is structured not to lead with.
+Note that **Plex (`*.plex.direct`) and most NAS devices are HTTPS**, so the
+flagship sources need no exception at all — this is almost entirely an
+Advanced-sources problem, which is itself an argument for the third option.
+
+Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
+§15) rather than improvising it in a review reply. Also the one platform where the Files-app SMB integration from §7.1 might let you skip a custom SMB client entirely — validate this early since it changes iOS scope meaningfully. tvOS is a natural follow-on later but is *not* the same codebase as Android TV's Flutter view — treat it as a future phase, not part of this build.
 
 ## 12. Screens (phone reference)
 
@@ -410,7 +600,26 @@ point correctly: **theme is a runtime setting, not a build-time palette.**
 
 **Timeline caveat — read before planning against these numbers.** The per-phase estimates below describe focused engineering time for someone already fluent in Flutter, and they sum to roughly 11–14 weeks. They do **not** include: the rework implied if a Phase 0 spike comes back negative (a hand-rolled Plex client, or the SMB proxy bridge, each add ~1 week); the rejection-and-resubmit cycle Phase 5 itself predicts; Amazon Appstore submission (§11); or the ordinary drag of TV focus-traversal debugging on real hardware. **If this is solo or part-time work, plan for roughly double the stated figures** and treat the phase boundaries — not the day counts — as the useful structure.
 
-**Phase 0 — Validation (7–10 days)**
+**Phase 0 — Validation — ✅ CLOSED 2026-09-11.** Full results in
+[PHASE0_FINDINGS.md](PHASE0_FINDINGS.md); the consequences are folded into the
+sections above. Outcome in one line: **every major technology choice held**, and
+the phase paid for itself in the corrections it forced — the isolate rule (§5)
+was backwards, `max_connections` (§4) is a lifecycle constraint rather than a
+Settings detail, `dart_plex` needs two workarounds without which PIN and
+transcode silently break (§6), iOS ATS blocks cleartext providers with no clean
+answer (§11), and the EPG is likely to be empty for real users (§5).
+
+Deferred to Phase 1, deliberately: **Q5, the Android-device questions** — SAF
+persisted permissions surviving a reboot, `MediaStore` scanning, hardware
+decode, and release APK/AAB size. These change implementation detail rather than
+architecture, and need hardware that was not to hand.
+
+Also still open: the transcode lifecycle end-to-end (`decision → ping → stop`,
+with the `hasMDE=1` fix in place) — the specific risk being a leaked transcode
+session on every user's server — and a second, worse Xtream panel to settle
+§10's tolerance claim.
+
+*Original Phase 0 plan (7–10 days):*
 - media_kit playback spike against real Xtream test accounts, at least one M3U/XMLTV source, a real Plex server (direct play + forced-transcode), and a real SMB share (confirm whether `smb://` works natively before committing to the proxy-bridge design)
 - **Validate `dart_plex` against a real server (§6)** — PIN auth, library browse, and specifically the transcode start/keep-alive/stop lifecycle. It is a days-old pre-1.0 package; decide deliberately here whether to adopt it or hand-roll the needed subset, because discovering this in Phase 1 is expensive
 - **Settle the ffmpeg licensing and build choice now (§10, §14)** — media_kit brings ffmpeg in with the player engine, so this decision is made in Phase 0 whether or not it's made consciously. Confirm an LGPL, dynamically-linked, no-GPL-encoder configuration
@@ -439,6 +648,19 @@ point correctly: **theme is a runtime setting, not a build-time palette.**
 
 **Phase 6 — Store compliance hardening**
 - Encrypted local credential/token storage (`flutter_secure_storage`), no analytics/tracking that could be read as fingerprinting without disclosure, privacy policy page (now needs to cover AI data sharing per §9.3 as well as account credentials), in-app disclaimer screens, takedown/appeal process documented for yourself
+- **🔴 Store screenshots must never come from an IPTV source.** Phase 0 found
+  the largest categories on a real playlist are `NETFLIX` (19,611), `NETFLIX
+  (MULTI LANGUAGE)` (8,720) and `AMAZON PRIME` (2,491). Rendering
+  user-supplied labels in the app is fine — that is what every player does —
+  but §1.6 forbids real brand names in *our own* store assets, and a single
+  screenshot of a category list reading "NETFLIX" is exactly the trigger §1
+  spends its entire risk budget avoiding. **Every store screenshot comes from
+  Plex, local files or SMB, and the Advanced Sources UI must not appear in
+  store assets at all.** This is a mistake no amount of careful architecture
+  prevents, so it belongs on the checklist.
+- **iOS ATS decision must be made and written down** before submission (§11) —
+  which of arbitrary-loads, per-domain exceptions, or refusing cleartext on iOS,
+  and why.
 
 ## 14. Suggested tech stack summary
 
@@ -509,17 +731,63 @@ The test for any future proposal: *does this put our server in the path of user 
 
 ---
 
-## Open items before implementation starts
+## Open items
 
-- Confirm your own legal comfort with the operational risk in §1 — that's a business decision, not a technical one, and worth deciding explicitly rather than discovering after building Phase 1–5.
-- Pick Riverpod vs. Bloc if you have a preference; this plan assumes Riverpod by default.
-- Decide whether Phase 0's spike (Xtream + M3U + Plex + SMB) should happen before any code gets scaffolded — it answers two open architecture questions at once: media_kit vs. better_player, and whether SMB needs the local-proxy bridge or works natively.
-- Finalize the app name — "Relay Player" is the working title used throughout this document; swap it (and the H1/title above) if you land on something else.
-- Plex Live TV/DVR, and FTP/WebDAV/UPnP-DLNA for the Local & Network feature, remain scoped out for now (§6, §7) — they reuse existing plumbing rather than needing new architecture if you want them later.
-- AI transcription is scoped to OpenAI initially (§9.1) since Anthropic/Gemini don't currently offer a comparable endpoint — reconfirm at build time, provider capabilities in this space are moving quickly.
-- **ffmpeg licensing (§10, §14) is now a Phase 0 decision, not a Phase 3.5 one** — media_kit pulls ffmpeg in with the player engine, so it gets decided at engine selection whether or not anyone decides it deliberately. Target LGPL, dynamically linked, no GPL encoders.
-- **Pick an ffmpeg binding (§14)** — `ffmpeg_kit_flutter` is discontinued and its upstream repo archived. Evaluate `ffmpeg_kit_flutter_new`, pin a specific fork, and know the fallback before Phase 3.5 depends on it.
-- **Validate or replace `dart_plex` in Phase 0 (§6)** — a days-old pre-1.0 package on the flagship integration; the hand-rolled fallback is roughly a week, so this is reversible if decided early and expensive if decided late.
-- **Decide on the §16 exceptions**: adopt Firebase Remote Config as the Advanced Sources kill switch (recommended — it's the difference between a minutes-long and a multi-day response to a takedown threat), and whether Crashlytics ships opt-in. Everything else backend-shaped stays out; §16.3 is the standing answer.
-- **iOS transcription background strategy (§9.2)** — foreground-only with resumable checkpoints, or background `URLSession` transfers. Decide before Phase 3.5; retrofitting resumability is painful.
-- Amazon Appstore submission for Fire TV (§11) is a third store pipeline not currently costed in the §13 roadmap — decide whether it's in scope for the initial release or a follow-on.
+### ✅ Closed by Phase 0 (2026-09-11)
+
+- ~~Whether the spike should precede scaffolding~~ — it ran, and it was worth
+  it. See §13 for the summary of what it changed.
+- ~~media_kit vs. better_player~~ — **media_kit confirmed** (§10), on evidenced
+  breadth rather than the unproven malformed-TS argument.
+- ~~Does SMB need the loopback bridge~~ — **yes**, and it works (§7.2).
+- ~~Validate or replace `dart_plex`~~ — **adopted with two mandatory
+  workarounds** and standing caution (§6).
+
+### Open — decide before or during Phase 1
+
+- **Confirm your own legal comfort with the operational risk in §1** — a
+  business decision, not a technical one, and worth deciding explicitly rather
+  than discovering after building Phases 1–5.
+- **Riverpod vs. Bloc** — this plan assumes Riverpod.
+- **ffmpeg licensing (§10, §14)** — media_kit pulls ffmpeg in at engine
+  selection, so this is already decided implicitly. Target LGPL, dynamically
+  linked, no GPL encoders, and confirm it.
+- **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
+  2023-09-24, over two years stale.
+- **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted
+  permissions across a reboot, `MediaStore` scanning, hardware decode, release
+  binary size. Deferred from Phase 0 for lack of hardware; do them as Phase 1
+  starts, since §15 singles out the SAF-after-reboot case as the one that fails.
+- **Finish the Plex transcode lifecycle test** — `decision → ping → stop` with
+  the `hasMDE=1` fix in place. The specific risk is a leaked transcode session
+  on every user's server.
+- **Finalise the app name** — "Relay Player" is the working title throughout.
+
+### Open — decide before the relevant phase
+
+- **§16 backend exceptions** — adopt Firebase Remote Config as the Advanced
+  Sources kill switch (recommended: the difference between a minutes-long and a
+  multi-day response to a takedown threat), and whether Crashlytics ships
+  opt-in. Everything else backend-shaped stays out; §16.3 is the standing
+  answer.
+- **iOS ATS position (§11)** — arbitrary loads, per-domain exceptions, or
+  refusing cleartext on iOS. Needed before the Phase 5 submission, and the
+  reasoning must be written down, not improvised in a review reply.
+- **Pick an ffmpeg binding (§14)** — `ffmpeg_kit_flutter` is discontinued and
+  upstream archived. Evaluate `ffmpeg_kit_flutter_new`, pin a fork, know the
+  fallback. Needed before Phase 3.5.
+- **iOS transcription background strategy (§9.2)** — foreground-only with
+  resumable checkpoints, or background `URLSession` transfers. Retrofitting
+  resumability is painful, so decide before Phase 3.5.
+- **Amazon Appstore for Fire TV (§11)** — a third store pipeline not costed in
+  §13. In scope for the initial release, or a follow-on?
+- **A second, worse Xtream panel** — to settle §10's malformed-TS claim, or
+  else formally drop that argument.
+
+### Scoped out, revisitable
+
+- Plex Live TV/DVR, and FTP/WebDAV/UPnP-DLNA for Local & Network (§6, §7) —
+  these reuse existing plumbing rather than needing new architecture. The §7.2
+  bridge in particular is built to be reused by FTP/WebDAV.
+- AI transcription beyond OpenAI (§9.1) — reconfirm provider capabilities at
+  build time; this space moves quickly.
