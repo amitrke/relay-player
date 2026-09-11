@@ -71,10 +71,11 @@ class LibraryMappingController extends Notifier<LibraryMapping> {
       LibraryMapping.fromStorage(_store.getStringMap(_kLibraryMapping));
 
   Future<void> setPlacement(
+    String serverId,
     PlexLibrarySection section,
     LibraryPlacement placement,
   ) async {
-    final next = state.withPlacement(section, placement);
+    final next = state.withPlacement(serverId, section, placement);
     state = next;
     await _store.setStringMap(_kLibraryMapping, next.toStorage());
   }

@@ -1,6 +1,6 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 
+import '../../data/plex/plex_service.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import 'poster_tile.dart';
@@ -9,7 +9,7 @@ import 'poster_tile.dart';
 class PosterGrid extends StatelessWidget {
   const PosterGrid({super.key, required this.items});
 
-  final List<PlexMetadata> items;
+  final List<SourcedItem> items;
 
   @override
   Widget build(BuildContext context) {

@@ -198,11 +198,11 @@ class _ServerPicker extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        for (final server in state.servers) ...[
+        for (final server in state.available) ...[
           RelaySurface(
-            autofocus: server == state.servers.first,
+            autofocus: server == state.available.first,
             onTap: () =>
-                ref.read(plexSessionProvider.notifier).chooseServer(server),
+                ref.read(plexSessionProvider.notifier).connect(server),
             child: Row(
               children: [
                 Icon(Icons.dns_outlined, color: t.inkDim, size: 20),

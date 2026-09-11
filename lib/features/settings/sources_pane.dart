@@ -8,8 +8,8 @@ import '../library/library_mapping.dart';
 import '../library/library_screen.dart';
 import 'settings_controller.dart';
 
-/// Settings → Sources (§12.1): the connected server and what each of its
-/// libraries feeds.
+/// Settings → Sources (§12.1): every connected Plex server, and what each of
+/// its libraries feeds.
 ///
 /// Plex's library type is only a guess at intent. A library typed `movie` may
 /// hold course recordings or home video, and merging it into Movies while
@@ -21,11 +21,41 @@ class SourcesPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final serverName = ref.watch(plexSessionProvider).serverName;
-    final sections = ref.watch(plexSectionsProvider);
+    final state = ref.watch(plexSessionProvider);
 
     // A Column, not a ListView: both Settings layouts already scroll, and
     // nesting a second scrollable inside them fights for the gesture.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final server in state.servers) ...[
+          _ServerBlock(server: server),
+          const SizedBox(height: 22),
+        ],
+        if (state.servers.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              'No Plex servers connected.',
+              style: TextStyle(color: t.inkDim, fontSize: 13),
+            ),
+          ),
+        const _AddServer(),
+      ],
+    );
+  }
+}
+
+class _ServerBlock extends ConsumerWidget {
+  const _ServerBlock({required this.server});
+
+  final ConnectedServer server;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final sections = ref.watch(plexSectionsProvider(server.id));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -35,7 +65,7 @@ class SourcesPane extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                serverName ?? 'Plex',
+                server.name,
                 style: TextStyle(
                   color: t.ink,
                   fontSize: 16,
@@ -44,40 +74,25 @@ class SourcesPane extends ConsumerWidget {
               ),
             ),
             TextButton(
-              onPressed: () =>
-                  ref.read(plexSessionProvider.notifier).signOut(),
-              child: Text('Disconnect', style: TextStyle(color: t.inkDim)),
+              onPressed: () => ref
+                  .read(plexSessionProvider.notifier)
+                  .disconnect(server.id),
+              child: Text('Remove', style: TextStyle(color: t.inkDim)),
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        Text(
-          'Libraries',
-          style: TextStyle(
-            color: t.ink,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Choose where each library appears. Plex’s own type is only the '
-          'default — a library named for what it holds usually knows better.',
-          style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.5),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
         sections.when(
           loading: () => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(child: CircularProgressIndicator(color: t.accent)),
           ),
-          error: (e, _) => Text(
-            '$e',
-            style: TextStyle(color: t.inkDim, fontSize: 13),
-          ),
+          error: (e, _) =>
+              Text('$e', style: TextStyle(color: t.inkDim, fontSize: 13)),
           data: (list) => Column(
             children: [
-              for (final section in list) _LibraryRow(section: section),
+              for (final section in list)
+                _LibraryRow(serverId: server.id, section: section),
             ],
           ),
         ),
@@ -86,16 +101,81 @@ class SourcesPane extends ConsumerWidget {
   }
 }
 
-class _LibraryRow extends ConsumerWidget {
-  const _LibraryRow({required this.section});
+/// Offers any server the account can reach that is not already connected.
+class _AddServer extends ConsumerWidget {
+  const _AddServer();
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final state = ref.watch(plexSessionProvider);
+    final connectable = state.connectable;
+
+    if (connectable.isEmpty) {
+      return TextButton.icon(
+        onPressed: () =>
+            ref.read(plexSessionProvider.notifier).refreshAvailable(),
+        icon: Icon(Icons.refresh, size: 18, color: t.inkDim),
+        label: Text(
+          'Look for more servers',
+          style: TextStyle(color: t.inkDim),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Add another server',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (final resource in connectable)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: t.line),
+            ),
+            child: ListTile(
+              title: Text(
+                resource.name,
+                style: TextStyle(color: t.ink, fontSize: 14.5),
+              ),
+              subtitle: Text(
+                [
+                  if (resource.owned) 'Yours' else 'Shared with you',
+                  if (resource.relay) 'via relay',
+                ].join(' · '),
+                style: TextStyle(color: t.inkDim, fontSize: 12),
+              ),
+              trailing: Icon(Icons.add, color: t.accent),
+              onTap: () =>
+                  ref.read(plexSessionProvider.notifier).connect(resource),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LibraryRow extends ConsumerWidget {
+  const _LibraryRow({required this.serverId, required this.section});
+
+  final String serverId;
   final PlexLibrarySection section;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final mapping = ref.watch(libraryMappingProvider);
-    final placement = mapping.placementOf(section);
+    final placement = mapping.placementOf(serverId, section);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -123,7 +203,8 @@ class _LibraryRow extends ConsumerWidget {
                 Text(
                   [
                     'Plex type: ${section.type.name}',
-                    if (mapping.isOverridden(section)) 'changed by you',
+                    if (mapping.isOverridden(serverId, section))
+                      'changed by you',
                   ].join(' · '),
                   style: TextStyle(color: t.inkDim, fontSize: 12),
                 ),
@@ -135,7 +216,7 @@ class _LibraryRow extends ConsumerWidget {
             selected: placement,
             onSelect: (next) => ref
                 .read(libraryMappingProvider.notifier)
-                .setPlacement(section, next),
+                .setPlacement(serverId, section, next),
           ),
         ],
       ),

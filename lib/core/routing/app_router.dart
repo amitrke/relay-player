@@ -76,14 +76,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/show/:ratingKey',
+        path: '/show/:serverId/:ratingKey',
         builder: (_, state) => ShowDetailScreen(
+          serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
         ),
       ),
       GoRoute(
-        path: '/play/:ratingKey',
+        path: '/play/:serverId/:ratingKey',
         builder: (_, state) => PlayerScreen(
+          serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
         ),
       ),

@@ -4,25 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 
 /// One library item: poster, title, year.
 class PosterTile extends ConsumerWidget {
   const PosterTile({super.key, required this.item});
 
-  final PlexMetadata item;
+  final SourcedItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final poster = ref.read(plexServiceProvider).posterUrl(item);
-    final isShow = item.type == PlexMetadataType.show;
+    final metadata = item.metadata;
+    final poster =
+        plexServiceFor(ref, item.serverId).posterUrl(metadata);
+    final isShow = metadata.type == PlexMetadataType.show;
 
     return GestureDetector(
       // A show has no file of its own — it resolves to seasons and episodes,
       // so it opens a detail screen. A movie resolves straight to a file.
+      // Both routes carry the server: a ratingKey means nothing without it.
       onTap: () => context.push(
-        isShow ? '/show/${item.ratingKey}' : '/play/${item.ratingKey}',
+        isShow
+            ? '/show/${item.serverId}/${metadata.ratingKey}'
+            : '/play/${item.serverId}/${metadata.ratingKey}',
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +52,7 @@ class PosterTile extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            item.title,
+            metadata.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -56,9 +62,9 @@ class PosterTile extends ConsumerWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (item.year != null)
+          if (metadata.year != null)
             Text(
-              '${item.year}',
+              '${metadata.year}',
               style: TextStyle(color: t.inkDim, fontSize: 11),
             ),
         ],

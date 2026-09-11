@@ -12,41 +12,67 @@ enum PlexStage {
   /// so a returning user never sees a flash of "Connect to Plex".
   restoring,
 
-  /// No usable link.
+  /// No servers connected.
   signedOut,
 
   /// A code is on screen and we are polling plex.tv.
   awaitingApproval,
 
-  /// Linked, but the account has more than one server to choose from.
+  /// Linked, and picking which server(s) to connect.
   choosingServer,
 
-  /// Connected and ready to browse.
+  /// At least one server is connected.
   ready,
+}
+
+/// A connected server and the client bound to it.
+class ConnectedServer {
+  const ConnectedServer({required this.stored, required this.service});
+
+  final StoredPlexServer stored;
+  final PlexService service;
+
+  String get id => stored.id;
+  String get name => stored.name;
 }
 
 class PlexState {
   const PlexState({
     this.stage = PlexStage.restoring,
     this.linkCode,
+    this.available = const [],
     this.servers = const [],
-    this.serverName,
     this.error,
     this.busy = false,
   });
 
   final PlexStage stage;
   final PlexLinkCode? linkCode;
-  final List<PlexResource> servers;
-  final String? serverName;
+
+  /// Servers the account can reach, from the last discovery.
+  final List<PlexResource> available;
+
+  /// Servers actually connected.
+  final List<ConnectedServer> servers;
+
   final String? error;
   final bool busy;
+
+  bool get hasAccount => available.isNotEmpty || servers.isNotEmpty;
+
+  /// Servers discovered but not yet connected — the candidates for "Add".
+  List<PlexResource> get connectable {
+    final ids = servers.map((s) => s.id).toSet();
+    return available
+        .where((r) => !ids.contains(r.clientIdentifier))
+        .toList();
+  }
 
   PlexState copyWith({
     PlexStage? stage,
     PlexLinkCode? linkCode,
-    List<PlexResource>? servers,
-    String? serverName,
+    List<PlexResource>? available,
+    List<ConnectedServer>? servers,
     String? error,
     bool? busy,
     bool clearError = false,
@@ -54,8 +80,8 @@ class PlexState {
     return PlexState(
       stage: stage ?? this.stage,
       linkCode: linkCode ?? this.linkCode,
+      available: available ?? this.available,
       servers: servers ?? this.servers,
-      serverName: serverName ?? this.serverName,
       error: clearError ? null : (error ?? this.error),
       busy: busy ?? this.busy,
     );
@@ -65,29 +91,31 @@ class PlexState {
 final plexSessionStoreProvider =
     Provider<PlexSessionStore>((ref) => PlexSessionStore());
 
-/// The connected [PlexService]. Only valid once [PlexState.stage] is
-/// [PlexStage.ready].
-final plexServiceProvider = Provider<PlexService>((ref) {
-  // Watch the state, not just the notifier: the notifier instance is stable, so
-  // watching it alone would cache a null service from before the link resolved.
-  ref.watch(plexSessionProvider);
-  final service = ref.read(plexSessionProvider.notifier).service;
-  if (service == null) {
-    throw StateError('Plex service read before the session was ready.');
-  }
-  return service;
+/// Every connected server, in connection order.
+final connectedServersProvider = Provider<List<ConnectedServer>>((ref) {
+  return ref.watch(plexSessionProvider.select((s) => s.servers));
 });
 
-final plexSessionProvider =
-    NotifierProvider<PlexSessionController, PlexState>(
+/// The client for one server. Throws rather than returning null: a caller
+/// holding a server id for a server that is gone has a bug, and a silent null
+/// would surface as an empty screen instead.
+PlexService plexServiceFor(WidgetRef ref, String serverId) {
+  final servers = ref.read(connectedServersProvider);
+  for (final server in servers) {
+    if (server.id == serverId) return server.service;
+  }
+  throw StateError('No connected Plex server with id "$serverId".');
+}
+
+final plexSessionProvider = NotifierProvider<PlexSessionController, PlexState>(
   PlexSessionController.new,
 );
 
 class PlexSessionController extends Notifier<PlexState> {
-  PlexService? _service;
+  /// Account-level client: owns the PIN flow and server discovery. It is never
+  /// connected to a server — each server gets its own client with its own token.
+  PlexService? _account;
   Timer? _poll;
-
-  PlexService? get service => _service;
 
   @override
   PlexState build() {
@@ -98,43 +126,65 @@ class PlexSessionController extends Notifier<PlexState> {
 
   PlexSessionStore get _store => ref.read(plexSessionStoreProvider);
 
-  Future<PlexService> _ensureService() async {
-    return _service ??= PlexService(clientId: await _store.clientId());
+  Future<PlexService> _ensureAccount() async {
+    return _account ??= PlexService(clientId: await _store.clientId());
   }
 
-  /// Reconnects a stored link without making the user re-approve.
   Future<void> _restore() async {
-    final stored = await _store.read();
-    if (stored == null) {
+    final stored = await _store.servers();
+    if (stored.isEmpty) {
       state = state.copyWith(stage: PlexStage.signedOut);
       return;
     }
-    final service = await _ensureService();
-    service.reconnect(baseUrl: stored.baseUrl, token: stored.token);
 
-    // Prove the stored link still works before claiming to be ready — a
-    // revoked token or a server that moved should land the user on sign-in
-    // with a reason, not on an empty library that looks broken.
+    final clientId = await _store.clientId();
+    final accountToken = await _store.accountToken();
+    if (accountToken != null) {
+      (await _ensureAccount()).useToken(accountToken);
+    }
+
+    // Restored without probing each server first. An earlier version called
+    // `sections()` on every server before declaring it connected and dropped
+    // the ones that failed — which meant a sleeping NAS silently disappeared
+    // from Sources and had to be re-added by hand, and startup blocked on the
+    // slowest server because the checks ran in sequence.
+    //
+    // A stored server stays in the list. Whether it answers right now is a
+    // per-request question, handled by the timeouts in the library and search
+    // queries, and surfaced per server in Settings → Sources.
+    final connected = [
+      for (final server in stored)
+        ConnectedServer(
+          stored: server,
+          service: PlexService(
+            clientId: clientId,
+            serverId: server.id,
+            serverName: server.name,
+          )..reconnect(baseUrl: server.baseUrl, token: server.token),
+        ),
+    ];
+
+    state = state.copyWith(stage: PlexStage.ready, servers: connected);
+    unawaited(refreshAvailable());
+  }
+
+  /// Re-runs discovery so "Add another server" has something to offer.
+  Future<void> refreshAvailable() async {
+    final account = _account;
+    if (account == null) return;
     try {
-      await service.sections();
-      state = state.copyWith(
-        stage: PlexStage.ready,
-        serverName: stored.serverName,
-      );
+      state = state.copyWith(available: await account.servers());
     } catch (_) {
-      await _store.clear();
-      state = state.copyWith(
-        stage: PlexStage.signedOut,
-        error: 'That Plex link expired. Please connect again.',
-      );
+      // Discovery is a convenience here; failing it must not disturb servers
+      // that are already connected and working.
     }
   }
 
   Future<void> startLink() async {
     state = state.copyWith(busy: true, clearError: true);
     try {
-      final service = await _ensureService();
-      final code = await service.startLink();
+      final account = await _ensureAccount();
+      final code = await account.startLink();
       state = state.copyWith(
         stage: PlexStage.awaitingApproval,
         linkCode: code,
@@ -158,7 +208,7 @@ class PlexSessionController extends Notifier<PlexState> {
         return;
       }
       try {
-        final token = await _service?.pollLink(code.pinId);
+        final token = await _account?.pollLink(code.pinId);
         if (token == null) return;
         timer.cancel();
         await _onTokenAcquired(token);
@@ -171,11 +221,12 @@ class PlexSessionController extends Notifier<PlexState> {
 
   Future<void> _onTokenAcquired(String token) async {
     state = state.copyWith(busy: true);
-    final service = await _ensureService();
-    service.useToken(token);
+    final account = await _ensureAccount();
+    account.useToken(token);
+    await _store.setAccountToken(token);
     try {
-      final servers = await service.servers();
-      if (servers.isEmpty) {
+      final available = await account.servers();
+      if (available.isEmpty) {
         state = state.copyWith(
           stage: PlexStage.signedOut,
           busy: false,
@@ -183,15 +234,12 @@ class PlexSessionController extends Notifier<PlexState> {
         );
         return;
       }
-      if (servers.length == 1) {
-        await chooseServer(servers.first);
+      state = state.copyWith(available: available, busy: false);
+      if (available.length == 1) {
+        await connect(available.first);
         return;
       }
-      state = state.copyWith(
-        stage: PlexStage.choosingServer,
-        servers: servers,
-        busy: false,
-      );
+      state = state.copyWith(stage: PlexStage.choosingServer);
     } catch (e) {
       state = state.copyWith(
         stage: PlexStage.signedOut,
@@ -201,34 +249,55 @@ class PlexSessionController extends Notifier<PlexState> {
     }
   }
 
-  Future<void> chooseServer(PlexResource server) async {
+  /// Connects [resource] and adds it alongside any already-connected servers.
+  Future<void> connect(PlexResource resource) async {
     state = state.copyWith(busy: true, clearError: true);
     try {
-      final service = await _ensureService();
-      final baseUrl = service.connectTo(server);
-      await _store.write(StoredPlexSession(
-        token: server.accessToken,
+      final clientId = await _store.clientId();
+      final service = PlexService(
+        clientId: clientId,
+        serverId: resource.clientIdentifier,
+        serverName: resource.name,
+      );
+      final baseUrl = service.connectTo(resource);
+
+      final stored = StoredPlexServer(
+        id: resource.clientIdentifier,
+        name: resource.name,
         baseUrl: baseUrl,
-        serverName: server.name,
-      ));
+        token: resource.accessToken,
+      );
+      final servers = [
+        ...state.servers.where((s) => s.id != stored.id),
+        ConnectedServer(stored: stored, service: service),
+      ];
+      await _store.setServers([for (final s in servers) s.stored]);
+
       state = state.copyWith(
         stage: PlexStage.ready,
-        serverName: server.name,
+        servers: servers,
         busy: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        stage: PlexStage.choosingServer,
-        busy: false,
-        error: '$e',
-      );
+      state = state.copyWith(busy: false, error: '$e');
     }
   }
 
+  /// Disconnects one server, leaving the rest and the account link intact.
+  Future<void> disconnect(String serverId) async {
+    final servers = state.servers.where((s) => s.id != serverId).toList();
+    await _store.setServers([for (final s in servers) s.stored]);
+    state = state.copyWith(
+      servers: servers,
+      stage: servers.isEmpty ? PlexStage.signedOut : PlexStage.ready,
+    );
+  }
+
+  /// Drops every server and the account token.
   Future<void> signOut() async {
     _poll?.cancel();
     await _store.clear();
-    _service = null;
+    _account = null;
     state = const PlexState(stage: PlexStage.signedOut);
   }
 }

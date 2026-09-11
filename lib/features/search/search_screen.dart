@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../library/poster_grid.dart';
 
@@ -19,10 +19,28 @@ class _QueryController extends Notifier<String> {
   void update(String value) => state = value;
 }
 
-final _resultsProvider = FutureProvider<List<PlexMetadata>>((ref) async {
+/// Search every connected server and merge.
+///
+/// One unreachable server must not blank the results — it should cost you its
+/// own matches, not everyone else's.
+final _resultsProvider = FutureProvider<List<SourcedItem>>((ref) async {
   final query = ref.watch(_queryProvider);
   if (query.trim().length < 2) return const [];
-  return ref.watch(plexServiceProvider).search(query);
+
+  final servers = ref.watch(connectedServersProvider);
+  final perServer = await Future.wait(
+    servers.map((server) async {
+      try {
+        return await server.service.search(query);
+      } catch (_) {
+        return const <SourcedItem>[];
+      }
+    }).map((f) => f.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => const <SourcedItem>[],
+        )),
+  );
+  return perServer.expand((items) => items).toList();
 });
 
 /// Search across the connected sources (§12 screen 8).

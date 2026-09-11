@@ -4,29 +4,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../library/poster_grid.dart';
 
-final _showProvider =
-    FutureProvider.family<PlexMetadata?, String>((ref, ratingKey) {
-  return ref.watch(plexServiceProvider).item(ratingKey);
+/// (serverId, ratingKey). A ratingKey alone is ambiguous once more than one
+/// server is connected.
+typedef _Ref = (String, String);
+
+PlexService _serviceOf(Ref ref, String serverId) {
+  for (final server in ref.watch(connectedServersProvider)) {
+    if (server.id == serverId) return server.service;
+  }
+  throw StateError('No connected Plex server with id "$serverId".');
+}
+
+final _showProvider = FutureProvider.family<PlexMetadata?, _Ref>((ref, arg) {
+  return _serviceOf(ref, arg.$1).item(arg.$2);
 });
 
 /// Seasons of a show — or, for a flat show, its episodes directly.
 final _seasonsProvider =
-    FutureProvider.family<List<PlexMetadata>, String>((ref, ratingKey) {
-  return ref.watch(plexServiceProvider).children(ratingKey);
+    FutureProvider.family<List<PlexMetadata>, _Ref>((ref, arg) {
+  return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
 final _episodesProvider =
-    FutureProvider.family<List<PlexMetadata>, String>((ref, seasonRatingKey) {
-  return ref.watch(plexServiceProvider).children(seasonRatingKey);
+    FutureProvider.family<List<PlexMetadata>, _Ref>((ref, arg) {
+  return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
 /// §12 screen 5 for a series: poster, plot, seasons and episodes.
 class ShowDetailScreen extends ConsumerStatefulWidget {
-  const ShowDetailScreen({super.key, required this.ratingKey});
+  const ShowDetailScreen({
+    super.key,
+    required this.serverId,
+    required this.ratingKey,
+  });
 
+  final String serverId;
   final String ratingKey;
 
   @override
@@ -40,8 +56,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    final show = ref.watch(_showProvider(widget.ratingKey));
-    final children = ref.watch(_seasonsProvider(widget.ratingKey));
+    final show = ref.watch(_showProvider((widget.serverId, widget.ratingKey)));
+    final children = ref.watch(_seasonsProvider((widget.serverId, widget.ratingKey)));
 
     return Scaffold(
       backgroundColor: t.bg,
@@ -56,7 +72,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         error: (e, _) => LibraryEmptyState(
           icon: Icons.cloud_off_outlined,
           message: '$e',
-          onRetry: () => ref.invalidate(_seasonsProvider(widget.ratingKey)),
+          onRetry: () => ref.invalidate(_seasonsProvider((widget.serverId, widget.ratingKey))),
         ),
         data: (list) {
           if (list.isEmpty) {
@@ -74,9 +90,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
             return ListView(
               padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
               children: [
-                _ShowHeader(show: show.value),
+                _ShowHeader(show: show.value, serverId: widget.serverId),
                 const SizedBox(height: 18),
-                for (final episode in list) _EpisodeRow(episode: episode),
+                for (final episode in list)
+                  _EpisodeRow(serverId: widget.serverId, episode: episode),
               ],
             );
           }
@@ -88,7 +105,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           return ListView(
             padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
             children: [
-              _ShowHeader(show: show.value),
+              _ShowHeader(show: show.value, serverId: widget.serverId),
               const SizedBox(height: 18),
               _SeasonChips(
                 seasons: list,
@@ -96,7 +113,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 onSelect: (id) => setState(() => _selectedSeason = id),
               ),
               const SizedBox(height: 14),
-              _EpisodeList(seasonRatingKey: selected),
+              _EpisodeList(serverId: widget.serverId, seasonRatingKey: selected),
             ],
           );
         },
@@ -106,16 +123,17 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 }
 
 class _ShowHeader extends ConsumerWidget {
-  const _ShowHeader({required this.show});
+  const _ShowHeader({required this.show, required this.serverId});
 
   final PlexMetadata? show;
+  final String serverId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final item = show;
     if (item == null) return const SizedBox.shrink();
-    final poster = ref.read(plexServiceProvider).posterUrl(item);
+    final poster = plexServiceFor(ref, serverId).posterUrl(item);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,14 +236,15 @@ class _SeasonChips extends StatelessWidget {
 }
 
 class _EpisodeList extends ConsumerWidget {
-  const _EpisodeList({required this.seasonRatingKey});
+  const _EpisodeList({required this.serverId, required this.seasonRatingKey});
 
+  final String serverId;
   final String seasonRatingKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final episodes = ref.watch(_episodesProvider(seasonRatingKey));
+    final episodes = ref.watch(_episodesProvider((serverId, seasonRatingKey)));
 
     return episodes.when(
       loading: () => Padding(
@@ -235,18 +254,19 @@ class _EpisodeList extends ConsumerWidget {
       error: (e, _) => LibraryEmptyState(
         icon: Icons.cloud_off_outlined,
         message: '$e',
-        onRetry: () => ref.invalidate(_episodesProvider(seasonRatingKey)),
+        onRetry: () => ref.invalidate(_episodesProvider((serverId, seasonRatingKey))),
       ),
       data: (list) => Column(
-        children: [for (final episode in list) _EpisodeRow(episode: episode)],
+        children: [for (final episode in list) _EpisodeRow(serverId: serverId, episode: episode)],
       ),
     );
   }
 }
 
 class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode});
+  const _EpisodeRow({required this.serverId, required this.episode});
 
+  final String serverId;
   final PlexMetadata episode;
 
   @override
@@ -261,7 +281,7 @@ class _EpisodeRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: () => context.push('/play/${episode.ratingKey}'),
+          onTap: () => context.push('/play/$serverId/${episode.ratingKey}'),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(

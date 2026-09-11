@@ -42,10 +42,17 @@ class LibraryMapping {
 
   const LibraryMapping.empty() : _overrides = const {};
 
-  /// Section id → placement. Only user-chosen entries are stored, so a library
-  /// the user never touched keeps following its Plex type even if that type
-  /// changes on the server.
+  /// `serverId:sectionId` → placement. Only user-chosen entries are stored, so
+  /// a library the user never touched keeps following its Plex type even if
+  /// that type changes on the server.
+  ///
+  /// The key must carry the server: a Plex section id is a small per-server
+  /// integer, so two servers both have a section `1`, and keying on the section
+  /// alone would silently apply one server's choice to another's library.
   final Map<String, LibraryPlacement> _overrides;
+
+  static String keyFor(String serverId, PlexLibrarySection section) =>
+      '$serverId:${section.id}';
 
   Map<String, String> toStorage() =>
       {for (final e in _overrides.entries) e.key: e.value.name};
@@ -62,23 +69,28 @@ class LibraryMapping {
           ? LibraryPlacement.series
           : LibraryPlacement.movies;
 
-  LibraryPlacement placementOf(PlexLibrarySection section) =>
-      _overrides[section.id] ?? defaultFor(section);
+  LibraryPlacement placementOf(String serverId, PlexLibrarySection section) =>
+      _overrides[keyFor(serverId, section)] ?? defaultFor(section);
 
-  bool isOverridden(PlexLibrarySection section) =>
-      _overrides.containsKey(section.id);
+  bool isOverridden(String serverId, PlexLibrarySection section) =>
+      _overrides.containsKey(keyFor(serverId, section));
 
-  /// The sections feeding [tab], in the server's own order.
+  /// The sections of [serverId] feeding [tab], in the server's own order.
   List<PlexLibrarySection> sectionsFor(
     LibraryTab tab,
+    String serverId,
     List<PlexLibrarySection> all,
   ) =>
-      all.where((s) => placementOf(s).tab == tab).toList();
+      all.where((s) => placementOf(serverId, s).tab == tab).toList();
 
   LibraryMapping withPlacement(
+    String serverId,
     PlexLibrarySection section,
     LibraryPlacement placement,
   ) {
-    return LibraryMapping({..._overrides, section.id: placement});
+    return LibraryMapping({
+      ..._overrides,
+      keyFor(serverId, section): placement,
+    });
   }
 }

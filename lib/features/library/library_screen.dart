@@ -1,26 +1,65 @@
+import 'dart:async';
+
 import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 
-/// The server's video libraries. Shared by the tabs and by Settings → Sources,
+/// One server's video libraries. Shared by the tabs and by Settings → Sources,
 /// so the mapping UI lists exactly what the tabs draw from.
-final plexSectionsProvider = FutureProvider<List<PlexLibrarySection>>((ref) {
-  return ref.watch(plexServiceProvider).sections();
+final plexSectionsProvider =
+    FutureProvider.family<List<PlexLibrarySection>, String>(
+        (ref, serverId) async {
+  final servers = ref.watch(connectedServersProvider);
+  for (final server in servers) {
+    if (server.id == serverId) return server.service.sections();
+  }
+  return const [];
 });
 
+/// How long one server gets before the rest of the library goes on without it.
+///
+/// A try/catch is not enough on its own: an unreachable server does not fail
+/// fast, it hangs, and `Future.wait` waits for the slowest member. Without this
+/// a single sleeping NAS leaves every tab spinning forever — observed with a
+/// relay-connected server that never answered.
+const _perServerTimeout = Duration(seconds: 10);
+
+/// Everything feeding [tab], merged across every connected server.
+///
+/// §12 screen 3: "Movies/Series merge across Plex accounts". One server failing
+/// or stalling must not blank the tab — it should cost you its own titles, not
+/// everyone else's.
 final _libraryProvider =
-    FutureProvider.family<List<PlexMetadata>, LibraryTab>((ref, tab) async {
-  final sections = await ref.watch(plexSectionsProvider.future);
+    FutureProvider.family<List<SourcedItem>, LibraryTab>((ref, tab) async {
+  final servers = ref.watch(connectedServersProvider);
   final mapping = ref.watch(libraryMappingProvider);
-  return ref
-      .watch(plexServiceProvider)
-      .itemsFrom(mapping.sectionsFor(tab, sections));
+
+  final perServer = await Future.wait(
+    servers.map((server) async {
+      try {
+        final sections = await ref.watch(plexSectionsProvider(server.id).future);
+        return await server.service
+            .itemsFrom(mapping.sectionsFor(tab, server.id, sections));
+      } catch (_) {
+        return const <SourcedItem>[];
+      }
+    }).map((f) => f.timeout(
+          _perServerTimeout,
+          onTimeout: () => const <SourcedItem>[],
+        )),
+  );
+
+  return perServer.expand((items) => items).toList()
+    ..sort((a, b) => a.metadata.title
+        .toLowerCase()
+        .compareTo(b.metadata.title.toLowerCase()));
 });
 
 /// Home (§12 screen 3).
@@ -50,7 +89,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     // The gate can retract the tab the user is standing on (§15's kill-switch
     // drill checks exactly this), so fall back rather than render a dead tab.
     final selected = tabs.contains(_selected) ? _selected : LibraryTab.movies;
-    final serverName = ref.watch(plexSessionProvider).serverName;
+    final servers = ref.watch(connectedServersProvider);
+    // Name the server only when there is exactly one; with several, a single
+    // name in the corner would be a lie about where these titles came from.
+    final serverName = servers.length == 1 ? servers.single.name : null;
 
     return Scaffold(
       backgroundColor: t.bg,

@@ -28,6 +28,19 @@ class PlexPlayable {
   final Duration duration;
 }
 
+/// A Plex item together with the server it came from.
+///
+/// A `ratingKey` is only meaningful relative to one server — two servers will
+/// happily both have a `/library/metadata/1234`. Once more than one server is
+/// connected, an item without its origin cannot be fetched, played, or even
+/// have its poster loaded, so the pair travels together everywhere.
+class SourcedItem {
+  const SourcedItem({required this.serverId, required this.metadata});
+
+  final String serverId;
+  final PlexMetadata metadata;
+}
+
 /// Raised when the account has no server we can reach.
 class PlexUnreachable implements Exception {
   const PlexUnreachable(this.message);
@@ -54,7 +67,7 @@ class PlexUnreachable implements Exception {
 /// open, with a leaked server-side session as the named risk, so this class
 /// deliberately exposes direct play only.
 class PlexService {
-  PlexService({required String clientId})
+  PlexService({required String clientId, this.serverId = '', this.serverName = ''})
       : _client = PlexClient(
           credentials: PlexCredentials(
             clientIdentifier: clientId,
@@ -67,6 +80,11 @@ class PlexService {
         );
 
   final PlexClient _client;
+
+  /// Empty while this instance is only doing account-level work (the PIN flow
+  /// and server discovery), set once it is bound to a server.
+  final String serverId;
+  final String serverName;
 
   String? get baseUrl => _client.baseUrl;
   bool get isConnected => _client.baseUrl != null && _client.token != null;
@@ -164,25 +182,25 @@ class PlexService {
   /// one tab per section, so someone with "Films" and "4K Films" sees one list.
   /// *Which* libraries feed a tab is the caller's decision — Plex's library type
   /// is only a default, and the user can override it.
-  Future<List<PlexMetadata>> itemsFrom(
+  Future<List<SourcedItem>> itemsFrom(
     List<PlexLibrarySection> wanted, {
     int perSection = 60,
   }) async {
     if (wanted.isEmpty) return const [];
     final pages =
         await Future.wait(wanted.map((s) => items(s, size: perSection)));
-    return pages.expand((page) => page).toList()
-      ..sort(
-        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      );
+    return [for (final item in pages.expand((page) => page)) sourced(item)];
   }
+
+  SourcedItem sourced(PlexMetadata metadata) =>
+      SourcedItem(serverId: serverId, metadata: metadata);
 
   /// Server-side search across every library (§12 screen 8).
   ///
   /// Uses Plex's own index rather than filtering a local list — the catalogue
   /// is far too large to hold in memory, which is the §4.1 lesson applied to
   /// Plex rather than Xtream.
-  Future<List<PlexMetadata>> search(String query, {int limit = 40}) async {
+  Future<List<SourcedItem>> search(String query, {int limit = 40}) async {
     if (query.trim().isEmpty) return const [];
     final results = await _client.search.flat(query: query, limit: limit);
     const playable = {
@@ -190,7 +208,10 @@ class PlexService {
       PlexMetadataType.show,
       PlexMetadataType.episode,
     };
-    return results.where((m) => playable.contains(m.type)).toList();
+    return [
+      for (final m in results)
+        if (playable.contains(m.type)) sourced(m),
+    ];
   }
 
   Future<PlexMetadata?> item(String ratingKey) =>

@@ -21,8 +21,13 @@ import '../accounts/plex_session.dart';
 /// position to actually advance, and if nothing moves before [_stallTimeout] it
 /// says so plainly rather than spinning forever.
 class PlayerScreen extends ConsumerStatefulWidget {
-  const PlayerScreen({super.key, required this.ratingKey});
+  const PlayerScreen({
+    super.key,
+    required this.serverId,
+    required this.ratingKey,
+  });
 
+  final String serverId;
   final String ratingKey;
 
   @override
@@ -64,8 +69,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _load() async {
     try {
-      final playable =
-          await ref.read(plexServiceProvider).directPlay(widget.ratingKey);
+      final playable = await plexServiceFor(ref, widget.serverId)
+          .directPlay(widget.ratingKey);
       if (!mounted) return;
       setState(() => _title = playable.title);
 
