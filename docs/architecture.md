@@ -291,7 +291,61 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)
-9. Settings — accounts & network shares, **Advanced sources** (§8), **AI Features** (provider keys, per-provider consent controls, §9.3), playback engine/buffer prefs, subtitle defaults, about/disclaimer, clear cache
+9. Settings — see §12.1 for the section breakdown
+
+### 12.1 Settings sections
+
+Reconciled against the Settings design canvas (artboards "09 · Settings ·
+Phone" and "09 · Settings · Windows desktop"), which is the source of truth for
+layout and copy; this list is the source of truth for *what exists*.
+
+| Section | Contents | Ref |
+|---|---|---|
+| **Sources** | Connected Plex servers, network shares, and local folders, each with a one-line status (e.g. "Plex · 412 movies, 38 series", "SMB · connected", "Two folders · 94 files"). Add/remove/reconnect. Xtream/M3U accounts appear here **only** when Advanced sources is on | §6, §7 |
+| **Appearance** | Theme (System / Midnight / Slate / Daylight / Amber) and accent colour | §12.2 |
+| **Playback** | Engine preference, buffer sizes, resume behaviour, hardware-decode toggle | §10 |
+| **Subtitles** | Default track language, styling, and where generated/translated tracks are cached | §9.2 |
+| **AI features** | Configured providers (name, model, key status), and the per-feature × per-provider consent list | §9.3 |
+| **Advanced sources** | The opt-in toggle plus its acknowledgement dialog; reversible, and turning it off preserves configured accounts | §8.2 |
+| **Privacy and data** | Crash-reporting opt-in (§16), clear cache, clear history, and a plain statement that the app has no backend and no analytics | §16 |
+| **About** | Version, licences, the general disclaimer, and links to the privacy policy | §1 |
+
+Two structural points the design gets right and that are easy to lose later:
+
+- **Advanced sources and AI features are independent switches.** Enabling one
+  does nothing to the other. §9.5 says this in prose; the Settings layout has
+  to keep them visually separate so it isn't read as one "power user" bundle.
+- **Consent is listed per feature × provider, never as a single AI opt-in** —
+  a row per pairing, each independently revocable while the key stays saved,
+  exactly matching `AiConsentRecord` (§3). The design shows one feature
+  deliberately *not* granted, which is the state that proves the granularity
+  is real rather than decorative.
+
+### 12.2 Theming
+
+Not previously in this plan; added from the design canvas, which argues the
+point correctly: **theme is a runtime setting, not a build-time palette.**
+
+- Five options (System / Midnight / Slate / Daylight / Amber) plus an accent
+  colour, applied via CSS-custom-property-style design tokens rather than
+  hardcoded colours, so the TV layout tree (§11) inherits the same tokens
+  without duplicating a palette.
+- "System" must genuinely follow the OS light/dark setting, including changes
+  made while the app is running.
+- Appearance sits near the top of Settings because it is the section users
+  actually visit; the compliance-shaped sections sit lower.
+
+**Still to design (§13 gates on these, and they are the harder half):**
+
+- **A TV artboard for Settings.** §11 is explicit that TV "is not a resize of
+  the phone UI." The consent list is the specific problem: a multi-column
+  table of feature × provider × data × date, navigated with a D-pad, is
+  exactly the kind of surface §11 says to budget extra design time for. It
+  likely becomes a vertical list of focusable cards rather than a table.
+- Screens 1–8 above, none of which have artboards yet.
+- Desktop is **not** a shipping target (§10 treats it as a possible future
+  companion build, and Phase 0 found it carries a real toolchain cost) — treat
+  the existing desktop artboard as a layout study, not a commitment.
 
 ## 13. Phased roadmap
 
@@ -377,7 +431,7 @@ Implementation notes that matter:
 - Fail safe and fail *quiet*: cache the last fetched value, and on a fresh install that has never reached the network, default to the user's local setting. A network blip must not silently disable a working app.
 - **This does not touch Guideline 2.5.2.** That rule bars downloading and executing *code*; this is a boolean toggling a feature already present and disclosed in the reviewed binary. Remote configuration of shipped features is ordinary and universal. Worth stating explicitly since §1.4 draws a hard line on the code-download question and the distinction should not blur.
 
-**Crashlytics — field crash reporting.** The app ships libmpv across phone, tablet, Android TV, Fire TV, and iOS, pointed at deliberately malformed streams from cheap panels. Field crashes here will not reproduce locally. Make it **opt-in** at first run to stay consistent with the privacy posture below, and declare it in Play Data Safety and Apple's privacy labels either way.
+**Crashlytics — field crash reporting.** The app ships libmpv across phone, tablet, Android TV, Fire TV, and iOS, pointed at deliberately malformed streams from cheap panels. Field crashes here will not reproduce locally. Make it **opt-in** at first run to stay consistent with the privacy posture below, and declare it in Play Data Safety and Apple's privacy labels either way. The toggle lives in Settings → **Privacy and data** (§12.1), alongside the statement that the app has no backend — one screen where a user can see everything that does and does not leave the device.
 
 ### 16.2 Why not AWS
 

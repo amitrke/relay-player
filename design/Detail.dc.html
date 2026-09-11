@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="./theme.js"></script>
+<style>
+  body { margin: 0; }
+  a { color: var(--accent, #8b7fe0); text-decoration: none; }
+  a:hover { color: var(--ink, #f2f2f4); }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height: 100vh; background: var(--stage, #06060a); font-family: 'Public Sans', system-ui, sans-serif; display: flex; flex-direction: column; align-items: flex-start; width: max-content; min-width: 100%; gap: 20px; padding: 40px 24px 56px; box-sizing: border-box">
+
+  <div style="display: flex; align-items: baseline; gap: 12px; width: 812px">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">05 · Detail · Phone — series from Plex, and a file from SMB</div>
+    <div style="flex: 1; height: 1px; background: var(--line, #24242a)"></div>
+  </div>
+
+  <div style="display: flex; gap: 32px; align-items: flex-start">
+    <div style="width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.45)">
+      <div style="height: 300px; flex: none; position: relative; background-color: var(--surface, #121215); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 7px, transparent 7px 14px); display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 24px; box-sizing: border-box">
+        <div style="font-size: 24px; color: var(--ink, #f2f2f4)">&#8249;</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">backdrop</div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; overflow: hidden; padding: 22px 24px 0; margin-top: -46px; position: relative">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4); margin-bottom: 8px">Living room server · Plex</div>
+        <h1 style="margin: 0 0 8px; font-size: 27px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; color: var(--ink, #f2f2f4)">The Singing Detective</h1>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4); margin-bottom: 16px">1986 · 6 episodes · Drama</div>
+        <p style="margin: 0 0 18px; font-size: 14px; line-height: 1.55; color: var(--ink-dim, #9a9aa4); text-wrap: pretty">A writer of detective fiction, hospitalised and immobile, reworks his own past and his own novel into the same story.</p>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 22px">
+          <button style="flex: 1; padding: 14px; border: none; border-radius: 11px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); font-family: 'Public Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px" style-hover="filter: brightness(1.08)">Resume E3 · 22 min left</button>
+          <button style="width: 52px; border: 1px solid var(--line, #24242a); border-radius: 11px; background: transparent; color: var(--ink-dim, #9a9aa4); font-size: 17px; cursor: pointer; min-height: 44px" style-hover="color: var(--ink, #f2f2f4)">&#9734;</button>
+        </div>
+
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px">
+          <div style="font-size: 15px; font-weight: 600; color: var(--ink, #f2f2f4)">Season 1</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent, #8b7fe0)">Change</div>
+        </div>
+        <sc-for list="{{ episodes }}" as="ep" hint-placeholder-count="4">
+          <div style="display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line, #24242a)">
+            <div style="width: 92px; height: 54px; flex: none; border-radius: 8px; border: 1px solid var(--line, #24242a); background-color: var(--surface, #121215); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.045) 0 6px, transparent 6px 12px)"></div>
+            <div style="flex: 1; min-width: 0">
+              <div style="font-size: 14px; font-weight: 500; color: var(--ink, #f2f2f4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ ep.title }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4); margin-top: 4px">{{ ep.meta }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.45)">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4)">
+        <span>9:41</span>
+        <span style="width: 16px; height: 8px; border: 1px solid currentColor; border-radius: 2px"></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 18px 24px 22px">
+        <div style="font-size: 22px; color: var(--ink, #f2f2f4); line-height: 1">&#8249;</div>
+        <div style="font-size: 15px; font-weight: 600; color: var(--ink, #f2f2f4)">Films</div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 24px">
+        <div style="height: 186px; border-radius: 14px; border: 1px solid var(--line, #24242a); background-color: var(--surface, #121215); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.045) 0 7px, transparent 7px 14px); display: flex; align-items: center; justify-content: center; margin-bottom: 20px">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">first frame</div>
+        </div>
+
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4); margin-bottom: 8px">SYNOLOGY\media · SMB</div>
+        <h1 style="margin: 0 0 18px; font-size: 22px; line-height: 1.2; font-weight: 600; color: var(--ink, #f2f2f4); text-wrap: pretty">Stalker (1979).mkv</h1>
+
+        <div style="border: 1px solid var(--line, #24242a); border-radius: 12px; overflow: hidden; margin-bottom: 20px">
+          <sc-for list="{{ fileFacts }}" as="row" hint-placeholder-count="5">
+            <div style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line, #24242a); background: var(--surface, #121215)">
+              <div style="font-size: 13px; color: var(--ink-dim, #9a9aa4)">{{ row.k }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--ink, #f2f2f4); text-align: right">{{ row.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <button style="width: 100%; padding: 15px; border: none; border-radius: 11px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); font-family: 'Public Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px; margin-bottom: 10px" style-hover="filter: brightness(1.08)">Play</button>
+
+        <sc-if value="{{ aiConfigured }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; gap: 10px">
+            <button style="flex: 1; padding: 13px; border: 1px solid var(--line, #24242a); border-radius: 11px; background: transparent; color: var(--ink, #f2f2f4); font-family: 'Public Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; min-height: 44px" style-hover="border-color: var(--accent, #8b7fe0)">Generate subtitles</button>
+            <button style="flex: 1; padding: 13px; border: 1px solid var(--line, #24242a); border-radius: 11px; background: transparent; color: var(--ink, #f2f2f4); font-family: 'Public Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; min-height: 44px" style-hover="border-color: var(--accent, #8b7fe0)">Translate</button>
+          </div>
+        </sc-if>
+      </div>
+      <div style="height: 5px; width: 120px; border-radius: 3px; background: var(--line, #24242a); margin: 12px auto 8px; flex: none"></div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 12px; width: 1440px; margin-top: 32px">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">05 · Detail · Windows desktop — movie from Plex</div>
+    <div style="flex: 1; height: 1px; background: var(--line, #24242a)"></div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4)">1440×900</div>
+  </div>
+
+  <div style="width: 1440px; height: 900px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.45)">
+    <div style="height: 40px; flex: none; display: flex; align-items: center; justify-content: space-between; padding-left: 18px; border-bottom: 1px solid var(--line, #24242a); background: var(--surface, #121215)">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--ink-dim, #9a9aa4)">Relay Player — Paris, Texas</div>
+      <div style="display: flex; height: 100%">
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 13px" style-hover="background: rgba(255,255,255,0.06)">&#8212;</div>
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 11px" style-hover="background: rgba(255,255,255,0.06)">&#9633;</div>
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 13px" style-hover="background: #c93b30; color: #fff">&#10005;</div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; display: flex; flex-direction: column">
+      <div style="height: 340px; flex: none; background-color: var(--surface, #121215); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px); display: flex; align-items: flex-end; justify-content: flex-end; padding: 18px 28px; box-sizing: border-box">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">backdrop 1440×340</div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 56px; padding: 36px 56px; box-sizing: border-box; overflow: hidden">
+        <div style="display: flex; gap: 36px; min-width: 0">
+          <div style="width: 210px; flex: none; margin-top: -150px">
+            <div style="aspect-ratio: 2 / 3; border-radius: 12px; border: 1px solid var(--line, #24242a); background-color: var(--bg, #0a0a0c); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 7px, transparent 7px 14px); display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 40px rgba(0,0,0,0.5)">
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">poster</div>
+            </div>
+          </div>
+
+          <div style="min-width: 0">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4); margin-bottom: 10px">Living room server · Plex · direct play</div>
+            <h1 style="margin: 0 0 10px; font-size: 42px; line-height: 1.08; font-weight: 600; letter-spacing: -0.025em; color: var(--ink, #f2f2f4)">Paris, Texas</h1>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--ink-dim, #9a9aa4); margin-bottom: 22px">1984 · 2 h 25 m · Drama · 4.6 GB · MKV 1080p</div>
+            <p style="margin: 0 0 28px; font-size: 16px; line-height: 1.6; color: var(--ink-dim, #9a9aa4); max-width: 62ch; text-wrap: pretty">A man walks out of the desert after four years missing, and slowly reassembles what is left of his family. Wim Wenders, from a script by Sam Shepard.</p>
+
+            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 30px; flex-wrap: wrap">
+              <button style="padding: 15px 34px; border: none; border-radius: 10px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); font-family: 'Public Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer" style-hover="filter: brightness(1.08)">Resume · 1 h 12 m in</button>
+              <button style="padding: 15px 24px; border: 1px solid var(--line, #24242a); border-radius: 10px; background: transparent; color: var(--ink, #f2f2f4); font-family: 'Public Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer" style-hover="border-color: var(--accent, #8b7fe0)">Start over</button>
+              <button style="padding: 15px 20px; border: 1px solid var(--line, #24242a); border-radius: 10px; background: transparent; color: var(--ink-dim, #9a9aa4); font-size: 16px; cursor: pointer" style-hover="color: var(--ink, #f2f2f4)">&#9734;</button>
+            </div>
+
+            <div style="display: flex; gap: 40px">
+              <sc-for list="{{ credits }}" as="c" hint-placeholder-count="3">
+                <div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4); margin-bottom: 6px">{{ c.k }}</div>
+                  <div style="font-size: 15px; color: var(--ink, #f2f2f4)">{{ c.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 12px">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">Tracks</div>
+          <div style="border: 1px solid var(--line, #24242a); border-radius: 12px; overflow: hidden">
+            <sc-for list="{{ tracks }}" as="t" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--line, #24242a); background: var(--surface, #121215)">
+                <div style="font-size: 14px; color: var(--ink, #f2f2f4); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ t.name }}</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4); flex: none">{{ t.kind }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ aiConfigured }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 16px 18px; border: 1px dashed var(--line, #24242a); border-radius: 12px">
+              <div style="font-size: 14px; font-weight: 600; color: var(--ink, #f2f2f4); margin-bottom: 6px">Subtitles with AI</div>
+              <div style="font-size: 13px; line-height: 1.5; color: var(--ink-dim, #9a9aa4); margin-bottom: 12px">Audio is sent to OpenAI for transcription. You will be asked to confirm first.</div>
+              <div style="display: flex; gap: 8px">
+                <div style="padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line, #24242a); font-size: 13px; color: var(--ink, #f2f2f4)" style-hover="border-color: var(--accent, #8b7fe0)">Generate</div>
+                <div style="padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line, #24242a); font-size: 13px; color: var(--ink, #f2f2f4)" style-hover="border-color: var(--accent, #8b7fe0)">Translate</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="width: 900px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--ink-dim, #9a9aa4)">Three shapes share this screen. Plex items carry full metadata; a file from SMB or this device shows only what the file itself knows, so it gets facts rather than a plot. AI subtitle actions appear only when a transcription-capable provider is configured.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Midnight&quot;,&quot;Slate&quot;,&quot;Daylight&quot;,&quot;Amber&quot;],&quot;default&quot;:&quot;Midnight&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#8b7fe0&quot;,&quot;#c9863f&quot;,&quot;#4f9d8a&quot;,&quot;#b8574e&quot;],&quot;default&quot;:&quot;#8b7fe0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;aiConfigured&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Content&quot;}}">
+class Component extends DCLogic {
+  rootRef = React.createRef();
+
+  apply() {
+    const el = this.rootRef.current;
+    if (!el) return;
+    if (!window.RelayTheme) { setTimeout(() => this.apply(), 60); return; }
+    window.RelayTheme.apply(el, this.props.theme, this.props.accent);
+  }
+
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+
+  renderVals() {
+    return {
+      rootRef: this.rootRef,
+      aiConfigured: this.props.aiConfigured ?? true,
+      episodes: [
+        { title: '1 · Skin', meta: '68 min · watched' },
+        { title: '2 · Heat', meta: '71 min · watched' },
+        { title: '3 · Lovely Days', meta: '69 min · 22 min left' },
+        { title: '4 · Clues', meta: '70 min' },
+        { title: '5 · Pitter Patter', meta: '69 min' }
+      ],
+      fileFacts: [
+        { k: 'Size', v: '8.7 GB' },
+        { k: 'Container', v: 'MKV' },
+        { k: 'Video', v: 'H.264 · 2160p' },
+        { k: 'Audio', v: 'AC3 5.1 · Russian' },
+        { k: 'Subtitles', v: 'None found' }
+      ],
+      credits: [
+        { k: 'Director', v: 'Wim Wenders' },
+        { k: 'Writer', v: 'Sam Shepard' },
+        { k: 'Cast', v: 'Harry Dean Stanton' }
+      ],
+      tracks: [
+        { name: 'English 5.1', kind: 'audio' },
+        { name: 'Commentary', kind: 'audio' },
+        { name: 'English SDH', kind: 'subtitle' },
+        { name: 'German', kind: 'subtitle' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

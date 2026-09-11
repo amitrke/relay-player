@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="./theme.js"></script>
+<style>
+  body { margin: 0; }
+  a { color: var(--accent, #8b7fe0); text-decoration: none; }
+  a:hover { color: var(--ink, #f2f2f4); }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height: 100vh; background: var(--stage, #06060a); font-family: 'Public Sans', system-ui, sans-serif; display: flex; flex-direction: column; align-items: flex-start; width: max-content; min-width: 100%; gap: 20px; padding: 40px 24px 56px; box-sizing: border-box">
+
+  <div style="display: flex; align-items: baseline; gap: 12px; width: 812px">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">08 · Search · Phone — plain search, and the consent step before asking</div>
+    <div style="flex: 1; height: 1px; background: var(--line, #24242a)"></div>
+  </div>
+
+  <div style="display: flex; gap: 32px; align-items: flex-start">
+    <div style="width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.45)">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4)">
+        <span>9:41</span>
+        <span style="width: 16px; height: 8px; border: 1px solid currentColor; border-radius: 2px"></span>
+      </div>
+
+      <div style="padding: 16px 20px 14px">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface, #121215); border: 1px solid var(--accent, #8b7fe0)">
+          <div style="width: 12px; height: 12px; border: 1.5px solid var(--ink-dim, #9a9aa4); border-radius: 50%; flex: none"></div>
+          <div style="flex: 1; font-size: 14px; color: var(--ink, #f2f2f4)">wenders</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4)">Clear</div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 12px">
+          <div style="padding: 7px 14px; border-radius: 18px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); font-size: 13px; font-weight: 500">Search</div>
+          <sc-if value="{{ aiConfigured }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 7px 14px; border-radius: 18px; border: 1px solid var(--line, #24242a); color: var(--ink-dim, #9a9aa4); font-size: 13px">Ask</div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; overflow: hidden; border-top: 1px solid var(--line, #24242a)">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+          <div>
+            <div style="display: flex; justify-content: space-between; padding: 14px 20px 8px">
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">{{ g.label }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4)">{{ g.count }}</div>
+            </div>
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+              <div style="display: flex; gap: 14px; align-items: center; padding: 11px 20px; border-bottom: 1px solid var(--line, #24242a)">
+                <div style="width: 38px; height: 54px; flex: none; border-radius: 6px; border: 1px solid var(--line, #24242a); background-color: var(--surface, #121215); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.045) 0 5px, transparent 5px 10px)"></div>
+                <div style="flex: 1; min-width: 0">
+                  <div style="font-size: 14px; color: var(--ink, #f2f2f4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ it.title }}</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ it.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="height: 5px; width: 120px; border-radius: 3px; background: var(--line, #24242a); margin: 10px auto 8px; flex: none"></div>
+    </div>
+
+    <div style="width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 24px 60px rgba(0,0,0,0.45); position: relative">
+      <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.55)"></div>
+      <div style="position: relative; background: var(--surface, #121215); border-top: 1px solid var(--line, #24242a); border-radius: 22px 22px 34px 34px; padding: 26px 24px 24px">
+        <div style="width: 40px; height: 4px; border-radius: 3px; background: var(--line, #24242a); margin: 0 auto 22px"></div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4); margin-bottom: 12px">Before this search runs</div>
+        <h2 style="margin: 0 0 12px; font-size: 21px; line-height: 1.25; font-weight: 600; color: var(--ink, #f2f2f4); text-wrap: pretty">Your search text and library titles will be sent to OpenAI</h2>
+        <p style="margin: 0 0 18px; font-size: 14px; line-height: 1.55; color: var(--ink-dim, #9a9aa4); text-wrap: pretty">That means what you type, plus the titles, years and genres already shown in the app. No file paths, no credentials, no audio.</p>
+
+        <div style="border: 1px solid var(--line, #24242a); border-radius: 12px; overflow: hidden; margin-bottom: 20px">
+          <sc-for list="{{ consentRows }}" as="row" hint-placeholder-count="3">
+            <div style="display: flex; justify-content: space-between; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line, #24242a); background: var(--bg, #0a0a0c)">
+              <div style="font-size: 13px; color: var(--ink-dim, #9a9aa4)">{{ row.k }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--ink, #f2f2f4); text-align: right">{{ row.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <button style="width: 100%; padding: 15px; border: none; border-radius: 11px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); font-family: 'Public Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px; margin-bottom: 10px" style-hover="filter: brightness(1.08)">Send and search</button>
+        <button style="width: 100%; padding: 14px; border: 1px solid var(--line, #24242a); border-radius: 11px; background: transparent; color: var(--ink-dim, #9a9aa4); font-family: 'Public Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; min-height: 44px" style-hover="color: var(--ink, #f2f2f4)">Keep searching on device only</button>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.55; color: var(--ink-dim, #9a9aa4); margin-top: 14px">You can withdraw this in Settings → AI features without deleting your key.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 12px; width: 1440px; margin-top: 32px">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">08 · Search · Windows desktop — natural-language results</div>
+    <div style="flex: 1; height: 1px; background: var(--line, #24242a)"></div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim, #9a9aa4)">1440×900</div>
+  </div>
+
+  <div style="width: 1440px; height: 900px; overflow: hidden; background: var(--bg, #0a0a0c); border: 1px solid var(--line, #24242a); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.45)">
+    <div style="height: 40px; flex: none; display: flex; align-items: center; justify-content: space-between; padding-left: 18px; border-bottom: 1px solid var(--line, #24242a); background: var(--surface, #121215)">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--ink-dim, #9a9aa4)">Relay Player — Search</div>
+      <div style="display: flex; height: 100%">
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 13px" style-hover="background: rgba(255,255,255,0.06)">&#8212;</div>
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 11px" style-hover="background: rgba(255,255,255,0.06)">&#9633;</div>
+        <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: var(--ink-dim, #9a9aa4); font-size: 13px" style-hover="background: #c93b30; color: #fff">&#10005;</div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; padding: 40px 64px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: 12px; background: var(--surface, #121215); border: 1px solid var(--accent, #8b7fe0); max-width: 820px; margin-bottom: 14px">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 9px; border-radius: 6px; background: var(--accent, #8b7fe0); color: var(--accent-ink, #0a0a0c); flex: none">Ask</div>
+        <div style="flex: 1; font-size: 17px; color: var(--ink, #f2f2f4)">something quiet and slow I have not finished yet</div>
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4); margin-bottom: 30px">Answered by OpenAI gpt-4o-mini · 412 titles and 34 history entries were sent · consent granted 2 Sep</div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 48px; min-height: 0">
+        <div style="min-width: 0">
+          <div style="font-size: 17px; font-weight: 600; color: var(--ink, #f2f2f4); margin-bottom: 16px">From your sources</div>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <sc-for list="{{ answers }}" as="a" hint-placeholder-count="4">
+              <div style="display: flex; gap: 20px; padding: 16px; border-radius: 12px; border: 1px solid var(--line, #24242a); background: var(--surface, #121215)" style-hover="border-color: var(--accent, #8b7fe0)">
+                <div style="width: 74px; height: 111px; flex: none; border-radius: 8px; border: 1px solid var(--line, #24242a); background-color: var(--bg, #0a0a0c); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.045) 0 6px, transparent 6px 12px)"></div>
+                <div style="min-width: 0; display: flex; flex-direction: column">
+                  <div style="font-size: 17px; font-weight: 600; color: var(--ink, #f2f2f4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ a.title }}</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4); margin: 5px 0 10px">{{ a.meta }}</div>
+                  <div style="font-size: 14px; line-height: 1.5; color: var(--ink-dim, #9a9aa4)">{{ a.why }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim, #9a9aa4)">Also matched by title</div>
+          <sc-for list="{{ literal }}" as="l" hint-placeholder-count="5">
+            <div style="display: flex; justify-content: space-between; gap: 12px; padding: 13px 16px; border-radius: 10px; border: 1px solid var(--line, #24242a)" style-hover="border-color: var(--accent, #8b7fe0)">
+              <div style="font-size: 14px; color: var(--ink, #f2f2f4); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ l.title }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim, #9a9aa4); flex: none">{{ l.source }}</div>
+            </div>
+          </sc-for>
+          <div style="padding: 16px 18px; border: 1px dashed var(--line, #24242a); border-radius: 12px; margin-top: 4px">
+            <div style="font-size: 13px; line-height: 1.55; color: var(--ink-dim, #9a9aa4)">Answers only ever point at titles you already have. Nothing here suggests something to go and find.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="width: 900px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--ink-dim, #9a9aa4)">Plain search always works with no provider configured. The Ask tab appears only when a text provider is set up, and the first use of each feature and provider pair asks for consent by name before anything is sent.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Midnight&quot;,&quot;Slate&quot;,&quot;Daylight&quot;,&quot;Amber&quot;],&quot;default&quot;:&quot;Midnight&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#8b7fe0&quot;,&quot;#c9863f&quot;,&quot;#4f9d8a&quot;,&quot;#b8574e&quot;],&quot;default&quot;:&quot;#8b7fe0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;aiConfigured&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Content&quot;}}">
+class Component extends DCLogic {
+  rootRef = React.createRef();
+
+  apply() {
+    const el = this.rootRef.current;
+    if (!el) return;
+    if (!window.RelayTheme) { setTimeout(() => this.apply(), 60); return; }
+    window.RelayTheme.apply(el, this.props.theme, this.props.accent);
+  }
+
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+
+  renderVals() {
+    return {
+      rootRef: this.rootRef,
+      aiConfigured: this.props.aiConfigured ?? true,
+      groups: [
+        { label: 'Movies', count: '3', items: [
+          { title: 'Paris, Texas', meta: '1984 · Living room server' },
+          { title: 'Wings of Desire', meta: '1987 · Living room server' },
+          { title: 'Alice in the Cities', meta: '1974 · SYNOLOGY\\media' }
+        ] },
+        { label: 'Series', count: '1', items: [
+          { title: 'Room 666', meta: '1982 · Living room server' }
+        ] },
+        { label: 'Local & Network', count: '2', items: [
+          { title: 'wenders-interview-1991.mp4', meta: '740 MB · This device' },
+          { title: 'Wings of Desire (1987).mkv', meta: '5.9 GB · SYNOLOGY\\media' }
+        ] }
+      ],
+      consentRows: [
+        { k: 'Provider', v: 'OpenAI' },
+        { k: 'Sent', v: 'Query, titles, years' },
+        { k: 'Not sent', v: 'Paths, credentials' }
+      ],
+      answers: [
+        { title: 'Paris, Texas', meta: '1984 · 2 h 25 m · Plex · 1 h 12 m in', why: 'Left part-way through, and about as unhurried as your library gets.' },
+        { title: 'Late Spring', meta: '1949 · 1 h 48 m · Plex · not started', why: 'Ozu, domestic, almost no incident. Matches the pace you asked for.' },
+        { title: 'Stalker', meta: '1979 · 2 h 42 m · SMB · 34 min in', why: 'Started in June and stopped early. Slow by design.' },
+        { title: 'Sansho the Bailiff', meta: '1954 · 2 h 4 m · SMB · not started', why: 'Quiet and severe, and the only unwatched Mizoguchi you have.' }
+      ],
+      literal: [
+        { title: 'Wings of Desire', source: 'Plex' },
+        { title: 'Alice in the Cities', source: 'SMB' },
+        { title: 'The Quiet Man', source: 'Plex' },
+        { title: 'Quiet City', source: 'This PC' },
+        { title: 'A Quiet Passion', source: 'Plex' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
