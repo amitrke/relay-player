@@ -218,6 +218,119 @@ happens? §7.2 calls this "real state to manage" — characterize it now.
 
 ---
 
+## Q6 — Xtream panel reality check (§4)
+
+**Status:** ✅ answered 2026-09-11 against a real panel (`ogold.org:8080`).
+
+Not one of the original four questions, but it produced the most consequential
+findings of Phase 0 so far. Measured directly against the API, not inferred.
+
+### Account shape
+
+| Field | Value | Why it matters |
+|---|---|---|
+| `auth` / `status` | `1` / `Active` | Credentials valid |
+| `is_trial` | `0` | Full line, expires 2027-06-12 |
+| **`max_connections`** | **`1`** | **See below — this is a design constraint** |
+| `allowed_output_formats` | `m3u8`, `ts` | Both available |
+| `server_protocol` / `https_port` | `http` / *(empty)* | **Cleartext only — see iOS note** |
+
+### 🔴 `max_connections: 1` constrains the player design
+
+One concurrent stream, total. The app must therefore guarantee it **never**
+holds two streams open at once:
+
+- Channel zapping must **stop the current stream before opening the next**, not
+  open-then-stop. The natural implementation is the wrong one here.
+- No preview-while-playing, no picture-in-picture of a *second* channel, no
+  second window on desktop.
+- A crash or force-quit may leave the connection held server-side until it
+  times out, so the next launch can fail with no obvious cause. Worth surfacing
+  `active_cons` in Settings so a user can see this rather than guess.
+
+This is not exotic — single-connection lines are the common case. §4 currently
+says `max_connections` is "worth surfacing in Settings"; it is more than that,
+it is a constraint the player lifecycle has to be built around.
+
+### 🔴 Catalogue payloads are far larger than §4 assumes
+
+| Call | Items | Payload |
+|---|---|---|
+| `get_live_streams` | 15,951 | **5.3 MB** |
+| `get_vod_streams` | 69,397 | **26.2 MB** |
+| `get_series` | 7,375 | — |
+| categories (live/vod/series) | 466 / 156 / 83 | — |
+
+Single JSON responses. §5 requires isolate parsing for XMLTV; **this extends
+that requirement to the Xtream client itself**, which §4 does not currently
+mention. Decoding 26 MB of JSON into Dart objects on the main isolate will
+freeze the UI outright, and on a Fire TV stick (§11) memory is a real risk, not
+just latency. Plan for streaming/paged parsing and on-disk caching rather than
+holding the whole catalogue in memory.
+
+### 🔴 The EPG is effectively empty on this panel
+
+Two independent failures, either of which alone would cripple the guide:
+
+- **91% of live channels have no `epg_channel_id`** — 14,491 of 15,951. Those
+  can never be linked to guide data, whatever the guide contains.
+- **The XMLTV export contains zero `<programme>` elements.** 252 KB, 1,544
+  `<channel>` definitions, and nothing else. There is no schedule data at all.
+- The channel IDs that do exist are unreliable: `<channel id="AMC.us">` is
+  reused verbatim for "ESPN+ EVENT 00", "01", "02"… — one ID mapping to many
+  unrelated channels.
+
+**Implication for §12 screen 7 (EPG guide):** for this provider the guide would
+render empty. That is a provider-data problem, not an app bug, but the app has
+to handle it gracefully and say so — an empty grid with no explanation reads as
+broken software. §5 already says to "set expectations in onboarding copy rather
+than guessing wrong"; this is the concrete case.
+
+### 🟡 Streams 302-redirect to a different host
+
+`/live/{user}/{pass}/{id}.ts` returns **HTTP 302** to a *different* server with
+a tokenised path:
+
+```
+Location: http://94.26.105.59:8080/live/play/<opaque-token>/3
+```
+
+The player must follow redirects (libmpv does by default — confirm the same for
+any fallback engine). Two consequences: the host actually serving video is not
+the host the user configured, and it is also cleartext HTTP.
+
+### 🟡 This panel's MPEG-TS is clean — which weakens one §10 argument
+
+After following the redirect: `HTTP 200`, `content-type: video/mp2t`, ~1.1 s to
+first byte, and **100 of 100 sampled packets start with the `0x47` sync byte**.
+Well-formed transport stream.
+
+§10 picks media_kit/libmpv over ExoPlayer *specifically* because panels emit
+malformed TS that ExoPlayer rejects. This panel does not. That does not
+invalidate the choice — one clean panel is not evidence about the population,
+and libmpv still wins on container breadth and the Plex/SMB paths — but it does
+mean **the tolerance argument is currently unevidenced**. Either test a second,
+worse panel, or downgrade the claim in §10 to reflect what is actually known.
+
+### 🔴 iOS App Transport Security will block this panel
+
+The panel is HTTP-only (no `https_port`), and the redirect target is HTTP too.
+**iOS ATS blocks cleartext HTTP by default**, so this provider simply will not
+load on iOS unless the app declares an ATS exception
+(`NSAllowsArbitraryLoads`), which Apple scrutinises at review and expects
+justification for — and doing so weakens the security posture for *every*
+connection, not just IPTV.
+
+This is a new §11/§1 item that no section currently covers, and it is
+awkwardly shaped: the justification for the exception is "users connect
+arbitrary self-hosted servers, many of which are HTTP-only", which is true and
+also draws attention to exactly the feature §8 is trying not to lead with.
+Note that Plex's `*.plex.direct` and most NAS devices are HTTPS, so this
+exception exists *mainly* for the Advanced-sources path. **Decide the position
+before the iOS submission, not during it.**
+
+---
+
 ## Q4 — M3U/XMLTV parse cost and data quality (§5)
 
 **Status:** ⬜
