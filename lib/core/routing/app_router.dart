@@ -12,6 +12,7 @@ import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
+import '../../features/series/show_detail_screen.dart';
 import '../../features/settings/settings_route.dart';
 import '../theme/theme_controller.dart';
 
@@ -73,6 +74,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ]),
         ],
+      ),
+      GoRoute(
+        path: '/show/:ratingKey',
+        builder: (_, state) => ShowDetailScreen(
+          ratingKey: state.pathParameters['ratingKey']!,
+        ),
       ),
       GoRoute(
         path: '/play/:ratingKey',

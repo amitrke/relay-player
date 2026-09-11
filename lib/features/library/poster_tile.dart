@@ -19,23 +19,11 @@ class PosterTile extends ConsumerWidget {
     final isShow = item.type == PlexMetadataType.show;
 
     return GestureDetector(
-      onTap: () {
-        // Shows need a season/episode choice before anything is playable; only
-        // movies resolve straight to a file.
-        if (isShow) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: t.surface,
-              content: Text(
-                'Episode browsing lands next — movies play today.',
-                style: TextStyle(color: t.ink),
-              ),
-            ),
-          );
-          return;
-        }
-        context.push('/play/${item.ratingKey}');
-      },
+      // A show has no file of its own — it resolves to seasons and episodes,
+      // so it opens a detail screen. A movie resolves straight to a file.
+      onTap: () => context.push(
+        isShow ? '/show/${item.ratingKey}' : '/play/${item.ratingKey}',
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
