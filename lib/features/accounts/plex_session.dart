@@ -259,7 +259,7 @@ class PlexSessionController extends Notifier<PlexState> {
         serverId: resource.clientIdentifier,
         serverName: resource.name,
       );
-      final baseUrl = service.connectTo(resource);
+      final baseUrl = await service.connectTo(resource);
 
       final stored = StoredPlexServer(
         id: resource.clientIdentifier,

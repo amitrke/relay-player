@@ -153,7 +153,7 @@ expensive if discovered in Phase 1.
 | Step | Works? | Notes / exceptions verbatim |
 |---|---|---|
 | `createPin` / `pollPin` | ✅ with `strong: false` | 4-char code (`9SRW`), 347 ms. Poll returned a 20-char token, 243 ms |
-| `fetchResources` + `bestConnection()` | ✅ | 444 ms, 5 servers found (2 owned, 3 shared). Picked the local-https `*.plex.direct` URI |
+| `fetchResources` + `bestConnection()` | ⚠️ owned servers only | 444 ms, 5 servers found (2 owned, 3 shared). Picked the local-https `*.plex.direct` URI. **Only the owned server was ever connected, and that hid a defect** — see below |
 | `library.sections()` | ✅ | 956 ms, 13 sections, types correctly mapped (movie/show/music/photo) |
 | `library.allByType()` | ✅ | Returned items with usable `ratingKey`/`title`/`year` |
 | `library.item()` + direct play by Part key | ✅ | 244 ms to header, position advances, 3 audio + 3 video tracks, correct duration |
@@ -813,6 +813,24 @@ Things learned during scaffolding that aren't among the four questions:
   on every machine, including this one where they are installed. Resolving the
   install path with `vswhere` and then enumerating a *literal* path is what
   fixed it; no component had to be installed in CI at all.
+- **`bestConnection()` cannot be used to reach a server shared with you.**
+  It returns the first `local && !relay` candidate unconditionally, and `local`
+  is plex.tv's guess that the server shares a LAN with whoever asked. For a
+  friend's server that candidate is a private address inside *their* network.
+  Connecting to an unroutable RFC1918 address is not refused — the packets go
+  nowhere and the socket hangs until the OS gives up — so the server presented
+  as an endless spinner rather than an error. The resource's own `relay: true`
+  says there is no direct path and `bestConnection()` ignores it.
+
+  Phase 0 recorded this step as working because it only ever connected the
+  *owned* server, where the local candidate is genuinely reachable. Three of
+  the five servers discovered were shared and none was tried. A probe that
+  covers only the easy half of a set is worth noting as such.
+
+  `PlexService.connectTo` now probes candidates in tiers — local direct (2 s),
+  non-local direct (4 s), relay (6 s) — racing within each tier and taking the
+  first that answers `/identity`. Verified against a real friend's relay-only
+  server: connected with its libraries listed in under four seconds.
 - **`smb_connect` resolved to 0.0.9**, not the version implied by §7.2's
   description. Treat the reliability question as correspondingly more open.
 - **`dart_plex` 0.1.2 does expose the full transcode lifecycle**

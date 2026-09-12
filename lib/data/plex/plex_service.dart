@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dart_plex/dart_plex.dart';
@@ -141,14 +142,107 @@ class PlexService {
       });
   }
 
-  /// Connects to [server], preferring a LAN route over the Plex relay.
-  String connectTo(PlexResource server) {
-    final uri = server.bestConnection()?.uri;
-    if (uri == null) {
-      throw PlexUnreachable('"${server.name}" has no usable connection.');
+  /// Connects to [server] using a route that actually answers.
+  ///
+  /// Deliberately not `bestConnection()`. That picks the first `local &&
+  /// !relay` candidate unconditionally, and `local` is plex.tv's guess that the
+  /// server shares a LAN with whoever asked. For a server *shared with you*
+  /// that candidate is a private address on someone else's network: connecting
+  /// to an unroutable RFC1918 address is not refused, it hangs until the OS
+  /// gives up, so a shared server appeared to be an endless spinner rather than
+  /// an error. Plex's own `relay: true` on the resource says there is no direct
+  /// path, and `bestConnection()` hands back the dead LAN candidate anyway.
+  ///
+  /// So candidates are probed instead, in tiers, racing within each tier and
+  /// taking the first that responds. The tier order keeps the LAN preference
+  /// that is right for an owned server on the same network, while the timeouts
+  /// mean a wrong guess costs seconds rather than the whole connection.
+  Future<String> connectTo(PlexResource server) async {
+    final tiers = <(Iterable<PlexServerConnection>, Duration)>[
+      // Short: if a LAN address is wrong it is unroutable, and the point is to
+      // stop waiting on it quickly.
+      (
+        server.connections.where((c) => c.local && !c.relay),
+        const Duration(seconds: 2),
+      ),
+      (
+        server.connections.where((c) => !c.local && !c.relay),
+        const Duration(seconds: 4),
+      ),
+      // Relay last and slowest: it is the fallback that usually works for a
+      // shared server, and it is not fast.
+      (
+        server.connections.where((c) => c.relay),
+        const Duration(seconds: 6),
+      ),
+    ];
+
+    for (final (candidates, timeout) in tiers) {
+      final uri = await _firstThatAnswers(
+        candidates.toList(growable: false),
+        server.accessToken,
+        timeout,
+      );
+      if (uri != null) {
+        _client.connect(uri, accessToken: server.accessToken);
+        return uri;
+      }
     }
-    _client.connect(uri.toString(), accessToken: server.accessToken);
-    return uri.toString();
+    throw PlexUnreachable(
+      '"${server.name}" did not answer on any of its '
+      '${server.connections.length} advertised addresses.',
+    );
+  }
+
+  /// Races [candidates], returning the first URI that responds, or null.
+  Future<String?> _firstThatAnswers(
+    List<PlexServerConnection> candidates,
+    String token,
+    Duration timeout,
+  ) {
+    if (candidates.isEmpty) return Future.value(null);
+
+    final done = Completer<String?>();
+    var outstanding = candidates.length;
+    for (final candidate in candidates) {
+      // _answers never throws, so every probe settles and `outstanding`
+      // always reaches zero.
+      _answers(candidate.uri, token, timeout).then((ok) {
+        if (ok && !done.isCompleted) {
+          done.complete(candidate.uri);
+        } else if (--outstanding == 0 && !done.isCompleted) {
+          done.complete(null);
+        }
+      });
+    }
+    return done.future;
+  }
+
+  /// Whether something at [uri] responds as a Plex server. Never throws.
+  ///
+  /// `/identity` is the cheapest endpoint that proves a server is there: it
+  /// needs no token and returns the machine identifier.
+  Future<bool> _answers(String uri, String token, Duration timeout) async {
+    final client = HttpClient()..connectionTimeout = timeout;
+    try {
+      // connectionTimeout bounds the TCP connect, which is the hang this
+      // exists to escape. The outer timeout covers the other half: a peer that
+      // accepts the connection and then never answers.
+      final response = await Future(() async {
+        final request = await client.getUrl(Uri.parse('$uri/identity'));
+        request.headers.set('X-Plex-Token', token);
+        request.headers.set('Accept', 'application/json');
+        return request.close();
+      }).timeout(timeout);
+      await response.drain<void>();
+      // Any answer at all means the transport works; a 401 would be an auth
+      // problem worth reporting rather than a reason to try another address.
+      return response.statusCode < 500;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
   }
 
   /// Reconnects a restored session without re-running discovery.

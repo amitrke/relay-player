@@ -64,7 +64,7 @@ this while it is unproven.
 |---|---|
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
 | ⬜ | **The Plex link flow end to end** (issue #3 fix). The screen now leaves for the library on the transition into `PlexStage.ready`, with a snackbar naming the server. Only the router behaviour behind it is under test — linking needs a real Plex account, so the navigation itself has never run. Check both branches: one server on the account (auto-connect) and several (server picker) |
-| ⬜ | **A server that hangs, in Settings → Sources.** The per-server timeout moved into `plexSectionsProvider`, so an unreachable server should now fail after 10s with its name and a Try again rather than spinning forever. Needs a server that hangs rather than refusing — a relay connection to an offline server is the reproducible case |
+| ⬜ | **The 10s `plexSectionsProvider` timeout has still never fired.** It was added for a server that hangs, but the hang turned out to be connection selection, now fixed — so the case that motivated it no longer reproduces. It remains the guard for a server that goes away *after* connecting (NAS asleep, friend's server offline). Needs a server that hangs rather than refuses |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
 ## 5. SMB — built, never seen a real share
@@ -101,7 +101,9 @@ Recorded to stop this becoming a list of everything.
 
 - **Plex**: PIN link, server discovery, multi-server merge, library mapping,
   section browse, direct play (Windows), server-side search, series → seasons →
-  episodes, session restore across restart
+  episodes, session restore across restart, **connecting a server shared by
+  someone else** (relay-only, no direct path — connected with its libraries
+  listed in under four seconds on an Android phone emulator)
 - **Xtream**: authentication against a real panel, live/VOD/series categories
   (466/156/83-scale confirmed), per-category channel and VOD fetch, channel
   search over 692 channels
