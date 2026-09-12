@@ -17,7 +17,7 @@
         android:maxSdkVersion="32" />
 
     <application
-        android:label="relay_player"
+        android:label="Relay Player"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
