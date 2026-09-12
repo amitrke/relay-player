@@ -24,7 +24,22 @@ final plexSectionsProvider =
         (ref, serverId) async {
   final servers = ref.watch(connectedServersProvider);
   for (final server in servers) {
-    if (server.id == serverId) return server.service.sections();
+    if (server.id == serverId) {
+      // The timeout belongs here, not at each call site. It used to be applied
+      // only where the library tabs merge sources, which left Settings →
+      // Sources — the one screen that watches this provider directly — spinning
+      // forever on a server that hangs instead of failing. That is the normal
+      // behaviour of a sleeping NAS or a dead relay connection, not an edge
+      // case, and it made adding a second server look like it never completed.
+      return server.service.sections().timeout(
+            _perServerTimeout,
+            onTimeout: () => throw TimeoutException(
+              '${server.name} did not respond within '
+              '${_perServerTimeout.inSeconds} seconds. It may be asleep or off '
+              'the network.',
+            ),
+          );
+    }
   }
   return const [];
 });

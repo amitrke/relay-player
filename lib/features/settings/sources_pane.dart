@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,8 +89,31 @@ class _ServerBlock extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(child: CircularProgressIndicator(color: t.accent)),
           ),
-          error: (e, _) =>
-              Text('$e', style: TextStyle(color: t.inkDim, fontSize: 13)),
+          // A server that cannot be reached is a normal state here, not a
+          // crash: it says so and offers a retry, rather than printing an
+          // exception at the user.
+          error: (e, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                e is TimeoutException && e.message != null
+                    ? e.message!
+                    : 'Could not load libraries from this server.\n\n$e',
+                style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.45),
+              ),
+              const SizedBox(height: 6),
+              TextButton(
+                onPressed: () =>
+                    ref.invalidate(plexSectionsProvider(server.id)),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text('Try again', style: TextStyle(color: t.accent)),
+              ),
+            ],
+          ),
           data: (list) => Column(
             children: [
               for (final section in list)
