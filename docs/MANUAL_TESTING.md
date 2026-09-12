@@ -86,6 +86,8 @@ this code.
 |---|---|
 | ⬜ | iOS — nothing has ever been built or run |
 | ⬜ | Android TV / Fire TV — no leanback tree yet (Phase 4) |
+| ⬜ | **Google TV sideload.** The manifest is TV-ready and `aapt2 dump badging` confirms `leanback-launchable-activity`, `android:banner` and both features as not-required, but no APK has been installed on a TV. Check: the app appears in the launcher's apps row at all (some Google TV builds hide sideloaded apps), the banner renders legibly at the launcher's own scaling rather than just as a 320×180 image, and how far the phone UI gets on a D-pad before Phase 4 |
+| ⬜ | The banner at real launcher scale — it has only been checked as an image file, centre-line aligned, never on a panel at viewing distance |
 | ⬜ | The §15 device matrix — one Android TV box, one Fire TV, two phones, two iOS devices |
 | ⬜ | Kill-switch drill (§16) — Remote Config is not adopted yet |
 
