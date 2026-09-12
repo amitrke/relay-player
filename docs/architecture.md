@@ -492,6 +492,29 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **Android phone/tablet** — baseline target: Movies/Series (Plex-merged)/Local & Network as the default flagship experience, with Live TV and EPG appearing only once Advanced Sources is enabled.
 
+> **Measured on real hardware and a Google TV emulator, 2026-09-11 — three
+> defects that make the current build unusable with a remote.** Recorded here
+> because each is a wrong assumption in shipped code, not missing Phase 4 work:
+>
+> 1. **`RelayFormFactor.tv` is unreachable.** `RelayLayout.of` selects it at
+>    `width >= 1800` logical px or `navigationMode == directional`. A 1080p TV
+>    reports **960 × 540 dp** (1920 px at 320 dpi), and 4K panels raise density
+>    to land in the same place, so the width test never passes. Flutter's
+>    `MediaQuery.navigationMode` defaults to `traditional` and only changes if
+>    the app sets it — Flutter does not detect TV — so that test never passes
+>    either. Every `tv` case in `RelayLayout` (96 dp overscan padding, 52 px
+>    titles, the 88 px link code) is dead code on an actual TV. The reliable
+>    signal is the `android.software.leanback` system feature, which the device
+>    does advertise.
+> 2. **Most tap targets cannot take focus.** Seven files use bare
+>    `GestureDetector`, including `poster_tile.dart` — every poster in the
+>    library grid. `GestureDetector` has no focus node, so a D-pad cannot reach
+>    any of them: no movie, show, episode or channel is selectable by remote.
+> 3. **Focus is invisible.** Where widgets *are* focusable (`RelayButton`,
+>    `RelaySurface`, `NavigationBar`) nothing draws a focus treatment and the
+>    theme sets no `focusColor`. Observed behaviour on the emulator: a D-pad
+>    press scrolls the page rather than moving between elements.
+
 **Android TV / Fire TV** — not a resize of the phone UI. Needs: D-pad focus traversal (`FocusNode`/`FocusTraversalGroup` wiring throughout), 10-foot-UI sized text/tap targets, a leanback-style row-based home screen, and a separate `AndroidManifest` `<intent-filter>` + banner asset for the TV launcher. Plan this as its own feature-flagged layout tree under `platform/tv/`, sharing the domain/data layers (Xtream, M3U, Plex, filesystem, AI) but not the widgets. A folder-tree browser (§7.3) is more awkward with a D-pad than a grid — budget extra design time for it specifically on TV.
 
 **Fire TV specifically — treat it as its own target, not a synonym for Android TV.** Three differences matter architecturally:
