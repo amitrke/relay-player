@@ -18,6 +18,33 @@ class PlexLinkScreen extends ConsumerWidget {
     final f = RelayLayout.of(context);
     final state = ref.watch(plexSessionProvider);
 
+    // Leave as soon as a server is actually connected.
+    //
+    // This cannot be left to the router's redirect. `/link` is reached with
+    // `push` from `/add-source`, and go_router does not re-run a top-level
+    // redirect for a pushed route when `refreshListenable` fires — pinned by
+    // test/router_refresh_push_test.dart. Without this, a successful link fell
+    // through the `switch` below to `_ConnectButton` and redrew "Connect to
+    // Plex" under the heading "Connect to Plex", so a link that had worked was
+    // indistinguishable from one that had not (issue #3).
+    ref.listen(plexSessionProvider, (previous, next) {
+      if (previous?.stage == PlexStage.ready ||
+          next.stage != PlexStage.ready) {
+        return;
+      }
+      if (!context.mounted) return;
+      final name = next.servers.isEmpty ? null : next.servers.last.name;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(name == null ? 'Plex connected.' : 'Connected to $name.'),
+        ),
+      );
+      // `go`, not `pop`: returning to "Add a source" after adding one reads as
+      // the same "add a source" prompt again, which is the complaint. The
+      // library is the thing they just earned.
+      context.go('/library');
+    });
+
     return Scaffold(
       backgroundColor: t.bg,
       // Linking Plex is optional now, so there has to be a way out. Without
@@ -83,6 +110,12 @@ class PlexLinkScreen extends ConsumerWidget {
                     PlexStage.awaitingApproval =>
                       _LinkCodePanel(code: state.linkCode?.code ?? '····'),
                     PlexStage.choosingServer => const _ServerPicker(),
+                    // Navigation above happens in the same frame as this
+                    // rebuild, so `ready` needs an honest holding state. Left
+                    // to `_`, it would show a "Connect to Plex" button for the
+                    // frame after the connection succeeded.
+                    PlexStage.ready =>
+                      const _Spinner(label: 'Connected. Opening your library…'),
                     _ => _ConnectButton(busy: state.busy),
                   },
                   const SizedBox(height: 32),

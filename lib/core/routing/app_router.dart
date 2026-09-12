@@ -59,6 +59,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Past first run, nothing is compulsory. Linking Plex returns to the
       // library; everything else is reachable with no sources at all.
       if (location == '/splash' || location == '/onboarding') return '/library';
+      // Only covers `go('/link')` — a deep link, or a restored session that
+      // lands here. It does **not** fire on the path users actually take:
+      // `/link` is reached with `push` from `/add-source`, and go_router does
+      // not re-run this redirect for a pushed route when `refreshListenable`
+      // notifies (test/router_refresh_push_test.dart). PlexLinkScreen handles
+      // `PlexStage.ready` itself for that reason — do not delete one believing
+      // the other covers it.
       if (location == '/link' && stage == PlexStage.ready) return '/library';
       return null;
     },
