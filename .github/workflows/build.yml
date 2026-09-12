@@ -4,10 +4,10 @@ name: Build
 # to remove: docs/MANUAL_TESTING.md lists a pile of things that can only be
 # checked on a device, and building each one by hand is the reason they keep
 # getting deferred.
+# Manual only for now. Release builds of this take ~6 minutes for Android alone,
+# and the artifacts are wanted at the point someone is about to test on a
+# device, not on every push.
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -79,20 +79,53 @@ jobs:
       - run: flutter pub get
 
       # flutter_secure_storage_windows compiles a C++ plugin that includes
-      # <atlstr.h>, so the runner needs Visual Studio's C++ ATL component. It
-      # cost a while to diagnose locally (PHASE0_FINDINGS.md, incidental
-      # findings), so fail loudly here rather than inside a CMake log.
-      - name: Check the ATL headers are present
+      # <atlstr.h>, so the build needs Visual Studio's C++ ATL component. The
+      # hosted runner image does not ship it -- the first run of this workflow
+      # failed here -- so install it rather than only reporting it. Locally the
+      # same component had to be added by hand (PHASE0_FINDINGS.md, incidental
+      # findings).
+      - name: Ensure the VC ATL component is installed
         shell: pwsh
         run: |
-          $found = Get-ChildItem 'C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC' -Directory -ErrorAction SilentlyContinue |
-            ForEach-Object { Join-Path $_.FullName 'atlmfc\include\atlstr.h' } |
-            Where-Object { Test-Path $_ }
-          if (-not $found) {
-            Write-Error "atlstr.h not found. flutter_secure_storage_windows needs the VC ATL component."
-            exit 1
+          $root = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer'
+          $vswhere = Join-Path $root 'vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found at $vswhere" }
+
+          $install = & $vswhere -latest -products * -property installationPath
+          if (-not $install) { throw 'vswhere reported no Visual Studio installation' }
+          Write-Host "Visual Studio: $install"
+
+          # atlmfc\include\atlstr.h appears under the MSVC toolset directory
+          # only once the ATL component is present.
+          function Find-Atl {
+              Get-ChildItem (Join-Path $install 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object { Join-Path $_.FullName 'atlmfc\include\atlstr.h' } |
+                Where-Object { Test-Path $_ } |
+                Select-Object -First 1
           }
-          Write-Host "ATL headers found: $($found[0])"
+
+          $found = Find-Atl
+          if (-not $found) {
+              Write-Host 'atlstr.h not present; adding Microsoft.VisualStudio.Component.VC.ATL'
+              # vs_installer returns immediately when launched directly, so wait
+              # on it explicitly or the re-check races the install.
+              $p = Start-Process -FilePath (Join-Path $root 'setup.exe') -Wait -PassThru -ArgumentList @(
+                  'modify', '--installPath', $install,
+                  '--add', 'Microsoft.VisualStudio.Component.VC.ATL',
+                  '--quiet', '--norestart', '--nocache'
+              )
+              # 3010 is success-pending-reboot, which does not stop the headers
+              # from being on disk and usable.
+              if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
+                  throw "Visual Studio installer failed with exit code $($p.ExitCode)"
+              }
+              $found = Find-Atl
+          }
+
+          if (-not $found) {
+              throw 'atlstr.h still not found after installing the ATL component.'
+          }
+          Write-Host "ATL headers: $found"
 
       - run: flutter build windows --release
 
