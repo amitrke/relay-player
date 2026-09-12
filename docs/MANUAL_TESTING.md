@@ -63,6 +63,8 @@ this while it is unproven.
 | # | What |
 |---|---|
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
+| ⬜ | **The Plex link flow end to end** (issue #3 fix). The screen now leaves for the library on the transition into `PlexStage.ready`, with a snackbar naming the server. Only the router behaviour behind it is under test — linking needs a real Plex account, so the navigation itself has never run. Check both branches: one server on the account (auto-connect) and several (server picker) |
+| ⬜ | **A server that hangs, in Settings → Sources.** The per-server timeout moved into `plexSectionsProvider`, so an unreachable server should now fail after 10s with its name and a Try again rather than spinning forever. Needs a server that hangs rather than refusing — a relay connection to an offline server is the reproducible case |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
 ## 5. SMB — built, never seen a real share
