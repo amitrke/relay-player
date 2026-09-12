@@ -88,6 +88,7 @@ this code.
 |---|---|
 | ⬜ | iOS — nothing has ever been built or run |
 | ⬜ | Android TV / Fire TV — no leanback tree yet (Phase 4) |
+| ⬜ | **Install the right ABI on Google TV.** A Chromecast with Google TV (Android TV OS 14) refused `app-arm64-v8a-release.apk` with "app isn't compatible with your device": it runs a **32-bit userspace** on a 64-bit chip, so it needs `app-armeabi-v7a-release.apk` or the universal APK. Nothing else in the manifest gates it — minSdk is 24, no feature is required, all screen sizes are supported — so on Android TV, "not compatible" means the ABI. Confirm with `adb shell getprop ro.product.cpu.abi` |
 | ⬜ | **Google TV sideload.** The manifest is TV-ready and `aapt2 dump badging` confirms `leanback-launchable-activity`, `android:banner` and both features as not-required, but no APK has been installed on a TV. Check: the app appears in the launcher's apps row at all (some Google TV builds hide sideloaded apps), the banner renders legibly at the launcher's own scaling rather than just as a 320×180 image, and how far the phone UI gets on a D-pad before Phase 4 |
 | ⬜ | The banner at real launcher scale — it has only been checked as an image file, centre-line aligned, never on a panel at viewing distance |
 | ⬜ | The §15 device matrix — one Android TV box, one Fire TV, two phones, two iOS devices |

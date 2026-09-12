@@ -54,9 +54,29 @@ jobs:
           cache: true
       - run: flutter pub get
 
-      # Split per ABI: the universal APK is 89.9 MB against 30.8 MB for arm64,
+      # Split per ABI: the universal APK is ~99 MB against ~31 MB for arm64,
       # purely from carrying libmpv three times (PHASE0_FINDINGS.md Q5).
       - run: flutter build apk --release --split-per-abi
+
+      # And a universal one, because a split APK carries exactly one ABI and
+      # installing the wrong one reports only "app isn't compatible with your
+      # device", which points at nothing. Android TV is where that bites: a
+      # Chromecast with Google TV runs a 32-bit userspace on a 64-bit chip, so
+      # arm64-v8a is refused by hardware that looks like it should take it.
+      # Worth the extra build so the artifact set has one APK that installs
+      # anywhere.
+      - run: flutter build apk --release
+
+      # Fail here rather than shipping an artifact that silently lost one,
+      # since the upload glob only checks that *something* matched.
+      - name: Check all four APKs are present
+        run: |
+          cd build/app/outputs/flutter-apk
+          for apk in app-release.apk app-arm64-v8a-release.apk \
+                     app-armeabi-v7a-release.apk app-x86_64-release.apk; do
+            test -f "$apk" || { echo "missing $apk"; exit 1; }
+            echo "$apk  $(du -h "$apk" | cut -f1)"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
