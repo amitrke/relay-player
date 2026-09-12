@@ -795,6 +795,24 @@ Things learned during scaffolding that aren't among the four questions:
   The standing point still holds for anyone setting up a fresh machine, and it
   is the concrete cost behind §14's "media_kit supports desktop too, which costs
   nothing now": desktop support has a toolchain cost, just a one-time one.
+
+  **It is a local cost only.** The `windows-latest` GitHub runner ships ATL
+  already — Visual Studio 18 Enterprise at
+  `C:\Program Files\Microsoft Visual Studio\18\Enterprise`, MSVC 14.51.36231.
+  Note *18*, not `2022`: anything matching the VS directory by year will miss it.
+
+  The first run of `.github/workflows/build.yml` appeared to prove the opposite,
+  and the negative result is worth recording because the conclusion drawn from
+  it was wrong. Its pre-check reported `atlstr.h` missing, which read as a
+  missing component; the check was simply broken. It globbed
+  `C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC` and joined
+  `atlmfc\include\atlstr.h` onto each result — but **`Get-ChildItem` given a
+  path containing wildcards returns the directories the pattern matched, not
+  their children**, so the result was `VC\Tools\MSVC` itself and the join
+  skipped the MSVC version directory in between. It reported the headers absent
+  on every machine, including this one where they are installed. Resolving the
+  install path with `vswhere` and then enumerating a *literal* path is what
+  fixed it; no component had to be installed in CI at all.
 - **`smb_connect` resolved to 0.0.9**, not the version implied by §7.2's
   description. Treat the reliability question as correspondingly more open.
 - **`dart_plex` 0.1.2 does expose the full transcode lifecycle**

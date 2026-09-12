@@ -80,52 +80,37 @@ jobs:
 
       # flutter_secure_storage_windows compiles a C++ plugin that includes
       # <atlstr.h>, so the build needs Visual Studio's C++ ATL component. The
-      # hosted runner image does not ship it -- the first run of this workflow
-      # failed here -- so install it rather than only reporting it. Locally the
-      # same component had to be added by hand (PHASE0_FINDINGS.md, incidental
-      # findings).
-      - name: Ensure the VC ATL component is installed
+      # hosted image does ship it; this fails fast with the component name
+      # rather than leaving a missing header to surface inside a CMake log, and
+      # prints the toolset it found so an image change is legible.
+      #
+      # Locally the component had to be installed by hand
+      # (PHASE0_FINDINGS.md, incidental findings).
+      - name: Check the VC ATL headers are present
         shell: pwsh
         run: |
-          $root = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer'
-          $vswhere = Join-Path $root 'vswhere.exe'
+          $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
           if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found at $vswhere" }
 
           $install = & $vswhere -latest -products * -property installationPath
           if (-not $install) { throw 'vswhere reported no Visual Studio installation' }
+
+          # Note the literal path: Get-ChildItem given a path *containing
+          # wildcards* returns the directories the pattern matched rather than
+          # their contents. The first version of this check globbed its way to
+          # VC\Tools\MSVC and joined atlmfc\include\atlstr.h onto that, missing
+          # the version directory in between, so it reported the headers absent
+          # on every machine including ones where they were installed.
+          $found = Get-ChildItem (Join-Path $install 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Join-Path $_.FullName 'atlmfc\include\atlstr.h' } |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (-not $found) {
+            throw "atlstr.h not found under $install. flutter_secure_storage_windows needs the VC ATL component (Microsoft.VisualStudio.Component.VC.ATL)."
+          }
           Write-Host "Visual Studio: $install"
-
-          # atlmfc\include\atlstr.h appears under the MSVC toolset directory
-          # only once the ATL component is present.
-          function Find-Atl {
-              Get-ChildItem (Join-Path $install 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue |
-                ForEach-Object { Join-Path $_.FullName 'atlmfc\include\atlstr.h' } |
-                Where-Object { Test-Path $_ } |
-                Select-Object -First 1
-          }
-
-          $found = Find-Atl
-          if (-not $found) {
-              Write-Host 'atlstr.h not present; adding Microsoft.VisualStudio.Component.VC.ATL'
-              # vs_installer returns immediately when launched directly, so wait
-              # on it explicitly or the re-check races the install.
-              $p = Start-Process -FilePath (Join-Path $root 'setup.exe') -Wait -PassThru -ArgumentList @(
-                  'modify', '--installPath', $install,
-                  '--add', 'Microsoft.VisualStudio.Component.VC.ATL',
-                  '--quiet', '--norestart', '--nocache'
-              )
-              # 3010 is success-pending-reboot, which does not stop the headers
-              # from being on disk and usable.
-              if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
-                  throw "Visual Studio installer failed with exit code $($p.ExitCode)"
-              }
-              $found = Find-Atl
-          }
-
-          if (-not $found) {
-              throw 'atlstr.h still not found after installing the ATL component.'
-          }
-          Write-Host "ATL headers: $found"
+          Write-Host "ATL headers:   $found"
 
       - run: flutter build windows --release
 
