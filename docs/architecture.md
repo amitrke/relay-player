@@ -492,9 +492,13 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **Android phone/tablet** — baseline target: Movies/Series (Plex-merged)/Local & Network as the default flagship experience, with Live TV and EPG appearing only once Advanced Sources is enabled.
 
-> **Measured on real hardware and a Google TV emulator, 2026-09-11 — three
-> defects that make the current build unusable with a remote.** Recorded here
-> because each is a wrong assumption in shipped code, not missing Phase 4 work:
+> **Measured on real hardware and a Google TV emulator, 2026-09-11 — four
+> defects that made the current build unusable with a remote.** Recorded here
+> because each is a wrong assumption in shipped code, not missing Phase 4 work.
+> **All four are fixed as of 2026-09-11**, verified by driving the Google TV
+> emulator with `adb shell input keyevent`; the resolutions are noted per item
+> and the causes are kept because none of them is obvious from reading the code.
+> A fifth was found and fixed 2026-09-12 — see below.
 >
 > 1. **`RelayFormFactor.tv` is unreachable.** `RelayLayout.of` selects it at
 >    `width >= 1800` logical px or `navigationMode == directional`. A 1080p TV
@@ -505,15 +509,84 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 >    either. Every `tv` case in `RelayLayout` (96 dp overscan padding, 52 px
 >    titles, the 88 px link code) is dead code on an actual TV. The reliable
 >    signal is the `android.software.leanback` system feature, which the device
->    does advertise.
+>    does advertise. **Fixed:** `DeviceKind` asks the platform over a method
+>    channel (leanback, then the television feature, then the TV ui-mode) before
+>    the first frame, and `RelayLayout.of` reads that rather than the window.
 > 2. **Most tap targets cannot take focus.** Seven files use bare
 >    `GestureDetector`, including `poster_tile.dart` — every poster in the
 >    library grid. `GestureDetector` has no focus node, so a D-pad cannot reach
 >    any of them: no movie, show, episode or channel is selectable by remote.
+>    **Fixed:** `RelayTappable` replaces them — a focus node, a visible ring, and
+>    activation from `select`/`enter`/`gameButtonA`.
 > 3. **Focus is invisible.** Where widgets *are* focusable (`RelayButton`,
 >    `RelaySurface`, `NavigationBar`) nothing draws a focus treatment and the
 >    theme sets no `focusColor`. Observed behaviour on the emulator: a D-pad
 >    press scrolls the page rather than moving between elements.
+>    **Fixed for our own widgets** via `RelayFocusRing`, but ~~setting a
+>    theme-level `focusColor` fixes the Material-drawn surfaces~~ — **that part
+>    was wrong, 2026-09-11.** A `focusColor` was set and `NavigationRail` still
+>    showed nothing when focus arrived by remote: its indicator marks the
+>    *selected* destination, which is a different question from where focus is,
+>    and the Material focus overlay is a faint tint besides. The rail is now
+>    built from `RelayTappable` (`_Rail` in `home_shell.dart`). Assume the same
+>    of every other Material-drawn surface until it is checked on a TV.
+>    ~~The Settings sub-list is confirmed still invisible.~~ **Fixed
+>    2026-09-12:** `_RailRow` in `settings_screen.dart` was still a bare
+>    `Material`/`InkWell`; it now goes through `RelayTappable` like everything
+>    else. Still assume the same of any other Material-drawn surface not yet
+>    checked on a TV.
+> 4. **The navigation rail cannot be reached from the page at all** — the
+>    defect that reads as "the remote does nothing". Focus traversal stops at
+>    the edge of the enclosing `FocusScope`
+>    (`FocusScopeNode.directionalTraversalEdgeBehavior` defaults to
+>    `TraversalEdgeBehavior.stop`). `StatefulShellRoute.indexedStack` gives each
+>    branch its own `Navigator` and every route installs its own scope, while
+>    the rail is built by the shell *outside* those Navigators — so no number of
+>    Left presses could ever reach Settings. The failure is silent: the
+>    unhandled key falls through to the scrollable, which scrolls. Note it is
+>    asymmetric — the rail can reach the page, because the shell's scope
+>    encloses the branches; only getting out is impossible. **Fixed:**
+>    `RelayFocusBoundary` sits above both sides, defers to the ordinary in-scope
+>    move, and hands focus across only once that reports it had nowhere to go.
+>    Pinned by `test/tv_navigation_test.dart`, which reproduces the nesting with
+>    a real nested `Navigator` — a flat test tree does not exhibit the bug.
+>
+> **A fifth defect, measured and fixed 2026-09-12: going to Settings → Sources
+> and back to Library left the remote reading as stuck.** Reported from a real
+> device, reproduced and fixed on the Google TV emulator with
+> `adb shell input keyevent`. Two causes stacked:
+>
+> 1. `_contentScope` in `home_shell.dart` is one `FocusScopeNode` shared by
+>    every branch of the shell's `IndexedStack` (Library, Search, Settings),
+>    because `RelayFocusBoundary` needs a single stable node to hand focus to.
+>    `StatefulShellRoute.indexedStack`'s default container only wraps an
+>    inactive branch in `Offstage` + `TickerMode`, neither of which touches the
+>    focus tree — so a node focused in Settings can still be `_contentScope`'s
+>    "last focused child" after the viewer switches to Library. **Fixed:**
+>    `app_router.dart` now supplies its own `navigatorContainerBuilder`
+>    (`_tvSafeIndexedStack`) that also wraps every inactive branch in
+>    `ExcludeFocus`. (Flutter's own `IndexedStack` gained the equivalent
+>    internally in framework commit 3955e2b1535, April 2026 — recent enough,
+>    and this package only pins `sdk: ^3.13.0`, that the fix does not rely on
+>    it.)
+> 2. Even with that in place, `RelayFocusBoundary._enter` (`relay_widgets.dart`)
+>    called `remembered.requestFocus()` on whatever `_contentScope` last
+>    recorded without checking whether that node could still take focus.
+>    `FocusNode.requestFocus()` on a node with `canRequestFocus == false` is a
+>    silent no-op (`_doRequestFocus` returns early) — so the hand-off from the
+>    rail did nothing at all, and focus stayed wherever it already was. This is
+>    the part that actually produced the stuck remote: fixing only #1 and
+>    leaving this unguarded still reproduced it. **Fixed:** `_enter` now checks
+>    `remembered.canRequestFocus` and falls through to picking the first
+>    focusable descendant when it is false.
+>
+> Pinned by the `branch focus leak` group in `test/tv_navigation_test.dart`.
+> The first two cases there use a plain `Stack`, not `IndexedStack`, so the
+> "without `ExcludeFocus`" control actually demonstrates the pre-fix behaviour
+> rather than passing for free on a Flutter version that already patches
+> `IndexedStack` — a `Stack`-based, `IndexedStack`-based, and `ExcludeFocus`-free
+> combination was tried before landing on this one, and each failure narrowed
+> down which of the two causes above was load-bearing.
 
 **Android TV / Fire TV** — not a resize of the phone UI. Needs: D-pad focus traversal (`FocusNode`/`FocusTraversalGroup` wiring throughout), 10-foot-UI sized text/tap targets, a leanback-style row-based home screen, and a separate `AndroidManifest` `<intent-filter>` + banner asset for the TV launcher. Plan this as its own feature-flagged layout tree under `platform/tv/`, sharing the domain/data layers (Xtream, M3U, Plex, filesystem, AI) but not the widgets. A folder-tree browser (§7.3) is more awkward with a D-pad than a grid — budget extra design time for it specifically on TV.
 

@@ -86,8 +86,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/link',
         builder: (_, _) => const PlexLinkScreen(),
       ),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (_, _, shell) => HomeShell(navigationShell: shell),
+        // Not `.indexedStack` — its container keeps every branch's Focus
+        // nodes alive under `Offstage`, which hides a branch from the eye but
+        // not from the focus tree. A remote press after visiting Settings can
+        // land back on a Sources chip nobody can see, and it reads as the
+        // remote going dead rather than as misrouted (§11). The container
+        // below is otherwise identical to the default.
+        navigatorContainerBuilder: _tvSafeIndexedStack,
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
@@ -244,6 +251,47 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Same layout as `StatefulShellRoute.indexedStack`'s default container, plus
+/// an explicit [ExcludeFocus] on every branch but the active one.
+///
+/// Measured cause of "go to Settings → Sources, then try to get back to a
+/// Library poster" reading as a dead remote (§11): switching branches left
+/// `_contentScope.focusedChild` (`relay_widgets.dart`) still pointing at
+/// whatever was focused in Settings, and restoring that on the next hand-off
+/// from the rail either lands on a control nobody can see or, once it can no
+/// longer take focus, silently does nothing.
+///
+/// Flutter's own `IndexedStack` started wrapping non-selected children in
+/// `ExcludeFocus` itself (framework commit 3955e2b1535, April 2026), which
+/// would cover this on a current-enough SDK — but this package only pins
+/// `sdk: ^3.13.0`, so a contributor's older-but-still-valid Flutter has no
+/// such guarantee. Applying it explicitly here means the fix doesn't depend
+/// on which Flutter release happens to be installed.
+///
+/// This alone is not sufficient — see the `canRequestFocus` guard in
+/// `RelayFocusBoundary._enter`, which is what actually stops the hand-off
+/// from silently failing once a node here is excluded.
+Widget _tvSafeIndexedStack(
+  BuildContext context,
+  StatefulNavigationShell navigationShell,
+  List<Widget> children,
+) {
+  final current = navigationShell.currentIndex;
+  return IndexedStack(
+    index: current,
+    children: [
+      for (final (i, child) in children.indexed)
+        Offstage(
+          offstage: i != current,
+          child: TickerMode(
+            enabled: i == current,
+            child: ExcludeFocus(excluding: i != current, child: child),
+          ),
+        ),
+    ],
+  );
+}
 
 /// Bridges the Riverpod session into go_router's [Listenable] redirect trigger.
 class _SessionRefresh extends ChangeNotifier {

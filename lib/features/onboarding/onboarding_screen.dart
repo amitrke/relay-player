@@ -116,16 +116,16 @@ class _SourceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final titleColor = copy.isMuted ? t.inkDim : t.ink;
-    final iconSize = form == RelayFormFactor.tv ? 30.0 : 22.0;
+    final iconSize = form == RelayFormFactor.tv ? 26.0 : 22.0;
 
     return RelaySurface(
-      padding: EdgeInsets.all(form == RelayFormFactor.tv ? 24 : 16),
+      padding: EdgeInsets.all(form == RelayFormFactor.tv ? 18 : 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(copy.icon,
               size: iconSize, color: copy.isMuted ? t.inkDim : t.accent),
-          SizedBox(width: form == RelayFormFactor.tv ? 20 : 14),
+          SizedBox(width: form == RelayFormFactor.tv ? 16 : 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +170,10 @@ class _Masthead extends StatelessWidget {
         centered ? CrossAxisAlignment.center : CrossAxisAlignment.start;
     final textAlign = centered ? TextAlign.center : TextAlign.start;
     final markSize = switch (form) {
-      RelayFormFactor.tv => 84.0,
+      // Sized against the 540 dp a TV actually gives, not the 1080 px the TV
+      // artboard was drawn at. At 84 the masthead alone ate a third of the
+      // screen and pushed the only focusable control off the bottom.
+      RelayFormFactor.tv => 60.0,
       RelayFormFactor.phone => 52.0,
       _ => 64.0,
     };
@@ -179,7 +182,7 @@ class _Masthead extends StatelessWidget {
       crossAxisAlignment: align,
       children: [
         RelayMark(size: markSize),
-        SizedBox(height: form == RelayFormFactor.tv ? 28 : 20),
+        SizedBox(height: form == RelayFormFactor.tv ? 16 : 20),
         Text(
           'Relay Player',
           textAlign: textAlign,
@@ -351,55 +354,63 @@ class _TvLayout extends StatelessWidget {
     const form = RelayFormFactor.tv;
     final sources = _SourceCopy.forForm(form);
 
+    // Two columns, because a TV is a wide, short canvas: 960 x 540 dp, and only
+    // 444 dp of height once the overscan margin is taken. Stacking a masthead,
+    // a row of cards and a button vertically needed about 600 dp, so the button
+    // — the only focusable control on the screen — was pushed off the bottom.
+    // In a release build an overflowing Column clips in silence, with no banner
+    // and no log, so it simply looked as though the remote did nothing.
+    //
+    // Splitting left/right spends the axis there is plenty of.
     return Padding(
       padding: RelayLayout.pagePadding(form),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1500),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const _Masthead(form: form, centered: true),
-              const SizedBox(height: 44),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final s in sources) ...[
-                    Expanded(child: _SourceRow(copy: s, form: form)),
-                    if (s != sources.last) const SizedBox(width: 20),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 36),
-              RelayButton(
-                label: 'Add source',
-                onPressed: onAddSource,
-                autofocus: true,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: t.line),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('OK',
-                        style: TextStyle(color: t.inkDim, fontSize: 16)),
-                  ),
-                  const SizedBox(width: 10),
-                  Text('to select',
-                      style: TextStyle(color: t.inkDim, fontSize: 18)),
-                ],
-              ),
-              const SizedBox(height: 28),
-              const RelayDrmNotice(),
-            ],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Expanded(
+            flex: 5,
+            child: _Masthead(form: form, centered: false),
           ),
-        ),
+          const SizedBox(width: 56),
+          Expanded(
+            flex: 6,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final s in sources) ...[
+                  _SourceRow(copy: s, form: form),
+                  const SizedBox(height: 12),
+                ],
+                const SizedBox(height: 12),
+                RelayButton(
+                  label: 'Add source',
+                  onPressed: onAddSource,
+                  autofocus: true,
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: t.line),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('OK',
+                          style: TextStyle(color: t.inkDim, fontSize: 16)),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('to select',
+                        style: TextStyle(color: t.inkDim, fontSize: 18)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../platform/device_kind.dart';
 import 'relay_tokens.dart';
 
 /// Makes [RelayTokens] available to the widget tree.
@@ -49,11 +50,14 @@ class RelayLayout {
 
   /// Artboard widths: phone 390, tablet 834, desktop 1440, TV 1920.
   static RelayFormFactor of(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final width = media.size.width;
-    // A TV reports a large logical width with a coarse pointer and no touch.
-    final coarse = media.navigationMode == NavigationMode.directional;
-    if (coarse || width >= 1800) return RelayFormFactor.tv;
+    // Asked of the platform, not inferred from the window. This used to test
+    // `width >= 1800` or `navigationMode == directional`, and neither can ever
+    // be true on a TV: a 1080p panel reports 960 dp wide, and Flutter leaves
+    // navigationMode at `traditional` unless the app changes it. The tv branch
+    // was therefore unreachable and every 10-foot size below was dead code.
+    if (DeviceKind.isTelevision) return RelayFormFactor.tv;
+
+    final width = MediaQuery.sizeOf(context).width;
     if (width >= 1100) return RelayFormFactor.desktop;
     if (width >= 700) return RelayFormFactor.tablet;
     return RelayFormFactor.phone;
@@ -61,25 +65,45 @@ class RelayLayout {
 
   /// Outer page padding per form factor. The 10-foot UI needs a real overscan
   /// margin, not a scaled-up phone gutter.
+  ///
+  /// The TV margin is 5% of each axis, which is the conventional overscan
+  /// allowance — 48 × 27 against 960 × 540. It used to be 96 × 48, taken from a
+  /// 1920 × 1080 artboard as though those were logical pixels. They are not:
+  /// see [titleSize].
   static EdgeInsets pagePadding(RelayFormFactor f) => switch (f) {
         RelayFormFactor.phone => const EdgeInsets.symmetric(horizontal: 20),
         RelayFormFactor.tablet => const EdgeInsets.symmetric(horizontal: 48),
         RelayFormFactor.desktop => const EdgeInsets.symmetric(horizontal: 64),
-        RelayFormFactor.tv => const EdgeInsets.symmetric(horizontal: 96, vertical: 48),
+        RelayFormFactor.tv =>
+          const EdgeInsets.symmetric(horizontal: 48, vertical: 27),
       };
 
+  /// Type sizes.
+  ///
+  /// **The TV sizes are smaller than they look.** A TV is not a big canvas in
+  /// layout terms: a 1080p panel reports **960 × 540 dp**, so it has twice a
+  /// phone's width and *half* its height. Android reports 320 dpi for it
+  /// precisely so that a dp is physically large — about 0.05 inch on a 55"
+  /// screen against 0.006 inch on a phone. Density has therefore already
+  /// compensated for the three-metre viewing distance, by roughly 8×.
+  ///
+  /// The earlier numbers (52 title, 22 body) were drawn against a 1920 × 1080
+  /// artboard read as logical pixels, and multiplied on top of a compensation
+  /// that had already happened: ~12× the physical size of the phone text for
+  /// ~8× the distance. The result did not fit in 540 dp — the onboarding screen
+  /// pushed its only focusable control off the bottom of the screen.
   static double titleSize(RelayFormFactor f) => switch (f) {
         RelayFormFactor.phone => 28,
         RelayFormFactor.tablet => 34,
         RelayFormFactor.desktop => 34,
-        RelayFormFactor.tv => 52,
+        RelayFormFactor.tv => 36,
       };
 
   static double bodySize(RelayFormFactor f) => switch (f) {
         RelayFormFactor.phone => 14,
         RelayFormFactor.tablet => 15,
         RelayFormFactor.desktop => 15,
-        RelayFormFactor.tv => 22,
+        RelayFormFactor.tv => 18,
       };
 }
 
@@ -105,6 +129,11 @@ ThemeData relayThemeData(RelayTokens t, {required bool isDark}) {
     scaffoldBackgroundColor: t.bg,
     canvasColor: t.bg,
     dividerColor: t.line,
+    // Material's default focus overlay is a faint tint, which is invisible
+    // across a room. Anything drawn by Material rather than by RelayFocusRing
+    // — NavigationBar destinations, TextButton, ListTile — gets a focus state
+    // that can actually be seen from a sofa.
+    focusColor: t.accent.withValues(alpha: 0.35),
     fontFamily: 'IBM Plex Sans',
     // The design canvas uses IBM Plex; fall back gracefully until the font is
     // bundled, rather than shipping a hard dependency on an absent asset.

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_client.dart';
 import '../library/poster_grid.dart';
 import 'xtream_controller.dart';
@@ -86,7 +87,8 @@ class _XtreamSeriesScreenState extends ConsumerState<XtreamSeriesScreen> {
                 runSpacing: 8,
                 children: [
                   for (final season in list)
-                    GestureDetector(
+                    RelayTappable(
+                      borderRadius: 999,
                       onTap: () => setState(() => _season = season.number),
                       child: Container(
                         padding: const EdgeInsets.symmetric(

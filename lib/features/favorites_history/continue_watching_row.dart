@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/local/history_store.dart';
 import 'history_controller.dart';
 
@@ -71,7 +72,8 @@ class _ResumeTile extends ConsumerWidget {
 
     return SizedBox(
       width: width,
-      child: GestureDetector(
+      child: RelayTappable(
+        borderRadius: 10,
         onTap: () => context.push(item.route),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

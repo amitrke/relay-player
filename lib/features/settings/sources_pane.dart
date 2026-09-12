@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../accounts/plex_session.dart';
 import '../library/library_mapping.dart';
 import '../library/library_screen.dart';
@@ -286,7 +287,8 @@ class _PlacementChips extends StatelessWidget {
       spacing: 6,
       children: [
         for (final placement in LibraryPlacement.values)
-          GestureDetector(
+          RelayTappable(
+            borderRadius: 999,
             onTap: () => onSelect(placement),
             child: Container(
               padding:

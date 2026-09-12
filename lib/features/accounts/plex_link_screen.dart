@@ -176,7 +176,7 @@ class _LinkCodePanel extends ConsumerWidget {
               code,
               style: TextStyle(
                 color: t.ink,
-                fontSize: f == RelayFormFactor.tv ? 88 : 52,
+                fontSize: f == RelayFormFactor.tv ? 60 : 52,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 14,
                 height: 1,

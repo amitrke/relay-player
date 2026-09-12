@@ -607,24 +607,24 @@ class _RailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
+    // Was a bare Material/InkWell, which takes D-pad focus but draws nothing
+    // for it — confirmed still invisible on the emulator (architecture.md
+    // §11 defect 3). RelayTappable is what makes every other focusable
+    // surface in the app show a ring; this section list was the one left over.
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: selected ? t.bg : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected ? t.ink : t.inkDim,
-                fontSize: 13.5,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
+      child: RelayTappable(
+        borderRadius: 8,
+        onTap: onTap,
+        child: Container(
+          color: selected ? t.bg : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? t.ink : t.inkDim,
+              fontSize: 13.5,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
         ),

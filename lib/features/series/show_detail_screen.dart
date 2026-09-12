@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../library/poster_grid.dart';
@@ -208,7 +209,8 @@ class _SeasonChips extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final season in seasons)
-          GestureDetector(
+          RelayTappable(
+            borderRadius: 999,
             onTap: () => onSelect(season.ratingKey),
             child: Container(
               padding:

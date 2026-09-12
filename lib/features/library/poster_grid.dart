@@ -44,7 +44,13 @@ class PosterGrid extends ConsumerWidget {
         mainAxisSpacing: 16,
       ),
       itemCount: ordered.length,
-      itemBuilder: (context, i) => PosterTile(item: ordered[i]),
+      // The first tile takes focus on a TV so a remote starts on the content
+      // instead of nowhere. Only on a TV: on a phone it would pull an unwanted
+      // focus highlight onto a tile nobody touched.
+      itemBuilder: (context, i) => PosterTile(
+        item: ordered[i],
+        autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
+      ),
     );
   }
 }

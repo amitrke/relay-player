@@ -3,22 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/local/favorites_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
-  const PosterTile({super.key, required this.item});
+  const PosterTile({super.key, required this.item, this.autofocus = false});
 
   final CatalogItem item;
+
+  /// The first tile in a grid takes focus, so a remote lands on the content
+  /// rather than nowhere.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
     final poster = item.posterUrl;
 
-    return GestureDetector(
+    return RelayTappable(
+      autofocus: autofocus,
+      borderRadius: 10,
       onTap: () => context.push(item.route),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +83,8 @@ class PosterTile extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: t.ink,
-              fontSize: 12.5,
+              // 12.5 is a phone caption and unreadable across a room.
+              fontSize: f == RelayFormFactor.tv ? 18 : 12.5,
               height: 1.3,
               fontWeight: FontWeight.w600,
             ),
@@ -83,7 +92,10 @@ class PosterTile extends ConsumerWidget {
           if (item.year != null)
             Text(
               '${item.year}',
-              style: TextStyle(color: t.inkDim, fontSize: 11),
+              style: TextStyle(
+                color: t.inkDim,
+                fontSize: f == RelayFormFactor.tv ? 15 : 11,
+              ),
             ),
         ],
       ),

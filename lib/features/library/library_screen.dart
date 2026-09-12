@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../advanced_sources/xtream_controller.dart';
@@ -224,41 +225,48 @@ class _TabBar extends StatelessWidget {
     final f = RelayLayout.of(context);
 
     return SizedBox(
-      height: 46,
+      // The 10-foot row needs the height; 46 is a phone tab strip.
+      height: f == RelayFormFactor.tv ? 62 : 46,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
         children: [
           for (final tab in tabs)
-            GestureDetector(
-              onTap: () => onSelect(tab),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 22),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          tab.label,
-                          style: TextStyle(
-                            color: tab == selected ? t.ink : t.inkDim,
-                            fontSize: RelayLayout.bodySize(f) + 1,
-                            fontWeight: tab == selected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
+            Padding(
+              padding: const EdgeInsets.only(right: 22),
+              // Was a GestureDetector, which a D-pad cannot reach -- the tabs
+              // were unreachable by remote, so there was no way to move between
+              // Movies, Series and Local & Network at all.
+              child: RelayTappable(
+                borderRadius: 8,
+                onTap: () => onSelect(tab),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            tab.label,
+                            style: TextStyle(
+                              color: tab == selected ? t.ink : t.inkDim,
+                              fontSize: RelayLayout.bodySize(f) + 1,
+                              fontWeight: tab == selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Container(
-                      height: 2,
-                      width: 100,
-                      color:
-                          tab == selected ? t.accent : Colors.transparent,
-                    ),
-                  ],
+                      Container(
+                        height: 2,
+                        width: 100,
+                        color:
+                            tab == selected ? t.accent : Colors.transparent,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
