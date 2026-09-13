@@ -1,0 +1,182 @@
+name: Release to Play internal testing
+
+# Builds a signed App Bundle and pushes it to the Play Console internal testing
+# track. Setup — the upload key, the service account, and the one manual upload
+# Play insists on before its API will accept anything — is in docs/RELEASING.md.
+#
+# Separate from build.yml rather than a job inside it: that workflow makes
+# debug-signed sideload artifacts and needs no secrets, so it can run on any
+# branch without anyone holding the upload key. This one is the only place the
+# key and the Play credentials are exposed to.
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: >-
+          Release status. "completed" rolls out to internal testers at once;
+          "draft" leaves it in Play Console to roll out by hand. Play refuses
+          anything but draft while the app itself is still a draft
+          (see docs/RELEASING.md).
+        type: choice
+        options: [completed, draft]
+        default: completed
+  # A version tag is a deliberate "testers should get this" signal. Pushes to
+  # main are not: release builds take ~6 minutes and most merges are not worth
+  # a tester's update prompt.
+  push:
+    tags: ['v*']
+
+concurrency:
+  # Unlike build.yml, never cancel. A run killed mid-upload leaves an open Play
+  # edit behind, and two uploads racing each other is the case Play rejects
+  # most confusingly; queueing costs nothing but a wait.
+  group: release-android
+  cancel-in-progress: false
+
+env:
+  # Kept in step with build.yml; see the comment there.
+  FLUTTER_VERSION: '3.47.0'
+  PACKAGE_NAME: com.subnext.relay
+
+jobs:
+  check:
+    name: Analyse and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  bundle:
+    name: Build and upload AAB
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      # Secrets cannot appear in an `if:` directly; their presence can.
+      HAS_PLAY_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      # Written outside the checkout, so nothing a later step does to the
+      # working tree can pick it up, and removed at the end regardless of how
+      # the job went.
+      - name: Install the upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret for $name is not set. See docs/RELEASING.md."
+              exit 1
+            fi
+          done
+          keystore="$RUNNER_TEMP/upload-keystore.jks"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          cat > android/key.properties <<EOF
+          storeFile=$keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      # versionCode must strictly increase with every upload Play accepts, and
+      # the run number of this workflow does. Two consequences worth knowing:
+      # re-running a failed run reuses its number, so a run that got as far as
+      # uploading cannot simply be re-run; and renaming or recreating this file
+      # restarts the count at 1, which Play will reject until it passes the
+      # highest code already uploaded.
+      #
+      # versionName comes from the tag when there is one (v1.2.3 -> 1.2.3) and
+      # from pubspec.yaml otherwise.
+      - name: Work out the version
+        id: version
+        run: |
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_type }}" = tag ]; then
+            name="${GITHUB_REF_NAME#v}"
+            if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME is not of the form v1.2.3"
+              exit 1
+            fi
+            echo "name_arg=--build-name=$name" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: >-
+          flutter build appbundle --release
+          --build-number=${{ steps.version.outputs.code }}
+          ${{ steps.version.outputs.name_arg }}
+
+      # build.gradle.kts falls back to the debug key when key.properties is
+      # missing or unreadable, which keeps local release builds working and
+      # would, without this, turn a broken secret into a bundle Play rejects
+      # only after the upload — or, for the first manual upload, into a debug
+      # certificate registered as the upload key.
+      - name: Refuse a debug-signed bundle
+        run: |
+          aab=build/app/outputs/bundle/release/app-release.aab
+          # keytool reports an unsigned file as text rather than only through
+          # its exit status, so check both.
+          cert="$(keytool -printcert -jarfile "$aab" 2>&1)" || true
+          if [ -z "$cert" ] || grep -q 'Not a signed jar file' <<< "$cert"; then
+            echo "::error::$aab is not signed"; exit 1
+          fi
+          if grep -q 'CN=Android Debug' <<< "$cert"; then
+            echo "::error::$aab is signed with the debug key"; exit 1
+          fi
+          # Fingerprint only: it is what Play Console shows for the upload key,
+          # so a mismatch there can be diagnosed from this log.
+          grep -E 'SHA256:' <<< "$cert"
+          echo "versionCode ${{ steps.version.outputs.code }}, $(du -h "$aab" | cut -f1)"
+
+      # Kept whether or not the upload runs. Play's API cannot create an app's
+      # first release, so the very first bundle has to be downloaded from here
+      # and uploaded in Play Console by hand.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab-${{ steps.version.outputs.code }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload to Play internal testing
+        if: env.HAS_PLAY_CREDENTIALS == 'true'
+        # Pinned to the commit behind v1.1.5, not the tag. This step is handed
+        # a service account key with release rights on the Play listing, and a
+        # tag is something the action's owner can move.
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: ${{ inputs.status || 'completed' }}
+
+      - name: Note the skipped upload
+        if: env.HAS_PLAY_CREDENTIALS != 'true'
+        run: >-
+          echo "::notice::PLAY_SERVICE_ACCOUNT_JSON is not set, so the bundle
+          was built and kept as an artifact but not uploaded. Expected before
+          the first manual upload; see docs/RELEASING.md."
+
+      - name: Remove the upload key
+        if: always()
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload-keystore.jks"

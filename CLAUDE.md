@@ -30,6 +30,8 @@ screenshots, which come from Plex, local files or SMB only.
   including the hypotheses that were ruled out.
 - `docs/MANUAL_TESTING.md` — the honest state of what has and has not been
   verified on real hardware.
+- `docs/RELEASING.md` — the Play internal-testing pipeline, the one-time
+  setup it depends on, and the failure modes seen while running it.
 
 Read the relevant § before proposing a design change. Several decisions are
 deliberately counterintuitive and were corrected by evidence — §5's isolate

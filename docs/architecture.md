@@ -779,7 +779,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 | AI transcription | OpenAI Whisper-style endpoint initially, **chunked under its 25 MB request cap** (§9.2). Audio extraction needs an ffmpeg binding — **`ffmpeg_kit_flutter` is discontinued and upstream `arthenica/ffmpeg-kit` is archived**; the community successor is `ffmpeg_kit_flutter_new`, but the post-retirement fork landscape is fragmented with no consensus winner, so pin a specific fork, vendor it if necessary, and have a platform-channel fallback in mind (§13 Phase 0) |
 | ffmpeg licensing | **Decided in Phase 0, not Phase 3.5** — media_kit bundles libmpv/ffmpeg, so the choice is made at engine selection (§10). Target an LGPL build, dynamically linked, with GPL-only encoders (x264/x265) excluded — this app decodes, it never encodes |
 | Crash reporting / kill switch | Firebase Crashlytics + Remote Config only — both work without Google Play Services, which Fire TV lacks (§11, §16). No Analytics, no FCM, no Auth, no Firestore |
-| CI/build | Codemagic or GitHub Actions + fastlane for both stores (plus Amazon Appstore for Fire TV, §11) |
+| CI/build | GitHub Actions. Android goes to Play internal testing through `release.yml` with the `r0adkll/upload-google-play` action pinned to a commit, not fastlane, which it did not need for a single track ([RELEASING.md](RELEASING.md), 2026-09-13). iOS and the Amazon Appstore (§11) are still undecided, and fastlane may yet earn its place there |
 
 ## 15. Testing plan
 
