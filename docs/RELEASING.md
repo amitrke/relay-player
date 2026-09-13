@@ -90,8 +90,13 @@ From the repository root, logged in with `gh`:
 base64 -w0 /path/to/upload-keystore.jks | gh secret set ANDROID_UPLOAD_KEYSTORE_BASE64
 gh secret set ANDROID_UPLOAD_KEYSTORE_PASSWORD   # prompts; nothing lands in shell history
 gh secret set ANDROID_UPLOAD_KEY_PASSWORD        # the same value, see above
-gh secret set ANDROID_UPLOAD_KEY_ALIAS --body upload
+gh variable set ANDROID_UPLOAD_KEY_ALIAS --body upload   # a variable, not a secret
 ```
+
+The alias is a repository *variable* because GitHub replaces every occurrence
+of a secret's value in the logs with `***`. With the alias set to the word
+`upload`, every log line about an upload came out masked (run 1). The alias
+was never the sensitive part: the keystore and its password are.
 
 On Windows PowerShell there is no `base64`, so replace the first line with the
 lines below. Two details matter. `Resolve-Path` is needed because .NET resolves
@@ -105,34 +110,60 @@ gh secret set ANDROID_UPLOAD_KEYSTORE_BASE64 --body $b64
 Remove-Variable b64
 ```
 
-### 3. Build once, and upload that bundle by hand — **unverified**
+### 3. Build once, and upload that bundle by hand — done 2026-09-13
 
 1. Actions → *Release to Play internal testing* → *Run workflow*. With no Play
    credentials it builds, checks the signature, stores the artifact and skips
    the upload.
 2. Download the `android-aab-<run number>` artifact.
 3. In Play Console open **Test and release → Testing → Internal testing** and
-   create a tester list (email addresses, at most 100).
-4. **Create new release.** Accept *Play App Signing* with a Google-generated
-   app signing key when asked. The bundle's certificate then becomes the
-   registered upload key, so it has to be the step 1 key and not a debug build.
-   The workflow's signature check exists for exactly this.
-5. Upload the `.aab`, add release notes, then save, review and roll out.
-6. Open the opt-in link on the same page with each tester's account. Until a
+   create a tester list (email addresses, at most 100). Email lists belong to
+   the developer account and are shared across all its apps. Tick only this
+   app's list on the track.
+4. **Create new release** and upload the `.aab`. The bundle's certificate
+   becomes the registered upload key, so it has to be the step 1 key and not a
+   debug build. The workflow's signature check exists for exactly this.
+5. Add release notes, then save, review and roll out.
+6. Open the opt-in link on the Testers tab with each tester's account. Until a
    tester opts in, Play shows them the store listing as "not available".
 
-### 4. Give the workflow a service account — **unverified**
+What was observed on 2026-09-13, doing this with run 1:
 
-1. In the Google Cloud project linked to the Play developer account, enable the
-   **Google Play Android Developer API**.
-2. Create a service account there. It needs no Cloud roles. Create a **JSON
-   key** for it and download it.
+- **There was no Play App Signing prompt.** An earlier draft of this section
+  said to accept one. New apps are enrolled automatically, and afterwards
+  *Protected with Play → App signing* showed a Google-held app signing key
+  already "In use".
+- **The upload key certificate registered on that page matched the SHA-256
+  fingerprint the workflow logged.** That confirms the chain from secret to
+  bundle to registration end to end.
+- **Play allowed a full rollout while the app was still a draft.** The track
+  went *Active*, the release was "Available to internal testers · Not
+  reviewed", and the store name showed as the placeholder
+  "com.subnext.relay (unreviewed)". None of the *Set up your app* forms were
+  filled in first.
+
+### 4. Give the workflow a service account — done 2026-09-13
+
+1. In the app's Google Cloud project (`relay-player`, the same project as
+   Firebase), enable the **Google Play Android Developer API**
+   (`gcloud services enable androidpublisher.googleapis.com --project relay-player`).
+   Play Console no longer needs a project linked to the developer account.
+   Inviting the service account (step 3) is enough.
+2. Create a service account there. It needs no Cloud roles. It was created as
+   `play-release`, with a **JSON key**. Do not reuse the Firebase Admin SDK
+   service account: it carries broad Firebase rights, and this key lives in a
+   GitHub secret. Pass `--project` explicitly, because a machine's `gcloud`
+   default project may be a different one.
 3. In Play Console open **Users and permissions → Invite new users**, enter the
    service account's email, and add this app with only **Release apps to
    testing tracks**. Do not grant account-wide admin: the key sits in a GitHub
    secret and should be able to do as little as possible.
 4. `gh secret set PLAY_SERVICE_ACCOUNT_JSON < /path/to/key.json`, then delete
-   the downloaded file.
+   the downloaded file. In PowerShell, which has no `<`:
+   `Get-Content -Raw key.json | gh secret set PLAY_SERVICE_ACCOUNT_JSON`.
+
+The first automated upload (run 2, 2026-09-13) succeeded a few minutes after
+the invite, with no 403 in between.
 
 Permissions granted in Play Console can take a while to reach the API. A 403
 straight after inviting the account is not yet a sign anything is wrong.
@@ -142,9 +173,10 @@ straight after inviting the account is not yet a sign anything is wrong.
 - **"Only releases with status draft may be created on draft app."** Play
   treats an app as a draft until its setup is complete. The workflow's manual
   run has a `status` input for this. Choose `draft`, then roll the release out
-  in Play Console. Whether one manual internal rollout is enough to clear this,
-  or whether the whole *Set up your app* checklist has to be done first, has
-  **not been observed yet**. Record which it was here.
+  in Play Console. **Not hit here, as of 2026-09-13.** Once the first release
+  had been rolled out by hand (step 3), the API accepted a `completed` upload
+  (run 2), even though none of the *Set up your app* forms were done. The
+  `draft` input stays for apps that have not had that first manual rollout.
 - **"Version code N has already been used."** Re-running a run that reached
   the upload reuses its run number. Start a new run instead. Renaming or
   recreating `release.yml` resets the run count, and every upload fails until
@@ -153,6 +185,10 @@ straight after inviting the account is not yet a sign anything is wrong.
   fingerprint. Compare it with *Test and release → Setup → App signing → Upload
   key certificate*. A mismatch means the secret holds a different keystore from
   the one registered in step 3.
+- **Every build named "1.0.0".** Play names a release after its versionName,
+  and untagged runs take that from `pubspec.yaml`, so runs 1 and 2 looked
+  identical on the track. The workflow now sets the release name to
+  `<versionName> (<run number>)`. Tag real versions to move the first part.
 - **No native debug symbols.** Play warns that the bundle contains native code
   without symbols. That is libmpv (PHASE0_FINDINGS.md Q5). It is a warning and
   not a rejection. Symbols start to matter when §16's crash reporting does.

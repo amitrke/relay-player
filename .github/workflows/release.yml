@@ -80,12 +80,16 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          # A repository variable, not a secret: the alias is not sensitive,
+          # and GitHub masks every occurrence of a secret's value in the logs.
+          # With the alias as the word "upload", every log line mentioning an
+          # upload came out as "***" (run 1, 2026-09-13).
+          KEY_ALIAS: ${{ vars.ANDROID_UPLOAD_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
         run: |
           for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Secret for $name is not set. See docs/RELEASING.md."
+              echo "::error::$name is empty: its secret, or for KEY_ALIAS the repository variable, is not set. See docs/RELEASING.md."
               exit 1
             fi
           done
@@ -118,7 +122,13 @@ jobs:
               exit 1
             fi
             echo "name_arg=--build-name=$name" >> "$GITHUB_OUTPUT"
+          else
+            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
           fi
+          # Play names a release after its versionName unless told otherwise,
+          # so every untagged run arrived as another "1.0.0" and testers could
+          # not tell builds apart (runs 1 and 2, 2026-09-13).
+          echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
 
       - run: >-
           flutter build appbundle --release
@@ -167,7 +177,9 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: internal
+          releaseName: ${{ steps.version.outputs.release_name }}
+          # `tracks`, not `track`, which v1.1.5 reports as deprecated.
+          tracks: internal
           status: ${{ inputs.status || 'completed' }}
 
       - name: Note the skipped upload
