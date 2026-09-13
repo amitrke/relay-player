@@ -56,7 +56,7 @@ correction, so none of them should be submitted on someone else's reading.
 
 | Form | Draft answer |
 |---|---|
-| Set privacy policy | **Blocked on #9.** Needs the hosted URL before this can be answered |
+| Set privacy policy | `https://amitrke.github.io/relay-player/privacy.html`. Served from `site/` by `.github/workflows/pages.yml`. Live once this reaches `main` (#9) |
 | Sign in details | **Needs a real demo account.** The app shows nothing useful without a connected source, and Plex needs an account. Create a Plex account for review with a small library of openly licensed content, and give the reviewer those credentials plus a note that Advanced Sources is off by default and not required to use the app (§8.4). Keep the credentials out of this public repo |
 | Ads | No ads. The app contains no advertising and no ad SDK |
 | Content rating | See the note below. Do not rush this one |
@@ -81,6 +81,25 @@ even behind an off-by-default gate, is arguably closer to it. Answer it
 deliberately, and **write down the answer and the reasoning here** when it is
 settled, because it is exactly the kind of declaration that will be revisited
 if a complaint ever arrives (§1.5).
+
+## The published site
+
+`site/` is served at `https://amitrke.github.io/relay-player/` by
+`.github/workflows/pages.yml`, which publishes that directory and nothing
+else. `/docs` is deliberately not the Pages source: it holds working documents
+rather than anything meant to be presented as a website.
+
+Two of its pages are public statements about the app and should be changed with
+the same care as the listing copy:
+
+- `privacy.html`, which Play requires and links from the listing.
+- `index.html`, which repeats the source framing from the listing, and so is
+  bound by the same §1 constraints.
+
+**The policy makes claims that must stay true.** It says no crash reports are
+sent, which stops being true when #6 ships. It says nothing about AI data
+sharing, which §9.3 will require when §9 ships. Update the policy in the same
+change that ships either feature, never after.
 
 ## Assets still missing
 
