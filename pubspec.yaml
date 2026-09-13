@@ -16,7 +16,16 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+#
+# This is the *fallback only*, and it is deliberately 0.0.0. Every real build
+# gets its versionName from the git tag and its versionCode from the workflow
+# run number (docs/RELEASING.md). An untagged run therefore lands on the Play
+# track named "0.0.0 (<run>)", which cannot be mistaken for a release. It used
+# to be 1.0.0, and the first two uploads of 2026-09-13 both arrived named
+# "1.0.0" before any v1.0.0 tag existed -- see the versioning section in
+# RELEASING.md for why that collision is worth designing out rather than
+# remembering.
+version: 0.0.0+1
 
 environment:
   sdk: ^3.13.0

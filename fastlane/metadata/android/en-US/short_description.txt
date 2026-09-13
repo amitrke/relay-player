@@ -1,0 +1,1 @@
+Play your own media from Plex, a NAS, or files on your device.

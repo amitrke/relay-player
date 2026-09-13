@@ -1,0 +1,4 @@
+# Play listing copy is read verbatim by whatever uploads it (today a human
+# pasting, later possibly fastlane supply). Force LF so a CRLF checkout on
+# Windows cannot put stray carriage returns into the public store description.
+fastlane/metadata/** text eol=lf
