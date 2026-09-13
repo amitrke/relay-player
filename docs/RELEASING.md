@@ -168,6 +168,73 @@ the invite, with no 403 in between.
 Permissions granted in Play Console can take a while to reach the API. A 403
 straight after inviting the account is not yet a sign anything is wrong.
 
+## Versioning: the number says what is in the build, the track says how ready it is
+
+Decided 2026-09-13, after the first two uploads made the alternative concrete.
+
+**The version number carries contents. The Play track carries readiness.** A
+tag is `vMAJOR.MINOR.PATCH` and names a set of features; promotion from
+internal to closed to open to production is what claims the build is ready for
+a wider audience. These are deliberately separate signals, and conflating them
+is what a 0.x scheme would do.
+
+*Why not start at 0.x, which is the obvious instinct for an app this unproven.*
+Semver's 0.x convention is about the stability of a published API. This is an
+application with no API surface, so 0.x would be spending a version number to
+say something Play already says better: an internal-track build reaches at most
+100 named testers and **is not reviewed**. The track is the honest signal and
+it is the one Play actually acts on. Starting at 1.0.0 also avoids a permanent
+oddity in the track history, because two untagged bundles already went up named
+"1.0.0" on 2026-09-13 before any tag existed.
+
+Two consequences, named here so they are not discovered later:
+
+- **1.0.0 cannot be saved for the public launch.** There is no second first
+  release. The public milestone is a *track promotion*, not a version bump.
+- **A `v1.x` tag that never left internal testing still looks like a shipped
+  product** to anyone reading the repo's releases page. Release notes must say
+  which track a build reached. This is an architecture.md §1 framing matter,
+  not just tidiness: the releases page is a public artefact, and it should not
+  imply a reviewed, published app that does not exist yet.
+
+### The fallback version is 0.0.0, on purpose
+
+`pubspec.yaml` says `0.0.0+1` and should stay that way. It is only ever used by
+a run with no tag, and it exists to make such a run *unmistakable* on the track
+("0.0.0 (7)"). It was 1.0.0 until 2026-09-13, which is exactly how runs 1 and 2
+came to share a name with a release that had not happened.
+
+### The planned ladder
+
+Contents, not dates. Phase numbers refer to architecture.md §13.
+
+| Tag | Contents | Earliest track |
+|---|---|---|
+| `v1.0.0` | Plex, local device storage, SAF folders, SMB shares, favourites/history/continue-watching, search, player, themes. Advanced sources present but gated off (§8.2) | internal |
+| `v1.1.0` | Android TV / Fire TV leanback tree (Phase 4), plus the real-hardware items still open in MANUAL_TESTING.md §6 | internal |
+| `v1.2.0` | M3U/XMLTV, the EPG guide (§12 screen 7), Provider Profile import (§8.3) — the rest of Phase 3 | internal |
+| `v1.3.0` | The four missing §12.1 Settings sections, Crashlytics, and **Remote Config** (§16.1) | first eligible for closed |
+| `v1.4.0` | AI features (§9, Phase 3.5) | — |
+
+Two gates on that table are worth stating separately from it, because they are
+the reasons the ladder is ordered this way rather than by §13's phase numbers:
+
+- **`v1.0.0` waits for one hardware check, not a feature.** MANUAL_TESTING.md
+  §1 opens with "Video renders at all — not tested", and everything under it is
+  downstream. Tagging 1.0.0 before that is verified would attach the number to
+  a claim nobody has seen hold. It needs a device and an afternoon, not a
+  phase.
+- **Nothing is promoted past internal testing until Remote Config ships.**
+  Closed testing is reviewed, and §16.1's argument is that a rights-holder
+  complaint against a shipped Advanced Sources feature needs a minutes-long
+  response, not a multi-day store-update cycle. Until the kill switch exists,
+  the app has only the slow answer.
+
+This ladder puts AI (§13 Phase 3.5) *after* Phase 4 and the Phase 6
+prerequisites, which is a deliberate reordering: it is the largest remaining
+block of work and nothing about a store submission depends on it, whereas §16
+and §12.1's About section do.
+
 ## Failure modes to expect
 
 - **"Only releases with status draft may be created on draft app."** Play
@@ -187,8 +254,10 @@ straight after inviting the account is not yet a sign anything is wrong.
   the one registered in step 3.
 - **Every build named "1.0.0".** Play names a release after its versionName,
   and untagged runs take that from `pubspec.yaml`, so runs 1 and 2 looked
-  identical on the track. The workflow now sets the release name to
-  `<versionName> (<run number>)`. Tag real versions to move the first part.
+  identical on the track. Fixed twice over: the workflow sets the release name
+  to `<versionName> (<run number>)`, and the `pubspec.yaml` fallback is now
+  `0.0.0`, so an untagged run can no longer collide with a tagged release. Tag
+  real versions to move the first part.
 - **No native debug symbols.** Play warns that the bundle contains native code
   without symbols. That is libmpv (PHASE0_FINDINGS.md Q5). It is a warning and
   not a rejection. Symbols start to matter when §16's crash reporting does.
