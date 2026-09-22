@@ -86,7 +86,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
               const SizedBox(height: 14),
               Text(
                 'No categories chosen yet.\nPanels carry tens of thousands of '
-                'channels, so Relay Player only fetches the ones you pick.',
+                'channels, so Subnext Player only fetches the ones you pick.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: t.inkDim, height: 1.5),
               ),

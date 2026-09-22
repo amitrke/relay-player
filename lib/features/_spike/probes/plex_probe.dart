@@ -63,7 +63,7 @@ class _PlexProbeState extends State<PlexProbe> {
     return _plex ??= PlexClient(
       credentials: const PlexCredentials(
         clientIdentifier: _clientId,
-        product: 'Relay Player (Phase 0 spike)',
+        product: 'Subnext Player (Phase 0 spike)',
         version: '0.0.1',
         device: 'Desktop',
         deviceName: 'Phase 0 Spike',

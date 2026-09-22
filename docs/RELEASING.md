@@ -213,7 +213,7 @@ Contents, not dates. Phase numbers refer to architecture.md §13.
 | `v1.0.0` | Plex, local device storage, SAF folders, SMB shares, favourites/history/continue-watching, search, player, themes. Advanced sources present but gated off (§8.2) | internal |
 | `v1.1.0` | Android TV / Fire TV leanback tree (Phase 4), plus the real-hardware items still open in MANUAL_TESTING.md §6 | internal |
 | `v1.2.0` | M3U/XMLTV, the EPG guide (§12 screen 7), Provider Profile import (§8.3) — the rest of Phase 3 | internal |
-| `v1.3.0` | The Playback and Subtitles Settings sections, **Remote Config** (§16.1, #16), audio focus and pause-on-background (#17), and Crashlytics if ready (#6; not a gate). About moved to `v1.0.0` and the AI features section to `v1.4.0` on 2026-09-21 (§12.1) | first eligible for closed |
+| `v1.3.0` | The Playback and Subtitles Settings sections, audio focus and pause-on-background (#17), and the native licence notices in About. On 2026-09-21 About moved to `v1.0.0`, the AI features section to `v1.4.0` (§12.1), and Remote Config (#16) and Crashlytics (#6) left the MVP altogether (see the second gate below) | first eligible for closed |
 | `v1.4.0` | AI features (§9, Phase 3.5) | — |
 
 Two gates on that table are worth stating separately from it, because they are
@@ -224,16 +224,33 @@ the reasons the ladder is ordered this way rather than by §13's phase numbers:
   downstream. Tagging 1.0.0 before that is verified would attach the number to
   a claim nobody has seen hold. It needs a device and an afternoon, not a
   phase.
-- **Nothing is promoted past internal testing until Remote Config ships.**
-  Closed testing is reviewed, and §16.1's argument is that a rights-holder
-  complaint against a shipped Advanced Sources feature needs a minutes-long
-  response, not a multi-day store-update cycle. Until the kill switch exists,
-  the app has only the slow answer.
+- ~~**Nothing is promoted past internal testing until Remote Config ships.**~~
+  **Withdrawn 2026-09-21.** The original argument: closed testing is reviewed,
+  and §16.1 says a rights-holder complaint against a shipped Advanced Sources
+  feature needs a minutes-long response, not a multi-day store-update cycle.
+  It was a gate this project imposed on itself, not one Play asks for, and on
+  Play it does not hold up well enough to justify adding Firebase to the MVP:
+  - Neutral bring-your-own-source IPTV players have stayed on Play for years.
+    Removals mostly hit apps that market piracy, bundle or recommend sources,
+    or front a single provider, which §1 and §8.3 already rule out.
+  - A new app with a handful of testers is the least likely target of a
+    complaint, since complaints follow visibility.
+  - The slow answer is not that slow on Play: an update removing the feature
+    is usually reviewed in hours to a couple of days, and a rollout can be
+    halted or the app unpublished from the console in minutes meanwhile.
+  - Without it the MVP has no Firebase at all, so the published privacy
+    policy's "only connections to services you configure" stays true.
+
+  The argument is strongest for iOS, where review is stricter and slower.
+  **Revisit before the Phase 5 submission, or the first time a complaint
+  arrives**, whichever comes first. The design in §16.1 and #16 stands; only
+  its place on the schedule changed.
 
 This ladder puts AI (§13 Phase 3.5) *after* Phase 4 and the Phase 6
 prerequisites, which is a deliberate reordering: it is the largest remaining
-block of work and nothing about a store submission depends on it, whereas §16
-and §12.1's About section do.
+block of work and nothing about a store submission depends on it, whereas
+§12.1's About section does. (It also said §16's kill switch did, until that
+gate was withdrawn above.)
 
 ## Failure modes to expect
 

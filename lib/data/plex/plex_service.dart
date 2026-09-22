@@ -81,7 +81,7 @@ class PlexService {
       : _client = PlexClient(
           credentials: PlexCredentials(
             clientIdentifier: clientId,
-            product: 'Relay Player',
+            product: 'Subnext Player',
             version: '0.1.0',
             device: Platform.operatingSystem,
             deviceName: Platform.localHostname,
@@ -338,7 +338,7 @@ class PlexService {
 
   /// Reports playback progress to Plex (§6).
   ///
-  /// Not merely bookkeeping: without it Relay Player is a bad citizen on the
+  /// Not merely bookkeeping: without it Subnext Player is a bad citizen on the
   /// user's own server — the Plex app would show nothing watched, and
   /// continue-watching would disagree between clients. Plex asks for a tick
   /// roughly every 10s plus one on each state change.

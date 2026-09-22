@@ -251,7 +251,7 @@ class _PhoneSettings extends StatelessWidget {
             title: 'Send crash reports',
             subtitle:
                 'Off by default. Reports contain no library or account data. '
-                'Relay Player has no backend and no analytics.',
+                'Subnext Player has no backend and no analytics.',
             value: state.crashReportingEnabled,
             onChanged: (v) =>
                 onStateChanged(state.copyWith(crashReportingEnabled: v)),
@@ -294,7 +294,7 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
             ),
             const SizedBox(height: 12),
             Text(
-              'Relay Player does not provide, host, or endorse any content or '
+              'Subnext Player does not provide, host, or endorse any content or '
               'provider. You supply the address and the login, and the app '
               'plays whatever that address returns.',
               style:
@@ -630,7 +630,7 @@ class _DesktopSettings extends StatelessWidget {
                     title: 'Send crash reports',
                     subtitle:
                         'Off by default. Reports contain no library or account '
-                        'data. Relay Player has no backend and no analytics.',
+                        'data. Subnext Player has no backend and no analytics.',
                     value: state.crashReportingEnabled,
                     onChanged: (v) => onStateChanged(
                         state.copyWith(crashReportingEnabled: v)),

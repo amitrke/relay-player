@@ -60,7 +60,7 @@ class RelayApp extends StatelessWidget {
     required this.controller,
     this.builder,
     this.routerConfig,
-    this.title = 'Relay Player',
+    this.title = 'Subnext Player',
   }) : assert(builder != null || routerConfig != null,
             'RelayApp needs either a builder or a routerConfig.');
 

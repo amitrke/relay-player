@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     DeviceKind.debugSetTelevision(true);
     PackageInfo.setMockInitialValues(
-      appName: 'Relay Player',
+      appName: 'Subnext Player',
       packageName: 'com.subnext.relay',
       version: '1.0.0',
       buildNumber: '42',

@@ -92,7 +92,7 @@ class PlexLinkScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Relay Player plays what your own Plex server already '
+                    'Subnext Player plays what your own Plex server already '
                     'holds. Nothing is uploaded, and no account details reach '
                     'anyone but Plex.',
                     style: TextStyle(

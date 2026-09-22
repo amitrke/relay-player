@@ -26,7 +26,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 GROUND = (0x14, 0x12, 0x1C, 255)
-WORDMARK = "Relay Player"
+WORDMARK = "Subnext Player"
 REPO = Path(__file__).resolve().parent.parent
 FOREGROUND = REPO / "assets" / "icon" / "relay_icon_foreground.png"
 
