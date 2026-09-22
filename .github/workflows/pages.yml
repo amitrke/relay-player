@@ -1,0 +1,43 @@
+name: Publish site to GitHub Pages
+
+# Publishes docs/../site/ only. Deliberately NOT the /docs folder: that holds
+# architecture.md, RELEASING.md and MANUAL_TESTING.md, which are working
+# documents rather than anything we want presented as a published website.
+# Everything served here is content we chose to publish, one file at a time.
+#
+# The privacy policy served from this site is a Play Store requirement
+# (docs/STORE_LISTING.md, issue #9). Treat a change to it the way you would
+# treat a change to the store listing: it is a public, policy-relevant
+# statement, not just a page.
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+# Read the repo, mint the Pages deployment token. Nothing else.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one in flight: a half-applied
+# Pages deploy would take the privacy policy URL offline, and Play checks it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

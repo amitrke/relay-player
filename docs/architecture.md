@@ -696,6 +696,16 @@ point correctly: **theme is a runtime setting, not a build-time palette.**
 
 **Timeline caveat — read before planning against these numbers.** The per-phase estimates below describe focused engineering time for someone already fluent in Flutter, and they sum to roughly 11–14 weeks. They do **not** include: the rework implied if a Phase 0 spike comes back negative (a hand-rolled Plex client, or the SMB proxy bridge, each add ~1 week); the rejection-and-resubmit cycle Phase 5 itself predicts; Amazon Appstore submission (§11); or the ordinary drag of TV focus-traversal debugging on real hardware. **If this is solo or part-time work, plan for roughly double the stated figures** and treat the phase boundaries — not the day counts — as the useful structure.
 
+**How these phases map to shipped builds** is in
+[RELEASING.md](RELEASING.md), under *Versioning*. Two things decided there act
+back on this section and are easy to miss if you only read the phase list: the
+version number describes contents while the **Play track** carries readiness,
+so the public launch is a track promotion rather than a version bump; and the
+ladder deliberately puts **Phase 3.5 (AI) last**, after Phase 4 and the Phase 6
+prerequisites, because nothing about a store submission depends on it whereas
+§16's kill switch and §12.1's About section do. The phase numbers below are
+still the map; the tag ladder is the schedule.
+
 **Phase 0 — Validation — ✅ CLOSED 2026-09-11.** Full results in
 [PHASE0_FINDINGS.md](PHASE0_FINDINGS.md); the consequences are folded into the
 sections above. Outcome in one line: **every major technology choice held**, and
@@ -873,7 +883,10 @@ The test for any future proposal: *does this put our server in the path of user 
   Sources kill switch (recommended: the difference between a minutes-long and a
   multi-day response to a takedown threat), and whether Crashlytics ships
   opt-in. Everything else backend-shaped stays out; §16.3 is the standing
-  answer.
+  answer. **Tested once already, 2026-09-13:** issue #6 asked for Firebase
+  Analytics alongside Crashlytics, and Analytics was dropped rather than
+  §16.3 revised. #6 is now Crashlytics only. A future case for analytics has
+  to be argued against §16.3 here first, not in an issue.
 - **iOS ATS position (§11)** — arbitrary loads, per-domain exceptions, or
   refusing cleartext on iOS. Needed before the Phase 5 submission, and the
   reasoning must be written down, not improvised in a review reply.
