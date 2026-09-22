@@ -95,6 +95,7 @@ this code.
 | ⬜ | The banner at real launcher scale — it has only been checked as an image file, centre-line aligned, never on a panel at viewing distance |
 | ⬜ | The §15 device matrix — one Android TV box, one Fire TV, two phones, two iOS devices |
 | ⬜ | Kill-switch drill (§16) — Remote Config is not adopted yet |
+| ⬜ | **Settings → About on a real TV and phone** (added 2026-09-21). Tested only as a widget at TV size. Check that the version reads the tag rather than `0.0.0` on a tagged Play build, that the D-pad reaches the licences button, and that Flutter's licence page (Material list tiles, never checked on a remote) can be scrolled and left with Back. The phone layout's About has not been rendered by any test |
 
 ---
 
@@ -125,7 +126,10 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-23 tests. The loopback bridge now has real coverage — ranges, suffix ranges, the
+38 tests (count updated 2026-09-21; it had read 23 since before the TV
+navigation tests landed). The newest, `settings_sections_test.dart`, pins that
+the release Settings never lists an unbuilt section (architecture.md §12.1),
+with the gallery as its control. The loopback bridge now has real coverage — ranges, suffix ranges, the
 unsatisfiable case, HEAD, and path rejection — which is the first piece of this
 app tested rather than demonstrated, and it paid for itself immediately by
 proving the bridge was correct while the Android path was still broken.

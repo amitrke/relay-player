@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../advanced_sources/xtream_accounts_pane.dart';
+import 'about_pane.dart';
 import 'sources_pane.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -21,17 +22,32 @@ import '../../core/theme/theme_controller.dart';
 ///    separate sections rather than neighbours under a shared heading.
 /// 2. **Consent is per feature × provider, never one blanket AI opt-in**
 ///    (§9.3). Each row is independently revocable and revoking keeps the key.
+///
+/// Only sections with [SettingsSection.built] set appear in the app. The rest
+/// are reachable from the design gallery alone, through
+/// [showUnbuiltSections] — see that field for why this is not cosmetic.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
     required this.theme,
     required this.state,
     required this.onStateChanged,
+    this.showUnbuiltSections = false,
   });
 
   final ThemeController theme;
   final SettingsState state;
   final ValueChanged<SettingsState> onStateChanged;
+
+  /// Gallery only. Until 2026-09-21 every section was on the desktop/TV rail,
+  /// and that layout *opened* on AI features — a pane rendering the canvas's
+  /// demo data: an OpenAI key "saved", a LAN Ollama "reachable", and consent
+  /// rows "granted" on dates nobody chose. Shipped, that is a TV user's first
+  /// view of Settings claiming the app sends their watch history to a cloud
+  /// provider it has never contacted, which a reviewer checks against the
+  /// privacy policy and the data-safety form (§9.3, §9.4). Playback and
+  /// Subtitles showed a "Not implemented yet" pane pointing at a repo file.
+  final bool showUnbuiltSections;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +61,10 @@ class SettingsScreen extends StatelessWidget {
       body: SafeArea(
         child: wide
             ? _DesktopSettings(
-                theme: theme, state: state, onStateChanged: onStateChanged)
+                theme: theme,
+                state: state,
+                onStateChanged: onStateChanged,
+                showUnbuiltSections: showUnbuiltSections)
             : _PhoneSettings(
                 theme: theme, state: state, onStateChanged: onStateChanged),
       ),
@@ -61,7 +80,7 @@ class SettingsState {
     this.advancedSourcesEnabled = false,
     this.crashReportingEnabled = false,
     this.consents = defaultConsents,
-    this.section = SettingsSection.aiFeatures,
+    this.section = SettingsSection.appearance,
   });
 
   /// §8.2 — off by default on first install.
@@ -72,7 +91,10 @@ class SettingsState {
 
   final List<ConsentRow> consents;
 
-  /// Which section the desktop rail has selected.
+  /// Which section the desktop rail has selected. Defaults to Appearance, the
+  /// section users actually visit (§12.2), and never to an unbuilt one: the
+  /// default used to be AI features, which is how the demo pane became the
+  /// first thing the real TV layout showed.
   final SettingsSection section;
 
   static const List<ConsentRow> defaultConsents = [
@@ -105,18 +127,26 @@ class SettingsState {
 }
 
 /// §12.1's section list, in order.
+///
+/// [built] is whether a section has real controls behind it. An unbuilt one is
+/// absent from the app rather than shown as a stub, for the same reason
+/// Advanced sources is absent rather than greyed out while off: a section that
+/// exists advertises a feature. Flip it only when the pane reads and writes
+/// real state — AI features in particular has a finished-looking pane that is
+/// entirely demo data.
 enum SettingsSection {
-  sources('Sources'),
-  appearance('Appearance'),
+  sources('Sources', built: true),
+  appearance('Appearance', built: true),
   playback('Playback'),
   subtitles('Subtitles'),
   aiFeatures('AI features'),
-  advancedSources('Advanced sources'),
-  privacy('Privacy and data'),
-  about('About');
+  advancedSources('Advanced sources', built: true),
+  privacy('Privacy and data', built: true),
+  about('About', built: true);
 
-  const SettingsSection(this.label);
+  const SettingsSection(this.label, {this.built = false});
   final String label;
+  final bool built;
 }
 
 /// One row of `AiConsentRecord` (§3), rendered.
@@ -227,6 +257,10 @@ class _PhoneSettings extends StatelessWidget {
                 onStateChanged(state.copyWith(crashReportingEnabled: v)),
           ),
         ),
+        const SizedBox(height: 22),
+
+        // Last, as in §12.1: compliance-shaped, rarely visited, but required.
+        const _Section(title: 'About', child: AboutPane()),
       ],
     );
   }
@@ -308,14 +342,17 @@ class _AdvancedSourcesControl extends StatelessWidget {
       children: [
         _ToggleRow(
           title: 'IPTV provider or playlist',
-          subtitle: 'Adds Live TV, the guide, and Xtream or M3U sources.',
+          // Names only what this build has. It said "the guide, and Xtream or
+          // M3U sources" before either existed (v1.2.0 on the RELEASING.md
+          // ladder); widen it again when they land.
+          subtitle: 'Adds Live TV and Xtream Codes logins.',
           value: enabled,
           onChanged: onChanged,
         ),
         if (enabled) ...[
           const SizedBox(height: 10),
           Text(
-            'Turning this off later hides Live TV and the guide but keeps any '
+            'Turning this off later hides Live TV but keeps any '
             'accounts you added.',
             style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
           ),
@@ -514,15 +551,27 @@ class _DesktopSettings extends StatelessWidget {
     required this.theme,
     required this.state,
     required this.onStateChanged,
+    required this.showUnbuiltSections,
   });
 
   final ThemeController theme;
   final SettingsState state;
   final ValueChanged<SettingsState> onStateChanged;
+  final bool showUnbuiltSections;
 
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
+    final sections = [
+      for (final s in SettingsSection.values)
+        if (s.built || showUnbuiltSections) s,
+    ];
+    // Belt and braces for the default above: whatever selected an unbuilt
+    // section, the app never renders one, and falls back to the same place
+    // the default opens rather than to whichever section the rail lists first.
+    final section = sections.contains(state.section)
+        ? state.section
+        : SettingsSection.appearance;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,10 +585,10 @@ class _DesktopSettings extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final s in SettingsSection.values)
+                for (final s in sections)
                   _RailRow(
                     label: s.label,
-                    selected: state.section == s,
+                    selected: section == s,
                     onTap: () => onStateChanged(state.copyWith(section: s)),
                   ),
               ],
@@ -549,7 +598,7 @@ class _DesktopSettings extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(40, 32, 40, 32),
-            child: switch (state.section) {
+            child: switch (section) {
               SettingsSection.aiFeatures => _AiFeaturesPane(state: state,
                   onStateChanged: onStateChanged),
               SettingsSection.appearance => SingleChildScrollView(
@@ -587,7 +636,10 @@ class _DesktopSettings extends StatelessWidget {
                         state.copyWith(crashReportingEnabled: v)),
                   ),
                 ),
-              _ => _PlaceholderPane(section: state.section),
+              SettingsSection.about =>
+                const _DesktopPane(title: 'About', child: AboutPane()),
+              // Reachable only with showUnbuiltSections, i.e. the gallery.
+              _ => _PlaceholderPane(section: section),
             },
           ),
         ),
@@ -679,6 +731,7 @@ class _DesktopPane extends StatelessWidget {
   }
 }
 
+/// Gallery only — see [SettingsScreen.showUnbuiltSections].
 class _PlaceholderPane extends StatelessWidget {
   const _PlaceholderPane({required this.section});
 

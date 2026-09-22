@@ -59,17 +59,6 @@ class AddSourceRoute extends ConsumerWidget {
         context.push('/smb/new');
       case SourceKind.xtream:
         context.push('/advanced/xtream/new');
-      case SourceKind.m3u:
-      case SourceKind.providerProfile:
-        _notYet(context, kind);
     }
-  }
-
-  /// Says plainly that something is not built yet, rather than opening a screen
-  /// that silently does nothing.
-  void _notYet(BuildContext context, SourceKind kind) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${kind.title} is not available in this build.')),
-    );
   }
 }

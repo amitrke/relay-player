@@ -75,12 +75,17 @@ class _DesignGalleryState extends State<DesignGallery> {
   /// Live settings state, so the toggles in the gallery actually work — the
   /// Advanced sources acknowledgement dialog in particular is worth being able
   /// to exercise rather than just look at.
-  SettingsState _settingsState = const SettingsState();
+  ///
+  /// Opens on AI features, which the real app no longer does: its pane is
+  /// demo data, so it lives here and nowhere else until Phase 3.5 builds it.
+  SettingsState _settingsState =
+      const SettingsState(section: SettingsSection.aiFeatures);
 
   Widget _settings(BuildContext context) => SettingsScreen(
         theme: widget.controller,
         state: _settingsState,
         onStateChanged: (s) => setState(() => _settingsState = s),
+        showUnbuiltSections: true,
       );
 
   Widget _onboarding(BuildContext context) => OnboardingScreen(

@@ -666,6 +666,30 @@ Two structural points the design gets right and that are easy to lose later:
   deliberately *not* granted, which is the state that proves the granularity
   is real rather than decorative.
 
+**A section ships only once it is built (2026-09-21).** The table above is
+what exists *eventually*; the app shows only the sections with real controls
+behind them, and the rest stay reachable from the dev-only design gallery.
+Today that is Sources, Appearance, Advanced sources, Privacy and data, and
+About; Playback, Subtitles and AI features are absent, the same way Advanced
+sources is absent rather than greyed out while off. This was found, not
+designed: until then the TV/desktop rail listed all eight and *opened on AI
+features*, which rendered the canvas's demo data: an OpenAI key "saved", a
+LAN Ollama "reachable", consent rows "granted" on dates nobody chose. On a TV
+that was the first view of Settings, and it claimed a cloud data flow the app
+has never had, which is exactly what §9.3 and a store's data-safety review
+check against the privacy policy. Playback and Subtitles showed "Not
+implemented yet" with a pointer into this repo. The flag is
+`SettingsSection.built`; `test/settings_sections_test.dart` pins it, with the
+gallery as its control.
+
+About is the first section built for the store rather than for users: version
+read at runtime (so CI's tag-derived `--build-name` shows through, and an
+untagged build reads `0.0.0`), the onboarding disclaimer reused verbatim, the
+privacy policy URL as selectable text rather than a link (many Google TV
+devices have no browser), and Flutter's licence page. **That licence page
+covers Dart packages only**, not the native libmpv/ffmpeg media_kit bundles;
+see the ffmpeg item under Open items.
+
 ### 12.2 Theming
 
 Not previously in this plan; added from the design canvas, which argues the
@@ -865,7 +889,9 @@ The test for any future proposal: *does this put our server in the path of user 
 - **Riverpod vs. Bloc** — this plan assumes Riverpod.
 - **ffmpeg licensing (§10, §14)** — media_kit pulls ffmpeg in at engine
   selection, so this is already decided implicitly. Target LGPL, dynamically
-  linked, no GPL encoders, and confirm it.
+  linked, no GPL encoders, and confirm it. Since 2026-09-21 this also decides
+  what About must show: its licence page lists Dart packages only, so the
+  libmpv/ffmpeg notices LGPL requires are not in the app yet (§12.1).
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
   2023-09-24, over two years stale.
 - **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted
