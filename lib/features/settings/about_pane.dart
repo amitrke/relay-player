@@ -68,9 +68,9 @@ class AboutPane extends StatelessWidget {
             style: body.copyWith(color: t.accent)),
         const SizedBox(height: 22),
         // Flutter's own licence page, which collects the LICENSE of every
-        // Dart package in the build. It does NOT cover the native libmpv and
-        // ffmpeg binaries media_kit bundles — their notices depend on the
-        // still-open ffmpeg licensing item (architecture.md Open items, §14).
+        // Dart package in the build. The native libmpv/FFmpeg binaries
+        // media_kit bundles are not Dart packages, so on Android they are
+        // added separately by registerNativeLicenses (core/native_licenses.dart).
         RelayButton(
           label: 'Open-source licences',
           onPressed: () async {

@@ -686,9 +686,10 @@ About is the first section built for the store rather than for users: version
 read at runtime (so CI's tag-derived `--build-name` shows through, and an
 untagged build reads `0.0.0`), the onboarding disclaimer reused verbatim, the
 privacy policy URL as selectable text rather than a link (many Google TV
-devices have no browser), and Flutter's licence page. **That licence page
-covers Dart packages only**, not the native libmpv/ffmpeg media_kit bundles;
-see the ffmpeg item under Open items.
+devices have no browser), and Flutter's licence page. That page covers Dart
+packages automatically; the native libmpv/FFmpeg libraries media_kit bundles
+were added to it on Android on 2026-09-21, once the ffmpeg item under Open
+items confirmed what they are.
 
 ### 12.2 Theming
 
@@ -888,11 +889,29 @@ The test for any future proposal: *does this put our server in the path of user 
   business decision, not a technical one, and worth deciding explicitly rather
   than discovering after building Phases 1–5.
 - **Riverpod vs. Bloc** — this plan assumes Riverpod.
-- **ffmpeg licensing (§10, §14)** — media_kit pulls ffmpeg in at engine
-  selection, so this is already decided implicitly. Target LGPL, dynamically
-  linked, no GPL encoders, and confirm it. Since 2026-09-21 this also decides
-  what About must show: its licence page lists Dart packages only, so the
-  libmpv/ffmpeg notices LGPL requires are not in the app yet (§12.1).
+- ~~**ffmpeg licensing (§10, §14)**~~ **Closed for Android, 2026-09-21: LGPL,
+  confirmed from the shipped binary.** media_kit pulls ffmpeg in at engine
+  selection, so the choice was made implicitly; this checked what it was. The
+  build strings inside `libmpv.so` (read from the release arm64 and
+  armeabi-v7a outputs, which match the debug copies byte for byte) show:
+  mpv v0.36.0-549-g78d43740f5 configured with `-Dgpl=false`, its LGPL-2.1+
+  mode; FFmpeg n6.0 configured with `--disable-gpl --disable-nonfree
+  --enable-version3`, every library reporting "LGPL version 3 or later"; and
+  the only encoders enabled are image ones (mjpeg, png and similar). The
+  binary comes from `media-kit/libmpv-android-video-build` v1.1.7, the
+  "default" variant, which that build's `depinfo.sh` assembles without its
+  GPL encoder set; its pinned versions match the strings in the binary. It is
+  a separate `.so`, so dynamic linking holds. What that obliges, now done:
+  licence texts for mpv, FFmpeg and the seven libraries bundled with them are
+  on the About licence page (`lib/core/native_licenses.dart`,
+  `assets/licenses/`), each naming its licence and pointing at the build repo
+  for source. **Tradeoffs worth knowing:** pointing at that repo rather than
+  hosting source tarballs is the usual practice for unmodified LGPL
+  libraries, but it depends on the repo staying up; and **upgrading media_kit
+  can change every line of this**, so the next upgrade has to re-read the
+  binary and update the list in the same change. Windows dev builds load a
+  different libmpv and iOS has never been built; both need their own check
+  before they ship. Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
   2023-09-24, over two years stale.
 - **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted

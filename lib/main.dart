@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'core/native_licenses.dart';
 import 'core/platform/device_kind.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/theme_controller.dart';
@@ -11,6 +12,9 @@ import 'features/settings/settings_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  // Cheap: it only registers a callback, and the texts load when the licence
+  // page is opened.
+  registerNativeLicenses();
 
   // Before the first frame, for the same reason the settings are: layout reads
   // this synchronously, so answering late would draw the phone layout on a TV

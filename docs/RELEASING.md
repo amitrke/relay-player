@@ -210,10 +210,10 @@ Contents, not dates. Phase numbers refer to architecture.md §13.
 
 | Tag | Contents | Earliest track |
 |---|---|---|
-| `v1.0.0` | Plex, local device storage, SAF folders, SMB shares, favourites/history/continue-watching, search, player, themes. Advanced sources present but gated off (§8.2) | internal |
+| `v1.0.0` | Plex, local device storage, SAF folders, SMB shares, favourites/history/continue-watching, search, player, themes, Settings → About with native licence notices. Advanced sources present but gated off (§8.2) | internal |
 | `v1.1.0` | Android TV / Fire TV leanback tree (Phase 4), plus the real-hardware items still open in MANUAL_TESTING.md §6 | internal |
 | `v1.2.0` | M3U/XMLTV, the EPG guide (§12 screen 7), Provider Profile import (§8.3) — the rest of Phase 3 | internal |
-| `v1.3.0` | The Playback and Subtitles Settings sections, audio focus and pause-on-background (#17), and the native licence notices in About. On 2026-09-21 About moved to `v1.0.0`, the AI features section to `v1.4.0` (§12.1), and Remote Config (#16) and Crashlytics (#6) left the MVP altogether (see the second gate below) | first eligible for closed |
+| `v1.3.0` | The Playback and Subtitles Settings sections, and audio focus and pause-on-background (#17). On 2026-09-21 About and the native licence notices moved to `v1.0.0`, the AI features section to `v1.4.0` (§12.1), and Remote Config (#16) and Crashlytics (#6) left the MVP altogether (see the second gate below) | first eligible for closed |
 | `v1.4.0` | AI features (§9, Phase 3.5) | — |
 
 Two gates on that table are worth stating separately from it, because they are

@@ -24,8 +24,8 @@ The emulator cannot answer any of these. They need the tablet.
 
 | # | What | Why it matters |
 |---|---|---|
-| ⬜ | Video renders at all | Everything below depends on it |
-| ⬜ | Plex direct play on device | Proven on Windows in Phase 0, never on Android |
+| ✅ | Video renders at all | **Verified 2026-09-21** on a Chromecast with Google TV (Android TV OS 14), playing from Plex. The first time a frame has been seen on real Android hardware; the emulator's `EGL_BAD_ATTRIBUTE` failure does not occur there, as upstream said. Not yet seen on a phone or tablet |
+| ✅ | Plex direct play on device | **Verified 2026-09-21** on the same Chromecast. Which APK was installed was not recorded; the ABI row in §6 says it has to be armeabi-v7a or universal on this device |
 | ⬜ | **Panel VOD playback** | The `/movie/` URL and its container extension have *never been exercised*. Extensions vary per title (mkv as often as mp4) and are not recoverable from the panel afterwards — most likely place for a real failure |
 | ⬜ | **Panel series episode playback** | Same, for the `/series/` path |
 | ⬜ | Live channel playback | §4's `max_connections: 1` makes the failure mode look like a flaky provider rather than a client bug |
@@ -126,8 +126,9 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-38 tests (count updated 2026-09-21; it had read 23 since before the TV
-navigation tests landed). The newest, `settings_sections_test.dart`, pins that
+40 tests (count updated 2026-09-21; it had read 23 since before the TV
+navigation tests landed). `native_licenses_test.dart` loads every native licence entry the
+way the About licence page does, so a missing asset fails here rather than on a device. `settings_sections_test.dart` pins that
 the release Settings never lists an unbuilt section (architecture.md §12.1),
 with the gallery as its control. The loopback bridge now has real coverage — ranges, suffix ranges, the
 unsatisfiable case, HEAD, and path rejection — which is the first piece of this
