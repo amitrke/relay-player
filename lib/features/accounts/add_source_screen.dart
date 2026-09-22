@@ -62,13 +62,16 @@ class AddSourceScreen extends StatelessWidget {
 
 /// Every source the app can add. [isAdvanced] entries are reachable only when
 /// the §8.2 toggle is on.
+///
+/// Only sources that are built belong here. M3U/XMLTV and Provider Profile
+/// import (§5, §8.3) were listed until 2026-09-21 and answered a tap with "not
+/// available in this build"; they come back with v1.2.0 on the RELEASING.md
+/// ladder, together with their screens.
 enum SourceKind {
   plex('Plex server', 'Link with code', Icons.dns_outlined, false),
   localFiles('Video on this device', 'Scan your media library, or pick a single folder to keep access to.', Icons.smartphone_outlined, false),
   smb('Network share (SMB)', 'A NAS or Windows share on your home network.', Icons.lan_outlined, false),
-  xtream('Xtream Codes login', 'Host, username and password from your provider.', Icons.vpn_key_outlined, true),
-  m3u('M3U playlist URL', 'Optional XMLTV guide URL alongside it.', Icons.playlist_play_outlined, true),
-  providerProfile('Import a provider profile', 'Paste an HTTPS link to a profile file. It only fills in the form above.', Icons.download_outlined, true);
+  xtream('Xtream Codes login', 'Host, username and password from your provider.', Icons.vpn_key_outlined, true);
 
   const SourceKind(this.title, this.subtitle, this.icon, this.isAdvanced);
 
