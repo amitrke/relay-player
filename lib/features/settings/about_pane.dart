@@ -31,7 +31,7 @@ class AboutPane extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Relay Player', style: label),
+        Text('Subnext Player', style: label),
         const SizedBox(height: 4),
         // Read at runtime rather than baked in: CI sets the version from the
         // tag (`--build-name`) and the build number from the run, so a
@@ -78,7 +78,7 @@ class AboutPane extends StatelessWidget {
             if (!context.mounted) return;
             showLicensePage(
               context: context,
-              applicationName: 'Relay Player',
+              applicationName: 'Subnext Player',
               applicationVersion: '${info.version} (${info.buildNumber})',
             );
           },

@@ -1,4 +1,4 @@
-# Working on Relay Player
+# Working on Subnext Player
 
 Conventions for anyone — human or agent — making changes here. Read this before
 the first edit; it is short on purpose, and it points at the documents that are

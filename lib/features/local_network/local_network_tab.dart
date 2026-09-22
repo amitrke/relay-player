@@ -95,9 +95,9 @@ class LocalNetworkTab extends ConsumerWidget {
               const SizedBox(height: 14),
               Text(
                 access == false
-                    ? 'Relay Player cannot see your videos without media '
+                    ? 'Subnext Player cannot see your videos without media '
                         'access. You can grant it in Android settings.'
-                    : 'Play videos stored on this device.\nRelay Player only '
+                    : 'Play videos stored on this device.\nSubnext Player only '
                         'asks for video access, never full file access.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: t.inkDim, height: 1.5),

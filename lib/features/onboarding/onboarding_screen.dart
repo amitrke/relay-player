@@ -27,7 +27,7 @@ class OnboardingScreen extends StatelessWidget {
   static const String tagline = 'Play from the sources you connect.';
 
   static const String blurb =
-      'Relay Player streams from sources you connect yourself — a Plex '
+      'Subnext Player streams from sources you connect yourself — a Plex '
       'server, a home NAS or local files, or optionally an IPTV provider or '
       'playlist. We host no content.';
 
@@ -184,7 +184,7 @@ class _Masthead extends StatelessWidget {
         RelayMark(size: markSize),
         SizedBox(height: form == RelayFormFactor.tv ? 16 : 20),
         Text(
-          'Relay Player',
+          'Subnext Player',
           textAlign: textAlign,
           style: TextStyle(
             color: t.ink,

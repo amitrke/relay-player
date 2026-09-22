@@ -3,7 +3,7 @@ import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 
-/// The Relay Player design tokens.
+/// The Subnext Player design tokens.
 ///
 /// Ported from `design/theme.js`, which is the source of truth for the values.
 /// The design canvas states the rule this file implements: *theme is a runtime

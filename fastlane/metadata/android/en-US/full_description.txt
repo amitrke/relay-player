@@ -1,4 +1,4 @@
-Relay Player plays media from sources you connect yourself. It hosts no content, ships no catalogue, and has no server of its own.
+Subnext Player plays media from sources you connect yourself. It hosts no content, ships no catalogue, and has no server of its own.
 
 CONNECT YOUR OWN SOURCES
 
@@ -6,7 +6,7 @@ Plex
 Link a Plex account and browse your libraries, including servers other people have shared with you. Multiple servers merge into one library, and you choose which of your Plex libraries appear under Movies and Series. Browse shows down to seasons and episodes, and search your server directly.
 
 Files on your device
-Play video already on your phone or tablet. Relay Player asks only for scoped media access and never for full filesystem permissions.
+Play video already on your phone or tablet. Subnext Player asks only for scoped media access and never for full filesystem permissions.
 
 Folders you choose
 Pick a folder and it stays available, including after a restart. Browse it and play from it.
@@ -27,4 +27,4 @@ Five themes, including one that follows your system light and dark setting, plus
 
 OPEN SOURCE
 
-Relay Player is developed in the open, under the Apache 2.0 licence, at github.com/amitrke/relay-player
+Subnext Player is developed in the open, under the Apache 2.0 licence, at github.com/amitrke/relay-player

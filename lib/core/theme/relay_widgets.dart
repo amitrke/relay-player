@@ -278,7 +278,7 @@ class RelayTextButton extends StatelessWidget {
   }
 }
 
-/// The square app mark ("R") used in onboarding and the desktop title bar.
+/// The square app mark ("S", for Subnext) used in onboarding and the desktop title bar.
 class RelayMark extends StatelessWidget {
   const RelayMark({super.key, this.size = 48});
 
@@ -296,7 +296,7 @@ class RelayMark extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
       child: Text(
-        'R',
+        'S',
         style: TextStyle(
           color: t.accentInk,
           fontSize: size * 0.5,

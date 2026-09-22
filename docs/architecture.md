@@ -1,6 +1,6 @@
-# Relay Player — Architecture & Delivery Plan
+# Subnext Player — Architecture & Delivery Plan
 
-*Working title: **Relay Player** (a name that reflects what the app is: a general-purpose player that relays a stream from whatever source you point it at — Plex, a NAS, local files, or an optional IPTV provider — rather than an IPTV app specifically). Alternates if you want options: Vantage Player, Nomad Cast, Beacon Player, Wayfarer, Harbor Player, Junction Player, Kestrel, Anyplay, Waypoint Player. Verify namespace availability on both stores and a quick trademark check before finalizing.*
+*Name: **Subnext Player**, decided 2026-09-21 (Open items). Until then the working title was **Relay Player**, chosen to say what the app is: a general-purpose player that relays a stream from whatever source you point it at, rather than an IPTV app specifically. That idea survives in the code, where `Relay` still prefixes internal identifiers such as `RelayTheme`; it is not a name users see.*
 
 Scope for this plan: Plex (personal library) + local device storage + SMB/CIFS network shares as the flagship, always-visible sources, with Xtream Codes API + M3U/XMLTV support built in but gated behind an opt-in "Advanced sources" toggle (§8), plus optional AI features powered by a user's own AI provider key (§9). Targeting Android phone/tablet, iOS, and Android TV/Fire TV, intended for public app store release.
 
@@ -727,7 +727,8 @@ version number describes contents while the **Play track** carries readiness,
 so the public launch is a track promotion rather than a version bump; and the
 ladder deliberately puts **Phase 3.5 (AI) last**, after Phase 4 and the Phase 6
 prerequisites, because nothing about a store submission depends on it whereas
-§16's kill switch and §12.1's About section do. The phase numbers below are
+§12.1's About section does (§16's kill switch was on that list until
+2026-09-21, when RELEASING.md withdrew it as a gate). The phase numbers below are
 still the map; the tag ladder is the schedule.
 
 **Phase 0 — Validation — ✅ CLOSED 2026-09-11.** Full results in
@@ -901,14 +902,30 @@ The test for any future proposal: *does this put our server in the path of user 
 - **Finish the Plex transcode lifecycle test** — `decision → ping → stop` with
   the `hasMDE=1` fix in place. The specific risk is a leaked transcode session
   on every user's server.
-- **Finalise the app name** — "Relay Player" is the working title throughout.
+- ~~**Finalise the app name**~~ **Decided 2026-09-21: Subnext Player.**
+  "Relay Player" was the working title. A web search found no app, company or
+  trademark called Subnext, whereas "Relay" is crowded: a Plex music player
+  already calls itself Relay ("The Beautiful Plex Player"), and a paid video
+  streaming app on Play uses it too. A coined word is also easier to protect
+  than a dictionary one. It matches the Play package ID, `com.subnext.relay`,
+  which cannot change after the first upload, and the owner holds
+  subnext.com, which a later release will use for the privacy policy and a
+  support address (#9). **Still owed: a USPTO class 9 search** before the
+  public listing; the web search is not a trademark search. Internal
+  identifiers (`RelayTheme`, `relay_player`, the repo name) keep the old
+  name, since renaming them changes nothing a user sees.
 
 ### Open — decide before the relevant phase
 
 - **§16 backend exceptions** — adopt Firebase Remote Config as the Advanced
   Sources kill switch (recommended: the difference between a minutes-long and a
   multi-day response to a takedown threat), and whether Crashlytics ships
-  opt-in. Everything else backend-shaped stays out; §16.3 is the standing
+  opt-in. **Deferred out of the MVP, 2026-09-21:** neither ships in the first
+  Play release, so the MVP contains no Firebase at all. The kill switch stays
+  recommended and designed (§16.1, #16), but it is no longer a gate on
+  promotion; the reasoning, and when to revisit it (before Phase 5, or on the
+  first complaint), is in RELEASING.md under the ladder's second gate.
+  Everything else backend-shaped stays out; §16.3 is the standing
   answer. **Tested once already, 2026-09-13:** issue #6 asked for Firebase
   Analytics alongside Crashlytics, and Analytics was dropped rather than
   §16.3 revised. #6 is now Crashlytics only. A future case for analytics has

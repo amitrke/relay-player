@@ -119,7 +119,7 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
         padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 32),
         children: [
           Text(
-            'Relay Player does not provide, host, or endorse any content or '
+            'Subnext Player does not provide, host, or endorse any content or '
             'provider. You supply the address and the login, and the app plays '
             'whatever that address returns.',
             style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.55),

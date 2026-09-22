@@ -1,4 +1,4 @@
-# Relay Player
+# Subnext Player
 
 A general-purpose media player that relays a stream from whatever source you
 point it at — a Plex server, a NAS or local files, or an optional IPTV
