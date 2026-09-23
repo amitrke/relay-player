@@ -648,7 +648,15 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **iOS** — background audio entitlement + PiP entitlement need explicit setup; App Store review risk is the main iOS-specific item (§1, §8.4, §15).
 
-**🔴 App Transport Security will block cleartext providers — decide the position before submission, not during.**
+**✅ Resolved 2026-09-23: App Transport Security does not reach this app's connections, and no ATS exception is needed.** The premise below, that ATS blocks cleartext providers, was a hypothesis about iOS in general and turned out wrong for this stack. ATS lives in Apple's URL-loading system (`URLSession`/CFNetwork), and nothing on the app's data path goes through it: Plex uses `dart:io`'s `HttpClient`, the Xtream client is dio on the same `dart:io` sockets, and playback is ffmpeg inside libmpv with its own sockets and its own TLS (mbedTLS).
+
+Tested with a control on the iOS 18.6 simulator, with the shipped `Info.plist` (no ATS keys at all). A plain-HTTP server was reached through a real hostname, `127.0.0.1.nip.io`, because ATS exempts bare IP addresses and `.local` names, so testing against `127.0.0.1` would have passed whatever the answer. The **control**, Apple's `URLSession`, failed with `-1022 "The App Transport Security policy requires the use of a secure connection"` and never reached the server. `dart:io` got a 200, and media_kit opened and read a 20 s clip, both confirmed in the server's access log. So `NSAllowsArbitraryLoads` is not needed, and the review-attention problem below does not arise.
+
+Two caveats. The test ran on a simulator; ATS is the same CFNetwork code on a device, but a device run through TestFlight against a real HTTP-only panel would close it fully. And this holds only while nothing adopts `URLSession` for data: a plugin that fetches through Apple's stack (for example a future native HTTP adapter for dio) would bring ATS back into play, and an HTTP-only provider would then fail on iOS alone.
+
+The analysis as originally written, kept because its premise was the thing that was wrong:
+
+~~App Transport Security will block cleartext providers — decide the position before submission, not during.~~
 
 Phase 0 measured a real Xtream panel that is **HTTP-only** (`server_protocol:
 http`, no `https_port`), and whose stream URLs **302-redirect to a second
@@ -788,8 +796,9 @@ sections above. Outcome in one line: **every major technology choice held**, and
 the phase paid for itself in the corrections it forced — the isolate rule (§5)
 was backwards, `max_connections` (§4) is a lifecycle constraint rather than a
 Settings detail, `dart_plex` needs two workarounds without which PIN and
-transcode silently break (§6), iOS ATS blocks cleartext providers with no clean
-answer (§11), and the EPG is likely to be empty for real users (§5).
+transcode silently break (§6), iOS ATS was expected to block cleartext providers
+with no clean answer (§11; tested 2026-09-23 and wrong, since nothing in the app
+goes through `URLSession`), and the EPG is likely to be empty for real users (§5).
 
 Deferred to Phase 1, deliberately: **Q5, the Android-device questions** — SAF
 persisted permissions surviving a reboot, `MediaStore` scanning, hardware
@@ -840,9 +849,8 @@ session on every user's server — and a second, worse Xtream panel to settle
   Plex, local files or SMB, and the Advanced Sources UI must not appear in
   store assets at all.** This is a mistake no amount of careful architecture
   prevents, so it belongs on the checklist.
-- **iOS ATS decision must be made and written down** before submission (§11) —
-  which of arbitrary-loads, per-domain exceptions, or refusing cleartext on iOS,
-  and why.
+- ~~**iOS ATS decision must be made and written down** before submission (§11)~~
+  **Done 2026-09-23:** no ATS exception needed, tested with a control (§11).
 
 ## 14. Suggested tech stack summary
 
@@ -1000,9 +1008,10 @@ The test for any future proposal: *does this put our server in the path of user 
   Analytics alongside Crashlytics, and Analytics was dropped rather than
   §16.3 revised. #6 is now Crashlytics only. A future case for analytics has
   to be argued against §16.3 here first, not in an issue.
-- **iOS ATS position (§11)** — arbitrary loads, per-domain exceptions, or
-  refusing cleartext on iOS. Needed before the Phase 5 submission, and the
-  reasoning must be written down, not improvised in a review reply.
+- ~~**iOS ATS position (§11)**~~ **Resolved 2026-09-23:** none of the three
+  options is needed. ATS does not govern `dart:io` or libmpv's sockets, shown
+  with a `URLSession` control that ATS did block (§11). Reopen only if
+  something adopts `URLSession` for data.
 - **Pick an ffmpeg binding (§14)** — `ffmpeg_kit_flutter` is discontinued and
   upstream archived. Evaluate `ffmpeg_kit_flutter_new`, pin a fork, know the
   fallback. Needed before Phase 3.5.

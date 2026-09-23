@@ -223,8 +223,9 @@ TestFlight needs none of these; App Review needs all of them.
       means a year-end self-classification report rather than a licence, plus
       France's declaration if distributed there. A declaration, so the
       account owner's call. Not legal advice
-- [ ] **The iOS ATS decision** (architecture.md Open items), written down
-      before submission, not improvised in a review reply
+- [x] **The iOS ATS decision**: none needed, tested with a control on
+      2026-09-23 (architecture.md §11). No `NSAllowsArbitraryLoads`, so nothing
+      to justify in review
 - [ ] **The iOS libmpv/ffmpeg licence check** (architecture.md Open items)
 - [ ] **The macOS and tvOS platform entries.** The App Store Connect record
       has "1.0 Prepare for Submission" versions for both, though neither has a
