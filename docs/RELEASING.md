@@ -1,7 +1,9 @@
-# Releasing to Play internal testing
+# Releasing to testers
 
-How a build gets from this repo to testers' devices through Google Play, and
-the one-time setup that makes it possible. The workflow is
+How a build gets from this repo to testers' devices through Google Play and,
+since 2026-09-23, TestFlight, and the one-time setup that makes it possible.
+Android is described first because it came first; iOS has its own section,
+[iOS: TestFlight](#ios-testflight), and shares the versioning rules. The workflow is
 [`.github/workflows/release.yml`](../.github/workflows/release.yml); this file is
 the part of it that cannot live in YAML.
 
@@ -189,6 +191,85 @@ the invite, with no 403 in between.
 Permissions granted in Play Console can take a while to reach the API. A 403
 straight after inviting the account is not yet a sign anything is wrong.
 
+## iOS: TestFlight
+
+Added 2026-09-23. The `ios` job in the same `release.yml` runs beside the
+Android job after `check`, so one tag ships both, and a failure on one side
+does not hold the other back.
+
+### What the job does
+
+1. Picks the newest stable Xcode on the `macos-latest` image. App Store Connect
+   rejects builds made with an SDK older than Apple's current minimum, and the
+   image's default Xcode is often not its newest.
+2. Uses the same numbers as Android: `CFBundleVersion` is the run number and
+   `CFBundleShortVersionString` is the tag. So TestFlight's `1.0.4 (7)` and
+   Play's `1.0.4 (7)` are the same commit.
+3. **Uploads only from a tag.** An untagged Android run lands on the internal
+   track as `0.0.0 (n)` and does no harm. On iOS it would open an App Store
+   *version* called 0.0.0 in App Store Connect, and that stays in the version
+   list. An untagged run with the key set archives and signs, then stops,
+   which still shows signing works.
+4. Without the API key it compiles with `--no-codesign` and stops with a
+   notice. Nothing else in CI builds for iOS, so this at least catches an iOS
+   build that no longer compiles.
+5. Archives with `xcodebuild`, not `flutter build ipa`, because only
+   `xcodebuild` accepts an API key. The key plus `-allowProvisioningUpdates`
+   lets Apple's **cloud-managed signing** supply the certificate and profile,
+   so none of them sit in secrets. Flutter only generates the Xcode config
+   (`--config-only`).
+6. Exports with [`ios/ExportOptions.plist`](../ios/ExportOptions.plist),
+   whose `destination: upload` makes the export also send the build to Apple.
+   The step's exit status is the result.
+
+**Unverified: signing with the API key on a clean runner.** The export path is
+the one that worked from Organizer on 2026-09-23, and the exact
+`xcodebuild archive` / `-exportArchive` commands were rehearsed locally that
+day. That rehearsal signed with the Xcode account on this Mac, not with the API
+key, so it proves the commands and the export options, not cloud signing.
+Update this paragraph after the first tagged run.
+
+### One-time setup
+
+**Done 2026-09-23 by hand:**
+
+- The explicit App ID `com.subnext.relay`, with no capabilities beyond the
+  default In-App Purchase (see Identity above).
+- The App Store Connect record, iOS only.
+- The first upload, `1.0.0 (1)`, from Xcode's Organizer. It installed from
+  TestFlight onto a phone the same day. **Build 1 of 1.0.0 is therefore used.**
+  The workflow's run numbers were already past it (the last Android run was 6),
+  so the first CI build is 7 or later and cannot collide.
+
+**Still to do before the job can upload:**
+
+1. In App Store Connect → Users and Access → Integrations → **Team Keys**,
+   generate a key with the **Admin** role. Cloud-managed signing refuses keys
+   with lower roles; App Manager is enough to upload but not to sign. Apple
+   lets you download the `.p8` file **once**.
+2. Repository **secret** `APP_STORE_CONNECT_API_KEY_P8`: the whole `.p8` file,
+   including the `BEGIN`/`END` lines.
+3. Repository **variables** (not secrets, for the masking reason given for
+   `ANDROID_UPLOAD_KEY_ALIAS`): `APP_STORE_CONNECT_API_KEY_ID` (the key's ID)
+   and `APP_STORE_CONNECT_ISSUER_ID` (shown above the key list).
+
+An Admin key can do nearly anything to the account. It is exposed to one job,
+written to a file outside the checkout, and deleted at the end. Revoke it in
+the same screen if it ever leaks.
+
+### Differences from the Play pipeline worth knowing
+
+- **No release notes yet.** TestFlight's "What to Test" text is not set by
+  `xcodebuild`. Testers see the build with no notes unless they are typed into
+  App Store Connect. The `changelogs/` files are Play's.
+- **Processing happens after the job ends.** A green job means Apple accepted
+  the upload. The build still spends 10–30 minutes in processing before
+  TestFlight offers it, and a rejection at that stage arrives by email, not in
+  the run.
+- **No log-watching.** On the first, manual upload, a watcher tailing Xcode's
+  upload log never saw a line that meant "done", and its first version fired
+  on the words "no error" in a progress line. Trust exit statuses.
+
 ## Versioning: the number says what is in the build, the track says how ready it is
 
 Decided 2026-09-13, after the first two uploads made the alternative concrete.
@@ -299,3 +380,13 @@ gate was withdrawn above.)
 - **No native debug symbols.** Play warns that the bundle contains native code
   without symbols. That is libmpv (PHASE0_FINDINGS.md Q5). It is a warning and
   not a rejection. Symbols start to matter when §16's crash reporting does.
+- **iOS: "The bundle version must be higher than the previously uploaded
+  version."** The iOS twin of the versionCode rule, with the same cause (a
+  re-run reuses its run number) and the same fix. Remember build 1 of 1.0.0 was
+  uploaded by hand.
+- **iOS: signing fails in the Archive step** (expected, if anything is, on the
+  first tagged run). Check the key's role first: cloud signing needs Admin. If
+  the role is right and it still fails, fall back to the Android pattern: an
+  Apple Distribution certificate as a base64 `.p12` plus an App Store
+  provisioning profile in secrets, imported into a temporary keychain, with
+  manual signing. More secrets, but no dependency on cloud signing.
