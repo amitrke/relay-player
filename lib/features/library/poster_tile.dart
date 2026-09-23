@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/local/favorites_store.dart';
+import '../../data/local/history_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
+import '../favorites_history/history_controller.dart';
+import '../favorites_history/watch_state.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
@@ -32,6 +35,7 @@ class PosterTile extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final poster = item.posterUrl;
+    final watch = _watchStateOf(item, ref);
 
     return RelayTappable(
       autofocus: autofocus,
@@ -59,10 +63,20 @@ class PosterTile extends ConsumerWidget {
                           ),
                   ),
                 ),
+                if (watch.watched)
+                  const Positioned(top: 6, left: 6, child: WatchedTick()),
+                if (watch.progress case final progress?)
+                  Positioned(
+                    left: 6,
+                    right: 6,
+                    bottom: 6,
+                    child: WatchProgressBar(progress: progress),
+                  ),
                 if (showSource)
                   Positioned(
                     left: 6,
-                    bottom: 6,
+                    // Clear of the progress bar when there is one.
+                    bottom: watch.inProgress ? 14 : 6,
                     child: SourceBadge(source: item.source),
                   ),
                 Positioned(
@@ -113,6 +127,76 @@ class PosterTile extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Films only. A show's watched state is a count of watched episodes, which
+/// `dart_plex` 0.1.2 does not parse, so a show poster shows nothing rather
+/// than a guess.
+WatchState _watchStateOf(CatalogItem item, WidgetRef ref) {
+  if (item.kind != CatalogKind.movie) return WatchState.none;
+  final kind = switch (item.source) {
+    CatalogSource.plex => PlaybackKind.plex,
+    CatalogSource.xtream => PlaybackKind.xtreamVod,
+  };
+  final key = '${kind.wire}:${item.sourceId}:${item.id}';
+  // Selects this tile's own entry, so a progress write for one title during
+  // playback does not rebuild every poster in the grid.
+  final local = ref.watch(historyProvider
+      .select((all) => all.where((h) => h.key == key).firstOrNull));
+  return WatchState.resolve(
+    local: local,
+    plexViewCount: item.viewCount,
+    plexOffset: item.viewOffset,
+    plexDuration: item.duration,
+    plexLastViewedAt: item.lastViewedAt,
+  );
+}
+
+/// Marks something as watched. Accent-filled so it reads at a glance on any
+/// artwork, and small so it does not compete with the poster.
+class WatchedTick extends StatelessWidget {
+  const WatchedTick({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
+    return Semantics(
+      label: 'Watched',
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: t.accent, shape: BoxShape.circle),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(Icons.check, size: tv ? 18 : 13, color: t.accentInk),
+        ),
+      ),
+    );
+  }
+}
+
+/// How far through something is, drawn the way the continue-watching row
+/// draws it.
+class WatchProgressBar extends StatelessWidget {
+  const WatchProgressBar({super.key, required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return Semantics(
+      label: '${(progress * 100).round()}% watched',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: LinearProgressIndicator(
+          value: progress,
+          minHeight: 3,
+          backgroundColor: t.stage.withValues(alpha: 0.6),
+          valueColor: AlwaysStoppedAnimation(t.accent),
+        ),
       ),
     );
   }

@@ -24,6 +24,10 @@ class CatalogItem {
     this.year,
     this.posterUrl,
     this.addedAt,
+    this.viewCount,
+    this.viewOffset,
+    this.duration,
+    this.lastViewedAt,
   });
 
   final CatalogSource source;
@@ -46,6 +50,15 @@ class CatalogItem {
   /// and the nearest thing a panel offers. Null when a source says nothing,
   /// and such items sort last.
   final DateTime? addedAt;
+
+  /// Plex's per-account watch state, as the library fetch saw it. Null for
+  /// panels, which keep none, and for Plex shows, whose watched state lives in
+  /// episode counts `dart_plex` 0.1.2 does not parse. `WatchState.resolve`
+  /// combines these with this device's history.
+  final int? viewCount;
+  final Duration? viewOffset;
+  final Duration? duration;
+  final DateTime? lastViewedAt;
 
   /// Where tapping this item leads.
   ///

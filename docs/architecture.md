@@ -297,6 +297,23 @@ server. Verify every `dart_plex` call path against a real server before relying
 on it, do not treat the docstrings as load-bearing, and keep the ~1 week
 hand-rolled fallback costed and ready.
 
+**Watch state and On Deck (2026-09-22), read from the code, not yet run against
+a server.** Continue watching now merges Plex's On Deck, and posters and
+episode rows show `viewCount` / `viewOffset`. Two things in the package shaped
+that, and both are this caution applied:
+
+- **`hubs.continueWatching()` is avoided.** It parses `/hubs/continueWatching`
+  as a flat `MediaContainer.Metadata` list, but hub endpoints nest their items
+  under `MediaContainer.Hub[].Metadata`, so it most likely returns nothing.
+  The per-library `/library/sections/{id}/onDeck` (`hubs.sectionOnDeck`) is
+  flat, and querying only the libraries mapped to Movies and Series also keeps
+  hidden libraries hidden. If a real server shows the hub call working after
+  all, this note is wrong and should say so.
+- **Shows get no watched state.** A show's is `leafCount` against
+  `viewedLeafCount`, which `PlexMetadata` does not parse. Films and episodes
+  only, until the raw fields are read. Nor is there a call to remove an item
+  from On Deck, so dismissing a Plex tile is remembered on the device only.
+
 **Original assessment, retained for context:** [`dart_plex`](https://pub.dev/packages/dart_plex) is a pure-Dart client (no native plugins, so it works across all target platforms) whose documented surface covers PIN-flow auth, server discovery, library browsing/search/filtering, streaming URLs, transcode session management, playback reporting, and playlists. On paper it's exactly the right shape and would avoid re-implementing the protocol from scratch.
 
 **But apply the same skepticism here that §7.2 applies to `smb_connect` — more, in fact, because this is the flagship integration.** As of this writing `dart_plex` is at **v0.1.2, first published only days ago, with 4 likes and ~118 downloads**. It is pre-1.0, essentially unproven in the field, and has no track record of responding to breaking changes in Plex's API. A well-documented README is not evidence that the transcode-session lifecycle works against a real server under real conditions. Concretely:
