@@ -13,6 +13,8 @@ import '../advanced_sources/xtream_controller.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
+import '../favorites_history/history_controller.dart';
+import '../favorites_history/watch_actions.dart';
 import '../live_tv/live_tv_tab.dart';
 import '../local_network/local_network_tab.dart';
 import 'library_sort.dart';
@@ -182,7 +184,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   // Plex servers, panels and this device, so naming one source
                   // would misdescribe most of what is on screen.
                   if (selected.drawsFromPlex) ...[
-                    const _SortButton(),
+                    _SortButton(tab: selected),
                     const SizedBox(width: 12),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
@@ -308,7 +310,27 @@ class _TabBody extends ConsumerWidget {
         onRetry: () => ref.invalidate(_libraryProvider(tab)),
       ),
       data: (unsorted) {
-        final list = ref.watch(librarySortProvider).apply(unsorted);
+        final sorted = ref.watch(librarySortProvider).apply(unsorted);
+        final filtering = tab == LibraryTab.movies &&
+            ref.watch(libraryUnwatchedOnlyProvider);
+        final list = filtering
+            ? unwatchedOnly(
+                sorted,
+                history: {for (final h in ref.watch(historyProvider)) h.key: h},
+                overrides: ref.watch(watchOverridesProvider),
+              )
+            : sorted;
+        // Filtered down to nothing is not "no sources": say what happened and
+        // offer the way back, rather than suggesting they add a source.
+        if (filtering && list.isEmpty && sorted.isNotEmpty) {
+          return LibraryEmptyState(
+            icon: Icons.check_circle_outline,
+            message: 'Everything in Movies is watched.',
+            actionLabel: 'Show all',
+            onAction: () =>
+                ref.read(libraryUnwatchedOnlyProvider.notifier).set(false),
+          );
+        }
         return list.isEmpty
           ? LibraryEmptyState(
               icon: tab.emptyIcon,
@@ -342,7 +364,10 @@ class _TabBody extends ConsumerWidget {
 /// visible ring, and Material's menu items have not been checked on a TV
 /// (MANUAL_TESTING.md §6 treats unchecked Material surfaces as guilty).
 class _SortButton extends ConsumerWidget {
-  const _SortButton();
+  const _SortButton({required this.tab});
+
+  /// "Unwatched only" is offered on Movies alone; see [unwatchedOnly].
+  final LibraryTab tab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -350,6 +375,8 @@ class _SortButton extends ConsumerWidget {
     final f = RelayLayout.of(context);
     final sort = ref.watch(librarySortProvider);
     final size = f == RelayFormFactor.tv ? 15.0 : 12.0;
+    final filtered =
+        tab == LibraryTab.movies && ref.watch(libraryUnwatchedOnlyProvider);
 
     return RelayTappable(
       borderRadius: 8,
@@ -361,7 +388,10 @@ class _SortButton extends ConsumerWidget {
           children: [
             Icon(Icons.sort, size: size + 4, color: t.inkDim),
             const SizedBox(width: 4),
-            Text(sort.label, style: TextStyle(color: t.inkDim, fontSize: size)),
+            Text(
+              filtered ? '${sort.label} · Unwatched' : sort.label,
+              style: TextStyle(color: t.inkDim, fontSize: size),
+            ),
           ],
         ),
       ),
@@ -419,6 +449,10 @@ class _SortButton extends ConsumerWidget {
                       ),
                     ),
                   ),
+                if (tab == LibraryTab.movies) ...[
+                  Divider(color: t.line, height: 20),
+                  _UnwatchedToggleRow(onToggled: Navigator.of(context).pop),
+                ],
               ],
             ),
           ),
@@ -426,5 +460,48 @@ class _SortButton extends ConsumerWidget {
       },
     );
     if (picked != null) await ref.read(librarySortProvider.notifier).set(picked);
+  }
+}
+
+/// Flips "Unwatched only" and closes the sheet.
+class _UnwatchedToggleRow extends ConsumerWidget {
+  const _UnwatchedToggleRow({required this.onToggled});
+
+  final VoidCallback onToggled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    final on = ref.watch(libraryUnwatchedOnlyProvider);
+    return RelayTappable(
+      borderRadius: 10,
+      onTap: () {
+        ref.read(libraryUnwatchedOnlyProvider.notifier).set(!on);
+        onToggled();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Unwatched only',
+                style: TextStyle(
+                  color: t.ink,
+                  fontSize: RelayLayout.bodySize(f) + 1,
+                ),
+              ),
+            ),
+            // A drawn state rather than a Switch: Material's switch has not
+            // been checked with a remote, and the row is the control anyway.
+            Icon(
+              on ? Icons.check_box : Icons.check_box_outline_blank,
+              color: on ? t.accent : t.inkDim,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

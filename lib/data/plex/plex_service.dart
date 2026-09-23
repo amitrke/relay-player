@@ -326,6 +326,14 @@ class PlexService {
 
   static Duration? _ms(int? ms) => ms == null ? null : Duration(milliseconds: ms);
 
+  /// Marks an item watched or unwatched for this account (`/:/scrobble`,
+  /// `/:/unscrobble`). On a show or season Plex applies it to every episode
+  /// beneath, and unwatched also clears the resume position.
+  Future<void> setWatched(String ratingKey, {required bool watched}) =>
+      watched
+          ? _client.playback.scrobble(ratingKey)
+          : _client.playback.unscrobble(ratingKey);
+
   /// What Plex thinks this account is in the middle of, across [sections].
   ///
   /// Per-library On Deck (`/library/sections/{id}/onDeck`) rather than the
