@@ -80,7 +80,7 @@ this while it is unproven.
 | # | What |
 |---|---|
 | ❌ | **Plex `art` renders empty.** Used for the landscape continue-watching tile, it returned something that renders blank rather than erroring, so the image error fallback never fired. Reverted to a letterboxed poster. Cause unknown |
-| ⬜ | **The Plex link flow end to end** (issue #3 fix). The screen now leaves for the library on the transition into `PlexStage.ready`, with a snackbar naming the server. Only the router behaviour behind it is under test — linking needs a real Plex account, so the navigation itself has never run. Check both branches: one server on the account (auto-connect) and several (server picker) |
+| ⬜ | **The Plex link flow end to end** (issue #3 fix). The screen now leaves for the library on the transition into `PlexStage.ready`, with a snackbar naming the server. Only the router behaviour behind it is under test — linking needs a real Plex account, so the navigation itself has never run. Check both branches: one server on the account (auto-connect) and several (server picker). Since 2026-09-22 (#5) the picker groups *Your servers* above *Shared with you*, sorts online first then by name, dims offline servers, leaves out servers already connected, and shows progress on the tapped row only; `plex_link_screen_test.dart` pins the grouping and order but not a real account's response |
 | ⬜ | **The 10s `plexSectionsProvider` timeout has still never fired.** It was added for a server that hangs, but the hang turned out to be connection selection, now fixed — so the case that motivated it no longer reproduces. It remains the guard for a server that goes away *after* connecting (NAS asleep, friend's server offline). Needs a server that hangs rather than refuses |
 | ⬜ | A second, worse Xtream panel — §10's malformed-TS claim is still unevidenced, and the one panel tested emits clean TS |
 
@@ -113,6 +113,8 @@ this code.
 | ⬜ | The §15 device matrix — one Android TV box, one Fire TV, two phones, two iOS devices |
 | ⬜ | Kill-switch drill (§16) — Remote Config is not adopted yet |
 | ⬜ | **Settings → About on a real TV and phone** (added 2026-09-21). Tested only as a widget at TV size. Check that the version reads the tag rather than `0.0.0` on a tagged Play build, that the D-pad reaches the licences button, and that Flutter's licence page (Material list tiles, never checked on a remote) can be scrolled and left with Back. The phone layout's About has not been rendered by any test |
+| ⬜ | **Player controls on a remote** (#10, added 2026-09-22). Rewritten: the chrome auto-hides after 4 s of playback, the first D-pad press only wakes it, the seek bar steps 10 s per press (30 s, then 60 s while held) and seeks once on release, Up and Down leave the bar, ±10 s buttons, media keys, and a focus ring on every control. The rules are pinned by `player_controls_test.dart` against a fake transport, and nothing else: the new chrome has not run on any device or on Windows. Check on the Chromecast: that the waking press is not also acted on, that a held Right accelerates at a usable rate with the real repeat rate (the step table assumes about 20 Hz), that the remote's Back still leaves the player with the chrome hidden, and whether its transport keys arrive as `mediaFastForward` / `mediaRewind` at all. On a phone: tap toggles the chrome and a drag on the bar seeks on release |
+| ⬜ | **Plex link screen on a TV** (#5, added 2026-09-22). Now two columns on TV, with the waiting state inside the code panel, a 28 dp spinner, and focus on a new Cancel button. The issue's acceptance is fit: from *Add a source* with the AppBar present, the code, the spinner and Cancel all on screen without scrolling. A widget test cannot settle that (§11, the test font wraps prose to twice its height), so it is unverified until seen on a TV or TV emulator |
 
 ---
 
@@ -143,8 +145,11 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-40 tests (count updated 2026-09-21; it had read 23 since before the TV
-navigation tests landed). `native_licenses_test.dart` loads every native licence entry the
+55 tests (count updated 2026-09-22; it read 40 before the player-control and
+Plex link tests landed). `player_controls_test.dart` pins the #10 remote rules
+(wake-only first press, time-based seeking, Up never seeks, hide takes focus
+with it) against a fake transport, so it proves the rules and not how a real
+remote feels. `native_licenses_test.dart` loads every native licence entry the
 way the About licence page does, so a missing asset fails here rather than on a device. `settings_sections_test.dart` pins that
 the release Settings never lists an unbuilt section (architecture.md §12.1),
 with the gallery as its control. The loopback bridge now has real coverage — ranges, suffix ranges, the

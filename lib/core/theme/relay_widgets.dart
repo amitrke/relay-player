@@ -257,16 +257,19 @@ class RelayTextButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.autofocus = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     return TextButton(
+      autofocus: autofocus,
       onPressed: onPressed,
       style: TextButton.styleFrom(
         foregroundColor: t.inkDim,
