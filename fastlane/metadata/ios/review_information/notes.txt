@@ -7,7 +7,7 @@ HOW TO REVIEW WITHOUT ANY ACCOUNT
 
 ADVANCED SOURCES (DISCLOSED, OFF BY DEFAULT)
 Settings > Advanced sources contains a single toggle, off on every new install. Turning it on shows a disclaimer that must be acknowledged, and only then adds options to connect an IPTV provider or M3U playlist using credentials or a URL the user supplies. The app does not provide, recommend, list or link to any provider or playlist, and nothing about this feature appears in the App Store listing or screenshots.
-[Demo credentials for testing Advanced sources are provided in the Sign-In Information / attachment for this submission.]
+The app has no sign-in of its own and ships no demo account: like its users, a reviewer tests it with their own media. If you need to exercise Advanced sources and have no provider of your own, reply to this submission and we will provide test access.
 
 DATA
 No data is collected by the developer. Credentials the user enters are stored in the iOS Keychain on the device and are sent only to the service the user connected (Plex, their own NAS, or a provider they configure).

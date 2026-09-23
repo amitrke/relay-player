@@ -420,6 +420,8 @@ A convenience for adding a provider without hand-typing host/username/password: 
 
 Regardless of the toggle, Apple's App Review Information must disclose the IPTV feature and include working Xtream demo credentials so the reviewer can test it directly — this is a hard requirement (§1.3), not optional even though the feature is hidden from casual users. Prepare a standing demo/trial Xtream account for this purpose well before submission.
 
+**Decided otherwise, 2026-09-23, by the account owner: no demo account at submission.** The app has no sign-in of its own, and reviewers are expected to test it the way users do, with their own media; the review notes still disclose Advanced Sources in full and offer test access on request. The reasoning above is not withdrawn, only not acted on up front: the realistic cost is a review reply asking for a way to exercise the Xtream login, answered by supplying credentials at that point (never in this repo), rather than a rejection for concealment, which full disclosure rules out. Revisit if a submission is rejected under 2.1 for it.
+
 ## 9. AI Features (bring-your-own AI provider key)
 
 Same ethos as the rest of the app: no built-in paid AI service, users connect their own provider. Scope for this version: natural-language library search, recommendations drawn from the user's own library and history, auto-generated subtitles for files that lack them, and subtitle translation.

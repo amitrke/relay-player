@@ -167,10 +167,12 @@ user connects, which is nominative, as on Play.
 The App Review notes are in `fastlane/metadata/ios/review_information/notes.txt`
 and disclose Advanced Sources as §1.3 and §8.4 require. They were checked
 against the code: the toggle and its separate acknowledgement
-("I understand — turn on") are in `settings_screen.dart`. **The demo
-credentials the notes refer to do not exist yet, and must never be committed
-here** (`CLAUDE.md` §1). They go into App Store Connect's Sign-In Information
-field or an attachment, typed by the account owner.
+("I understand — turn on") are in `settings_screen.dart`. **No demo
+credentials are provided** (decided 2026-09-23, architecture.md §8.4): the
+notes say reviewers test with their own media, as users do, and offer test
+access for Advanced Sources on request. If that request comes, the credentials
+go into App Store Connect only, typed by the account owner, and never into
+this repo (`CLAUDE.md` §1).
 
 ### Version page fields
 
@@ -207,8 +209,9 @@ TestFlight needs none of these; App Review needs all of them.
       because they ship in the build, but MANUAL_TESTING.md §6a has them
       unverified on iOS. Check through TestFlight before submitting, or cut
       them from the copy
-- [ ] **A standing demo account for Advanced Sources** (§8.4), entered in App
-      Store Connect only
+- [x] ~~**A standing demo account for Advanced Sources** (§8.4)~~ **Not
+      provided, by decision, 2026-09-23** (architecture.md §8.4). The notes
+      offer test access on request instead
 - [ ] **The iOS ATS decision** (architecture.md Open items), written down
       before submission, not improvised in a review reply
 - [ ] **The iOS libmpv/ffmpeg licence check** (architecture.md Open items)
