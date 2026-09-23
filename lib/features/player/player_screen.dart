@@ -18,6 +18,7 @@ import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
 import '../favorites_history/history_controller.dart';
+import 'player_controls.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -211,6 +212,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   late final Player _player = Player();
   late final VideoController _controller = VideoController(_player);
+  late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
   Timer? _stallTimer;
@@ -520,157 +522,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     return Scaffold(
       backgroundColor: t.stage,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Center(child: Video(controller: _controller, controls: null)),
-          if (_error != null)
-            _PlaybackError(message: _error!, title: _title)
-          else if (!_started)
-            Center(child: CircularProgressIndicator(color: t.accent)),
-          _Controls(
-            player: _player,
-            title: _title,
-            live: _live,
-            enabled: _started && _error == null,
-          ),
-        ],
+      body: PlayerChrome(
+        transport: _transport,
+        title: _title,
+        live: _live,
+        enabled: _started && _error == null,
+        onBack: () => Navigator.of(context).maybePop(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(child: Video(controller: _controller, controls: null)),
+            if (_error != null)
+              _PlaybackError(message: _error!, title: _title)
+            else if (!_started)
+              Center(child: CircularProgressIndicator(color: t.accent)),
+          ],
+        ),
       ),
     );
-  }
-}
-
-class _Controls extends StatelessWidget {
-  const _Controls({
-    required this.player,
-    required this.title,
-    required this.live,
-    required this.enabled,
-  });
-
-  final Player player;
-  final String? title;
-  final bool live;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-
-    return SafeArea(
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
-              Expanded(
-                child: Text(
-                  title ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (live)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: t.accent,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: t.accentInk,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 12),
-            ],
-          ),
-          const Spacer(),
-          if (enabled)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: StreamBuilder<Duration>(
-                stream: player.stream.position,
-                // Seed from the player's own state: a stream's first snapshot
-                // is null until an event arrives, and falling back to a
-                // constant makes the controls contradict what is on screen.
-                initialData: player.state.position,
-                builder: (context, snapshot) {
-                  final position = snapshot.data ?? player.state.position;
-                  final total = player.state.duration;
-                  return Column(
-                    children: [
-                      // A live stream has no duration and nothing to seek to,
-                      // so a scrubber would be a control that does nothing.
-                      if (!live && total > Duration.zero)
-                        Row(
-                          children: [
-                            Text(_fmt(position),
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 12)),
-                            Expanded(
-                              child: Slider(
-                                activeColor: t.accent,
-                                inactiveColor: Colors.white24,
-                                max: total.inMilliseconds.toDouble(),
-                                value: position.inMilliseconds
-                                    .clamp(0, total.inMilliseconds)
-                                    .toDouble(),
-                                onChanged: (v) => player
-                                    .seek(Duration(milliseconds: v.round())),
-                              ),
-                            ),
-                            Text(_fmt(total),
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 12)),
-                          ],
-                        ),
-                      StreamBuilder<bool>(
-                        stream: player.stream.playing,
-                        initialData: player.state.playing,
-                        builder: (context, snapshot) {
-                          final playing =
-                              snapshot.data ?? player.state.playing;
-                          return IconButton(
-                            iconSize: 44,
-                            icon: Icon(
-                              playing
-                                  ? Icons.pause_circle_filled
-                                  : Icons.play_circle_filled,
-                              color: Colors.white,
-                            ),
-                            onPressed: player.playOrPause,
-                          );
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  static String _fmt(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 }
 

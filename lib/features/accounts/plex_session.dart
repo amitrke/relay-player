@@ -196,6 +196,19 @@ class PlexSessionController extends Notifier<PlexState> {
     }
   }
 
+  /// Abandons a code that is on screen.
+  ///
+  /// Nothing is sent to plex.tv: an unclaimed PIN simply expires there. What
+  /// matters is stopping the poll, which otherwise runs until the code's
+  /// expiry, and giving a TV viewer a focusable way back (#5).
+  void cancelLink() {
+    _poll?.cancel();
+    state = state.copyWith(
+      stage: state.servers.isEmpty ? PlexStage.signedOut : PlexStage.ready,
+      clearError: true,
+    );
+  }
+
   void _startPolling(PlexLinkCode code) {
     _poll?.cancel();
     _poll = Timer.periodic(const Duration(seconds: 2), (timer) async {
