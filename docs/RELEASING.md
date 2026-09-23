@@ -61,9 +61,15 @@ of shipping a malformed `versionName`. Pushes to `main` do not release.
   credentials do not carry across.
 - The Kotlin `namespace` is still `com.relayplayer.relay_player`. That is on
   purpose, and the comment in `build.gradle.kts` explains why.
-- The iOS bundle identifier is still the generated `com.relayplayer.relayPlayer`
-  and has not been decided. Decide it before the first App Store Connect
-  record, for the same reason.
+- **iOS bundle identifier: `com.subnext.relay`**, the same as Android, set
+  2026-09-23. It is registered as an explicit App ID under team `BTSKP77HML`
+  and bound to the App Store Connect record created that day (iOS only;
+  macOS and tvOS can be added to the same record once there is a build for
+  them). Like the Play package name, it cannot change once a build has been
+  uploaded. The team ID is committed in the Xcode project on purpose: it is
+  printed in every signed build and is not a secret. No App ID capabilities
+  were enabled beyond the default In-App Purchase, because background audio
+  and PiP are Info.plist background modes, not capabilities.
 
 ## One-time setup
 

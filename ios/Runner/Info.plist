@@ -24,6 +24,22 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!--
+	  Export compliance, declared here so TestFlight does not hold every build
+	  for the question. NO means "only exempt encryption", which was checked
+	  against the code on 2026-09-23 rather than assumed:
+	  - network traffic is standard TLS (Plex, AI providers, HTTP sources);
+	  - secrets go to the iOS Keychain via flutter_secure_storage, the OS's own;
+	  - lib/ has no cipher code of its own;
+	  - smb_connect's crypto is NTLM authentication and SMB message signing
+	    only. Its own configuration says SMB encryption "is not implemented
+	    yet" (isEncryptionEnabled = false).
+	  Revisit if any of that changes, notably an smb_connect upgrade that adds
+	  SMB3 encryption: encrypting content in transit is not the same exemption
+	  as authenticating it. Not legal advice; this records what the app does.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<!--
