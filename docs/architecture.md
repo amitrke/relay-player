@@ -967,9 +967,30 @@ The test for any future proposal: *does this put our server in the path of user 
   libraries, but it depends on the repo staying up; and **upgrading media_kit
   can change every line of this**, so the next upgrade has to re-read the
   binary and update the list in the same change. Windows dev builds load a
-  different libmpv, and iOS (first built for the simulator 2026-09-23,
-  MANUAL_TESTING.md §6a) links its own media_kit_libs_ios_video frameworks
-  that nobody has inspected yet; both need their own check before they ship.
+  different libmpv and are not distributed.
+  **iOS checked 2026-09-23, before the first App Store submission.** Until
+  then the iOS app showed *no* native notices at all, because
+  `registerNativeLicenses` was Android-only, while TestFlight builds were
+  already going out. The iOS frameworks come from a different build,
+  `libmpv-darwin-build` v0.6.0 ("video-default"), and were read from the
+  shipped binaries the same way: mpv 0.36.0 `-Dgpl=false`; FFmpeg 6.0
+  "LGPL version 3 or later", `--disable-autodetect --disable-all
+  --enable-version3` with only mbedTLS, libxml2 and dav1d external and no
+  `--enable-gpl`. That repository's lock file also pins libx264 (GPL),
+  libvpx and libvorbis for other variants; none of them is in the shipped
+  frameworks. iOS adds libpng 1.6.40 and uchardet 0.0.8 to the Android set,
+  and versions differ (HarfBuzz 8.1.1, FreeType 2.13.2, Mbed TLS 3.4.1, …).
+  `native_licenses.dart` now has an iOS list and `native_licenses_test.dart`
+  pins it, including that no iOS entry points at the Android build; the page
+  was checked on the simulator.
+  **A caveat to keep in view, not resolved here:** the frameworks are
+  dynamically linked and listed with their source, which covers the usual
+  LGPL obligations. LGPL-3.0 (FFmpeg) also asks that users can run a
+  modified version, and on the App Store code signing makes swapping a
+  framework impractical for most users. VLC and many other FFmpeg-based apps
+  ship on the store on this same basis, but it is a known point of debate,
+  and the mitigation if it is ever raised is to publish the build and
+  signing steps that let someone rebuild the app with their own libraries.
   Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
   2023-09-24, over two years stale.

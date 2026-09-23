@@ -226,7 +226,10 @@ TestFlight needs none of these; App Review needs all of them.
 - [x] **The iOS ATS decision**: none needed, tested with a control on
       2026-09-23 (architecture.md §11). No `NSAllowsArbitraryLoads`, so nothing
       to justify in review
-- [ ] **The iOS libmpv/ffmpeg licence check** (architecture.md Open items)
+- [x] **The iOS libmpv/ffmpeg licence check**, done 2026-09-23: LGPL-clean,
+      no GPL components, and the iOS licence page now lists all eleven
+      libraries (architecture.md, ffmpeg item under Open items). The
+      TestFlight builds before this showed none of them
 - [ ] **The macOS and tvOS platform entries.** The App Store Connect record
       has "1.0 Prepare for Submission" versions for both, though neither has a
       build. They are harmless while empty. Deleting them is the account
