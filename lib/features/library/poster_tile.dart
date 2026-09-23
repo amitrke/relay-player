@@ -10,9 +10,18 @@ import '../favorites_history/favorites_controller.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
-  const PosterTile({super.key, required this.item, this.autofocus = false});
+  const PosterTile({
+    super.key,
+    required this.item,
+    this.autofocus = false,
+    this.showSource = false,
+  });
 
   final CatalogItem item;
+
+  /// Whether to label the poster with where it comes from. The grid decides,
+  /// because only it knows whether its items come from more than one source.
+  final bool showSource;
 
   /// The first tile in a grid takes focus, so a remote lands on the content
   /// rather than nowhere.
@@ -50,6 +59,12 @@ class PosterTile extends ConsumerWidget {
                           ),
                   ),
                 ),
+                if (showSource)
+                  Positioned(
+                    left: 6,
+                    bottom: 6,
+                    child: SourceBadge(source: item.source),
+                  ),
                 Positioned(
                   top: -6,
                   right: -6,
@@ -98,6 +113,49 @@ class PosterTile extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A small label naming where an item comes from.
+///
+/// The wording follows what the app already calls these sources on screen:
+/// Plex by name, and a panel as IPTV, as in Settings and onboarding. Never the
+/// panel's own name: a provider label on a poster belongs to the user, but it
+/// would also turn up in anything shot from a screen (§1).
+class SourceBadge extends StatelessWidget {
+  const SourceBadge({super.key, required this.source});
+
+  final CatalogSource source;
+
+  static String labelFor(CatalogSource source) => switch (source) {
+        CatalogSource.plex => 'Plex',
+        CatalogSource.xtream => 'IPTV',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
+    return DecoratedBox(
+      // Backed like the favourite star: artwork is unpredictable, and stage
+      // with ink reads in light and dark palettes alike.
+      decoration: BoxDecoration(
+        color: t.stage.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        child: Text(
+          labelFor(source),
+          style: TextStyle(
+            color: t.ink,
+            fontSize: tv ? 12 : 9.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
     );
   }

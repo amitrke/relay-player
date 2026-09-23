@@ -121,6 +121,7 @@ final xtreamCatalogProvider =
                   title: v.name,
                   year: v.year,
                   posterUrl: v.posterUrl,
+                  addedAt: v.addedAt,
                 ),
             ],
           XtreamCatalogue.series => [
@@ -133,6 +134,7 @@ final xtreamCatalogProvider =
                   title: s.name,
                   year: s.year,
                   posterUrl: s.posterUrl,
+                  addedAt: s.addedAt,
                 ),
             ],
           XtreamCatalogue.live => const <CatalogItem>[],

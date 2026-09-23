@@ -130,6 +130,45 @@ jobs:
           # not tell builds apart (runs 1 and 2, 2026-09-13).
           echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
 
+      # Play's "what's new" text, which until now was typed into Play Console
+      # after every upload. Looked up before the build so a problem costs
+      # seconds, not the six minutes a build takes.
+      #
+      # Two names are accepted, in the same folder. `<versionCode>.txt` is the
+      # layout fastlane `supply` expects (#8), but the code is this run's
+      # number, which nobody knows before pushing a tag. `<tag>.txt`
+      # (`v1.0.2.txt`) can be written in advance; supply ignores that name, so
+      # the two conventions do not collide.
+      #
+      # This is store listing copy, so architecture.md §8.2 applies to it as it
+      # does to the description. A run with no notes still uploads, with a
+      # warning: an untagged test build is allowed to say nothing.
+      - name: Pick the release notes
+        id: notes
+        run: |
+          dir=fastlane/metadata/android/en-US/changelogs
+          candidates=("$dir/${{ steps.version.outputs.code }}.txt")
+          if [ "${{ github.ref_type }}" = tag ]; then
+            candidates+=("$dir/$GITHUB_REF_NAME.txt")
+          fi
+          for f in "${candidates[@]}"; do
+            [ -f "$f" ] || continue
+            # Characters, not bytes: Play's limit is 500 per language, and the
+            # notes use typographic quotes and ellipses.
+            length="$(python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read().strip()))' "$f")"
+            if [ "$length" -gt 500 ]; then
+              echo "::error::$f is $length characters; Play accepts at most 500"
+              exit 1
+            fi
+            out="$RUNNER_TEMP/whatsnew"
+            mkdir -p "$out"
+            cp "$f" "$out/whatsnew-en-US"
+            echo "dir=$out" >> "$GITHUB_OUTPUT"
+            echo "Release notes: $f ($length characters)"
+            exit 0
+          done
+          echo "::warning::No release notes found (looked for ${candidates[*]}). Uploading without them; add them in Play Console if testers should see any."
+
       - run: >-
           flutter build appbundle --release
           --build-number=${{ steps.version.outputs.code }}
@@ -181,6 +220,8 @@ jobs:
           # `tracks`, not `track`, which v1.1.5 reports as deprecated.
           tracks: internal
           status: ${{ inputs.status || 'completed' }}
+          # Empty when no notes were found, which the action treats as unset.
+          whatsNewDirectory: ${{ steps.notes.outputs.dir }}
 
       - name: Note the skipped upload
         if: env.HAS_PLAY_CREDENTIALS != 'true'

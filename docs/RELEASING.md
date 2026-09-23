@@ -24,8 +24,16 @@ them with what actually happened, including the failures, when they are.
    `build.gradle.kts` falls back to the debug key when no key is configured,
    because local `flutter run --release` needs that, so this check is the one
    that stops a broken secret from getting through.
-4. Keeps the bundle as a workflow artifact for 14 days.
-5. Uploads it to the `internal` track, but only if `PLAY_SERVICE_ACCOUNT_JSON`
+4. Picks the release notes (added 2026-09-22, first used by the build after
+   v1.0.1): `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, or
+   for a tag run `<tag>.txt` (`v1.0.2.txt`) in the same folder. The tag name
+   exists because the versionCode is the run number, which nobody knows before
+   pushing the tag; fastlane `supply` ignores that name, so the two do not
+   clash. Notes over Play's 500 characters fail the run before the build. No
+   notes is a warning, not a failure. They are store listing copy, so §8.2
+   applies: no Advanced sources, IPTV, Xtream, Live TV or playlists.
+5. Keeps the bundle as a workflow artifact for 14 days.
+6. Uploads it, with the notes, to the `internal` track, but only if `PLAY_SERVICE_ACCOUNT_JSON`
    is set. Without that secret the upload is skipped with a notice rather than
    failing the run, and that is what makes the first manual upload possible.
 

@@ -141,7 +141,12 @@ enum SettingsSection {
   subtitles('Subtitles'),
   aiFeatures('AI features'),
   advancedSources('Advanced sources', built: true),
-  privacy('Privacy and data', built: true),
+  // Unbuilt again since 2026-09-22. Its only control was "Send crash
+  // reports", which stored a preference nothing read while the privacy policy
+  // says no crash reports are sent. A switch for a data flow that does not
+  // exist is the same fault as the AI pane's demo data. It returns with
+  // Crashlytics (#6), which left the MVP on 2026-09-21.
+  privacy('Privacy and data'),
   about('About', built: true);
 
   const SettingsSection(this.label, {this.built = false});
@@ -245,19 +250,22 @@ class _PhoneSettings extends StatelessWidget {
         ),
         const SizedBox(height: 22),
 
-        _Section(
-          title: 'Privacy and data',
-          child: _ToggleRow(
-            title: 'Send crash reports',
-            subtitle:
-                'Off by default. Reports contain no library or account data. '
-                'Subnext Player has no backend and no analytics.',
-            value: state.crashReportingEnabled,
-            onChanged: (v) =>
-                onStateChanged(state.copyWith(crashReportingEnabled: v)),
+        // Hand-listed here rather than driven by the enum, so it has to ask.
+        if (SettingsSection.privacy.built) ...[
+          _Section(
+            title: 'Privacy and data',
+            child: _ToggleRow(
+              title: 'Send crash reports',
+              subtitle:
+                  'Off by default. Reports contain no library or account data. '
+                  'Subnext Player has no backend and no analytics.',
+              value: state.crashReportingEnabled,
+              onChanged: (v) =>
+                  onStateChanged(state.copyWith(crashReportingEnabled: v)),
+            ),
           ),
-        ),
-        const SizedBox(height: 22),
+          const SizedBox(height: 22),
+        ],
 
         // Last, as in §12.1: compliance-shaped, rarely visited, but required.
         const _Section(title: 'About', child: AboutPane()),

@@ -18,6 +18,7 @@ import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
 import '../favorites_history/history_controller.dart';
+import 'playback_focus.dart';
 import 'player_controls.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
@@ -222,6 +223,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _started = false;
   bool _live = false;
 
+  /// A live stream stopped because the app was hidden or lost audio focus
+  /// (§10). Shown as its own state with *Rejoin*, not as an error: nothing
+  /// failed, the connection was handed back on purpose.
+  bool _released = false;
+
+  late final PlaybackFocusPolicy _focus = PlaybackFocusPolicy(
+    transport: _transport,
+    isLive: () => _live,
+    releaseLive: _releaseLive,
+  );
+  AudioFocusBinding? _audioFocus;
+  AppLifecycleListener? _lifecycle;
+
   _Playable? _playable;
   Timer? _progressTimer;
 
@@ -246,11 +260,53 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _subs.add(_player.stream.error.listen(_fail));
     _subs.add(_player.stream.position.listen(_onPosition));
+    // Focus is asked for whenever playback starts, not once: after a permanent
+    // loss, pressing play is the viewer taking it back from the other app.
+    _subs.add(_player.stream.playing.listen((playing) {
+      if (playing) unawaited(_audioFocus?.request());
+    }));
+    // `hidden`, not `inactive`: pulling down the notification shade is
+    // inactive, and must not stop a film (§10).
+    _lifecycle = AppLifecycleListener(
+      onHide: () => _focus.handle(FocusEvent.hidden),
+    );
+    unawaited(_attachAudioFocus());
+    unawaited(_load());
+  }
+
+  Future<void> _attachAudioFocus() async {
+    final binding = await AudioFocusBinding.attach(_focus.handle);
+    if (!mounted) {
+      unawaited(binding?.dispose());
+      return;
+    }
+    _audioFocus = binding;
+    if (_player.state.playing) unawaited(binding?.request());
+  }
+
+  void _releaseLive() {
+    if (_released || !mounted) return;
+    _stallTimer?.cancel();
+    _progressTimer?.cancel();
+    unawaited(_player.stop());
+    setState(() {
+      _released = true;
+      _started = false;
+    });
+  }
+
+  void _rejoin() {
+    setState(() {
+      _released = false;
+      _error = null;
+    });
     unawaited(_load());
   }
 
   @override
   void dispose() {
+    _lifecycle?.dispose();
+    unawaited(_audioFocus?.dispose());
     _stallTimer?.cancel();
     _progressTimer?.cancel();
     // Record where they actually got to before tearing down. Without this the
@@ -532,7 +588,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           fit: StackFit.expand,
           children: [
             Center(child: Video(controller: _controller, controls: null)),
-            if (_error != null)
+            if (_released)
+              _PlaybackError(
+                title: _title,
+                message: 'Stopped while the app was in the background, so the '
+                    'connection is free for other devices.',
+                icon: Icons.pause_circle_outline,
+                action: ('Rejoin', _rejoin),
+              )
+            else if (_error != null)
               _PlaybackError(message: _error!, title: _title)
             else if (!_started)
               Center(child: CircularProgressIndicator(color: t.accent)),
@@ -543,25 +607,61 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 }
 
-class _PlaybackError extends StatelessWidget {
-  const _PlaybackError({required this.message, this.title});
+class _PlaybackError extends StatefulWidget {
+  const _PlaybackError({
+    required this.message,
+    this.title,
+    this.icon = Icons.error_outline,
+    this.action,
+  });
 
   final String message;
   final String? title;
+  final IconData icon;
+
+  /// A primary action shown before Back, e.g. rejoining a released stream.
+  final (String, VoidCallback)? action;
+
+  @override
+  State<_PlaybackError> createState() => _PlaybackErrorState();
+}
+
+class _PlaybackErrorState extends State<_PlaybackError> {
+  final _actionFocus = FocusNode(debugLabel: 'playback-action');
+
+  @override
+  void initState() {
+    super.initState();
+    // Asked for explicitly: `autofocus` only fires when nothing in the scope
+    // has focus, and the player's own node always does. On a TV the action
+    // would otherwise be a press or two away from a viewer who just came back.
+    if (widget.action != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _actionFocus.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _actionFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final action = widget.action;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: Colors.white70, size: 36),
+            Icon(widget.icon, color: Colors.white70, size: 36),
             const SizedBox(height: 16),
-            if (title != null) ...[
+            if (widget.title != null) ...[
               Text(
-                title!,
+                widget.title!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -571,15 +671,27 @@ class _PlaybackError extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             Text(
-              message,
+              widget.message,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, height: 1.5),
             ),
             const SizedBox(height: 24),
-            RelayButton(
-              label: 'Back',
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
+            if (action != null) ...[
+              RelayButton(
+                label: action.$1,
+                onPressed: action.$2,
+                focusNode: _actionFocus,
+              ),
+              const SizedBox(height: 8),
+              RelayTextButton(
+                label: 'Back',
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ] else
+              RelayButton(
+                label: 'Back',
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
           ],
         ),
       ),

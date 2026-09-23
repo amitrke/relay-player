@@ -23,6 +23,7 @@ class CatalogItem {
     required this.title,
     this.year,
     this.posterUrl,
+    this.addedAt,
   });
 
   final CatalogSource source;
@@ -38,6 +39,13 @@ class CatalogItem {
   /// Already resolved and authenticated — Plex artwork needs a token on the
   /// query string, so the URL cannot be rebuilt by the widget that shows it.
   final String? posterUrl;
+
+  /// When the item arrived in its source, for "Recently added". Plex reports
+  /// it per item. Panels report `added` for films and only `last_modified` for
+  /// series, which moves when an episode is added: close enough for sorting,
+  /// and the nearest thing a panel offers. Null when a source says nothing,
+  /// and such items sort last.
+  final DateTime? addedAt;
 
   /// Where tapping this item leads.
   ///

@@ -15,6 +15,7 @@ import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
 import '../live_tv/live_tv_tab.dart';
 import '../local_network/local_network_tab.dart';
+import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 
@@ -180,7 +181,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   // A count, not a source name. Titles here are merged across
                   // Plex servers, panels and this device, so naming one source
                   // would misdescribe most of what is on screen.
-                  if (selected.drawsFromPlex)
+                  if (selected.drawsFromPlex) ...[
+                    const _SortButton(),
+                    const SizedBox(width: 12),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
@@ -192,6 +195,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         style: TextStyle(color: t.inkDim, fontSize: 12),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -303,7 +307,9 @@ class _TabBody extends ConsumerWidget {
         message: '$e',
         onRetry: () => ref.invalidate(_libraryProvider(tab)),
       ),
-      data: (list) => list.isEmpty
+      data: (unsorted) {
+        final list = ref.watch(librarySortProvider).apply(unsorted);
+        return list.isEmpty
           ? LibraryEmptyState(
               icon: tab.emptyIcon,
               message: ref.watch(connectedServersProvider).isEmpty &&
@@ -323,7 +329,102 @@ class _TabBody extends ConsumerWidget {
                     Expanded(child: PosterGrid(items: list)),
                   ],
                 )
-              : PosterGrid(items: list),
+              : PosterGrid(items: list);
+      },
     );
+  }
+}
+
+/// The current order, and a way to change it.
+///
+/// A sheet of focusable rows rather than a popup menu: every other chooser in
+/// the app is built from [RelayTappable] so a remote can reach it with a
+/// visible ring, and Material's menu items have not been checked on a TV
+/// (MANUAL_TESTING.md §6 treats unchecked Material surfaces as guilty).
+class _SortButton extends ConsumerWidget {
+  const _SortButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    final sort = ref.watch(librarySortProvider);
+    final size = f == RelayFormFactor.tv ? 15.0 : 12.0;
+
+    return RelayTappable(
+      borderRadius: 8,
+      onTap: () => _choose(context, ref, sort),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.sort, size: size + 4, color: t.inkDim),
+            const SizedBox(width: 4),
+            Text(sort.label, style: TextStyle(color: t.inkDim, fontSize: size)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _choose(
+      BuildContext context, WidgetRef ref, LibrarySort current) async {
+    final picked = await showModalBottomSheet<LibrarySort>(
+      context: context,
+      backgroundColor: RelayTheme.of(context).surface,
+      builder: (context) {
+        final t = RelayTheme.of(context);
+        final f = RelayLayout.of(context);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Text(
+                    'Sort by',
+                    style: TextStyle(
+                      color: t.inkDim,
+                      fontSize: RelayLayout.bodySize(f),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                for (final option in LibrarySort.values)
+                  RelayTappable(
+                    borderRadius: 10,
+                    autofocus: option == current,
+                    onTap: () => Navigator.of(context).pop(option),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              option.label,
+                              style: TextStyle(
+                                color: t.ink,
+                                fontSize: RelayLayout.bodySize(f) + 1,
+                              ),
+                            ),
+                          ),
+                          if (option == current)
+                            Icon(Icons.check, color: t.accent),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (picked != null) await ref.read(librarySortProvider.notifier).set(picked);
   }
 }

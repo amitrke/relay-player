@@ -1,0 +1,5 @@
+Playback now pauses for a phone call and carries on when it ends. It also pauses when another app starts playing, when you leave the app, or when you unplug headphones.
+
+Movies and Series can be sorted by title, recently added or year.
+
+Settings no longer shows a crash-report switch. Subnext Player sends no crash reports, so it did nothing.

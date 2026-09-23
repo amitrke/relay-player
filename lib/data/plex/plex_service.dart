@@ -317,6 +317,7 @@ class PlexService {
         title: metadata.title,
         year: metadata.year,
         posterUrl: posterUrl(metadata),
+        addedAt: metadata.addedAt,
       );
 
   /// Server-side search across every library (§12 screen 8).
