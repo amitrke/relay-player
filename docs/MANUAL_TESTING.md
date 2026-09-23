@@ -33,6 +33,8 @@ The emulator cannot answer any of these. They need the tablet.
 | ⬜ | **Dead channel releases the connection** | A channel that never yields a frame must free the slot on timeout, or it burns the user's only connection until the panel times it out server-side |
 | ⬜ | Resume actually seeks on open | The stored position is demonstrably correct, but the only observation so far ("117 → 116 min left") is equally consistent with restarting from zero |
 | ⬜ | Hardware decode engages | Q5. Compare CPU against desktop |
+| ⬜ | **Audio focus and backgrounding** (#17, added 2026-09-22) | Built to the table in architecture.md §10, which `playback_focus_test.dart` pins row by row against a fake player. Whether Android delivers the events is the open part. On the Pixel: music from another app pauses ours and ours stays paused; a phone call pauses and resumes when it ends; a notification ducks without pausing; unplugging headphones pauses; home, recents and screen-off pause, and playback stays paused on return. For a live channel, each of those stops the stream and offers *Rejoin*, and the panel should show the connection freed. Also check that *Rejoin* takes focus on a TV |
+| ⬜ | **Library sort and source labels** (added 2026-09-22) | Sort by title, recently added or year, remembered across restarts; *Plex* / *IPTV* labels only when a grid mixes both. Rules pinned by `library_sort_test.dart`. Unchecked: whether Plex's `addedAt` gives the order people expect, whether a real panel sends `added` for films and `last_modified` for series at all (read from the Xtream API's usual shape, not observed), and the sort sheet with a D-pad |
 
 ## 1a. Verified on a phone, 2026-09-22
 
@@ -145,8 +147,8 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-55 tests (count updated 2026-09-22; it read 40 before the player-control and
-Plex link tests landed). `player_controls_test.dart` pins the #10 remote rules
+74 tests (count updated 2026-09-22; it read 40 before the player-control,
+Plex link, audio-focus and library-sort tests landed). `player_controls_test.dart` pins the #10 remote rules
 (wake-only first press, time-based seeking, Up never seeks, hide takes focus
 with it) against a fake transport, so it proves the rules and not how a real
 remote feels. `native_licenses_test.dart` loads every native licence entry the

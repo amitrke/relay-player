@@ -28,6 +28,10 @@ class PosterGrid extends ConsumerWidget {
         itemId: item.id,
       ),
     );
+    // Label each poster with its source only when the grid mixes them. With
+    // Plex alone, which is most people, a "Plex" tag on every tile says
+    // nothing and covers artwork.
+    final mixed = items.map((i) => i.source).toSet().length > 1;
     final columns = switch (f) {
       RelayFormFactor.phone => 3,
       RelayFormFactor.tablet => 5,
@@ -49,6 +53,7 @@ class PosterGrid extends ConsumerWidget {
       // focus highlight onto a tile nobody touched.
       itemBuilder: (context, i) => PosterTile(
         item: ordered[i],
+        showSource: mixed,
         autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
       ),
     );

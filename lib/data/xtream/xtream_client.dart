@@ -64,6 +64,7 @@ class XtreamVodItem {
     required this.containerExtension,
     this.posterUrl,
     this.year,
+    this.addedAt,
   });
 
   final String streamId;
@@ -75,6 +76,7 @@ class XtreamVodItem {
 
   final String? posterUrl;
   final int? year;
+  final DateTime? addedAt;
 }
 
 class XtreamSeriesItem {
@@ -84,6 +86,7 @@ class XtreamSeriesItem {
     this.posterUrl,
     this.year,
     this.plot,
+    this.addedAt,
   });
 
   final String seriesId;
@@ -91,6 +94,10 @@ class XtreamSeriesItem {
   final String? posterUrl;
   final int? year;
   final String? plot;
+
+  /// From `last_modified`: panels give series no added date. See
+  /// [CatalogItem.addedAt].
+  final DateTime? addedAt;
 }
 
 class XtreamSeason {
@@ -306,6 +313,7 @@ class XtreamClient {
             name: '${entry['name'] ?? 'Unnamed'}',
             posterUrl: _asNonEmpty(entry['stream_icon']),
             year: _year(entry['year'] ?? entry['releaseDate']),
+            addedAt: _epochSeconds(entry['added']),
             // §4 builds VOD URLs with this extension, and panels vary — mkv is
             // as common as mp4, so guessing one would break half a catalogue.
             containerExtension:
@@ -331,6 +339,7 @@ class XtreamClient {
             posterUrl: _asNonEmpty(entry['cover']),
             year: _year(entry['year'] ?? entry['releaseDate']),
             plot: _asNonEmpty(entry['plot']),
+            addedAt: _epochSeconds(entry['last_modified']),
           ),
     ];
   }
@@ -402,6 +411,14 @@ class XtreamClient {
     final text = value?.toString() ?? '';
     final match = RegExp(r'(19|20)\d{2}').firstMatch(text);
     return match == null ? null : int.tryParse(match.group(0)!);
+  }
+
+  /// Unix seconds, which panels send as a string or a number depending on the
+  /// panel. Zero and junk are treated as absent rather than as 1970.
+  static DateTime? _epochSeconds(Object? value) {
+    final seconds = int.tryParse(value?.toString().trim() ?? '');
+    if (seconds == null || seconds <= 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
   }
 
   static String? _asNonEmpty(Object? value) {
