@@ -221,11 +221,13 @@ class RelayButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.autofocus = false,
+    this.focusNode,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool autofocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -233,6 +235,7 @@ class RelayButton extends StatelessWidget {
     final f = RelayLayout.of(context);
     return FilledButton(
       autofocus: autofocus,
+      focusNode: focusNode,
       onPressed: onPressed,
       style: FilledButton.styleFrom(
         backgroundColor: t.accent,

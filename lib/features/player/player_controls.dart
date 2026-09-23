@@ -22,6 +22,9 @@ abstract class PlayerTransport {
   Future<void> play();
   Future<void> pause();
   Future<void> playOrPause();
+
+  /// 0 to 100, media_kit's scale. Used only for ducking (§10).
+  Future<void> setVolume(double percent);
 }
 
 class MediaKitTransport implements PlayerTransport {
@@ -47,6 +50,8 @@ class MediaKitTransport implements PlayerTransport {
   Future<void> pause() => _player.pause();
   @override
   Future<void> playOrPause() => _player.playOrPause();
+  @override
+  Future<void> setVolume(double percent) => _player.setVolume(percent);
 }
 
 /// Icons and text drawn over the picture.

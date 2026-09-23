@@ -486,6 +486,37 @@ The only trustworthy evidence that playback is happening is
 indicator, dead-channel timeout (§4) or error state in the app must be built on
 that, not on the two signals above.
 
+**Audio focus and going to the background (#17, decided 2026-09-22).** Before
+this there was no audio focus handling and no lifecycle observer: another app's
+music played underneath ours and a call did not pause playback. Decided before
+the code, per #17:
+
+| Event | VOD, Plex, local, SMB | Live |
+|---|---|---|
+| Another app takes focus for good (it starts playing) | Pause. No automatic resume | Stop and release |
+| A call or other transient loss | Pause; resume when focus returns, but only if it was playing when focus was lost | Stop and release; no automatic rejoin |
+| A notification or navigation prompt (duck) | Lower to 30% volume, restore after | Same |
+| Headphones unplugged ("becoming noisy") | Pause | Stop and release |
+| The app is hidden (home, recents, screen off) | Pause. It stays paused on return | Stop and release |
+
+- **Live stops rather than pauses.** A paused live stream cannot resume from
+  where it was, and holding it paused keeps the connection open, which on a
+  `max_connections: 1` line blocks the user's only slot (§4). So live releases
+  the connection, and on return the player says it stopped and offers
+  *Rejoin*. It does not rejoin by itself after a call: reconnecting without
+  being asked is exactly what surprises someone who has moved on.
+- **Hidden, not inactive.** `inactive` also fires when the notification shade
+  is pulled down, which must not stop a film. `hidden` is the first state that
+  means nobody can see the picture.
+- **Ducking is mostly the system's job.** On Android 8+ the system ducks for
+  us unless the app asks to pause instead, and a film is not speech, so we do
+  not ask. The 30% handler covers older Android and iOS.
+- **Background audio is not this.** Carrying on playing in the background
+  needs a foreground service and a media session, and stays in #12. Pausing is
+  the minimum defined behaviour, and it is enough for the MVP.
+- Android and iOS only. Desktop has no audio focus to speak of; minimising the
+  window on Windows does count as hidden and pauses, which is harmless.
+
 Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U live has no seek), audio/subtitle track selection (including AI-generated/translated tracks from §9), aspect ratio toggle, PiP (both platforms support it), background audio continuation, resume-from-history prompt, and the transcode/SMB session keep-alive/stop lifecycle from §6/§7.
 
 ## 11. Platform-specific notes

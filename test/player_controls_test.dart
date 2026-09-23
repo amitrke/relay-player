@@ -39,6 +39,8 @@ class _FakeTransport implements PlayerTransport {
   Future<void> pause() async => _set(false);
   @override
   Future<void> playOrPause() async => _set(!playing);
+  @override
+  Future<void> setVolume(double percent) async {}
 
   void _set(bool v) {
     playing = v;
