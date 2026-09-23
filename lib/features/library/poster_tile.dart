@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/local/favorites_store.dart';
-import '../../data/local/history_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
 import '../favorites_history/history_controller.dart';
+import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
@@ -41,6 +41,22 @@ class PosterTile extends ConsumerWidget {
       autofocus: autofocus,
       borderRadius: 10,
       onTap: () => context.push(item.route),
+      // Plex only: a panel has no watched state to set.
+      onLongPress: item.source == CatalogSource.plex
+          ? () => showWatchActions(
+                context,
+                ref,
+                WatchTarget(
+                  serverId: item.sourceId,
+                  ratingKey: item.id,
+                  title: item.title,
+                  isShow: item.kind == CatalogKind.show,
+                  watched: item.kind == CatalogKind.show
+                      ? null
+                      : watch.watched,
+                ),
+              )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -132,26 +148,16 @@ class PosterTile extends ConsumerWidget {
   }
 }
 
-/// Films only. A show's watched state is a count of watched episodes, which
-/// `dart_plex` 0.1.2 does not parse, so a show poster shows nothing rather
-/// than a guess.
+/// Selects only this tile's history entry and mark, so a progress write for
+/// one title during playback does not rebuild every poster in the grid.
 WatchState _watchStateOf(CatalogItem item, WidgetRef ref) {
-  if (item.kind != CatalogKind.movie) return WatchState.none;
-  final kind = switch (item.source) {
-    CatalogSource.plex => PlaybackKind.plex,
-    CatalogSource.xtream => PlaybackKind.xtreamVod,
-  };
-  final key = '${kind.wire}:${item.sourceId}:${item.id}';
-  // Selects this tile's own entry, so a progress write for one title during
-  // playback does not rebuild every poster in the grid.
-  final local = ref.watch(historyProvider
-      .select((all) => all.where((h) => h.key == key).firstOrNull));
-  return WatchState.resolve(
-    local: local,
-    plexViewCount: item.viewCount,
-    plexOffset: item.viewOffset,
-    plexDuration: item.duration,
-    plexLastViewedAt: item.lastViewedAt,
+  final key = historyKeyOf(item);
+  if (key == null) return WatchState.none;
+  return WatchState.forItem(
+    item,
+    local: ref.watch(historyProvider
+        .select((all) => all.where((h) => h.key == key).firstOrNull)),
+    override: ref.watch(watchOverridesProvider.select((m) => m[key])),
   );
 }
 

@@ -9,6 +9,7 @@ import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../../data/local/history_store.dart';
 import '../favorites_history/history_controller.dart';
+import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
 import '../library/poster_grid.dart';
 import '../library/poster_tile.dart';
@@ -29,13 +30,18 @@ final _showProvider = FutureProvider.family<PlexMetadata?, _Ref>((ref, arg) {
 });
 
 /// Seasons of a show — or, for a flat show, its episodes directly.
+///
+/// autoDispose, so both lists are refetched each time the screen opens. They
+/// carry each episode's watched state, and a cached copy would keep showing
+/// what was true before a "mark whole show watched" or a watch in another
+/// Plex app.
 final _seasonsProvider =
-    FutureProvider.family<List<PlexMetadata>, _Ref>((ref, arg) {
+    FutureProvider.autoDispose.family<List<PlexMetadata>, _Ref>((ref, arg) {
   return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
 final _episodesProvider =
-    FutureProvider.family<List<PlexMetadata>, _Ref>((ref, arg) {
+    FutureProvider.autoDispose.family<List<PlexMetadata>, _Ref>((ref, arg) {
   return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
@@ -283,6 +289,7 @@ class _EpisodeRow extends ConsumerWidget {
         : Duration(milliseconds: episode.durationMs!);
     final key = '${PlaybackKind.plex.wire}:$serverId:${episode.ratingKey}';
     final watch = WatchState.resolve(
+      override: ref.watch(watchOverridesProvider.select((m) => m[key])),
       // Only this row's entry, so playback elsewhere does not rebuild the list.
       local: ref.watch(historyProvider
           .select((all) => all.where((h) => h.key == key).firstOrNull)),
@@ -307,6 +314,16 @@ class _EpisodeRow extends ConsumerWidget {
       child: RelaySurface(
         padding: const EdgeInsets.all(14),
         onTap: () => context.push('/play/$serverId/${episode.ratingKey}'),
+        onLongPress: () => showWatchActions(
+          context,
+          ref,
+          WatchTarget(
+            serverId: serverId,
+            ratingKey: episode.ratingKey,
+            title: episode.title,
+            watched: watch.watched,
+          ),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

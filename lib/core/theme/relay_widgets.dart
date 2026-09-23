@@ -12,6 +12,7 @@ class RelaySurface extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.borderColor,
     this.onTap,
+    this.onLongPress,
     this.focusNode,
     this.autofocus = false,
   });
@@ -22,6 +23,9 @@ class RelaySurface extends StatelessWidget {
   /// Overrides the hairline — used to mark a selected or focused row.
   final Color? borderColor;
   final VoidCallback? onTap;
+
+  /// A secondary action: a long press, or a held centre button on a remote.
+  final VoidCallback? onLongPress;
   final FocusNode? focusNode;
   final bool autofocus;
 
@@ -44,6 +48,7 @@ class RelaySurface extends StatelessWidget {
     // from D-pad traversal, not just a touch ripple (§11).
     return RelayFocusable(
       onTap: onTap!,
+      onLongPress: onLongPress,
       focusNode: focusNode,
       autofocus: autofocus,
       builder: (context, focused) => Container(
@@ -57,6 +62,7 @@ class RelaySurface extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             borderRadius: BorderRadius.circular(12),
             child: content,
           ),
@@ -78,11 +84,20 @@ class RelayFocusable extends StatefulWidget {
     super.key,
     required this.onTap,
     required this.builder,
+    this.onLongPress,
     this.focusNode,
     this.autofocus = false,
   });
 
   final VoidCallback onTap;
+
+  /// Fired by a held activate key, i.e. the remote's centre button held down.
+  ///
+  /// When set, a plain press acts on key *up* instead of key down, since a
+  /// press cannot be told from the start of a hold until the key either
+  /// repeats or comes back up. Without that, holding the button to reach the
+  /// menu would first open the title. Unset, behaviour is unchanged.
+  final VoidCallback? onLongPress;
   final Widget Function(BuildContext, bool focused) builder;
   final FocusNode? focusNode;
   final bool autofocus;
@@ -94,6 +109,10 @@ class RelayFocusable extends StatefulWidget {
 class _FocusableState extends State<RelayFocusable> {
   FocusNode? _internal;
   bool _focused = false;
+
+  /// Set once a held key has fired [RelayFocusable.onLongPress], so its key
+  /// up does not also count as a tap.
+  bool _heldFired = false;
 
   FocusNode get _node => widget.focusNode ?? (_internal ??= FocusNode());
 
@@ -119,11 +138,27 @@ class _FocusableState extends State<RelayFocusable> {
           LogicalKeyboardKey.space,
           LogicalKeyboardKey.gameButtonA,
         };
-        if (event is KeyDownEvent && activate.contains(event.logicalKey)) {
-          widget.onTap();
+        if (!activate.contains(event.logicalKey)) {
+          return KeyEventResult.ignored;
+        }
+        final longPress = widget.onLongPress;
+        if (longPress == null) {
+          if (event is KeyDownEvent) widget.onTap();
           return KeyEventResult.handled;
         }
-        return KeyEventResult.ignored;
+        switch (event) {
+          case KeyDownEvent():
+            _heldFired = false;
+          case KeyRepeatEvent():
+            if (!_heldFired) {
+              _heldFired = true;
+              longPress();
+            }
+          case KeyUpEvent():
+            if (!_heldFired) widget.onTap();
+            _heldFired = false;
+        }
+        return KeyEventResult.handled;
       },
       child: widget.builder(context, _focused),
     );
@@ -141,6 +176,7 @@ class RelayTappable extends StatelessWidget {
     super.key,
     required this.child,
     required this.onTap,
+    this.onLongPress,
     this.borderRadius = 12,
     this.autofocus = false,
     this.focusNode,
@@ -148,6 +184,9 @@ class RelayTappable extends StatelessWidget {
 
   final Widget child;
   final VoidCallback onTap;
+
+  /// See [RelayFocusable.onLongPress].
+  final VoidCallback? onLongPress;
   final double borderRadius;
   final bool autofocus;
   final FocusNode? focusNode;
@@ -157,6 +196,7 @@ class RelayTappable extends StatelessWidget {
     final radius = BorderRadius.circular(borderRadius);
     return RelayFocusable(
       onTap: onTap,
+      onLongPress: onLongPress,
       autofocus: autofocus,
       focusNode: focusNode,
       builder: (context, focused) => RelayFocusRing(
@@ -164,7 +204,12 @@ class RelayTappable extends StatelessWidget {
         borderRadius: radius,
         child: Material(
           color: Colors.transparent,
-          child: InkWell(onTap: onTap, borderRadius: radius, child: child),
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: radius,
+            child: child,
+          ),
         ),
       ),
     );

@@ -1,4 +1,16 @@
 import '../../data/local/history_store.dart';
+import '../../domain/models/catalog_item.dart';
+
+/// The history key a catalogue film is recorded under, or null for anything
+/// that has no watch state of its own (a show: see [CatalogItem.viewCount]).
+String? historyKeyOf(CatalogItem item) {
+  if (item.kind != CatalogKind.movie) return null;
+  final kind = switch (item.source) {
+    CatalogSource.plex => PlaybackKind.plex,
+    CatalogSource.xtream => PlaybackKind.xtreamVod,
+  };
+  return '${kind.wire}:${item.sourceId}:${item.id}';
+}
 
 /// Whether something has been watched, or how far through it someone is.
 ///
@@ -32,13 +44,18 @@ class WatchState {
   /// [HistoryItem.isResumable].
   static const _startedAfter = Duration(seconds: 60);
 
+  /// [override] is a mark made in this session (see `watchOverridesProvider`),
+  /// and beats everything: it is the newest thing anyone said about the title,
+  /// and neither the library fetch nor local history knows about it yet.
   static WatchState resolve({
+    bool? override,
     HistoryItem? local,
     int? plexViewCount,
     Duration? plexOffset,
     Duration? plexDuration,
     DateTime? plexLastViewedAt,
   }) {
+    if (override != null) return override ? finished : none;
     final fromPlex = _fromPlex(plexViewCount, plexOffset, plexDuration);
 
     if (local != null && local.duration > Duration.zero) {
@@ -54,6 +71,24 @@ class WatchState {
       }
     }
     return fromPlex;
+  }
+
+  /// [resolve] for a catalogue item. One function, so the tick on a poster
+  /// and the "Unwatched only" filter cannot disagree about the same title.
+  static WatchState forItem(
+    CatalogItem item, {
+    HistoryItem? local,
+    bool? override,
+  }) {
+    if (historyKeyOf(item) == null) return none;
+    return resolve(
+      override: override,
+      local: local,
+      plexViewCount: item.viewCount,
+      plexOffset: item.viewOffset,
+      plexDuration: item.duration,
+      plexLastViewedAt: item.lastViewedAt,
+    );
   }
 
   static WatchState _fromPlex(int? views, Duration? offset, Duration? total) {
