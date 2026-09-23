@@ -1,5 +1,5 @@
 Playback now pauses for a phone call and carries on when it ends. It also pauses when another app starts playing, when you leave the app, or when you unplug headphones.
 
-Movies and Series can be sorted by title, recently added or year.
+Movies and Series can be sorted by title, recently added or year. Plex titles you've watched now show a tick, and ones in progress show how far you got. Continue watching includes what you started in other Plex apps, and the next episode of shows you're following.
 
 Settings no longer shows a crash-report switch. Subnext Player sends no crash reports, so it did nothing.
