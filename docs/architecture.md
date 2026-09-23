@@ -958,8 +958,10 @@ The test for any future proposal: *does this put our server in the path of user 
   libraries, but it depends on the repo staying up; and **upgrading media_kit
   can change every line of this**, so the next upgrade has to re-read the
   binary and update the list in the same change. Windows dev builds load a
-  different libmpv and iOS has never been built; both need their own check
-  before they ship. Not legal advice; this records what the binary contains.
+  different libmpv, and iOS (first built for the simulator 2026-09-23,
+  MANUAL_TESTING.md §6a) links its own media_kit_libs_ios_video frameworks
+  that nobody has inspected yet; both need their own check before they ship.
+  Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
   2023-09-24, over two years stale.
 - **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted

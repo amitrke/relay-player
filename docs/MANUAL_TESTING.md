@@ -108,7 +108,7 @@ this code.
 
 | # | What |
 |---|---|
-| ⬜ | iOS — nothing has ever been built or run |
+| 🟡 | iOS — built and run on the simulator 2026-09-23 (§6a below); never on a real iPhone or iPad |
 | ⬜ | Android TV / Fire TV — no leanback tree yet (Phase 4) |
 | 🟡 | **D-pad navigation — fixed on the emulator, unverified on the Chromecast.** Was: a D-pad press scrolled the page instead of moving focus, library content could not be selected, and the rail could not be reached at all. Five causes now, all in shipped code rather than missing Phase 4 work; all five fixed (four on 2026-09-11, a fifth on 2026-09-12) and verified by driving the Google TV emulator with `adb shell input keyevent` — Left reaches the rail, Down moves within it with a visible ring, the centre button opens Settings, Right returns to the page, and going Settings → Sources → back to Library no longer strands focus on a hidden branch. See architecture.md §11. **Still to do on real hardware**, since the emulator's remote is synthetic: the same walk on the Chromecast with Google TV |
 | ✅ | **Focus was invisible on Material-drawn surfaces — fixed 2026-09-12 for the Settings sub-list.** The rail's own defect (§11 defect 3) and the Settings sub-list (Sources, Appearance, Playback…) shared the same cause; both now go through `RelayTappable`. Any other Material-drawn surface not yet checked on a TV should still be assumed guilty until proven otherwise |
@@ -120,6 +120,26 @@ this code.
 | ⬜ | **Settings → About on a real TV and phone** (added 2026-09-21). Tested only as a widget at TV size. Check that the version reads the tag rather than `0.0.0` on a tagged Play build, that the D-pad reaches the licences button, and that Flutter's licence page (Material list tiles, never checked on a remote) can be scrolled and left with Back. The phone layout's About has not been rendered by any test |
 | ⬜ | **Player controls on a remote** (#10, added 2026-09-22). Rewritten: the chrome auto-hides after 4 s of playback, the first D-pad press only wakes it, the seek bar steps 10 s per press (30 s, then 60 s while held) and seeks once on release, Up and Down leave the bar, ±10 s buttons, media keys, and a focus ring on every control. The rules are pinned by `player_controls_test.dart` against a fake transport, and nothing else: the new chrome has not run on any device or on Windows. Check on the Chromecast: that the waking press is not also acted on, that a held Right accelerates at a usable rate with the real repeat rate (the step table assumes about 20 Hz), that the remote's Back still leaves the player with the chrome hidden, and whether its transport keys arrive as `mediaFastForward` / `mediaRewind` at all. On a phone: tap toggles the chrome and a drag on the bar seeks on release |
 | ⬜ | **Plex link screen on a TV** (#5, added 2026-09-22). Now two columns on TV, with the waiting state inside the code panel, a 28 dp spinner, and focus on a new Cancel button. The issue's acceptance is fit: from *Add a source* with the AppBar present, the code, the spinner and Cancel all on screen without scrolling. A widget test cannot settle that (§11, the test font wraps prose to twice its height), so it is unverified until seen on a TV or TV emulator |
+
+## 6a. iOS simulator, first run, 2026-09-23
+
+iPhone 18 Pro simulator, iOS 27.0, Xcode 27.0, arm64 debug build. The first
+time the app had been built for iOS at all. `flutter build ios --simulator`
+succeeded without changes; CocoaPods is required alongside SwiftPM because
+`media_kit_video` and `media_kit_libs_ios_video` do not support SwiftPM yet.
+
+| | What | Evidence |
+|---|---|---|
+| ✅ | **Video renders on the simulator** — unlike the Android emulator's `EGL_BAD_ATTRIBUTE` black picture. The control matters here: the test clip is a generated pattern whose bars scroll and whose progress band fills over its 20 s, and two screenshots seconds apart showed the band at ~1% then ~27% with the bars shifted, so frames were being decoded and presented, not just a clock advancing. So the simulator *is* a usable playback loop for iOS, which the emulator never was for Android. H.264 from the Photos library only; nothing network-sourced has been played |
+| ✅ | Onboarding, Add a source, Library tabs, Photos permission prompt, folder listing, player chrome auto-hide | Seen on screen |
+| ✅ | **Fixed: crash on "Allow video access."** No `NSPhotoLibraryUsageDescription`, so iOS killed the app the moment photo_manager asked (tccd: "attempted to access privacy-sensitive data without a usage description"). Added to Info.plist |
+| ✅ | **Fixed: "no routes for location" opening a device folder.** PHAsset ids contain slashes (`<uuid>/L0/040`); Android's numeric MediaStore ids never exposed the unencoded route. Now `Uri.encodeComponent`, as `/saf/` already did |
+| ✅ | **Fixed: every device video listed with a blank name.** iOS leaves `AssetEntity.title` empty unless the query sets `needTitle` |
+| ✅ | **Fixed: "Or pick a folder instead" / "Add a folder" on iOS.** `saf_util` and `saf_stream` are Android-only, so these would throw `MissingPluginException`. Hidden off Android until the §7.1 document-picker source exists |
+| ⬜ | **Plex and SMB on iOS** — not attempted: they need a real server and share. `NSLocalNetworkUsageDescription` is added, but the simulator does not enforce the Local Network prompt, so whether LAN connections work on a device is open |
+| ⬜ | **Anything on a real device** — needs an Apple signing team; the project has none set |
+| ⬜ | **The iOS libmpv/ffmpeg licence check** (architecture.md, Open items). The simulator build links a different binary from Android's; nobody has read its contents yet |
+| ⬜ | **Known, not fixed:** (a) the "Local & Network" tab label is clipped at 402 pt wide — not checked whether Android phones clip it too; (b) iOS lists the same video under several smart albums (Recents, Videos, Recently Saved); (c) the copy says the app "only asks for video access", but iOS asks for the whole photo library; (d) a debug build launched outside `flutter run` shows a white screen for 2–3 s before the first frame — a JIT debug build, so not representative of release |
 
 ---
 
