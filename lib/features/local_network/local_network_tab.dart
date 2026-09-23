@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,16 @@ import '../../data/filesystem/saf_folder_source.dart';
 import 'smb_controller.dart';
 import '../settings/settings_controller.dart';
 import '../library/poster_grid.dart';
+
+/// Whether "pick a folder" is offered at all.
+///
+/// Folder picking goes through SAF, and `saf_util`/`saf_stream` are Android-only
+/// plugins: on iOS the call would fail with a MissingPluginException, so the
+/// buttons are hidden rather than shown broken. The iOS equivalent §7.1 names
+/// is `UIDocumentPickerViewController` in folder mode with a security-scoped
+/// bookmark — a separate source, not yet built. Until then iOS reaches device
+/// video through the Photos library only.
+final bool _canPickFolder = Platform.isAndroid;
 
 final deviceVideoSourceProvider =
     Provider<DeviceVideoSource>((ref) => const DeviceVideoSource());
@@ -96,7 +108,8 @@ class LocalNetworkTab extends ConsumerWidget {
               Text(
                 access == false
                     ? 'Subnext Player cannot see your videos without media '
-                        'access. You can grant it in Android settings.'
+                        'access. You can grant it in '
+                        '${Platform.isIOS ? 'the Settings app' : 'Android settings'}.'
                     : 'Play videos stored on this device.\nSubnext Player only '
                         'asks for video access, never full file access.',
                 textAlign: TextAlign.center,
@@ -109,10 +122,11 @@ class LocalNetworkTab extends ConsumerWidget {
                     ref.read(deviceAccessProvider.notifier).request(),
               ),
               const SizedBox(height: 14),
-              RelayTextButton(
-                label: 'Or pick a folder instead',
-                onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
-              ),
+              if (_canPickFolder)
+                RelayTextButton(
+                  label: 'Or pick a folder instead',
+                  onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
+                ),
               RelayTextButton(
                 label: 'Add a network share',
                 onPressed: () => context.push('/smb/new'),
@@ -171,7 +185,15 @@ class LocalNetworkTab extends ConsumerWidget {
                   _FolderRow(
                     label: folder.name,
                     trailing: '${folder.count}',
-                    onTap: () => context.push('/local/${folder.id}'),
+                    // Encoded because iOS PHAsset ids contain slashes
+                    // ("<uuid>/L0/040"), which go_router otherwise reads as
+                    // extra path segments and fails to match. Android's numeric
+                    // MediaStore ids never needed it, which is why this only
+                    // surfaced on the first iOS run (2026-09-23). go_router
+                    // decodes path parameters itself, so the route must not
+                    // decode again — the same rule as '/saf/:uri'.
+                    onTap: () => context
+                        .push('/local/${Uri.encodeComponent(folder.id)}'),
                   ),
               ],
             AsyncError(:final error) => [
@@ -190,12 +212,13 @@ class LocalNetworkTab extends ConsumerWidget {
         ],
         Row(
           children: [
-            TextButton.icon(
-              onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
-              icon: Icon(Icons.create_new_folder_outlined,
-                  size: 18, color: t.accent),
-              label: Text('Add a folder', style: TextStyle(color: t.accent)),
-            ),
+            if (_canPickFolder)
+              TextButton.icon(
+                onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
+                icon: Icon(Icons.create_new_folder_outlined,
+                    size: 18, color: t.accent),
+                label: Text('Add a folder', style: TextStyle(color: t.accent)),
+              ),
             TextButton.icon(
               onPressed: () => context.push('/smb/new'),
               icon: Icon(Icons.lan_outlined, size: 18, color: t.accent),
@@ -349,7 +372,9 @@ class LocalFolderScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () => context.push('/localplay/${video.id}'),
+                  // Encoded for the same reason as '/local/' above.
+                  onTap: () => context
+                      .push('/localplay/${Uri.encodeComponent(video.id)}'),
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Row(

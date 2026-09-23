@@ -38,6 +38,26 @@ class DeviceVideo {
 class DeviceVideoSource {
   const DeviceVideoSource();
 
+  /// Asks for file names up front.
+  ///
+  /// On iOS `AssetEntity.title` is left empty unless the query sets
+  /// `needTitle` — reading `PHAssetResource.filename` costs extra, so
+  /// photo_manager skips it by default. Android fills it from MediaStore's
+  /// DISPLAY_NAME either way, which is why every video listed with a blank name
+  /// only on the first iOS run (2026-09-23).
+  static final FilterOptionGroup _filter = FilterOptionGroup(
+    videoOption: const FilterOption(needTitle: true),
+  );
+
+  /// A display name for [asset], falling back to the async lookup for assets
+  /// that did not come through [_filter] (anything resolved by id).
+  static Future<String> _titleOf(AssetEntity asset) async {
+    final title = asset.title;
+    if (title != null && title.isNotEmpty) return title;
+    final resolved = await asset.titleAsync;
+    return resolved.isNotEmpty ? resolved : 'Video';
+  }
+
   /// Asks for media access, returning whether we may read.
   ///
   /// Android 14+ can grant *partial* access — the user picks specific items.
@@ -51,6 +71,7 @@ class DeviceVideoSource {
   Future<List<DeviceVideoFolder>> folders() async {
     final paths = await PhotoManager.getAssetPathList(
       type: RequestType.video,
+      filterOption: _filter,
       // `hasAll: false`, not `onlyAll: false`. The latter only says "do not
       // return *just* the all-album" and still includes it, so every video
       // appeared twice — once under its real folder and once under "Recent".
@@ -74,6 +95,7 @@ class DeviceVideoSource {
   Future<List<DeviceVideo>> videosIn(String folderId, {int limit = 200}) async {
     final paths = await PhotoManager.getAssetPathList(
       type: RequestType.video,
+      filterOption: _filter,
       hasAll: false,
     );
     final folder = paths.where((p) => p.id == folderId).firstOrNull;
@@ -84,7 +106,7 @@ class DeviceVideoSource {
       for (final asset in assets)
         DeviceVideo(
           id: asset.id,
-          title: asset.title ?? 'Video',
+          title: await _titleOf(asset),
           duration: Duration(seconds: asset.duration),
         ),
     ];
@@ -106,7 +128,7 @@ class DeviceVideoSource {
     if (asset == null) return null;
     return DeviceVideo(
       id: asset.id,
-      title: asset.title ?? 'Video',
+      title: await _titleOf(asset),
       duration: Duration(seconds: asset.duration),
     );
   }

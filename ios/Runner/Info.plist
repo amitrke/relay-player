@@ -26,6 +26,24 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!--
+	  Required, not optional: photo_manager asks for Photos access when the user
+	  taps "Allow video access" on Local & Network (§7.1), and iOS terminates an
+	  app that requests a privacy-protected resource with no usage string. That
+	  is exactly what the first simulator run did (2026-09-23). Reading only; the
+	  app never writes to the library, so there is no NSPhotoLibraryAdd key.
+	-->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Subnext Player shows the videos in your library so you can play them. It only reads videos and never changes or uploads anything.</string>
+	<!--
+	  iOS 14+ gates every LAN connection behind a Local Network prompt on real
+	  hardware: SMB shares and a Plex server reached by its LAN address both
+	  trigger it. Without this string the prompt shows a generic system message.
+	  The simulator does not enforce the prompt, so this is unverified until a
+	  device run (MANUAL_TESTING.md).
+	-->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Subnext Player connects to media servers and network shares on your home network, such as Plex or a NAS.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
