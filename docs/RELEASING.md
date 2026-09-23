@@ -32,6 +32,13 @@ them with what actually happened, including the failures, when they are.
    clash. Notes over Play's 500 characters fail the run before the build. No
    notes is a warning, not a failure. They are store listing copy, so §8.2
    applies: no Advanced sources, IPTV, Xtream, Live TV or playlists.
+   **Verified 2026-09-23** on the v1.0.2 tag (run 5), which logged
+   `changelogs/v1.0.2.txt (342 characters)` and uploaded them.
+   **A tag's notes file is frozen once that tag has run.** On 2026-09-23
+   `v1.0.2.txt` was edited to describe later work after v1.0.2 had already
+   shipped, so the repo described a build that never had those features. It
+   was restored and the later work went into `v1.0.3.txt`. Check
+   `git ls-remote --tags origin` before writing notes for a version.
 5. Keeps the bundle as a workflow artifact for 14 days.
 6. Uploads it, with the notes, to the `internal` track, but only if `PLAY_SERVICE_ACCOUNT_JSON`
    is set. Without that secret the upload is skipped with a notice rather than

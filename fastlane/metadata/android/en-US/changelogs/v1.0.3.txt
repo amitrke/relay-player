@@ -1,0 +1,3 @@
+Watched Plex titles now show a tick, and ones in progress show how far you got.
+
+Continue watching now includes what you started in other Plex apps, and the next episode of shows you follow.
