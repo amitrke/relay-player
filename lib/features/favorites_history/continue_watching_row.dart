@@ -6,7 +6,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
-import 'history_controller.dart';
+import 'resume_entries.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
 // around them. Shared because the row must reserve exactly the height the tile
@@ -47,9 +47,11 @@ double _tileHeight(BuildContext context, double tileWidth) {
 /// The continue-watching row from the Home artboard.
 ///
 /// Mixed on purpose: a film, a panel episode and a Plex episode belong in one
-/// row because "what was I in the middle of" does not sort by source. It hides
-/// itself entirely when nothing is resumable, rather than leaving an empty
-/// heading above the grid.
+/// row because "what was I in the middle of" does not sort by source. Since
+/// 2026-09-22 it also carries Plex's On Deck, so what was watched in other
+/// Plex apps shows up here too ([mergeResume] says how the two combine). It
+/// hides itself entirely when nothing is resumable, rather than leaving an
+/// empty heading above the grid.
 class ContinueWatchingRow extends ConsumerWidget {
   const ContinueWatchingRow({super.key});
 
@@ -58,8 +60,7 @@ class ContinueWatchingRow extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
 
-    ref.watch(historyProvider);
-    final items = ref.read(historyProvider.notifier).resumable;
+    final items = ref.watch(resumeEntriesProvider);
     if (items.isEmpty) return const SizedBox.shrink();
 
     final tileWidth = f == RelayFormFactor.phone ? 168.0 : 252.0;
@@ -99,10 +100,10 @@ class ContinueWatchingRow extends ConsumerWidget {
 class _ResumeTile extends ConsumerWidget {
   const _ResumeTile({required this.item, required this.width});
 
-  final HistoryItem item;
+  final ResumeEntry item;
   final double width;
 
-  /// Resolves [HistoryItem.poster] to something `Image.network` can fetch.
+  /// Resolves [ResumeEntry.posterPath] to something `Image.network` can fetch.
   ///
   /// A Plex entry stores the unsigned artwork path, because the signed
   /// transcode URL carries `X-Plex-Token` and history is kept in the
@@ -111,7 +112,7 @@ class _ResumeTile extends ConsumerWidget {
   /// placeholder rather than a stale credential. A panel entry already holds
   /// an absolute URL with no credential in it, and passes through.
   String? _poster(WidgetRef ref) {
-    final ref0 = item.poster;
+    final ref0 = item.posterPath;
     if (ref0 == null || ref0.isEmpty) return null;
     if (item.kind != PlaybackKind.plex) return ref0;
     return plexServiceFor(ref, item.sourceId).posterUrlForPath(ref0);
@@ -120,7 +121,6 @@ class _ResumeTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final remaining = item.duration - item.position;
     final poster = _poster(ref);
 
     return SizedBox(
@@ -162,20 +162,22 @@ class _ResumeTile extends ConsumerWidget {
                             ),
                     ),
                   ),
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    bottom: 8,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: item.progress,
-                        minHeight: 3,
-                        backgroundColor: Colors.white24,
-                        valueColor: AlwaysStoppedAnimation(t.accent),
+                  // Absent for a next-up episode, which has not been started.
+                  if (item.progress case final progress?)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 3,
+                          backgroundColor: Colors.white24,
+                          valueColor: AlwaysStoppedAnimation(t.accent),
+                        ),
                       ),
                     ),
-                  ),
                   Positioned(
                     top: -6,
                     right: -6,
@@ -190,8 +192,8 @@ class _ResumeTile extends ConsumerWidget {
                         tooltip: 'Remove from continue watching',
                         icon: Icon(Icons.close, color: t.inkDim),
                         onPressed: () => ref
-                            .read(historyProvider.notifier)
-                            .remove(item.key),
+                            .read(resumeDismissalsProvider.notifier)
+                            .dismiss(item),
                       ),
                     ),
                   ),
@@ -212,7 +214,7 @@ class _ResumeTile extends ConsumerWidget {
             ),
             const SizedBox(height: _gapBetweenLines),
             Text(
-              '${remaining.inMinutes} min left',
+              item.detail,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

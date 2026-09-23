@@ -18,6 +18,7 @@ import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
 import '../favorites_history/history_controller.dart';
+import '../favorites_history/resume_entries.dart';
 import 'playback_focus.dart';
 import 'player_controls.dart';
 
@@ -245,6 +246,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   HistoryController? _history;
   PlexService? _plexService;
 
+  /// For refreshing Plex's On Deck once playback ends. Captured for the same
+  /// reason as [_history]: `ref` is unusable in `dispose`.
+  ProviderContainer? _container;
+
   /// Torn down with the player. Left running it would keep a port open and hold
   /// the SAF read handle for a file nobody is watching.
   LoopbackBridge? _bridge;
@@ -313,6 +318,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // last up-to-ten-seconds is lost on every exit, which is exactly the moment
     // the position matters most.
     _recordProgress(state: 'stopped');
+    // Plex has just been told where this stopped, so its On Deck has moved:
+    // the next episode may now be up. Deferred a microtask because
+    // invalidating while the tree is being torn down is exactly the kind of
+    // provider change Riverpod refuses mid-lifecycle.
+    final container = _container;
+    if (container != null) {
+      scheduleMicrotask(() => container.invalidate(plexOnDeckProvider));
+    }
     for (final s in _subs) {
       unawaited(s.cancel());
     }
@@ -453,6 +466,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _history = ref.read(historyProvider.notifier);
       if (widget.serverId != null) {
         _plexService = plexServiceFor(ref, widget.serverId!);
+        _container = ProviderScope.containerOf(context, listen: false);
       }
       setState(() {
         _playable = playable;

@@ -7,7 +7,11 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
+import '../../data/local/history_store.dart';
+import '../favorites_history/history_controller.dart';
+import '../favorites_history/watch_state.dart';
 import '../library/poster_grid.dart';
+import '../library/poster_tile.dart';
 
 /// (serverId, ratingKey). A ratingKey alone is ambiguous once more than one
 /// server is connected.
@@ -265,81 +269,103 @@ class _EpisodeList extends ConsumerWidget {
   }
 }
 
-class _EpisodeRow extends StatelessWidget {
+class _EpisodeRow extends ConsumerWidget {
   const _EpisodeRow({required this.serverId, required this.episode});
 
   final String serverId;
   final PlexMetadata episode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final minutes = (episode.durationMs ?? 0) ~/ 60000;
+    final total = episode.durationMs == null
+        ? null
+        : Duration(milliseconds: episode.durationMs!);
+    final key = '${PlaybackKind.plex.wire}:$serverId:${episode.ratingKey}';
+    final watch = WatchState.resolve(
+      // Only this row's entry, so playback elsewhere does not rebuild the list.
+      local: ref.watch(historyProvider
+          .select((all) => all.where((h) => h.key == key).firstOrNull)),
+      plexViewCount: episode.viewCount,
+      plexOffset: episode.viewOffsetMs == null
+          ? null
+          : Duration(milliseconds: episode.viewOffsetMs!),
+      plexDuration: total,
+      plexLastViewedAt: episode.lastViewedAt,
+    );
+    final minutes = (total?.inMinutes ?? 0);
+    final meta = switch (watch.progress) {
+      final p? when minutes > 0 => '${(minutes * (1 - p)).ceil()} min left',
+      _ when minutes > 0 => '$minutes min',
+      _ => null,
+    };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: t.surface,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => context.push('/play/$serverId/${episode.ratingKey}'),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 34,
-                  child: Text(
-                    episode.index == null ? '—' : '${episode.index}',
+      // RelaySurface rather than a Material InkWell: the InkWell's focus state
+      // is Material's tint, which MANUAL_TESTING §6 found invisible on a TV.
+      child: RelaySurface(
+        padding: const EdgeInsets.all(14),
+        onTap: () => context.push('/play/$serverId/${episode.ratingKey}'),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 34,
+              child: Text(
+                episode.index == null ? '—' : '${episode.index}',
+                style: TextStyle(
+                  color: t.inkDim,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    episode.title,
                     style: TextStyle(
-                      color: t.inkDim,
-                      fontSize: 15,
+                      color: t.ink,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        episode.title,
-                        style: TextStyle(
-                          color: t.ink,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  if (meta != null) ...[
+                    const SizedBox(height: 2),
+                    Text(meta, style: TextStyle(color: t.inkDim, fontSize: 12)),
+                  ],
+                  if (watch.progress case final progress?) ...[
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 160,
+                      child: WatchProgressBar(progress: progress),
+                    ),
+                  ],
+                  if ((episode.summary ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      episode.summary!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: t.inkDim,
+                        fontSize: 12.5,
+                        height: 1.45,
                       ),
-                      if (minutes > 0) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '$minutes min',
-                          style: TextStyle(color: t.inkDim, fontSize: 12),
-                        ),
-                      ],
-                      if ((episode.summary ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          episode.summary!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: t.inkDim,
-                            fontSize: 12.5,
-                            height: 1.45,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Icon(Icons.play_arrow, color: t.inkDim),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            if (watch.watched)
+              const WatchedTick()
+            else
+              Icon(Icons.play_arrow, color: t.inkDim),
+          ],
         ),
       ),
     );

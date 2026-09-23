@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/domain/models/catalog_item.dart';
+import 'package:relay_player/data/local/history_store.dart';
 import 'package:relay_player/features/favorites_history/favorites_controller.dart';
+import 'package:relay_player/features/favorites_history/history_controller.dart';
 import 'package:relay_player/features/library/library_sort.dart';
 import 'package:relay_player/features/library/poster_grid.dart';
 import 'package:relay_player/features/library/poster_tile.dart';
@@ -28,6 +30,11 @@ CatalogItem _item(
 class _NoFavourites extends FavoritesController {
   @override
   Set<String> build() => const {};
+}
+
+class _NoHistory extends HistoryController {
+  @override
+  List<HistoryItem> build() => const [];
 }
 
 void main() {
@@ -65,7 +72,10 @@ void main() {
   group('source badge', () {
     Future<void> pumpGrid(WidgetTester tester, List<CatalogItem> items) =>
         tester.pumpWidget(ProviderScope(
-          overrides: [favoritesProvider.overrideWith(_NoFavourites.new)],
+          overrides: [
+            favoritesProvider.overrideWith(_NoFavourites.new),
+            historyProvider.overrideWith(_NoHistory.new),
+          ],
           child: MaterialApp(
             home: RelayTheme(
               tokens: RelayPalettes.midnight,
@@ -83,6 +93,41 @@ void main() {
       expect(find.byType(SourceBadge), findsNWidgets(2));
       expect(find.text('Plex'), findsOneWidget);
       expect(find.text('IPTV'), findsOneWidget);
+    });
+
+    testWidgets('Plex watch state shows as a tick or a bar, films only',
+        (tester) async {
+      await pumpGrid(tester, [
+        CatalogItem(
+          source: CatalogSource.plex,
+          sourceId: 'server',
+          kind: CatalogKind.movie,
+          id: 'watched',
+          title: 'watched',
+          viewCount: 1,
+        ),
+        CatalogItem(
+          source: CatalogSource.plex,
+          sourceId: 'server',
+          kind: CatalogKind.movie,
+          id: 'halfway',
+          title: 'halfway',
+          viewOffset: const Duration(minutes: 50),
+          duration: const Duration(minutes: 100),
+        ),
+        // A show never gets either: its state is an episode count we do not
+        // parse, and a guess would be worse than nothing.
+        CatalogItem(
+          source: CatalogSource.plex,
+          sourceId: 'server',
+          kind: CatalogKind.show,
+          id: 'show',
+          title: 'show',
+          viewCount: 1,
+        ),
+      ]);
+      expect(find.byType(WatchedTick), findsOneWidget);
+      expect(find.byType(WatchProgressBar), findsOneWidget);
     });
 
     testWidgets('stays off when everything is from one kind of source',

@@ -318,7 +318,34 @@ class PlexService {
         year: metadata.year,
         posterUrl: posterUrl(metadata),
         addedAt: metadata.addedAt,
+        viewCount: metadata.viewCount,
+        viewOffset: _ms(metadata.viewOffsetMs),
+        duration: _ms(metadata.durationMs),
+        lastViewedAt: metadata.lastViewedAt,
       );
+
+  static Duration? _ms(int? ms) => ms == null ? null : Duration(milliseconds: ms);
+
+  /// What Plex thinks this account is in the middle of, across [sections].
+  ///
+  /// Per-library On Deck (`/library/sections/{id}/onDeck`) rather than the
+  /// global `/hubs/continueWatching`: Plex nests the hub's items inside a
+  /// `Hub` element, while `dart_plex` 0.1.2 parses that call as though they
+  /// were top-level, so it would most likely come back empty. Per section also
+  /// means a library the user hid from Movies and Series stays hidden here.
+  ///
+  /// On Deck holds both kinds of entry: something part-watched (with a
+  /// `viewOffset`), and the next unwatched episode of a show in progress
+  /// (without one).
+  Future<List<PlexMetadata>> onDeck(
+    List<PlexLibrarySection> sections, {
+    int perSection = 12,
+  }) async {
+    final pages = await Future.wait(sections.map((s) => _client.hubs
+        .sectionOnDeck(sectionId: s.id, count: perSection)
+        .catchError((_) => const <PlexMetadata>[])));
+    return pages.expand((p) => p).toList();
+  }
 
   /// Server-side search across every library (§12 screen 8).
   ///
