@@ -7,6 +7,7 @@ import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/core/theme/theme_controller.dart';
 import 'package:relay_player/features/accounts/plex_session.dart';
+import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
 
 /// Guards the release-build Settings against unbuilt sections.
@@ -62,8 +63,6 @@ void main() {
 
     for (final label in [
       'AI features',
-      'Playback',
-      'Subtitles',
       // Hidden 2026-09-22: its one switch sent nothing anywhere.
       'Privacy and data',
     ]) {
@@ -71,6 +70,9 @@ void main() {
     }
     expect(find.textContaining('OpenAI'), findsNothing);
     expect(find.textContaining('Not implemented'), findsNothing);
+    // Built 2026-09-23, so listed now.
+    expect(find.text('Playback'), findsOneWidget);
+    expect(find.text('Subtitles'), findsOneWidget);
     // Opens on Appearance, not on whatever the enum lists first.
     expect(find.text('Theme'), findsOneWidget);
     expect(find.text('About'), findsOneWidget);
@@ -107,7 +109,10 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       // The phone layout renders Sources inline, and the real controller
       // would reach for secure storage.
-      overrides: [plexSessionProvider.overrideWith(_SignedOut.new)],
+      overrides: [
+        plexSessionProvider.overrideWith(_SignedOut.new),
+        playbackPrefsProvider.overrideWith(_Prefs.new),
+      ],
       child: MaterialApp(
         home: RelayTheme(
           tokens: RelayPalettes.midnight,
@@ -128,6 +133,45 @@ void main() {
     expect(find.text('Privacy and data'), findsNothing);
   });
 
+  testWidgets('Playback and Subtitles change what the player will read',
+      (tester) async {
+    DeviceKind.debugSetTelevision(false);
+    tester.view.physicalSize = const Size(390, 3200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = ProviderContainer(overrides: [
+      plexSessionProvider.overrideWith(_SignedOut.new),
+      playbackPrefsProvider.overrideWith(_Prefs.new),
+    ]);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: RelayTheme(
+          tokens: RelayPalettes.midnight,
+          palette: RelayPalette.midnight,
+          child: SettingsScreen(
+            theme: ThemeController(),
+            state: const SettingsState(),
+            onStateChanged: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('30 s'));
+    await tester.tap(find.text('Show subtitles'));
+    await tester.tap(find.text('Large'));
+    await tester.pump();
+
+    final prefs = container.read(playbackPrefsProvider);
+    expect(prefs.skipSeconds, 30);
+    expect(prefs.subtitlesOn, isTrue);
+    expect(prefs.subtitleSize, SubtitleSize.large);
+  });
+
   testWidgets('About shows the running version and the licences entry',
       (tester) async {
     await pump(tester);
@@ -143,4 +187,13 @@ void main() {
 class _SignedOut extends PlexSessionController {
   @override
   PlexState build() => const PlexState(stage: PlexStage.signedOut);
+}
+
+/// In memory: the real controller writes to the Hive-backed settings store.
+class _Prefs extends PlaybackPrefsController {
+  @override
+  PlaybackPrefs build() => const PlaybackPrefs();
+
+  @override
+  Future<void> update(PlaybackPrefs next) async => state = next;
 }

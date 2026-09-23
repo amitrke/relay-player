@@ -37,6 +37,7 @@ The emulator cannot answer any of these. They need the tablet.
 | ⬜ | **Library sort and source labels** (added 2026-09-22) | Sort by title, recently added or year, remembered across restarts; *Plex* / *IPTV* labels only when a grid mixes both. Rules pinned by `library_sort_test.dart`. Unchecked: whether Plex's `addedAt` gives the order people expect, whether a real panel sends `added` for films and `last_modified` for series at all (read from the Xtream API's usual shape, not observed), and the sort sheet with a D-pad |
 | ⬜ | **Plex watch state and On Deck** (added 2026-09-22) | Needs a real account with history. Check: films and episodes watched in another Plex app show a tick; one half-watched there shows a bar and appears in Continue watching; a show part-way through offers its next episode as "Up next"; finishing something here drops it from the row straight away; closing a Plex tile keeps it closed until it is watched further. Also whether On Deck returns anything at all (architecture.md §6 explains why the hub endpoint was avoided). Rules pinned by `watch_state_test.dart`; the fixtures are shaped from the API, not captured from a server |
 | ⬜ | **Mark watched / unwatched, and "Unwatched only"** (added 2026-09-23) | Long-press a Plex poster or episode row, or hold the centre button on a remote, for the sheet. Check: the Plex app agrees afterwards; marking a whole show reaches every episode; marking works on a server *shared with you*, not only your own; a held centre button on the Chromecast opens the sheet without first playing the title (the rule assumes the remote auto-repeats a held key, as Android TV remotes do); "Unwatched only" on Movies hides what the ticks say is watched. Rules pinned by `watch_actions_test.dart` against a fake Plex |
+| ⬜ | **Audio and subtitle tracks, and the Playback and Subtitles settings** (added 2026-09-23) | Needs a file with several audio tracks and embedded subtitles (an MKV is the usual case). Check: the picker button appears only when there is a choice; switching audio and subtitles works mid-playback; with a preferred language set, a new file opens on it; "Show subtitles" off opens with none; subtitle size changes the text; the skip length changes the buttons and the remote's fast-forward. Unknown: how media_kit shows picture-based subtitles (PGS, VobSub) and whether size affects them; whether Plex direct play exposes Plex's *sidecar* subtitle files at all (they are separate streams, not in the file, so probably not); how real files tag languages beyond the forms `playback_prefs_test.dart` covers |
 
 ## 1a. Verified on a phone, 2026-09-22
 
@@ -149,9 +150,9 @@ Recorded to stop this becoming a list of everything.
 
 ## Automated coverage is thin, and that is separate
 
-93 tests (count updated 2026-09-23; it read 40 before the player-control,
-Plex link, audio-focus, library-sort, watch-state and watch-action tests
-landed). `player_controls_test.dart` pins the #10 remote rules
+104 tests (count updated 2026-09-23; it read 40 before the player-control,
+Plex link, audio-focus, library-sort, watch-state, watch-action and
+playback-settings tests landed). `player_controls_test.dart` pins the #10 remote rules
 (wake-only first press, time-based seeking, Up never seeks, hide takes focus
 with it) against a fake transport, so it proves the rules and not how a real
 remote feels. `native_licenses_test.dart` loads every native licence entry the

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../advanced_sources/xtream_accounts_pane.dart';
 import 'about_pane.dart';
+import 'playback_panes.dart';
 import 'sources_pane.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -137,8 +138,10 @@ class SettingsState {
 enum SettingsSection {
   sources('Sources', built: true),
   appearance('Appearance', built: true),
-  playback('Playback'),
-  subtitles('Subtitles'),
+  // Built 2026-09-23: skip length and preferred audio language, and
+  // subtitles on/off, language and size, all read by the player.
+  playback('Playback', built: true),
+  subtitles('Subtitles', built: true),
   aiFeatures('AI features'),
   advancedSources('Advanced sources', built: true),
   // Unbuilt again since 2026-09-22. Its only control was "Send crash
@@ -229,6 +232,12 @@ class _PhoneSettings extends StatelessWidget {
         const SizedBox(height: 22),
 
         const _Section(title: 'Sources', child: SourcesPane()),
+        const SizedBox(height: 22),
+
+        const _Section(title: 'Playback', child: PlaybackPane()),
+        const SizedBox(height: 22),
+
+        const _Section(title: 'Subtitles', child: SubtitlesPane()),
         const SizedBox(height: 22),
 
         _Section(
@@ -615,6 +624,14 @@ class _DesktopSettings extends StatelessWidget {
                   title: 'Sources',
                   child: SourcesPane(),
                 ),
+              SettingsSection.playback => const _DesktopPane(
+                  title: 'Playback',
+                  child: PlaybackPane(),
+                ),
+              SettingsSection.subtitles => const _DesktopPane(
+                  title: 'Subtitles',
+                  child: SubtitlesPane(),
+                ),
               SettingsSection.advancedSources => _DesktopPane(
                   title: 'Advanced sources',
                   child: Column(
@@ -646,8 +663,6 @@ class _DesktopSettings extends StatelessWidget {
                 ),
               SettingsSection.about =>
                 const _DesktopPane(title: 'About', child: AboutPane()),
-              // Reachable only with showUnbuiltSections, i.e. the gallery.
-              _ => _PlaceholderPane(section: section),
             },
           ),
         ),
@@ -735,29 +750,6 @@ class _DesktopPane extends StatelessWidget {
           child,
         ],
       ),
-    );
-  }
-}
-
-/// Gallery only — see [SettingsScreen.showUnbuiltSections].
-class _PlaceholderPane extends StatelessWidget {
-  const _PlaceholderPane({required this.section});
-
-  final SettingsSection section;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(section.label,
-            style: TextStyle(
-                color: t.ink, fontSize: 24, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
-        Text('Not implemented yet — see docs/architecture.md §12.1.',
-            style: TextStyle(color: t.inkDim, fontSize: 14)),
-      ],
     );
   }
 }

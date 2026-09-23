@@ -6,6 +6,7 @@ import 'package:media_kit/media_kit.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import 'playback_prefs.dart';
 
 /// The slice of a player the controls need.
 ///
@@ -25,6 +26,17 @@ abstract class PlayerTransport {
 
   /// 0 to 100, media_kit's scale. Used only for ducking (§10).
   Future<void> setVolume(double percent);
+
+  /// Audio and subtitle tracks, including media_kit's "auto" and "no"
+  /// pseudo-tracks (see `isRealTrack`).
+  Stream<Tracks> get tracksStream;
+  Tracks get tracks;
+
+  /// What is selected now.
+  Stream<Track> get trackStream;
+  Track get track;
+  Future<void> setAudioTrack(AudioTrack track);
+  Future<void> setSubtitleTrack(SubtitleTrack track);
 }
 
 class MediaKitTransport implements PlayerTransport {
@@ -52,6 +64,19 @@ class MediaKitTransport implements PlayerTransport {
   Future<void> playOrPause() => _player.playOrPause();
   @override
   Future<void> setVolume(double percent) => _player.setVolume(percent);
+  @override
+  Stream<Tracks> get tracksStream => _player.stream.tracks;
+  @override
+  Tracks get tracks => _player.state.tracks;
+  @override
+  Stream<Track> get trackStream => _player.stream.track;
+  @override
+  Track get track => _player.state.track;
+  @override
+  Future<void> setAudioTrack(AudioTrack track) => _player.setAudioTrack(track);
+  @override
+  Future<void> setSubtitleTrack(SubtitleTrack track) =>
+      _player.setSubtitleTrack(track);
 }
 
 /// Icons and text drawn over the picture.
@@ -91,6 +116,7 @@ class PlayerChrome extends StatefulWidget {
     required this.onBack,
     required this.child,
     this.hideAfter = const Duration(seconds: 4),
+    this.skip = const Duration(seconds: 10),
   });
 
   final PlayerTransport transport;
@@ -108,8 +134,9 @@ class PlayerChrome extends StatefulWidget {
 
   final Duration hideAfter;
 
-  /// Tap-to-seek on the transport row, and the base D-pad step on the seek bar.
-  static const skip = Duration(seconds: 10);
+  /// The skip buttons' step and the seek bar's base D-pad step. From the
+  /// Playback setting; one of 5, 10 or 30 seconds.
+  final Duration skip;
 
   @override
   State<PlayerChrome> createState() => _PlayerChromeState();
@@ -237,6 +264,20 @@ class _PlayerChromeState extends State<PlayerChrome> {
     LogicalKeyboardKey.gameButtonA,
   };
 
+  /// The audio and subtitle picker. The hide timer is held while it is open:
+  /// hiding pulls focus onto [_root], which sits under the sheet, and would
+  /// take it out of the sheet mid-choice.
+  Future<void> _showTracks() async {
+    _hideTimer?.cancel();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: RelayTheme.of(context).surface,
+      isScrollControlled: true,
+      builder: (_) => TrackSheet(transport: widget.transport),
+    );
+    if (mounted) _scheduleHide();
+  }
+
   /// Sees keys the focused control did not handle, and every key while hidden.
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
@@ -260,11 +301,11 @@ class _PlayerChromeState extends State<PlayerChrome> {
       }
     }
     if (key == LogicalKeyboardKey.mediaFastForward) {
-      _skip(PlayerChrome.skip);
+      _skip(widget.skip);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.mediaRewind) {
-      _skip(-PlayerChrome.skip);
+      _skip(-widget.skip);
       return KeyEventResult.handled;
     }
 
@@ -340,6 +381,7 @@ class _PlayerChromeState extends State<PlayerChrome> {
                                     // event arrives.
                                     initialData: widget.transport.position,
                                     builder: (context, snap) => SeekBar(
+                                      step: widget.skip,
                                       position: snap.data ??
                                           widget.transport.position,
                                       duration: widget.transport.duration,
@@ -353,7 +395,9 @@ class _PlayerChromeState extends State<PlayerChrome> {
                                   transport: widget.transport,
                                   seekable: seekable,
                                   playFocus: _playButton,
+                                  skip: widget.skip,
                                   onSkip: _skip,
+                                  onTracks: _showTracks,
                                 ),
                               ],
                             ),
@@ -470,50 +514,211 @@ class _TransportRow extends StatelessWidget {
     required this.transport,
     required this.seekable,
     required this.playFocus,
+    required this.skip,
     required this.onSkip,
+    required this.onTracks,
   });
 
   final PlayerTransport transport;
   final bool seekable;
   final FocusNode playFocus;
+  final Duration skip;
   final void Function(Duration) onSkip;
+  final VoidCallback onTracks;
+
+  static (IconData, IconData) _skipIcons(int seconds) => switch (seconds) {
+        5 => (Icons.replay_5, Icons.forward_5),
+        30 => (Icons.replay_30, Icons.forward_30),
+        _ => (Icons.replay_10, Icons.forward_10),
+      };
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final (back, forward) = _skipIcons(skip.inSeconds);
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        if (seekable)
-          _ChromeButton(
-            icon: Icons.replay_10,
-            tooltip: 'Back 10 seconds',
-            onPressed: () => onSkip(-PlayerChrome.skip),
-          ),
-        const SizedBox(width: 16),
-        StreamBuilder<bool>(
-          stream: transport.playingStream,
-          initialData: transport.playing,
-          builder: (context, snap) {
-            final playing = snap.data ?? transport.playing;
-            return _ChromeButton(
-              icon: playing
-                  ? Icons.pause_circle_filled
-                  : Icons.play_circle_filled,
-              tooltip: playing ? 'Pause' : 'Play',
-              size: 48,
-              focusNode: playFocus,
-              onPressed: transport.playOrPause,
-            );
-          },
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (seekable)
+              _ChromeButton(
+                icon: back,
+                tooltip: 'Back ${skip.inSeconds} seconds',
+                onPressed: () => onSkip(-skip),
+              ),
+            const SizedBox(width: 16),
+            StreamBuilder<bool>(
+              stream: transport.playingStream,
+              initialData: transport.playing,
+              builder: (context, snap) {
+                final playing = snap.data ?? transport.playing;
+                return _ChromeButton(
+                  icon: playing
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_filled,
+                  tooltip: playing ? 'Pause' : 'Play',
+                  size: 48,
+                  focusNode: playFocus,
+                  onPressed: transport.playOrPause,
+                );
+              },
+            ),
+            const SizedBox(width: 16),
+            if (seekable)
+              _ChromeButton(
+                icon: forward,
+                tooltip: 'Forward ${skip.inSeconds} seconds',
+                onPressed: () => onSkip(skip),
+              ),
+          ],
         ),
-        const SizedBox(width: 16),
-        if (seekable)
-          _ChromeButton(
-            icon: Icons.forward_10,
-            tooltip: 'Forward 10 seconds',
-            onPressed: () => onSkip(PlayerChrome.skip),
+        // Off to the side so play/pause stays centred. Only when there is a
+        // choice to make: one audio track and no subtitles has nothing to pick.
+        Align(
+          alignment: Alignment.centerRight,
+          child: StreamBuilder<Tracks>(
+            stream: transport.tracksStream,
+            initialData: transport.tracks,
+            builder: (context, snap) {
+              final tracks = snap.data ?? transport.tracks;
+              final audio = tracks.audio.where((t) => isRealTrack(t.id));
+              final subs = tracks.subtitle.where((t) => isRealTrack(t.id));
+              if (audio.length < 2 && subs.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return _ChromeButton(
+                icon: Icons.subtitles_outlined,
+                tooltip: 'Audio and subtitles',
+                onPressed: onTracks,
+              );
+            },
           ),
+        ),
       ],
+    );
+  }
+}
+
+/// Audio and subtitle tracks for the file that is playing (§12 screen 6).
+///
+/// Drawn on the theme's surface rather than over the video, so it uses the
+/// theme's ink, not the chrome's white. Rows are [RelayTappable] so a remote
+/// can reach them with a visible ring.
+class TrackSheet extends StatelessWidget {
+  const TrackSheet({super.key, required this.transport});
+
+  final PlayerTransport transport;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+
+    return StreamBuilder<Track>(
+      stream: transport.trackStream,
+      initialData: transport.track,
+      builder: (context, snap) {
+        final current = snap.data ?? transport.track;
+        final tracks = transport.tracks;
+        final audio = [
+          for (final a in tracks.audio)
+            if (isRealTrack(a.id)) a,
+        ];
+        final subs = [
+          for (final s in tracks.subtitle)
+            if (isRealTrack(s.id)) s,
+        ];
+        final subsOff = !isRealTrack(current.subtitle.id);
+        // Focus starts on what is selected in the first section shown.
+        final audioFirst = audio.length > 1;
+
+        Widget header(String label) => Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+              child: Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  color: t.inkDim,
+                  fontSize: RelayLayout.bodySize(f) - 2,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            );
+
+        Widget row(
+          String label,
+          bool selected,
+          VoidCallback onTap, {
+          bool autofocus = false,
+        }) =>
+            RelayTappable(
+              borderRadius: 10,
+              autofocus: autofocus,
+              onTap: () {
+                onTap();
+                Navigator.of(context).pop();
+              },
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: t.ink,
+                          fontSize: RelayLayout.bodySize(f) + 1,
+                        ),
+                      ),
+                    ),
+                    if (selected) Icon(Icons.check, color: t.accent),
+                  ],
+                ),
+              ),
+            );
+
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(12),
+              children: [
+                if (audioFirst) ...[
+                  header('Audio'),
+                  for (final (i, a) in audio.indexed)
+                    row(
+                      describeTrack(a.title, a.language, i),
+                      a.id == current.audio.id,
+                      () => transport.setAudioTrack(a),
+                      autofocus: a.id == current.audio.id,
+                    ),
+                ],
+                if (subs.isNotEmpty) ...[
+                  header('Subtitles'),
+                  row(
+                    'Off',
+                    subsOff,
+                    () => transport.setSubtitleTrack(SubtitleTrack.no()),
+                    autofocus: !audioFirst && subsOff,
+                  ),
+                  for (final (i, s) in subs.indexed)
+                    row(
+                      describeTrack(s.title, s.language, i),
+                      s.id == current.subtitle.id,
+                      () => transport.setSubtitleTrack(s),
+                      autofocus: !audioFirst && s.id == current.subtitle.id,
+                    ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -562,7 +767,7 @@ class _ChromeButton extends StatelessWidget {
 /// press on a feature film. And it claims Up and Down as well as Left and
 /// Right, so Up seeked forward instead of leaving the bar.
 ///
-/// Here Left/Right step [PlayerChrome.skip], accelerating while held; Up and
+/// Here Left/Right step [step], accelerating while held; Up and
 /// Down are ignored so focus traversal gets them. A held key moves only the
 /// displayed target; the seek is issued once, on release. A network source
 /// asked to seek twenty times a second does all twenty.
@@ -572,17 +777,24 @@ class SeekBar extends StatefulWidget {
     required this.position,
     required this.duration,
     required this.onSeek,
+    this.step = const Duration(seconds: 10),
   });
 
   final Duration position;
   final Duration duration;
   final void Function(Duration) onSeek;
 
+  /// The first step of a press; the Playback setting's skip length.
+  final Duration step;
+
   /// The step for the [repeats]th auto-repeat of a held key. Android TV repeats
   /// at roughly 20 Hz after a half-second delay, so this is about half a second
   /// at 10 s, then 30 s, then a minute per step.
-  static Duration stepFor(int repeats) {
-    if (repeats < 10) return PlayerChrome.skip;
+  static Duration stepFor(
+    int repeats, {
+    Duration base = const Duration(seconds: 10),
+  }) {
+    if (repeats < 10) return base;
     if (repeats < 25) return const Duration(seconds: 30);
     return const Duration(seconds: 60);
   }
@@ -643,7 +855,7 @@ class _SeekBarState extends State<SeekBar> {
       return KeyEventResult.handled;
     }
     _repeats = event is KeyRepeatEvent ? _repeats + 1 : 0;
-    _move(_shown + SeekBar.stepFor(_repeats) * sign);
+    _move(_shown + SeekBar.stepFor(_repeats, base: widget.step) * sign);
     return KeyEventResult.handled;
   }
 
