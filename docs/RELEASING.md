@@ -18,20 +18,24 @@ them with what actually happened, including the failures, when they are.
 
 ## What the workflow does
 
-1. Runs `flutter analyze` and `flutter test`.
+1. Works out the version once, for both stores (see
+   [Test builds and releases](#test-builds-and-releases)), then runs
+   `flutter analyze` and `flutter test`.
 2. Builds `app-release.aab` signed with the **upload key** from repository
    secrets. The `versionCode` is the workflow's run number, and the
-   `versionName` comes from the tag if there is one.
+   `versionName` is `pubspec.yaml`'s version.
 3. Refuses to continue if the bundle is unsigned or has a debug certificate.
    `build.gradle.kts` falls back to the debug key when no key is configured,
    because local `flutter run --release` needs that, so this check is the one
    that stops a broken secret from getting through.
 4. Picks the release notes (added 2026-09-22, first used by the build after
    v1.0.1): `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, or
-   for a tag run `<tag>.txt` (`v1.0.2.txt`) in the same folder. The tag name
-   exists because the versionCode is the run number, which nobody knows before
-   pushing the tag; fastlane `supply` ignores that name, so the two do not
-   clash. Notes over Play's 500 characters fail the run before the build. No
+   `v<version>.txt` (`v1.0.4.txt`) in the same folder. The second name exists
+   because the versionCode is the run number, which nobody knows before
+   pushing; fastlane `supply` ignores that name, so the two do not clash. Every
+   test build of a version reads the same `v<version>.txt`, so the notes can
+   grow along with the version. (Before 2026-09-23 only a tag run looked for
+   it.) Notes over Play's 500 characters fail the run before the build. No
    notes is a warning, not a failure. They are store listing copy, so §8.2
    applies: no Advanced sources, IPTV, Xtream, Live TV or playlists.
    **Verified 2026-09-23** on the v1.0.2 tag (run 5), which logged
@@ -46,14 +50,9 @@ them with what actually happened, including the failures, when they are.
    is set. Without that secret the upload is skipped with a notice rather than
    failing the run, and that is what makes the first manual upload possible.
 
-Triggers: run it by hand from the Actions tab, or push a tag:
-
-```sh
-git tag v1.0.0 && git push origin v1.0.0
-```
-
-A tag must look like `vMAJOR.MINOR.PATCH`. Anything else fails the run instead
-of shipping a malformed `versionName`. Pushes to `main` do not release.
+Triggers: push to `develop` for a test build, push a `v*` tag for a release,
+or run it by hand from the Actions tab. Pushes to `main` do not release. See
+[Test builds and releases](#test-builds-and-releases).
 
 ## Identity
 
@@ -203,13 +202,12 @@ does not hold the other back.
    rejects builds made with an SDK older than Apple's current minimum, and the
    image's default Xcode is often not its newest.
 2. Uses the same numbers as Android: `CFBundleVersion` is the run number and
-   `CFBundleShortVersionString` is the tag. So TestFlight's `1.0.4 (7)` and
-   Play's `1.0.4 (7)` are the same commit.
-3. **Uploads only from a tag.** An untagged Android run lands on the internal
-   track as `0.0.0 (n)` and does no harm. On iOS it would open an App Store
-   *version* called 0.0.0 in App Store Connect, and that stays in the version
-   list. An untagged run with the key set archives and signs, then stops,
-   which still shows signing works.
+   `CFBundleShortVersionString` is `pubspec.yaml`'s version. So TestFlight's
+   `1.0.4 (7)` and Play's `1.0.4 (7)` are the same commit.
+3. Uploads on every run, like Android. Until 2026-09-23 it uploaded only from
+   a tag, because an untagged run would have been named `0.0.0` and opened an
+   App Store *version* of that name in App Store Connect. The version step now
+   refuses `0.0.0` outright, so that cannot happen.
 4. Without the API key it compiles with `--no-codesign` and stops with a
    notice. Nothing else in CI builds for iOS, so this at least catches an iOS
    build that no longer compiles.
@@ -299,7 +297,43 @@ Two consequences, named here so they are not discovered later:
   not just tidiness: the releases page is a public artefact, and it should not
   imply a reviewed, published app that does not exist yet.
 
-### The fallback version is 0.0.0, on purpose
+### Test builds and releases
+
+Decided 2026-09-23. Tagging every test build had become the most tedious part
+of the loop, so the two jobs a tag used to do are now split:
+
+| | How | Named | Goes to |
+|---|---|---|---|
+| **Test build** | push to `develop` | `pubspec.yaml`'s version + run number, e.g. `1.0.4 (12)` | Play internal testing and TestFlight |
+| **Release** | push tag `v1.0.4` | the same | the same, for now. The tag marks which build shipped; promotion to wider tracks and the App Store is still §13 Phase 6 |
+
+The rules, all enforced in the version step so they fail in seconds rather
+than after a build:
+
+- **`pubspec.yaml` holds the version being tested.** Bump it straight after a
+  release. `1.0.4` from 2026-09-23, since `v1.0.3` had shipped.
+- **A tag must match it.** `v1.0.5` on a commit whose pubspec says `1.0.4`
+  fails. The tag names the builds testers already had, so it can't be a number
+  made up at release time.
+- **After a version's tag exists, test builds under that version stop**, with
+  an error telling you to bump pubspec. More `1.0.4` builds after `v1.0.4`
+  would be ambiguous on Play and rejected by Apple once 1.0.4 is live.
+- `0.0.0` and anything not `MAJOR.MINOR.PATCH` fail.
+
+A release is therefore: merge `develop` into `main`, tag that commit with the
+version in its pubspec, push the tag, then bump pubspec on `develop`.
+
+**Tradeoff, stated so it is not rediscovered.** A tester's build list now shows
+several `1.0.4 (n)` builds before the release, and only the tag says which one
+was *the* 1.0.4. That is the TestFlight convention and costs little on internal
+tracks. It is the very ambiguity the section below designed out on
+2026-09-13, accepted this time because every build now carries its run number
+and the tag records the release.
+
+### ~~The fallback version is 0.0.0, on purpose~~ — superseded 2026-09-23
+
+Kept for the reasoning, which the section above answers rather than
+overturns. `pubspec.yaml` now carries the version being tested.
 
 `pubspec.yaml` says `0.0.0+1` and should stay that way. It is only ever used by
 a run with no tag, and it exists to make such a run *unmistakable* on the track

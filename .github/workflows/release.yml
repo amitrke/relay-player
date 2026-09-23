@@ -28,10 +28,17 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
-  # A version tag is a deliberate "testers should get this" signal. Pushes to
-  # main are not: release builds take ~6 minutes and most merges are not worth
-  # a tester's update prompt.
+  # Two ways in, decided 2026-09-23 (RELEASING.md, "Test builds and
+  # releases"):
+  # - develop is the everyday test channel. Pushing to it is the deliberate
+  #   "testers should get this" signal that used to need a tag; builds are
+  #   named after pubspec.yaml's version, e.g. "1.0.4 (12)".
+  # - a v* tag is the release: it must match pubspec.yaml, and marks which of
+  #   those builds is the one that shipped.
+  # main still releases nothing on its own. Most merges there are not worth a
+  # tester's update prompt, and iOS builds cost ~15 minutes of macOS time.
   push:
+    branches: [develop]
     tags: ['v*']
 
 concurrency:
@@ -53,8 +60,56 @@ jobs:
   check:
     name: Analyse and test
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.version.outputs.code }}
+      name: ${{ steps.version.outputs.name }}
+      release_name: ${{ steps.version.outputs.release_name }}
     steps:
       - uses: actions/checkout@v4
+
+      # Worked out once, here, so both stores cannot disagree about it.
+      #
+      # The build number is the run number. It must strictly increase with
+      # every upload either store accepts, and it does. Two consequences worth
+      # knowing: re-running a failed run reuses its number, so a run that got as
+      # far as uploading cannot simply be re-run; and renaming or recreating
+      # this file restarts the count at 1, which both stores will reject until
+      # it passes the highest build already uploaded.
+      #
+      # The version name is pubspec.yaml's version. A tag must say the same
+      # thing, so the tag names the builds testers already had, not a number
+      # typed in at the last minute. And an untagged run refuses to go out once
+      # that version's tag exists: after v1.0.4 has shipped, more "1.0.4"
+      # builds would be confusing on Play and rejected by Apple once 1.0.4 is
+      # on the App Store. The fix is to bump pubspec.yaml.
+      - name: Work out the version
+        id: version
+        run: |
+          name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
+          if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::pubspec.yaml's version '$name' is not of the form 1.2.3"
+            exit 1
+          fi
+          if [ "$name" = 0.0.0 ]; then
+            echo "::error::pubspec.yaml still says 0.0.0. Set it to the version being tested (docs/RELEASING.md)."
+            exit 1
+          fi
+          if [ "${{ github.ref_type }}" = tag ]; then
+            if [ "$GITHUB_REF_NAME" != "v$name" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match pubspec.yaml's version $name. Tag v$name, or change pubspec.yaml first."
+              exit 1
+            fi
+          elif git ls-remote --exit-code --tags origin "refs/tags/v$name" >/dev/null; then
+            echo "::error::v$name has already been released, and pubspec.yaml still says $name. Bump pubspec.yaml's version for the next round of test builds."
+            exit 1
+          fi
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          # Play names a release after its versionName unless told otherwise,
+          # so without the run number every build of one version would look
+          # the same on the track (runs 1 and 2, 2026-09-13).
+          echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
+          echo "Version $name (${{ github.run_number }})"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -113,43 +168,18 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      # versionCode must strictly increase with every upload Play accepts, and
-      # the run number of this workflow does. Two consequences worth knowing:
-      # re-running a failed run reuses its number, so a run that got as far as
-      # uploading cannot simply be re-run; and renaming or recreating this file
-      # restarts the count at 1, which Play will reject until it passes the
-      # highest code already uploaded.
-      #
-      # versionName comes from the tag when there is one (v1.2.3 -> 1.2.3) and
-      # from pubspec.yaml otherwise.
-      - name: Work out the version
-        id: version
-        run: |
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.ref_type }}" = tag ]; then
-            name="${GITHUB_REF_NAME#v}"
-            if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Tag $GITHUB_REF_NAME is not of the form v1.2.3"
-              exit 1
-            fi
-            echo "name_arg=--build-name=$name" >> "$GITHUB_OUTPUT"
-          else
-            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
-          fi
-          # Play names a release after its versionName unless told otherwise,
-          # so every untagged run arrived as another "1.0.0" and testers could
-          # not tell builds apart (runs 1 and 2, 2026-09-13).
-          echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
-
       # Play's "what's new" text, which until now was typed into Play Console
       # after every upload. Looked up before the build so a problem costs
       # seconds, not the six minutes a build takes.
       #
       # Two names are accepted, in the same folder. `<versionCode>.txt` is the
       # layout fastlane `supply` expects (#8), but the code is this run's
-      # number, which nobody knows before pushing a tag. `<tag>.txt`
-      # (`v1.0.2.txt`) can be written in advance; supply ignores that name, so
-      # the two conventions do not collide.
+      # number, which nobody knows before pushing. `v<version>.txt`
+      # (`v1.0.4.txt`) can be written in advance; supply ignores that name, so
+      # the two conventions do not collide. Since test builds come from
+      # develop (2026-09-23), every build of a version reads the same
+      # `v<version>.txt`, so its notes can grow with the version until the tag
+      # freezes them.
       #
       # This is store listing copy, so architecture.md §8.2 applies to it as it
       # does to the description. A run with no notes still uploads, with a
@@ -158,10 +188,7 @@ jobs:
         id: notes
         run: |
           dir=fastlane/metadata/android/en-US/changelogs
-          candidates=("$dir/${{ steps.version.outputs.code }}.txt")
-          if [ "${{ github.ref_type }}" = tag ]; then
-            candidates+=("$dir/$GITHUB_REF_NAME.txt")
-          fi
+          candidates=("$dir/${{ needs.check.outputs.code }}.txt" "$dir/v${{ needs.check.outputs.name }}.txt")
           for f in "${candidates[@]}"; do
             [ -f "$f" ] || continue
             # Characters, not bytes: Play's limit is 500 per language, and the
@@ -182,8 +209,8 @@ jobs:
 
       - run: >-
           flutter build appbundle --release
-          --build-number=${{ steps.version.outputs.code }}
-          ${{ steps.version.outputs.name_arg }}
+          --build-number=${{ needs.check.outputs.code }}
+          --build-name=${{ needs.check.outputs.name }}
 
       # build.gradle.kts falls back to the debug key when key.properties is
       # missing or unreadable, which keeps local release builds working and
@@ -205,14 +232,14 @@ jobs:
           # Fingerprint only: it is what Play Console shows for the upload key,
           # so a mismatch there can be diagnosed from this log.
           grep -E 'SHA256:' <<< "$cert"
-          echo "versionCode ${{ steps.version.outputs.code }}, $(du -h "$aab" | cut -f1)"
+          echo "versionCode ${{ needs.check.outputs.code }}, $(du -h "$aab" | cut -f1)"
 
       # Kept whether or not the upload runs. Play's API cannot create an app's
       # first release, so the very first bundle has to be downloaded from here
       # and uploaded in Play Console by hand.
       - uses: actions/upload-artifact@v4
         with:
-          name: android-aab-${{ steps.version.outputs.code }}
+          name: android-aab-${{ needs.check.outputs.code }}
           path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
@@ -227,7 +254,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          releaseName: ${{ steps.version.outputs.release_name }}
+          releaseName: ${{ needs.check.outputs.release_name }}
           # `tracks`, not `track`, which v1.1.5 reports as deprecated.
           tracks: internal
           status: ${{ inputs.status || 'completed' }}
@@ -279,30 +306,6 @@ jobs:
           cache: true
       - run: flutter pub get
 
-      # Same rules as the Android job, with one difference: only a tag uploads.
-      # An untagged Android run lands on the internal track as "0.0.0 (n)",
-      # which is harmless there; on iOS it would open an App Store version
-      # named 0.0.0 in App Store Connect, which stays in the version list. So an
-      # untagged run stops after the signed archive — enough to show signing
-      # still works — and uploads nothing.
-      - name: Work out the version
-        id: version
-        run: |
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.ref_type }}" = tag ]; then
-            name="${GITHUB_REF_NAME#v}"
-            if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Tag $GITHUB_REF_NAME is not of the form v1.2.3"
-              exit 1
-            fi
-            echo "upload=true" >> "$GITHUB_OUTPUT"
-          else
-            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
-            echo "upload=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "iOS $name (${{ github.run_number }})"
-
       # Written outside the checkout, into the directory xcodebuild and altool
       # both search, and removed at the end however the job went.
       - name: Install the App Store Connect API key
@@ -330,8 +333,8 @@ jobs:
         if: env.HAS_ASC_KEY != 'true'
         run: |
           flutter build ios --release --no-codesign \
-            --build-number=${{ steps.version.outputs.code }} \
-            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ needs.check.outputs.code }} \
+            --build-name=${{ needs.check.outputs.name }}
           echo "::notice::APP_STORE_CONNECT_API_KEY_P8 is not set, so the iOS build was compiled but not signed or uploaded. See docs/RELEASING.md."
 
       # flutter build ipa cannot pass an API key to xcodebuild, and without one
@@ -351,8 +354,8 @@ jobs:
         if: env.HAS_ASC_KEY == 'true'
         run: |
           flutter build ios --release --config-only \
-            --build-number=${{ steps.version.outputs.code }} \
-            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ needs.check.outputs.code }} \
+            --build-name=${{ needs.check.outputs.name }}
           xcodebuild archive \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
@@ -374,7 +377,7 @@ jobs:
       # signs for distribution and sends the build. Its exit status is the
       # result: do not replace it with anything that reads the upload log.
       - name: Export and upload to TestFlight
-        if: env.HAS_ASC_KEY == 'true' && steps.version.outputs.upload == 'true'
+        if: env.HAS_ASC_KEY == 'true'
         run: |
           set -o pipefail
           xcodebuild -exportArchive \
@@ -386,13 +389,6 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             | tail -n 40
-
-      - name: Note the skipped upload
-        if: env.HAS_ASC_KEY == 'true' && steps.version.outputs.upload != 'true'
-        run: >-
-          echo "::notice::Not a tag, so the IPA was archived and signed but not
-          uploaded: an untagged upload would create a 0.0.0 version in App Store
-          Connect. Push a v1.2.3 tag to ship to TestFlight."
 
       - name: Remove the API key
         if: always()

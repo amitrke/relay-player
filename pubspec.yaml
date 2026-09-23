@@ -17,15 +17,19 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 #
-# This is the *fallback only*, and it is deliberately 0.0.0. Every real build
-# gets its versionName from the git tag and its versionCode from the workflow
-# run number (docs/RELEASING.md). An untagged run therefore lands on the Play
-# track named "0.0.0 (<run>)", which cannot be mistaken for a release. It used
-# to be 1.0.0, and the first two uploads of 2026-09-13 both arrived named
-# "1.0.0" before any v1.0.0 tag existed -- see the versioning section in
-# RELEASING.md for why that collision is worth designing out rather than
-# remembering.
-version: 0.0.0+1
+# This is the version being tested, and the release workflow reads it
+# (docs/RELEASING.md, "Test builds and releases"). Every push to develop ships
+# a build named after it to Play internal testing and TestFlight, e.g.
+# "1.0.4 (12)". The build number after the + is ignored; CI uses its run
+# number. The v1.0.4 tag, when it comes, must match this line.
+#
+# Bump it right after tagging a release. Until you do, the workflow refuses to
+# ship more test builds under a version that has already been released.
+#
+# It was a deliberate 0.0.0 until 2026-09-23, when the tag was the only way to
+# ship and this line was only a fallback; that reasoning is kept, marked
+# superseded, in RELEASING.md.
+version: 1.0.4+1
 
 environment:
   sdk: ^3.13.0
