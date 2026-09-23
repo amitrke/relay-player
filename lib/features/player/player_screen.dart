@@ -20,6 +20,7 @@ import '../local_network/smb_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
 import 'playback_focus.dart';
+import 'playback_prefs.dart';
 import 'player_controls.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
@@ -229,6 +230,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// failed, the connection was handed back on purpose.
   bool _released = false;
 
+  /// Whether the Playback and Subtitles preferences have been applied to the
+  /// file now open. Once only: after that the track is the viewer's to change
+  /// in the picker, and re-applying on a later track event would undo them.
+  bool _tracksApplied = false;
+
   late final PlaybackFocusPolicy _focus = PlaybackFocusPolicy(
     transport: _transport,
     isLive: () => _live,
@@ -265,6 +271,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _subs.add(_player.stream.error.listen(_fail));
     _subs.add(_player.stream.position.listen(_onPosition));
+    _subs.add(_player.stream.tracks.listen(_onTracks));
     // Focus is asked for whenever playback starts, not once: after a permanent
     // loss, pressing play is the viewer taking it back from the other app.
     _subs.add(_player.stream.playing.listen((playing) {
@@ -287,6 +294,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
     _audioFocus = binding;
     if (_player.state.playing) unawaited(binding?.request());
+  }
+
+  void _onTracks(Tracks tracks) {
+    if (_tracksApplied || !mounted) return;
+    // media_kit lists its "auto" and "no" pseudo-tracks before the file is
+    // parsed; wait for a real one so there is something to choose between.
+    if (!tracks.audio.any((t) => isRealTrack(t.id))) return;
+    _tracksApplied = true;
+    final choice = chooseTracks(tracks, ref.read(playbackPrefsProvider));
+    if (choice.audio case final audio?) unawaited(_player.setAudioTrack(audio));
+    if (choice.subtitle case final sub?) {
+      unawaited(_player.setSubtitleTrack(sub));
+    }
   }
 
   void _releaseLive() {
@@ -460,6 +480,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _load() async {
+    _tracksApplied = false;
     try {
       final playable = await _resolve();
       if (!mounted) return;
@@ -589,6 +610,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
+    final prefs = ref.watch(playbackPrefsProvider);
 
     return Scaffold(
       backgroundColor: t.stage,
@@ -598,10 +620,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         live: _live,
         enabled: _started && _error == null,
         onBack: () => Navigator.of(context).maybePop(),
+        skip: prefs.skip,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Center(child: Video(controller: _controller, controls: null)),
+            Center(
+              child: Video(
+                controller: _controller,
+                controls: null,
+                subtitleViewConfiguration: SubtitleViewConfiguration(
+                  textScaler: TextScaler.linear(prefs.subtitleSize.scale),
+                ),
+              ),
+            ),
             if (_released)
               _PlaybackError(
                 title: _title,

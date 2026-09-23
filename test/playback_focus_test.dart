@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:relay_player/features/player/playback_focus.dart';
 import 'package:relay_player/features/player/player_controls.dart';
 
@@ -40,6 +41,18 @@ class _Transport implements PlayerTransport {
   Future<void> seek(Duration to) async {}
   @override
   Future<void> playOrPause() async => playing ? pause() : play();
+  @override
+  Stream<Tracks> get tracksStream => const Stream.empty();
+  @override
+  Tracks get tracks => const Tracks();
+  @override
+  Stream<Track> get trackStream => const Stream.empty();
+  @override
+  Track get track => const Track();
+  @override
+  Future<void> setAudioTrack(AudioTrack track) async {}
+  @override
+  Future<void> setSubtitleTrack(SubtitleTrack track) async {}
 }
 
 void main() {

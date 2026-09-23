@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/features/player/player_controls.dart';
@@ -41,6 +42,21 @@ class _FakeTransport implements PlayerTransport {
   Future<void> playOrPause() async => _set(!playing);
   @override
   Future<void> setVolume(double percent) async {}
+
+  @override
+  Tracks tracks = const Tracks();
+  @override
+  Track track = const Track();
+  @override
+  Stream<Tracks> get tracksStream => const Stream.empty();
+  @override
+  Stream<Track> get trackStream => const Stream.empty();
+  @override
+  Future<void> setAudioTrack(AudioTrack t) async =>
+      track = track.copyWith(audio: t);
+  @override
+  Future<void> setSubtitleTrack(SubtitleTrack t) async =>
+      track = track.copyWith(subtitle: t);
 
   void _set(bool v) {
     playing = v;
