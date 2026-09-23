@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:relay_player/core/platform/device_kind.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/core/theme/theme_controller.dart';
+import 'package:relay_player/features/accounts/plex_session.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
 
 /// Guards the release-build Settings against unbuilt sections.
@@ -58,7 +60,13 @@ void main() {
       (tester) async {
     await pump(tester);
 
-    for (final label in ['AI features', 'Playback', 'Subtitles']) {
+    for (final label in [
+      'AI features',
+      'Playback',
+      'Subtitles',
+      // Hidden 2026-09-22: its one switch sent nothing anywhere.
+      'Privacy and data',
+    ]) {
       expect(find.text(label), findsNothing, reason: label);
     }
     expect(find.textContaining('OpenAI'), findsNothing);
@@ -87,6 +95,37 @@ void main() {
     expect(find.text('AI features'), findsWidgets);
     expect(find.textContaining('OpenAI'), findsWidgets);
     expect(find.text('Playback'), findsOneWidget);
+    expect(find.text('Privacy and data'), findsOneWidget);
+  });
+
+  testWidgets('the phone layout has no crash-report switch', (tester) async {
+    DeviceKind.debugSetTelevision(false);
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(ProviderScope(
+      // The phone layout renders Sources inline, and the real controller
+      // would reach for secure storage.
+      overrides: [plexSessionProvider.overrideWith(_SignedOut.new)],
+      child: MaterialApp(
+        home: RelayTheme(
+          tokens: RelayPalettes.midnight,
+          palette: RelayPalette.midnight,
+          child: SettingsScreen(
+            theme: ThemeController(),
+            state: const SettingsState(),
+            onStateChanged: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Control: the finder is looking at a rendered phone Settings.
+    expect(find.text('No Plex servers connected.'), findsOneWidget);
+    expect(find.text('Send crash reports'), findsNothing);
+    expect(find.text('Privacy and data'), findsNothing);
   });
 
   testWidgets('About shows the running version and the licences entry',
@@ -99,4 +138,9 @@ void main() {
     expect(find.textContaining('We host no content'), findsOneWidget);
     expect(find.text('Open-source licences'), findsOneWidget);
   });
+}
+
+class _SignedOut extends PlexSessionController {
+  @override
+  PlexState build() => const PlexState(stage: PlexStage.signedOut);
 }
