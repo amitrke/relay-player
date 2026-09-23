@@ -1,8 +1,16 @@
-name: Release to Play internal testing
+name: Release to testers
 
 # Builds a signed App Bundle and pushes it to the Play Console internal testing
-# track. Setup — the upload key, the service account, and the one manual upload
-# Play insists on before its API will accept anything — is in docs/RELEASING.md.
+# track, and a signed IPA to TestFlight. Setup — the upload key, the service
+# account, the App Store Connect API key, and the one manual upload each store
+# insists on first — is in docs/RELEASING.md.
+#
+# One workflow for both stores, not one each, so that one tag ships both and
+# github.run_number is the build number on both: Play's versionCode and iOS's
+# CFBundleVersion stay the same number for the same commit. Renamed from
+# "Release to Play internal testing" when iOS joined (2026-09-23). Renaming is
+# safe, but renaming or recreating the *file* would restart run_number, which
+# both stores would reject until it passed their highest build.
 #
 # Separate from build.yml rather than a job inside it: that workflow makes
 # debug-signed sideload artifacts and needs no secrets, so it can run on any
@@ -20,17 +28,35 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
-  # A version tag is a deliberate "testers should get this" signal. Pushes to
-  # main are not: release builds take ~6 minutes and most merges are not worth
-  # a tester's update prompt.
+      platforms:
+        description: >-
+          Which stores this run ships to. Narrows the RELEASE_ANDROID and
+          RELEASE_IOS repository variables for this run only; it cannot turn
+          on a store they have switched off.
+        type: choice
+        options: [both, android, ios]
+        default: both
+  # Two ways in, decided 2026-09-23 (RELEASING.md, "Test builds and
+  # releases"):
+  # - develop is the everyday test channel. Pushing to it is the deliberate
+  #   "testers should get this" signal that used to need a tag; builds are
+  #   named after pubspec.yaml's version, e.g. "1.0.4 (12)".
+  # - a v* tag is the release: it must match pubspec.yaml, and marks which of
+  #   those builds is the one that shipped.
+  # main still releases nothing on its own. Most merges there are not worth a
+  # tester's update prompt, and iOS builds cost ~15 minutes of macOS time.
   push:
+    branches: [develop]
     tags: ['v*']
 
 concurrency:
   # Unlike build.yml, never cancel. A run killed mid-upload leaves an open Play
   # edit behind, and two uploads racing each other is the case Play rejects
   # most confusingly; queueing costs nothing but a wait.
-  group: release-android
+  #
+  # One group for both jobs: they run in parallel within a run, but a second
+  # run waits for the first rather than racing it to either store.
+  group: release
   cancel-in-progress: false
 
 env:
@@ -42,8 +68,56 @@ jobs:
   check:
     name: Analyse and test
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.version.outputs.code }}
+      name: ${{ steps.version.outputs.name }}
+      release_name: ${{ steps.version.outputs.release_name }}
     steps:
       - uses: actions/checkout@v4
+
+      # Worked out once, here, so both stores cannot disagree about it.
+      #
+      # The build number is the run number. It must strictly increase with
+      # every upload either store accepts, and it does. Two consequences worth
+      # knowing: re-running a failed run reuses its number, so a run that got as
+      # far as uploading cannot simply be re-run; and renaming or recreating
+      # this file restarts the count at 1, which both stores will reject until
+      # it passes the highest build already uploaded.
+      #
+      # The version name is pubspec.yaml's version. A tag must say the same
+      # thing, so the tag names the builds testers already had, not a number
+      # typed in at the last minute. And an untagged run refuses to go out once
+      # that version's tag exists: after v1.0.4 has shipped, more "1.0.4"
+      # builds would be confusing on Play and rejected by Apple once 1.0.4 is
+      # on the App Store. The fix is to bump pubspec.yaml.
+      - name: Work out the version
+        id: version
+        run: |
+          name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
+          if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::pubspec.yaml's version '$name' is not of the form 1.2.3"
+            exit 1
+          fi
+          if [ "$name" = 0.0.0 ]; then
+            echo "::error::pubspec.yaml still says 0.0.0. Set it to the version being tested (docs/RELEASING.md)."
+            exit 1
+          fi
+          if [ "${{ github.ref_type }}" = tag ]; then
+            if [ "$GITHUB_REF_NAME" != "v$name" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match pubspec.yaml's version $name. Tag v$name, or change pubspec.yaml first."
+              exit 1
+            fi
+          elif git ls-remote --exit-code --tags origin "refs/tags/v$name" >/dev/null; then
+            echo "::error::v$name has already been released, and pubspec.yaml still says $name. Bump pubspec.yaml's version for the next round of test builds."
+            exit 1
+          fi
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          # Play names a release after its versionName unless told otherwise,
+          # so without the run number every build of one version would look
+          # the same on the track (runs 1 and 2, 2026-09-13).
+          echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
+          echo "Version $name (${{ github.run_number }})"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -56,6 +130,12 @@ jobs:
   bundle:
     name: Build and upload AAB
     needs: check
+    # Per-store switches (RELEASING.md, "Choosing the stores"). A repository
+    # variable RELEASE_ANDROID of 'false' skips Play for every run until it is
+    # changed back; unset means on, so nothing changes until someone sets it.
+    # A manual run can narrow further with its `platforms` input. Pushes have
+    # no inputs, so `inputs.platforms` is empty and counts as 'both'.
+    if: vars.RELEASE_ANDROID != 'false' && (inputs.platforms || 'both') != 'ios'
     runs-on: ubuntu-latest
     env:
       # Secrets cannot appear in an `if:` directly; their presence can.
@@ -102,43 +182,18 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      # versionCode must strictly increase with every upload Play accepts, and
-      # the run number of this workflow does. Two consequences worth knowing:
-      # re-running a failed run reuses its number, so a run that got as far as
-      # uploading cannot simply be re-run; and renaming or recreating this file
-      # restarts the count at 1, which Play will reject until it passes the
-      # highest code already uploaded.
-      #
-      # versionName comes from the tag when there is one (v1.2.3 -> 1.2.3) and
-      # from pubspec.yaml otherwise.
-      - name: Work out the version
-        id: version
-        run: |
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.ref_type }}" = tag ]; then
-            name="${GITHUB_REF_NAME#v}"
-            if ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Tag $GITHUB_REF_NAME is not of the form v1.2.3"
-              exit 1
-            fi
-            echo "name_arg=--build-name=$name" >> "$GITHUB_OUTPUT"
-          else
-            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
-          fi
-          # Play names a release after its versionName unless told otherwise,
-          # so every untagged run arrived as another "1.0.0" and testers could
-          # not tell builds apart (runs 1 and 2, 2026-09-13).
-          echo "release_name=$name (${{ github.run_number }})" >> "$GITHUB_OUTPUT"
-
       # Play's "what's new" text, which until now was typed into Play Console
       # after every upload. Looked up before the build so a problem costs
       # seconds, not the six minutes a build takes.
       #
       # Two names are accepted, in the same folder. `<versionCode>.txt` is the
       # layout fastlane `supply` expects (#8), but the code is this run's
-      # number, which nobody knows before pushing a tag. `<tag>.txt`
-      # (`v1.0.2.txt`) can be written in advance; supply ignores that name, so
-      # the two conventions do not collide.
+      # number, which nobody knows before pushing. `v<version>.txt`
+      # (`v1.0.4.txt`) can be written in advance; supply ignores that name, so
+      # the two conventions do not collide. Since test builds come from
+      # develop (2026-09-23), every build of a version reads the same
+      # `v<version>.txt`, so its notes can grow with the version until the tag
+      # freezes them.
       #
       # This is store listing copy, so architecture.md §8.2 applies to it as it
       # does to the description. A run with no notes still uploads, with a
@@ -147,10 +202,7 @@ jobs:
         id: notes
         run: |
           dir=fastlane/metadata/android/en-US/changelogs
-          candidates=("$dir/${{ steps.version.outputs.code }}.txt")
-          if [ "${{ github.ref_type }}" = tag ]; then
-            candidates+=("$dir/$GITHUB_REF_NAME.txt")
-          fi
+          candidates=("$dir/${{ needs.check.outputs.code }}.txt" "$dir/v${{ needs.check.outputs.name }}.txt")
           for f in "${candidates[@]}"; do
             [ -f "$f" ] || continue
             # Characters, not bytes: Play's limit is 500 per language, and the
@@ -171,8 +223,8 @@ jobs:
 
       - run: >-
           flutter build appbundle --release
-          --build-number=${{ steps.version.outputs.code }}
-          ${{ steps.version.outputs.name_arg }}
+          --build-number=${{ needs.check.outputs.code }}
+          --build-name=${{ needs.check.outputs.name }}
 
       # build.gradle.kts falls back to the debug key when key.properties is
       # missing or unreadable, which keeps local release builds working and
@@ -194,14 +246,14 @@ jobs:
           # Fingerprint only: it is what Play Console shows for the upload key,
           # so a mismatch there can be diagnosed from this log.
           grep -E 'SHA256:' <<< "$cert"
-          echo "versionCode ${{ steps.version.outputs.code }}, $(du -h "$aab" | cut -f1)"
+          echo "versionCode ${{ needs.check.outputs.code }}, $(du -h "$aab" | cut -f1)"
 
       # Kept whether or not the upload runs. Play's API cannot create an app's
       # first release, so the very first bundle has to be downloaded from here
       # and uploaded in Play Console by hand.
       - uses: actions/upload-artifact@v4
         with:
-          name: android-aab-${{ steps.version.outputs.code }}
+          name: android-aab-${{ needs.check.outputs.code }}
           path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
@@ -216,7 +268,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          releaseName: ${{ steps.version.outputs.release_name }}
+          releaseName: ${{ needs.check.outputs.release_name }}
           # `tracks`, not `track`, which v1.1.5 reports as deprecated.
           tracks: internal
           status: ${{ inputs.status || 'completed' }}
@@ -233,3 +285,128 @@ jobs:
       - name: Remove the upload key
         if: always()
         run: rm -f android/key.properties "$RUNNER_TEMP/upload-keystore.jks"
+
+  ios:
+    name: Build and upload IPA
+    needs: check
+    # The same switches as the Android job: RELEASE_IOS 'false' skips
+    # TestFlight, e.g. while signing is being fixed, without holding Play back.
+    if: vars.RELEASE_IOS != 'false' && (inputs.platforms || 'both') != 'android'
+    # macOS runners are free for a public repository. This job is still the
+    # slow one (~15 min, most of it the archive), so it runs beside the Android
+    # job rather than after it, and a failure here does not hold Android back.
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      HAS_ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 != '' }}
+      # Repository variables, not secrets, for the reason given for KEY_ALIAS
+      # above: neither is sensitive on its own, and a secret's value is masked
+      # wherever it appears in the log. The .p8 file is the secret.
+      ASC_KEY_ID: ${{ vars.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner image's default Xcode lags the newest one it carries, and
+      # App Store Connect rejects uploads built against an SDK older than
+      # Apple's current minimum. Pick the newest stable Xcode on the image.
+      - name: Select the newest Xcode
+        run: |
+          xcode="$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      # Written outside the checkout, into the directory xcodebuild and altool
+      # both search, and removed at the end however the job went.
+      - name: Install the App Store Connect API key
+        if: env.HAS_ASC_KEY == 'true'
+        env:
+          P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+        run: |
+          for name in ASC_KEY_ID ASC_ISSUER_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is empty: its repository variable is not set. See docs/RELEASING.md."
+              exit 1
+            fi
+          done
+          dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$dir"
+          key="$dir/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$P8" > "$key"
+          chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      # Without the key there is no way to sign, so the run still proves the
+      # iOS build compiles — the thing most likely to break unnoticed, since
+      # nothing else in CI builds for iOS — and says why it stopped there.
+      - name: Compile without signing
+        if: env.HAS_ASC_KEY != 'true'
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-number=${{ needs.check.outputs.code }} \
+            --build-name=${{ needs.check.outputs.name }}
+          echo "::notice::APP_STORE_CONNECT_API_KEY_P8 is not set, so the iOS build was compiled but not signed or uploaded. See docs/RELEASING.md."
+
+      # flutter build ipa cannot pass an API key to xcodebuild, and without one
+      # a CI machine has no Apple account to sign with. So Flutter only
+      # generates the Xcode configuration (--config-only), and xcodebuild does
+      # the archive and export itself, with -allowProvisioningUpdates and the
+      # key: that is what lets Apple's cloud-managed signing supply the
+      # certificates and profiles, so no .p12 or profile has to live in
+      # secrets. Cloud signing needs the key to have the Admin role.
+      #
+      # UNVERIFIED until the first tagged run. The same export path worked from
+      # Organizer on 2026-09-23, but Organizer signed with the Xcode account on
+      # a Mac, not with an API key on a clean runner. If signing fails here,
+      # the fallback is the Android pattern: a distribution certificate and
+      # profile in secrets (docs/RELEASING.md, failure modes).
+      - name: Archive
+        if: env.HAS_ASC_KEY == 'true'
+        run: |
+          flutter build ios --release --config-only \
+            --build-number=${{ needs.check.outputs.code }} \
+            --build-name=${{ needs.check.outputs.name }}
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            | tail -n 40
+          # tail hides xcodebuild's exit status; the archive's presence is the
+          # check that matters.
+          test -d "$RUNNER_TEMP/Runner.xcarchive/Products/Applications/Runner.app"
+          /usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' \
+            "$RUNNER_TEMP/Runner.xcarchive/Info.plist"
+
+      # ios/ExportOptions.plist sets destination=upload, so this step both
+      # signs for distribution and sends the build. Its exit status is the
+      # result: do not replace it with anything that reads the upload log.
+      - name: Export and upload to TestFlight
+        if: env.HAS_ASC_KEY == 'true'
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            | tail -n 40
+
+      - name: Remove the API key
+        if: always()
+        run: rm -rf "$HOME/.appstoreconnect/private_keys"

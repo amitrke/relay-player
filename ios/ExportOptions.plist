@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for the iOS job in .github/workflows/release.yml.
+
+  The same choices Xcode's Organizer made for the first, manual upload of
+  2026-09-23 (Distribute App -> App Store Connect), written down so CI takes
+  the path that is already known to work rather than a new one:
+  - method app-store-connect: the one that can reach TestFlight and the store.
+    ("app-store" is the pre-Xcode-15.3 name for the same thing.)
+  - destination upload: xcodebuild sends the build itself, and its exit status
+    says whether Apple accepted it. The first upload's progress log never
+    printed a line a watcher could match on success, so CI must not rely on
+    reading logs (docs/RELEASING.md).
+  - manageAppVersionAndBuildNumber false: the workflow owns both numbers
+    (run number and tag, as on Android). Left true, Xcode may quietly bump the
+    build number, and TestFlight and Play would stop agreeing on which build is
+    which.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>upload</string>
+	<key>teamID</key>
+	<string>BTSKP77HML</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>
