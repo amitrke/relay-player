@@ -1,0 +1,27 @@
+Subnext Player plays media from sources you connect yourself. It hosts no content, ships no catalogue, and has no server of its own.
+
+CONNECT YOUR OWN SOURCES
+
+Plex
+Link a Plex account and browse your libraries, including servers other people have shared with you. Multiple servers merge into one library, and you choose which of your Plex libraries appear under Movies and Series. Browse shows down to seasons and episodes, and search your server directly.
+
+Videos on this device
+Play the videos already in your photo library. You choose whether Subnext Player sees your whole library or only the items you select, and it only ever reads them.
+
+Network shares
+Connect an SMB share on a NAS or a PC on your home network and browse it like a folder.
+
+BUILT AROUND NOT HAVING A BACKEND
+
+No account to create, because there is nothing to sign up for. No ads. No tracking or analytics. Your credentials stay in the iOS Keychain on the device, and your viewing history never leaves it. The app has no server, so there is nowhere for your data to be sent.
+
+EVERYDAY THINGS THAT SHOULD JUST WORK
+
+Continue watching, picking up where you stopped
+Favourites across every source you have connected
+Search that covers all of your sources at once
+Five themes, including one that follows your system light and dark setting, plus an accent colour
+
+OPEN SOURCE
+
+Subnext Player is developed in the open, under the Apache 2.0 licence, at github.com/amitrke/relay-player

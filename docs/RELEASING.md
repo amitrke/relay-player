@@ -235,9 +235,10 @@ Three things the run showed:
   certificates broke the job. The archive is now unsigned
   (`CODE_SIGNING_ALLOWED=NO`) and all signing happens at export with the
   cloud-managed distribution certificate. That was checked locally the same
-  day (the IPA came out signed "Apple Distribution") and runs from the next
-  `develop` push. **The certificate run 7 created is orphaned** and can be
-  revoked from the Certificates page.
+  day (the IPA came out signed "Apple Distribution"), then **confirmed by run
+  8** (2026-09-23, `1.0.4 (8)`): archive unsigned, upload succeeded, and the
+  Certificates page afterwards listed no new development certificate. The
+  orphaned one from run 7 had been revoked by then.
 - **The runner's newest Xcode was 26.6**, not the 27.0 used locally. Apple
   accepted it. When Apple raises its minimum SDK, the image has to catch up
   first, and the upload will fail until it does.

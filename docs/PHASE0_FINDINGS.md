@@ -852,7 +852,6 @@ Phase 1 should not start until every line here is true:
       upstream archived — §14)
 - [ ] Play + App Store developer accounts confirmed active
 - [ ] Disclaimer copy drafted (general + Advanced Sources, §8.2)
-- [ ] Standing demo Xtream account secured for App Review (§8.4)
 - [ ] Decision recorded on Firebase Remote Config kill switch (§16)
 - [ ] `lib/features/_spike/` deleted, and the spike deps that Phase 1 doesn't
       need (`shelf`, `smb_connect`) re-justified or removed

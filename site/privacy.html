@@ -23,7 +23,7 @@
 <body>
 
 <h1>Privacy Policy</h1>
-<p class="updated">Subnext Player. Last updated 21 September 2026.</p>
+<p class="updated">Subnext Player. Last updated 23 September 2026.</p>
 
 <p class="lede">Subnext Player has no backend. There is no Subnext Player server,
 no account to create, and nowhere for us to send your data even if we wanted
@@ -31,7 +31,7 @@ to. This policy is short because there is very little to describe.</p>
 
 <h2>What the app does</h2>
 <p>Subnext Player plays media from sources you connect yourself: a Plex server,
-files on your device, a folder you choose, or a network share on your own
+files on your device, a folder you choose (on Android), or a network share on your own
 network. It hosts no content and ships no catalogue.</p>
 
 <h2>What is stored, and where</h2>
@@ -80,10 +80,17 @@ them. It plays whatever you point it at and performs no content filtering of
 its own.</p>
 
 <h2>Permissions</h2>
-<p>The app requests access to video on your device only so it can play it, and
-only the scoped media permission needed for that. It does not request broad
-filesystem access. Folder access is granted by you, per folder, through the
-system picker.</p>
+<p>The app asks for access to video on your device only so it can play it, and
+only reads what it is given. It never requests broad filesystem access.</p>
+<ul>
+  <li><strong>Android:</strong> the scoped media permission for video. Folder
+      access is granted by you, per folder, through the system picker.</li>
+  <li><strong>iPhone and iPad:</strong> access to your photo library, where you
+      can allow all of it or only the items you select. Nothing in it is
+      changed or uploaded.</li>
+  <li><strong>Both:</strong> permission to connect to devices on your local
+      network, used only to reach a Plex server or network share you add.</li>
+</ul>
 
 <h2>Changes to this policy</h2>
 <p>If this policy changes, the date above changes with it. This page is

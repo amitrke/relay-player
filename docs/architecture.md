@@ -18,7 +18,7 @@ This is the part most likely to sink the project if skipped, so it comes before 
 
 1. **Lead with Plex, local storage, and SMB — not IPTV.** Onboarding, the home screen, and store screenshots/description default to the general media-player experience. This gives the app a genuine, defensible "primary purpose" that isn't IPTV, the same way VLC is judged as a neutral tool rather than a piracy vector even though it can play anything.
 2. **IPTV (Xtream/M3U) ships in the binary but is opt-in and hidden by default** (§8) — absent from onboarding, navigation, and marketing until a user explicitly enables "Advanced sources" in Settings. This is real, bounded risk reduction: it improves the primary-purpose framing, reduces the odds of being swept up in keyword-based automated triage or "best IPTV apps" discovery, and — most practically — keeps the feature architecturally decoupled enough that it could be disabled via an update without touching the core app if it ever draws a complaint.
-3. **This does not exempt the app from disclosure to Apple's human reviewers.** Apple requires full functionality disclosure and working demo credentials for any account-gated feature (standard App Review Information / demo-account requirement under Guideline 2.1) — the IPTV feature and a working Xtream test account must be described in App Review submission notes regardless of how deep it's buried in Settings. Concealing it from the reviewer would be a worse violation than disclosing it.
+3. **This does not exempt the app from disclosure to Apple's human reviewers.** The IPTV feature must be described in the App Review submission notes regardless of how deep it's buried in Settings. Concealing it from the reviewer would be a worse violation than disclosing it. No demo account is supplied: the app has no sign-in of its own, so reviewers test it as users do, with their own media, and the notes offer test access for Advanced Sources on request (§8.4).
 4. **A "Provider Profile" import feature (§8.3) is data-only, never code** — a URL points to a JSON manifest the built-in Xtream/M3U client reads to pre-fill a connection form. It is explicitly not a downloadable plugin: apps that fetch and execute remote code are barred on iOS (Guideline 2.5.2, "may not download, install, or execute code which introduces or changes features or functionality") and flagged under Google Play's Device and Network Abuse policy ("downloading executable code from unauthorized sources") — and structurally resemble malware loader patterns that both platforms' automated scanning is built to catch. Treat this as a hard boundary, not a gray area.
 5. Expect Play Store review and occasional post-publish DMCA-style takedown requests as an ongoing operational reality even with the above mitigations, not a one-time review gate. Budget for a fast counter-notice / reinstatement process.
 6. Don't use real broadcaster/channel names, logos, or sports branding anywhere in your own marketing, screenshots, or app icon — that remains the single biggest trigger for both platforms' review, independent of the gating decision.
@@ -418,7 +418,9 @@ A convenience for adding a provider without hand-typing host/username/password: 
 
 ### 8.4 Store submission checklist item
 
-Regardless of the toggle, Apple's App Review Information must disclose the IPTV feature and include working Xtream demo credentials so the reviewer can test it directly — this is a hard requirement (§1.3), not optional even though the feature is hidden from casual users. Prepare a standing demo/trial Xtream account for this purpose well before submission.
+Regardless of the toggle, Apple's App Review Information must disclose the IPTV feature in full: what it is, that it is off by default, the acknowledgement it sits behind, and that the app supplies no provider (§1.3). The notes live in `fastlane/metadata/ios/review_information/notes.txt`.
+
+No demo account is supplied. The app has no sign-in of its own, and reviewers test it the way users do, with their own media; the notes offer test access for Advanced Sources on request. If a reviewer asks, credentials go into App Store Connect only, typed by the account owner, never into this repo. (Until 2026-09-23 this section required a standing demo Xtream account under Guideline 2.1; the account owner decided against it that day.)
 
 ## 9. AI Features (bring-your-own AI provider key)
 
@@ -646,7 +648,15 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **iOS** — background audio entitlement + PiP entitlement need explicit setup; App Store review risk is the main iOS-specific item (§1, §8.4, §15).
 
-**🔴 App Transport Security will block cleartext providers — decide the position before submission, not during.**
+**✅ Resolved 2026-09-23: App Transport Security does not reach this app's connections, and no ATS exception is needed.** The premise below, that ATS blocks cleartext providers, was a hypothesis about iOS in general and turned out wrong for this stack. ATS lives in Apple's URL-loading system (`URLSession`/CFNetwork), and nothing on the app's data path goes through it: Plex uses `dart:io`'s `HttpClient`, the Xtream client is dio on the same `dart:io` sockets, and playback is ffmpeg inside libmpv with its own sockets and its own TLS (mbedTLS).
+
+Tested with a control on the iOS 18.6 simulator, with the shipped `Info.plist` (no ATS keys at all). A plain-HTTP server was reached through a real hostname, `127.0.0.1.nip.io`, because ATS exempts bare IP addresses and `.local` names, so testing against `127.0.0.1` would have passed whatever the answer. The **control**, Apple's `URLSession`, failed with `-1022 "The App Transport Security policy requires the use of a secure connection"` and never reached the server. `dart:io` got a 200, and media_kit opened and read a 20 s clip, both confirmed in the server's access log. So `NSAllowsArbitraryLoads` is not needed, and the review-attention problem below does not arise.
+
+Two caveats. The test ran on a simulator; ATS is the same CFNetwork code on a device, but a device run through TestFlight against a real HTTP-only panel would close it fully. And this holds only while nothing adopts `URLSession` for data: a plugin that fetches through Apple's stack (for example a future native HTTP adapter for dio) would bring ATS back into play, and an HTTP-only provider would then fail on iOS alone.
+
+The analysis as originally written, kept because its premise was the thing that was wrong:
+
+~~App Transport Security will block cleartext providers — decide the position before submission, not during.~~
 
 Phase 0 measured a real Xtream panel that is **HTTP-only** (`server_protocol:
 http`, no `https_port`), and whose stream URLs **302-redirect to a second
@@ -786,8 +796,9 @@ sections above. Outcome in one line: **every major technology choice held**, and
 the phase paid for itself in the corrections it forced — the isolate rule (§5)
 was backwards, `max_connections` (§4) is a lifecycle constraint rather than a
 Settings detail, `dart_plex` needs two workarounds without which PIN and
-transcode silently break (§6), iOS ATS blocks cleartext providers with no clean
-answer (§11), and the EPG is likely to be empty for real users (§5).
+transcode silently break (§6), iOS ATS was expected to block cleartext providers
+with no clean answer (§11; tested 2026-09-23 and wrong, since nothing in the app
+goes through `URLSession`), and the EPG is likely to be empty for real users (§5).
 
 Deferred to Phase 1, deliberately: **Q5, the Android-device questions** — SAF
 persisted permissions surviving a reboot, `MediaStore` scanning, hardware
@@ -805,7 +816,6 @@ session on every user's server — and a second, worse Xtream panel to settle
 - **Settle the ffmpeg licensing and build choice now (§10, §14)** — media_kit brings ffmpeg in with the player engine, so this decision is made in Phase 0 whether or not it's made consciously. Confirm an LGPL, dynamically-linked, no-GPL-encoder configuration
 - **Pick the ffmpeg binding for audio extraction (§14)** — `ffmpeg_kit_flutter` is discontinued and its upstream repo archived; evaluate the community successor and have a fallback position before Phase 3.5 depends on it
 - Confirm Play/App Store developer accounts are set up; draft the disclaimer copy (both the general one and the Advanced Sources-specific one, §8.2) and App Review notes now, not at submission time
-- Line up a standing demo Xtream account for App Review (§8.4)
 
 **Phase 1 — Core Android app: flagship sources (2–3 weeks)**
 - Plex integration, local device storage, favorites/history, search, player — phone/tablet only. Home/onboarding built from day one around the Plex/local/network framing, with the Advanced Sources gate present but off (§8.2), not retrofitted later
@@ -825,7 +835,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 - **The TV manifest and banner are already done**, ahead of this phase: `LEANBACK_LAUNCHER`, `android:banner`, and `leanback`/`touchscreen` as `required="false"`, with banners from `tool/tv_banner.py`. They were briefly held back on the theory that a TV-launchable app without D-pad focus traversal invited a Play review problem; that was wrong, because TV distribution is a separate per-form-factor opt-in in Play Console, whereas omitting leanback makes the app impossible to launch on a TV *at all* — there is no way to sideload and test on real hardware without it, which this phase depends on. What remains here is the UI: the leanback tree and D-pad focus.
 
 **Phase 5 — iOS port (1 week dev + review buffer)**
-- Background audio/PiP entitlements, App Store submission with careful review notes including Advanced Sources disclosure and demo Xtream credentials (§8.4); budget for at least one rejection-and-resubmit cycle
+- Background audio/PiP entitlements, App Store submission with careful review notes including the Advanced Sources disclosure (§8.4); budget for at least one rejection-and-resubmit cycle
 
 **Phase 6 — Store compliance hardening**
 - Encrypted local credential/token storage (`flutter_secure_storage`), no analytics/tracking that could be read as fingerprinting without disclosure, privacy policy page (now needs to cover AI data sharing per §9.3 as well as account credentials), in-app disclaimer screens, takedown/appeal process documented for yourself
@@ -839,9 +849,8 @@ session on every user's server — and a second, worse Xtream panel to settle
   Plex, local files or SMB, and the Advanced Sources UI must not appear in
   store assets at all.** This is a mistake no amount of careful architecture
   prevents, so it belongs on the checklist.
-- **iOS ATS decision must be made and written down** before submission (§11) —
-  which of arbitrary-loads, per-domain exceptions, or refusing cleartext on iOS,
-  and why.
+- ~~**iOS ATS decision must be made and written down** before submission (§11)~~
+  **Done 2026-09-23:** no ATS exception needed, tested with a control (§11).
 
 ## 14. Suggested tech stack summary
 
@@ -878,7 +887,7 @@ regardless of how finished it looks.
 - Widget tests: category grid, folder-tree browser, player controls, TV focus traversal
 - Manual device matrix: 1 real Android TV box, 1 Fire TV stick, 2 Android phones (different Android versions), 1–2 iOS devices, against at least 2 different real Xtream panels, one M3U source, one real Plex server (direct-play and forced-transcode content), one real SMB share (NAS or Windows PC), and each of the AI provider configurations (Anthropic, OpenAI, Gemini, a generic-compatible endpoint pointed at a real self-hosted server, and local Ollama) — behavior varies enough across all of these that "works on the emulator" tells you very little
 - Specifically verify SAF persisted folder permissions survive an app restart and a device reboot, not just the current session
-- Store-submission dry run: full App Store review-notes writeup (including Advanced Sources disclosure + demo Xtream credentials, §8.4, and AI data-sharing disclosure per §9.3) and Play Console data-safety form filled out before the real submission, not during
+- Store-submission dry run: full App Store review-notes writeup (including the Advanced Sources disclosure, §8.4, and AI data-sharing disclosure per §9.3) and Play Console data-safety form filled out before the real submission, not during
 - **Kill-switch drill (§16)**: verify that flipping the remote Advanced Sources flag actually removes the Live TV tab, EPG screen, and Xtream/M3U account entries on a running install, and that the app behaves correctly when Remote Config is unreachable (fails to the last cached value, and to *enabled* on a fresh install that has never fetched — never trapping a paying user in a broken state because of a network blip)
 - **Transcription chunking (§9.2)**: verify chunk-boundary word handling and timestamp re-stitching against a file long enough to require many chunks, and that an interrupted job resumes from its checkpoint rather than restarting
 - **Credential storage (§3)**: assert by inspection that no secret material appears in the Hive/Isar files on disk
@@ -958,9 +967,30 @@ The test for any future proposal: *does this put our server in the path of user 
   libraries, but it depends on the repo staying up; and **upgrading media_kit
   can change every line of this**, so the next upgrade has to re-read the
   binary and update the list in the same change. Windows dev builds load a
-  different libmpv, and iOS (first built for the simulator 2026-09-23,
-  MANUAL_TESTING.md §6a) links its own media_kit_libs_ios_video frameworks
-  that nobody has inspected yet; both need their own check before they ship.
+  different libmpv and are not distributed.
+  **iOS checked 2026-09-23, before the first App Store submission.** Until
+  then the iOS app showed *no* native notices at all, because
+  `registerNativeLicenses` was Android-only, while TestFlight builds were
+  already going out. The iOS frameworks come from a different build,
+  `libmpv-darwin-build` v0.6.0 ("video-default"), and were read from the
+  shipped binaries the same way: mpv 0.36.0 `-Dgpl=false`; FFmpeg 6.0
+  "LGPL version 3 or later", `--disable-autodetect --disable-all
+  --enable-version3` with only mbedTLS, libxml2 and dav1d external and no
+  `--enable-gpl`. That repository's lock file also pins libx264 (GPL),
+  libvpx and libvorbis for other variants; none of them is in the shipped
+  frameworks. iOS adds libpng 1.6.40 and uchardet 0.0.8 to the Android set,
+  and versions differ (HarfBuzz 8.1.1, FreeType 2.13.2, Mbed TLS 3.4.1, …).
+  `native_licenses.dart` now has an iOS list and `native_licenses_test.dart`
+  pins it, including that no iOS entry points at the Android build; the page
+  was checked on the simulator.
+  **A caveat to keep in view, not resolved here:** the frameworks are
+  dynamically linked and listed with their source, which covers the usual
+  LGPL obligations. LGPL-3.0 (FFmpeg) also asks that users can run a
+  modified version, and on the App Store code signing makes swapping a
+  framework impractical for most users. VLC and many other FFmpeg-based apps
+  ship on the store on this same basis, but it is a known point of debate,
+  and the mitigation if it is ever raised is to publish the build and
+  signing steps that let someone rebuild the app with their own libraries.
   Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
   2023-09-24, over two years stale.
@@ -999,9 +1029,10 @@ The test for any future proposal: *does this put our server in the path of user 
   Analytics alongside Crashlytics, and Analytics was dropped rather than
   §16.3 revised. #6 is now Crashlytics only. A future case for analytics has
   to be argued against §16.3 here first, not in an issue.
-- **iOS ATS position (§11)** — arbitrary loads, per-domain exceptions, or
-  refusing cleartext on iOS. Needed before the Phase 5 submission, and the
-  reasoning must be written down, not improvised in a review reply.
+- ~~**iOS ATS position (§11)**~~ **Resolved 2026-09-23:** none of the three
+  options is needed. ATS does not govern `dart:io` or libmpv's sockets, shown
+  with a `URLSession` control that ATS did block (§11). Reopen only if
+  something adopts `URLSession` for data.
 - **Pick an ffmpeg binding (§14)** — `ffmpeg_kit_flutter` is discontinued and
   upstream archived. Evaluate `ffmpeg_kit_flutter_new`, pin a fork, know the
   fallback. Needed before Phase 3.5.

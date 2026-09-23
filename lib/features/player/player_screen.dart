@@ -22,6 +22,7 @@ import '../favorites_history/resume_entries.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
+import 'player_errors.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -269,7 +270,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _subs.add(_player.stream.error.listen(_fail));
+    // Not straight to _fail: media_kit forwards mpv *log lines* here, and some
+    // of them mean mpv carried on without something (player_errors.dart).
+    _subs.add(_player.stream.error.listen(_onPlayerError));
     _subs.add(_player.stream.position.listen(_onPosition));
     _subs.add(_player.stream.tracks.listen(_onTracks));
     // Focus is asked for whenever playback starts, not once: after a permanent
@@ -600,6 +603,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           : 'This did not start playing. The server may be busy, or the file '
               'may need transcoding, which is not supported yet.',
     );
+  }
+
+  void _onPlayerError(String message) {
+    if (isFatalPlayerError(message)) {
+      _fail(message);
+    } else {
+      debugPrint('Player: continuing past non-fatal mpv error: $message');
+    }
   }
 
   void _fail(Object message) {
