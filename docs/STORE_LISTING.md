@@ -203,10 +203,26 @@ TestFlight needs none of these; App Review needs all of them.
 
 - [x] **Screenshots**, captured 2026-09-23, see "The iOS screenshots" below.
       Not yet uploaded to App Store Connect
-- [ ] **Plex and SMB verified on a real iPhone.** They are in the copy
-      because they ship in the build, but MANUAL_TESTING.md §6a has them
-      unverified on iOS. Check through TestFlight before submitting, or cut
-      them from the copy
+- [x] **Plex verified on iOS** (simulators and a real iPhone, 2026-09-23).
+      **SMB: shipped unverified, by decision.** The account owner chose on
+      2026-09-23 to submit without checking SMB against a real share. Note
+      that this is not an iOS-only gap: MANUAL_TESTING.md §5 has SMB never
+      seen against a real share on any platform, and both listings advertise
+      it. Verify it before promoting it in marketing, and treat an early SMB
+      bug report as the expected failure mode
+- [ ] **Export compliance: `ITSAppUsesNonExemptEncryption = NO` needs a
+      second look.** It was set on 2026-09-23 on the reading "network traffic
+      is standard TLS". The same day's framework listing of the iOS build
+      showed that TLS is not only Apple's: ffmpeg brings mbedTLS
+      (`Mbedtls`, `Mbedcrypto`, `Mbedx509` frameworks), and Flutter's
+      `dart:io` uses its own BoringSSL. App Store Connect's own wording asks
+      for documentation when an app uses "standard encryption algorithms
+      instead of, or in addition to" the OS's. Many Flutter apps still
+      declare NO on the basis that HTTPS-only use is exempt; the stricter
+      reading is YES with "standard algorithms", which on current US rules
+      means a year-end self-classification report rather than a licence, plus
+      France's declaration if distributed there. A declaration, so the
+      account owner's call. Not legal advice
 - [ ] **The iOS ATS decision** (architecture.md Open items), written down
       before submission, not improvised in a review reply
 - [ ] **The iOS libmpv/ffmpeg licence check** (architecture.md Open items)
