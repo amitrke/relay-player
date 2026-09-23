@@ -1,3 +1,5 @@
-Watched Plex titles now show a tick, and ones in progress show how far you got.
+Watched Plex titles now show a tick, and ones in progress show how far you got. Continue watching includes what you started in other Plex apps, and the next episode of shows you follow.
 
-Continue watching now includes what you started in other Plex apps, and the next episode of shows you follow.
+Press and hold a Plex title to mark it watched or unwatched. Movies can be filtered to unwatched only from the sort menu.
+
+Switch audio and subtitle tracks while you watch. New Playback and Subtitles settings set your preferred languages, subtitle size and skip length.
