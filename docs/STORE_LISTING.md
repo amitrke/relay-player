@@ -77,7 +77,7 @@ correction, so none of them should be submitted on someone else's reading.
 | Form | Draft answer |
 |---|---|
 | Set privacy policy | `https://amitrke.github.io/relay-player/privacy.html`. Served from `site/` by `.github/workflows/pages.yml`. Live once this reaches `main` (#9) |
-| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. *Superseded draft:* this row used to call for a Plex demo account for the reviewer. That is still the fallback if review comes back unable to exercise the Plex path, which the listing leads with, and a reviewer device with no video on it will show an empty library. Keep any such credentials out of this public repo |
+| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. Reviewers test with their own media, as users do; no demo account is supplied on either store (architecture.md §8.4) |
 | Ads | No ads. The app contains no advertising and no ad SDK |
 | Content rating | **Submitted 2026-09-22**, reasoning in the note below. Result: ESRB Everyone, PEGI 3, ClassInd all ages |
 | Target audience | **Submitted 2026-09-22: 18 and over**, not directed at children. The app has no child-appropriate content of its own and no content filtering, so a lower band would pull it into the Families policy programme for no benefit |
@@ -167,12 +167,10 @@ user connects, which is nominative, as on Play.
 The App Review notes are in `fastlane/metadata/ios/review_information/notes.txt`
 and disclose Advanced Sources as §1.3 and §8.4 require. They were checked
 against the code: the toggle and its separate acknowledgement
-("I understand — turn on") are in `settings_screen.dart`. **No demo
-credentials are provided** (decided 2026-09-23, architecture.md §8.4): the
-notes say reviewers test with their own media, as users do, and offer test
-access for Advanced Sources on request. If that request comes, the credentials
-go into App Store Connect only, typed by the account owner, and never into
-this repo (`CLAUDE.md` §1).
+("I understand — turn on") are in `settings_screen.dart`. No demo account
+is provided (architecture.md §8.4): the notes say reviewers test with their
+own media, as users do, and offer test access for Advanced Sources on
+request.
 
 ### Version page fields
 
@@ -209,9 +207,6 @@ TestFlight needs none of these; App Review needs all of them.
       because they ship in the build, but MANUAL_TESTING.md §6a has them
       unverified on iOS. Check through TestFlight before submitting, or cut
       them from the copy
-- [x] ~~**A standing demo account for Advanced Sources** (§8.4)~~ **Not
-      provided, by decision, 2026-09-23** (architecture.md §8.4). The notes
-      offer test access on request instead
 - [ ] **The iOS ATS decision** (architecture.md Open items), written down
       before submission, not improvised in a review reply
 - [ ] **The iOS libmpv/ffmpeg licence check** (architecture.md Open items)
