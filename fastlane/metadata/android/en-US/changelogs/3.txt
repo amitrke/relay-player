@@ -1,0 +1,5 @@
+First build under the name Subnext Player.
+
+Play your own media from a Plex server, video on your device, a folder you pick, or an SMB share on your network. Continue watching and favourites across every source, search that covers all of them, and five themes.
+
+Fixed in this build: saved artwork no longer keeps a copy of your Plex token on the device, and titles in the continue-watching row are no longer cut off at larger text sizes.
