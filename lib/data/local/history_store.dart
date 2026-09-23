@@ -38,7 +38,7 @@ class HistoryItem {
     required this.position,
     required this.duration,
     required this.lastWatchedAt,
-    this.posterUrl,
+    this.poster,
   });
 
   final PlaybackKind kind;
@@ -48,7 +48,19 @@ class HistoryItem {
   /// Cached so the continue-watching row renders without refetching every
   /// item from its source — which on a panel would be one request per tile.
   final String title;
-  final String? posterUrl;
+
+  /// Artwork reference, in whichever form is safe to write down.
+  ///
+  /// For Plex this is the **unsigned** server-relative path, re-signed at
+  /// render time by `PlexService.posterUrlForPath`. For a panel it is the
+  /// absolute image URL the panel gave us, which carries no credential.
+  ///
+  /// §3: this used to hold Plex's signed transcode URL, which put a live
+  /// `X-Plex-Token` in the unencrypted box once per continue-watching row.
+  /// [_withoutSecrets] enforces the rule in both directions so a future
+  /// caller cannot reintroduce it, and so boxes written by the old code are
+  /// cleaned the first time they are read.
+  final String? poster;
 
   final Duration position;
   final Duration duration;
@@ -80,7 +92,7 @@ class HistoryItem {
         sourceId: sourceId,
         itemId: itemId,
         title: title,
-        posterUrl: posterUrl,
+        poster: poster,
         position: position ?? this.position,
         duration: duration,
         lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
@@ -91,11 +103,22 @@ class HistoryItem {
         'source': sourceId,
         'id': itemId,
         'title': title,
-        'poster': posterUrl,
+        'poster': _withoutSecrets(poster),
         'position': position.inSeconds,
         'duration': duration.inSeconds,
         'at': lastWatchedAt.millisecondsSinceEpoch,
       };
+
+  /// Drops any artwork reference that carries credential material.
+  ///
+  /// Returns null rather than stripping the query parameter: a token-less
+  /// transcode URL would render as a broken image, and a broken poster is a
+  /// better outcome than a silently useless one. The row falls back to its
+  /// placeholder icon, and the next play re-records the entry with a path.
+  static String? _withoutSecrets(String? value) {
+    if (value == null) return null;
+    return value.toLowerCase().contains('x-plex-token') ? null : value;
+  }
 
   static HistoryItem? fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -108,7 +131,9 @@ class HistoryItem {
       sourceId: source,
       itemId: id,
       title: raw['title'] is String ? raw['title'] as String : id,
-      posterUrl: raw['poster'] is String ? raw['poster'] as String : null,
+      poster: _withoutSecrets(
+        raw['poster'] is String ? raw['poster'] as String : null,
+      ),
       position: Duration(seconds: (raw['position'] as num?)?.toInt() ?? 0),
       duration: Duration(seconds: (raw['duration'] as num?)?.toInt() ?? 0),
       lastWatchedAt: DateTime.fromMillisecondsSinceEpoch(
@@ -141,6 +166,43 @@ class HistoryStore {
     } on FormatException {
       return const [];
     }
+  }
+
+  /// Marker for the one-time purge below. Versioned so a future leak of a
+  /// different shape can force a fresh pass rather than reusing this one.
+  static const _purgeMarker = 'history.credentialPurge.v1';
+
+  /// Removes pre-2026-09-22 credential material from the box, once.
+  ///
+  /// [all] sanitises on read, but that only cleans memory: the token stays on
+  /// disk until something writes, and "until the user next plays something" is
+  /// not an acceptable lifetime for a live credential.
+  ///
+  /// **Why this is driven by a marker and not by inspecting the value.** The
+  /// first version of this method ran only when the *current* value still
+  /// contained a token, which looked obviously correct and was wrong in a way
+  /// that took a file-level check to see. Hive appends: the first run rewrote
+  /// the value clean, so the second run read a clean value, concluded there
+  /// was nothing to do, and returned before compacting — leaving the
+  /// superseded record, token intact, in `settings.hive` permanently. The
+  /// migration disarmed itself after doing half the job. The marker makes the
+  /// pass depend on whether it has *run*, not on what the value happens to
+  /// look like afterwards.
+  ///
+  /// The value check is kept as a second trigger so that a future regression
+  /// that writes a token again is still cleaned on the next launch.
+  Future<bool> purgeLeakedCredentials() async {
+    final done = _settings.getBool(_purgeMarker, fallback: false);
+    final raw = _settings.getString(_key) ?? '';
+    if (done && !raw.toLowerCase().contains('x-plex-token')) return false;
+
+    await write(all());
+    // Set before compacting, so the marker is in the rewritten file.
+    await _settings.setBool(_purgeMarker, true);
+    // Mandatory, not tidiness: without this the superseded record — token and
+    // all — stays in settings.hive. See AppSettingsStore's append-only note.
+    await _settings.compact();
+    return true;
   }
 
   Future<void> write(List<HistoryItem> items) async {

@@ -43,9 +43,29 @@ The copy deliberately omits things that exist in the code but are not ready:
 - **No subtitle features claimed.** There is no track selector yet.
 - **No transcoding claim.** Plex direct play only, deliberately, while the
   transcode session lifecycle is unproven.
-- **"Your credentials stay in encrypted storage"** is a real claim resting on
-  §3 and on §15's request to verify by inspection that no secret material
-  reaches the Hive files. Do that check before this text is public.
+- **"Your credentials stay in encrypted storage"** rests on §3 and on §15's
+  request to verify by inspection that no secret material reaches the Hive
+  files. **That check was run for the first time on 2026-09-22 and it failed.**
+  `settings.hive`, pulled off a real phone, held a live `X-Plex-Token` in
+  plaintext: `PlexService.posterUrl` returns an *image transcode* URL, Plex's
+  image transcoder is authenticated, and `HistoryItem` persisted that signed
+  URL as its `poster`. The sentence above was false for as long as anyone had
+  watched anything.
+
+  Fixed the same day: history stores the unsigned artwork path and the
+  continue-watching row re-signs it at render time, a versioned one-time purge
+  rewrites boxes written by the old code, and
+  `test/history_no_credentials_test.dart` pins it with controls. Re-verified by
+  pulling the box again: 3,406 bytes with nine copies of the token, down to 252
+  bytes with none. **The claim is true as of that fix and not before it.**
+
+  Two things this cost, worth not relearning. Hive is an append-only log, so
+  rewriting the value left every superseded record — token included — in the
+  file until `compact()`; the unit test passed while the token was still on
+  disk. And the first purge keyed off "does the stored value contain a token",
+  which disarmed itself: run one cleaned the value, run two saw a clean value
+  and skipped the compaction, and the stale records would have survived
+  forever. The pass is now driven by a marker recording whether it has *run*.
 
 ## Drafted console answers
 
