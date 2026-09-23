@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -73,10 +75,21 @@ enum SourceKind {
   smb('Network share (SMB)', 'A NAS or Windows share on your home network.', Icons.lan_outlined, false),
   xtream('Xtream Codes login', 'Host, username and password from your provider.', Icons.vpn_key_outlined, true);
 
-  const SourceKind(this.title, this.subtitle, this.icon, this.isAdvanced);
+  const SourceKind(this.title, this._subtitle, this.icon, this.isAdvanced);
 
   final String title;
-  final String subtitle;
+  final String _subtitle;
+
+  /// The one-line description under [title].
+  ///
+  /// Platform-dependent for exactly one entry: folder picking is SAF, which is
+  /// Android-only and hidden on iOS (local_network_tab.dart), so on iOS the
+  /// Android sentence promised a folder picker that is not there. Seen on the
+  /// first iPad run, 2026-09-23. iOS reaches device video through the photo
+  /// library only, until the §7.1 document-picker source exists.
+  String get subtitle => this == localFiles && Platform.isIOS
+      ? 'Play the videos in your photo library.'
+      : _subtitle;
   final IconData icon;
   final bool isAdvanced;
 

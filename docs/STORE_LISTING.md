@@ -201,11 +201,8 @@ a removal rather than a correction. The account owner submits them.
 
 TestFlight needs none of these; App Review needs all of them.
 
-- [ ] **Screenshots.** iPhone 6.9" (or 6.5") is required, and because
-      `TARGETED_DEVICE_FAMILY` is `1,2` the app installs on iPad, so a 13"
-      iPad set is required too. The alternative is iPhone-only (`1`), a
-      one-line project change that loses iPad users. The same §13 Phase 6
-      rule applies: Plex, local files or SMB only
+- [x] **Screenshots**, captured 2026-09-23, see "The iOS screenshots" below.
+      Not yet uploaded to App Store Connect
 - [ ] **Plex and SMB verified on a real iPhone.** They are in the copy
       because they ship in the build, but MANUAL_TESTING.md §6a has them
       unverified on iOS. Check through TestFlight before submitting, or cut
@@ -219,6 +216,40 @@ TestFlight needs none of these; App Review needs all of them.
       has "1.0 Prepare for Submission" versions for both, though neither has a
       build. They are harmless while empty. Deleting them is the account
       owner's call
+
+### The iOS screenshots
+
+Captured 2026-09-23 from simulators, into `fastlane/screenshots/en-US/`
+(deliver's layout), using sizes App Store Connect asks for exactly, so no
+scaling or cropping:
+
+| Set | Simulator | Size | Files |
+|---|---|---|---|
+| iPhone 6.5" | iPhone 14 Plus, iOS 18.6 | 1284 × 2778 | library, player, search, playback settings |
+| iPad 13" | iPad Pro 13-inch (M5), iOS 27 | 2064 × 2752 | library, player, search |
+
+Dark appearance to match the Play set, the status bar overridden to 9:41 with
+full signal and battery (`xcrun simctl status_bar`), captured with
+`xcrun simctl io … screenshot`. Content is the Plex server "Main" and its
+three open-licensed films, the same as the Play set. A debug build was used,
+since Flutter cannot make a release build for the simulator; the app already
+turns the debug banner off, and it was built with `--build-name=1.0.4` so no
+screen would show `0.0.0`.
+
+What could not be used, for the reasons the Play section above gives:
+
+- **Settings → Appearance.** Directly beneath it, Sources lists a second
+  server by its real machine name, which §1 and #7 bar. On iPhone the Playback
+  and Subtitles sections were shot instead, scrolled so that server name and
+  the Advanced Sources card below are both out of frame; what remains of the
+  server card reads only "Yours · via relay". On iPad the whole page fits in
+  one screen, as on the Android tablet, so there is no iPad settings shot.
+- **Onboarding and Add a source**, which carry the §8.2 disclosure.
+
+Two things worth knowing before re-shooting. The player frame is soft on the
+iPad because the film on "Main" is a low-resolution copy; a 1080p copy of any of
+the three would fix it. And iPadOS 27 draws the app name in the status bar and
+a window-resize mark in the bottom-right corner; both are system chrome.
 
 ## The published site
 
