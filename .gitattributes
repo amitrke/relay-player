@@ -2,3 +2,8 @@
 # pasting, later possibly fastlane supply). Force LF so a CRLF checkout on
 # Windows cannot put stray carriage returns into the public store description.
 fastlane/metadata/** text eol=lf
+
+# ...but that rule matches the screenshots too, and normalising line endings
+# inside a PNG corrupts it: the first commit of these lost six CR bytes and
+# the blob no longer decoded. Binary assets are exempt explicitly.
+fastlane/metadata/**/images/** binary

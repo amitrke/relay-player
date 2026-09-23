@@ -139,8 +139,120 @@ change that ships either feature, never after.
 
 ## Assets still missing
 
-- [ ] Feature graphic, 1024x500. Not a screenshot, and required
-- [ ] Phone screenshots, 2 to 8 (#7)
+- [x] Feature graphic, 1024x500. Not a screenshot, and required. Drawn by
+      `tool/tv_banner.py` as `assets/icon/feature_graphic_1024x500.png`, the
+      same lockup as the TV banner, and uploaded 2026-09-22
+- [x] Phone screenshots, 2 to 8 (#7). Four, captured 2026-09-22, in
+      `fastlane/metadata/android/en-US/images/phoneScreenshots/`
+- [x] **10-inch tablet screenshots, which the console marks required.** The
+      field carries the same `*` as the phone field, while 7-inch does not.
+      The listing saved with the phone shots alone and the dashboard ticked
+      "Set up your store listing", so the asterisk did not block the draft;
+      whether it blocks review is still untested. Two shots captured
+      2026-09-22 in `images/tenInchScreenshots/`, with the caveat below
 - [ ] TV screenshots at 1920x1080, required only when opting into TV
       distribution, so `v1.1.0` rather than now. The 1280x720 banner already
       exists from `tool/tv_banner.py`
+
+### The phone screenshots, and the four shots that could not be taken
+
+Captured 2026-09-22 by hand from a Pixel 10a on Android 17, running the
+release APK of `com.subnext.relay` built from `native-licences`. Not automated:
+#7's `integration_test` plan still stands, and none of this replaces it.
+
+| File | Screen |
+|---|---|
+| `1.png` | Library, Movies tab, three Plex titles |
+| `2.png` | Player, landscape, controls over a decoded frame |
+| `3.png` | Search, query "bunny", one result |
+| `4.png` | Settings, Appearance: the five theme chips and the accent swatches |
+
+Three details worth not rediscovering:
+
+- **The device's native resolution is an illegal Play asset.** Play's rule is
+  that the long side may not exceed twice the short side, and the Pixel's
+  1080x2424 breaks it. Capture went through `adb shell wm size 1080x1920` with
+  `wm density 420`, which renders natively at exactly 9:16 and needs no
+  cropping. 1080x1920 is also the bar for large-format feature placement,
+  which wants four or more at that size. Four is what there is, with no margin:
+  losing one shot loses the eligibility.
+- **`font_scale` was 1.3 on the device** and was set to 1.0 for capture, since
+  the listing should show the layout most users see. SystemUI demo mode
+  (`sysui_demo_allowed`) gives the clean 9:00 status bar. Every one of these
+  was restored afterwards.
+- **`adb shell input text` is not usable for screenshots.** It injects a
+  synthetic keyboard event, after which Android draws a green focus border
+  around the app and keeps drawing it until the process restarts. The search
+  query was typed by tapping the on-screen keyboard instead. Taps do not
+  trigger it.
+
+**What could not be photographed**, all for reasons that outlive this session:
+
+- **Series, and the season and episode detail screen.** The Plex account used
+  reports `0 series`, so `ShowDetailScreen` has never been on camera. The
+  full description claims browsing shows down to seasons and episodes, and
+  that claim is still true, just unillustrated. Anyone with TV content on a
+  Plex server can close this.
+- **Privacy and data.** The card itself is the best argument the app has
+  ("Off by default. Reports contain no library or account data. Subnext
+  Player has no backend and no analytics"), but §12.1 puts it directly below
+  Advanced sources, whose card reads "IPTV provider or playlist" with the
+  subtitle "Adds Live TV and Xtream Codes logins", and directly above About,
+  which repeats the IPTV sentence. Constraint 2 above bars both from a store
+  screenshot, and no scroll position isolates the privacy card between them.
+  Worth revisiting only if §12.1's section order changes.
+- **Local & Network.** The capture device's media library is the owner's own
+  camera roll and messaging videos. #7's "no real user data" rule rules it
+  out, and staging openly licensed files on an emulator was considered and
+  declined rather than ship a composed shot.
+- **Onboarding and Add a source.** Both carry the §8.2 Advanced Sources
+  disclosure in body copy. Correct in the app, barred from the listing.
+
+**The console does not preserve upload order.** The four went up as `1.png`
+to `4.png` in the order library, player, search, settings, and the listing
+came back ordered settings, library, search, player. The first screenshot is
+the one the store card and search results show, so the order has to be fixed
+by dragging in the console after any upload. Re-uploading in a different order
+is not a fix, because the order it lands in is not the order it was sent.
+
+Two further notes on what is in frame. `4.png` shows the Plex server name
+"Main", kept deliberately: it is generic, names no provider and identifies
+nobody, which is what §1 is actually protecting against. And About was a
+candidate until it rendered `Version 0.0.0 (1)`, which is what a local build
+without CI's tag-derived build name shows; any future shot of that pane needs
+`--build-name` set.
+
+
+### The tablet screenshots, and why there are only two
+
+Captured 2026-09-22 from the 10-inch emulator at `wm size 1440x2560` with
+`wm density 320`, in dark mode to match the phone set. The console wants each
+side between 1,080 and 7,680 px at 16:9 or 9:16 for this field, which
+1440x2560 satisfies exactly; the emulator's own 2560x1600 is 16:10 and would
+not. `1.png` is the library, `2.png` is search.
+
+**Settings cannot be shot on a tablet at all.** 1440x2560 at 320 dpi is 720 dp
+wide, which `RelayLayout.of` calls `tablet`: below the 1100 dp desktop
+breakpoint, so no rail, but tall enough that the entire settings page fits on
+one screen. Appearance, the Advanced sources card reading "IPTV provider or
+playlist / Adds Live TV and Xtream Codes logins", the second server's real
+name and `Version 0.0.0 (1)` are therefore all in frame together, and unlike
+the phone there is no scroll position that separates them. Going wider does
+not help: past 1100 dp the desktop rail lists "Advanced sources" as a
+permanent nav label. Constraint 2 rules out every variant.
+
+**Both shots look sparse, and that is a content problem rather than a layout
+one.** Three movies on a 720 dp grid fill about a fifth of the height, and the
+search result is a single poster. Adding more openly licensed titles to the
+Plex library used for capture (Sintel, Cosmos Laundromat, Spring, Caminandes)
+would fix the phone grid and these at the same time, and is the single highest
+-value thing anyone can do before re-shooting.
+
+Two capture notes specific to the emulator. It reports a hardware keyboard, so
+the soft keyboard is suppressed and `adb shell input text` is the only way to
+type, which triggers the same green focus border described above;
+`settings put secure show_ime_with_hard_keyboard 1` brings the on-screen
+keyboard back so the query can be tapped instead. And a screenshot taken too
+soon after `am force-stop` catches the splash rather than the library, which
+passes every dimension check and is nearly all black, so check what a capture
+actually contains rather than only that it is the right size.
