@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/history_store.dart';
@@ -16,7 +18,14 @@ class HistoryController extends Notifier<List<HistoryItem>> {
   HistoryStore get _store => ref.read(historyStoreProvider);
 
   @override
-  List<HistoryItem> build() => _store.all();
+  List<HistoryItem> build() {
+    final items = _store.all();
+    // Fire-and-forget: a box written by the pre-2026-09-22 code holds a live
+    // X-Plex-Token per continue-watching row, and `items` above is already the
+    // cleaned view, so there is nothing to wait for before rendering.
+    unawaited(_store.purgeLeakedCredentials());
+    return items;
+  }
 
   /// Everything worth offering to resume, newest first.
   List<HistoryItem> get resumable =>

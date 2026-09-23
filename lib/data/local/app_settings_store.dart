@@ -10,6 +10,14 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 /// Values are stored as primitives and JSON-ish maps rather than typed adapters:
 /// the shapes here are small and change often while Phase 1 settles, and a
 /// generated adapter per shape would be churn for no benefit.
+///
+/// **A Hive box is an append-only log.** Overwriting a key appends the new
+/// value and leaves the old bytes in the file until the box is compacted. That
+/// makes [compact] part of the §3 contract rather than a housekeeping nicety:
+/// on 2026-09-22 a value carrying a live `X-Plex-Token` was rewritten without
+/// it, the unit test agreed the new value was clean, and the token was still
+/// sitting in `settings.hive` because the superseded record had never gone
+/// away. Anything that removes secret material from this box has to compact.
 class AppSettingsStore {
   AppSettingsStore._(this._box);
 
@@ -53,4 +61,10 @@ class AppSettingsStore {
 
   Future<void> setStringMap(String key, Map<String, String> value) =>
       _box.put(key, value);
+
+  /// Rewrites the box file, dropping superseded records.
+  ///
+  /// The only way to make an overwritten value actually leave the disk; see
+  /// the append-only note on this class.
+  Future<void> compact() => _box.compact();
 }

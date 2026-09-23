@@ -11,6 +11,13 @@ Run from the repo root:
 Outputs assets/icon/tv_banner_320x180.png (the xhdpi drawable Android wants)
 and assets/icon/tv_banner_1280x720.png (the Play Store TV listing asset).
 
+It also writes assets/icon/feature_graphic_1024x500.png, the listing's required
+feature graphic. That is not a TV asset, but it is the same mark-plus-wordmark
+lockup at a slightly wider aspect, and drawing it here keeps the two from
+drifting apart. It is deliberately not a screenshot: Play rejects feature
+graphics that are, and a screenshot would also have to clear the §1 checks in
+docs/STORE_LISTING.md that the plain lockup avoids entirely.
+
 The mark is taken from assets/icon/relay_icon_foreground.png rather than
 redrawn, so it cannot drift from the launcher icon. Type is Roboto, which ships
 in the Flutter SDK under Apache-2.0 and is Android's own UI font, so the
@@ -123,10 +130,16 @@ def main() -> int:
     font_path = find_font()
     print(f"type: {font_path}")
     out_dir = REPO / "assets" / "icon"
-    for w, h in ((320, 180), (1280, 720)):
-        path = out_dir / f"tv_banner_{w}x{h}.png"
+    outputs = (
+        (320, 180, "tv_banner"),
+        (1280, 720, "tv_banner"),
+        (1024, 500, "feature_graphic"),
+    )
+    for w, h, name in outputs:
+        path = out_dir / f"{name}_{w}x{h}.png"
         # The banner is opaque by design, so flatten to RGB -- an alpha channel
         # here would only invite the same App Store complaint the icon gets.
+        # Play also rejects a feature graphic with transparency.
         banner(w, h, font_path).convert("RGB").save(path)
         print(f"wrote {path.relative_to(REPO)}")
     return 0

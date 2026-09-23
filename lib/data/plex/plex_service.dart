@@ -25,6 +25,7 @@ class PlexPlayable {
     required this.title,
     required this.duration,
     this.posterUrl,
+    this.posterPath,
     this.resumeFrom,
   });
 
@@ -32,6 +33,10 @@ class PlexPlayable {
   final String title;
   final Duration duration;
   final String? posterUrl;
+
+  /// The unsigned artwork path behind [posterUrl]. This is what gets persisted;
+  /// see [PlexService.posterPathOf].
+  final String? posterPath;
 
   /// Plex's own `viewOffset`. The server is the better authority here: the user
   /// may have watched part of this in the Plex app on another device.
@@ -361,10 +366,33 @@ class PlexService {
       _client.library.children(ratingKey);
 
   String? posterUrl(PlexMetadata item, {int width = 320, int height = 480}) {
+    final thumb = posterPathOf(item);
+    if (thumb == null) return null;
+    return posterUrlForPath(thumb, width: width, height: height);
+  }
+
+  /// The server-relative artwork path, which is the only form safe to persist.
+  ///
+  /// §3: [posterUrl] signs this into an image *transcode* URL, and Plex's
+  /// image transcoder is authenticated, so the signed form carries
+  /// `X-Plex-Token`. Anything that outlives the process — history in
+  /// particular — stores what this returns and re-signs on read. Storing the
+  /// signed URL instead put a live token in the unencrypted Hive box, which is
+  /// the defect STORE_LISTING.md's §15 check was written to catch.
+  static String? posterPathOf(PlexMetadata item) {
     final thumb = item.thumb ?? item.parentThumb ?? item.grandparentThumb;
-    if (thumb == null || thumb.isEmpty || !isConnected) return null;
+    return (thumb == null || thumb.isEmpty) ? null : thumb;
+  }
+
+  /// Signs a stored artwork path for display.
+  ///
+  /// Null when not connected, which is the reason history keeps the path
+  /// rather than the result: a cached signed URL would appear to work while
+  /// offline and would still be a token on disk.
+  String? posterUrlForPath(String path, {int width = 320, int height = 480}) {
+    if (path.isEmpty || !isConnected) return null;
     return _client.images.transcodeUrl(
-      sourcePath: thumb,
+      sourcePath: path,
       width: width,
       height: height,
     );
@@ -408,6 +436,7 @@ class PlexService {
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
       posterUrl: posterUrl(item),
+      posterPath: posterPathOf(item),
       resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
     );
   }

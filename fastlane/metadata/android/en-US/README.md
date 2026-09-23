@@ -15,10 +15,15 @@ Limits Play enforces, which are why the files look the way they do:
 
 | File | Limit | Current |
 |---|---|---|
-| `title.txt` | 30 characters | 12 |
+| `title.txt` | 30 characters | 14 |
 | `short_description.txt` | 80 characters | 62 |
-| `full_description.txt` | 4000 characters | 1511 |
+| `full_description.txt` | 4000 characters | 1516 |
 
-`images/phoneScreenshots/` is where #7's output goes. It is empty, and no image
-goes in it that has not been checked against §1: nothing from an IPTV source,
-no Advanced Sources UI, no real server or account names.
+`images/phoneScreenshots/` is where #7's output goes. No image goes in it that
+has not been checked against §1: nothing from an IPTV source, no Advanced
+Sources UI, no real server or account names.
+
+It holds four shots as of 2026-09-22, captured by hand rather than by #7's
+still-unbuilt harness. `docs/STORE_LISTING.md` records what each one is, the
+capture settings that make them legal Play assets, and the four screens that
+could not be photographed and why.

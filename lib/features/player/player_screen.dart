@@ -28,7 +28,7 @@ class _Playable {
     required this.url,
     required this.title,
     required this.live,
-    this.posterUrl,
+    this.posterRef,
     this.historyKind,
     this.historyId,
     this.resumeFrom,
@@ -37,7 +37,11 @@ class _Playable {
   final String url;
   final String title;
   final bool live;
-  final String? posterUrl;
+
+  /// Artwork as history will store it: an absolute URL for a panel, and the
+  /// unsigned path for Plex (§3 — the signed form carries `X-Plex-Token`).
+  /// Nothing else reads this; it exists to reach [HistoryItem.poster].
+  final String? posterRef;
 
   /// Null for live, which has no position worth remembering.
   final PlaybackKind? historyKind;
@@ -355,7 +359,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           url: client.vodStreamUrl(id, ext),
           title: match?.title ?? 'Film',
           live: false,
-          posterUrl: match?.posterUrl,
+          posterRef: match?.posterUrl,
           historyKind: PlaybackKind.xtreamVod,
           historyId: raw,
         );
@@ -377,7 +381,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       url: playable.url,
       title: playable.title,
       live: false,
-      posterUrl: playable.posterUrl,
+      posterRef: playable.posterPath,
       historyKind: PlaybackKind.plex,
       historyId: widget.ratingKey,
       resumeFrom: playable.resumeFrom,
@@ -460,7 +464,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             sourceId: _sourceIdOf(playable),
             itemId: playable.historyId!,
             title: playable.title,
-            posterUrl: playable.posterUrl,
+            poster: playable.posterRef,
             position: position,
             duration: duration,
             lastWatchedAt: DateTime.now(),

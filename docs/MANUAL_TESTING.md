@@ -24,7 +24,7 @@ The emulator cannot answer any of these. They need the tablet.
 
 | # | What | Why it matters |
 |---|---|---|
-| ✅ | Video renders at all | **Verified 2026-09-21** on a Chromecast with Google TV (Android TV OS 14), playing from Plex. The first time a frame has been seen on real Android hardware; the emulator's `EGL_BAD_ATTRIBUTE` failure does not occur there, as upstream said. Not yet seen on a phone or tablet |
+| ✅ | Video renders at all | **Verified 2026-09-21** on a Chromecast with Google TV (Android TV OS 14), playing from Plex. The first time a frame has been seen on real Android hardware; the emulator's `EGL_BAD_ATTRIBUTE` failure does not occur there, as upstream said. **Also verified 2026-09-22 on a Pixel 10a (Android 17)**, arm64 release build, Plex direct play, decoded frames in both portrait and landscape while capturing the store screenshots. Still not seen on a tablet |
 | ✅ | Plex direct play on device | **Verified 2026-09-21** on the same Chromecast. Which APK was installed was not recorded; the ABI row in §6 says it has to be armeabi-v7a or universal on this device |
 | ⬜ | **Panel VOD playback** | The `/movie/` URL and its container extension have *never been exercised*. Extensions vary per title (mkv as often as mp4) and are not recoverable from the panel afterwards — most likely place for a real failure |
 | ⬜ | **Panel series episode playback** | Same, for the `/series/` path |
@@ -33,6 +33,23 @@ The emulator cannot answer any of these. They need the tablet.
 | ⬜ | **Dead channel releases the connection** | A channel that never yields a frame must free the slot on timeout, or it burns the user's only connection until the panel times it out server-side |
 | ⬜ | Resume actually seeks on open | The stored position is demonstrably correct, but the only observation so far ("117 → 116 min left") is equally consistent with restarting from zero |
 | ⬜ | Hardware decode engages | Q5. Compare CPU against desktop |
+
+## 1a. Verified on a phone, 2026-09-22
+
+Found while capturing store screenshots on a Pixel 10a (Android 17), and worth
+separating from §1 because neither needed a TV.
+
+| # | What | Result |
+|---|---|---|
+| ✅ | Plex playback on a phone | Decoded frames in portrait and landscape, arm64 release build, direct play |
+| ✅ | No credential material in the Hive box (§15) | **Failed first, then fixed.** `settings.hive` held a live `X-Plex-Token` per continue-watching row; see STORE_LISTING.md. Re-verified by pulling the box: 3,406 bytes with nine copies, 252 bytes with none |
+| ✅ | Continue-watching tile across text scales | Overflowed its row at every scale above 1.0, clipped silently in release. Fixed by letting the poster absorb the remainder; re-checked at 1.0, 1.5 and 2.0 |
+
+**The debug build is the only one that tells you.** A `RenderFlex` overflow
+draws its banner in debug and clips without a word in release, so the tile had
+been cutting off "5 min left" for anyone with larger text and no screenshot
+would have shown it. Every prior capture here was a release build, which is
+why this took until now to see.
 
 ## 2. Q5 — the rest of the deferred Android questions
 
