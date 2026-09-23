@@ -57,16 +57,38 @@ correction, so none of them should be submitted on someone else's reading.
 | Form | Draft answer |
 |---|---|
 | Set privacy policy | `https://amitrke.github.io/relay-player/privacy.html`. Served from `site/` by `.github/workflows/pages.yml`. Live once this reaches `main` (#9) |
-| Sign in details | **Needs a real demo account.** The app shows nothing useful without a connected source, and Plex needs an account. Create a Plex account for review with a small library of openly licensed content, and give the reviewer those credentials plus a note that Advanced Sources is off by default and not required to use the app (§8.4). Keep the credentials out of this public repo |
+| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. *Superseded draft:* this row used to call for a Plex demo account for the reviewer. That is still the fallback if review comes back unable to exercise the Plex path, which the listing leads with, and a reviewer device with no video on it will show an empty library. Keep any such credentials out of this public repo |
 | Ads | No ads. The app contains no advertising and no ad SDK |
-| Content rating | See the note below. Do not rush this one |
-| Target audience | **18 and over**, not directed at children. The app has no child-appropriate content of its own and no content filtering, so a lower band would pull it into the Families policy programme for no benefit |
-| Data safety | **Today: no data collected and none shared.** No backend, no analytics, no SDKs that phone home. Revisit when #6 lands, at which point the answer becomes crash logs and diagnostics, collected optionally, not shared, with the opt-in toggle named. §15 asks for this to be filled as a dry run before submission rather than during it |
+| Content rating | **Submitted 2026-09-22**, reasoning in the note below. Result: ESRB Everyone, PEGI 3, ClassInd all ages |
+| Target audience | **Submitted 2026-09-22: 18 and over**, not directed at children. The app has no child-appropriate content of its own and no content filtering, so a lower band would pull it into the Families policy programme for no benefit |
+| Data safety | **Submitted 2026-09-22: no data collected and none shared.** The judgement call: Plex tokens go to plex.tv and SMB credentials to the user's NAS, both only because the user connected that service themselves, and never to us. That is the position generic players and mail clients declare as "no data collected"; if Google reads "a third party" as covering a service the user chose, this is the answer that changes. No backend, no analytics, no SDKs that phone home. Revisit when #6 lands, at which point the answer becomes crash logs and diagnostics, collected optionally, not shared, with the opt-in toggle named. §15 asks for this to be filled as a dry run before submission rather than during it |
 | Government apps | No |
 | Financial features | None |
 | Health | No health features |
 | App category and contact details | Category **Video Players & Editors**. Contact email plus `https://github.com/amitrke/relay-player` as the website |
 | Store listing | The three files in `fastlane/metadata/android/en-US/`, plus a 1024x500 feature graphic and phone screenshots (#7) |
+
+**Entered in the console on 2026-09-22**, all saved to Publishing overview and
+not yet sent for review: every row above except the contact details and the
+store listing, plus two forms the 2026-09-13 reading did not show:
+
+- **Advertising ID: not used.** The merged release manifest carries no `AD_ID`
+  permission.
+- **Photo and video permissions**, which asks why `READ_MEDIA_VIDEO` is not
+  replaced by the photo picker. Answer: a core feature is a browsable library
+  of every video on the device, grouped by folder (`DeviceVideoSource`, §7.1),
+  which a one-shot picker cannot provide; no photos are read and all-files
+  access is never requested. The wording says the library is read "whenever it
+  is opened", not "on every launch", because that is what the code does.
+
+The binding declarations were submitted by the assistant at the account
+owner's explicit instruction, on the readings recorded in this table.
+
+The listing text, 512px icon and feature graphic are saved as a listing draft.
+Still open: the contact email, which Play publishes immediately on save, and
+the tablet screenshots (#7). The phone screenshots were captured on 2026-09-22
+and are in the repo; what they are, and what could not be photographed, is
+below.
 
 ### Content rating deserves real thought
 
@@ -81,6 +103,20 @@ even behind an off-by-default gate, is arguably closer to it. Answer it
 deliberately, and **write down the answer and the reasoning here** when it is
 settled, because it is exactly the kind of declaration that will be revisited
 if a complaint ever arrives (§1.5).
+
+**Settled 2026-09-22.** The question as the questionnaire actually words it is
+whether the app *features or promotes* content outside the download, with
+Netflix, Spotify and AI output as the examples, and its follow-ups ask only
+about content "sellers create as part of the app catalog". This app has no
+catalog and features or promotes nothing; it plays what the user connects,
+which is VLC's position. So the answer is **No**, and every other answer was
+No as well (no rating-relevant bundled content, no user-to-user interaction,
+no age-restricted promotion, no location sharing, no purchases or rewards, not
+a browser, not news or education). Answering Yes and then Yes to every content
+question would have claimed a catalog that does not exist, and the resulting
+adult rating would have been a misrepresentation in the other direction.
+Advanced Sources does not change this: it is still user-supplied content, and
+§1.2 keeps it out of everything the app itself presents.
 
 ## The published site
 
