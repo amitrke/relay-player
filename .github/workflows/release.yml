@@ -28,6 +28,14 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
+      platforms:
+        description: >-
+          Which stores this run ships to. Narrows the RELEASE_ANDROID and
+          RELEASE_IOS repository variables for this run only; it cannot turn
+          on a store they have switched off.
+        type: choice
+        options: [both, android, ios]
+        default: both
   # Two ways in, decided 2026-09-23 (RELEASING.md, "Test builds and
   # releases"):
   # - develop is the everyday test channel. Pushing to it is the deliberate
@@ -122,6 +130,12 @@ jobs:
   bundle:
     name: Build and upload AAB
     needs: check
+    # Per-store switches (RELEASING.md, "Choosing the stores"). A repository
+    # variable RELEASE_ANDROID of 'false' skips Play for every run until it is
+    # changed back; unset means on, so nothing changes until someone sets it.
+    # A manual run can narrow further with its `platforms` input. Pushes have
+    # no inputs, so `inputs.platforms` is empty and counts as 'both'.
+    if: vars.RELEASE_ANDROID != 'false' && (inputs.platforms || 'both') != 'ios'
     runs-on: ubuntu-latest
     env:
       # Secrets cannot appear in an `if:` directly; their presence can.
@@ -275,6 +289,9 @@ jobs:
   ios:
     name: Build and upload IPA
     needs: check
+    # The same switches as the Android job: RELEASE_IOS 'false' skips
+    # TestFlight, e.g. while signing is being fixed, without holding Play back.
+    if: vars.RELEASE_IOS != 'false' && (inputs.platforms || 'both') != 'android'
     # macOS runners are free for a public repository. This job is still the
     # slow one (~15 min, most of it the archive), so it runs beside the Android
     # job rather than after it, and a failure here does not hold Android back.

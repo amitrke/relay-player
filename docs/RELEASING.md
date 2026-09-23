@@ -330,6 +330,23 @@ tracks. It is the very ambiguity the section below designed out on
 2026-09-13, accepted this time because every build now carries its run number
 and the tag records the release.
 
+### Choosing the stores
+
+Added 2026-09-23. Both stores ship by default. Two ways to narrow that:
+
+- **Repository variables** `RELEASE_ANDROID` and `RELEASE_IOS` (Settings →
+  Secrets and variables → Actions → Variables). Set one to `false` and every
+  push and tag skips that store until it is deleted or set to anything else.
+  Unset means on. This is for standing situations, such as TestFlight signing
+  being broken while Play keeps shipping.
+- **The `platforms` input** on a manual run: `both`, `android` or `ios`. It
+  narrows one run and cannot re-enable a store a variable has switched off,
+  so the variable stays the one place to look.
+
+A skipped store shows as a skipped job, not a failed one. A version that skips
+one store for its test builds but not its tag still has only one tag; the tag
+says what was released, not where.
+
 ### ~~The fallback version is 0.0.0, on purpose~~ — superseded 2026-09-23
 
 Kept for the reasoning, which the section above answers rather than
