@@ -44,23 +44,32 @@ double _tileHeight(BuildContext context, double tileWidth) {
   return tileWidth * 0.62 + text.ceilToDouble();
 }
 
-/// The continue-watching row from the Home artboard.
+/// The continue-watching row from the Home artboard, one per tab.
 ///
-/// Mixed on purpose: a film, a panel episode and a Plex episode belong in one
-/// row because "what was I in the middle of" does not sort by source. Since
-/// 2026-09-22 it also carries Plex's On Deck, so what was watched in other
-/// Plex apps shows up here too ([mergeResume] says how the two combine). It
-/// hides itself entirely when nothing is resumable, rather than leaving an
-/// empty heading above the grid.
+/// Mixed by source on purpose: a Plex film and a panel film sit side by side,
+/// because "what was I in the middle of" does not sort by where it came from.
+/// Split by *kind* since 2026-09-28: films above Movies, episodes above Series.
+/// Until then it was one row above Movies only, so a show half-way through
+/// appeared under Movies, which read as a bug on a real device (architecture.md
+/// §12). Since 2026-09-22 it also carries Plex's On Deck, so what was watched
+/// in other Plex apps shows up here too ([mergeResume] says how the two
+/// combine). It hides itself entirely when nothing is resumable, rather than
+/// leaving an empty heading above the grid.
 class ContinueWatchingRow extends ConsumerWidget {
-  const ContinueWatchingRow({super.key});
+  const ContinueWatchingRow({super.key, required this.episodes});
+
+  /// True above Series, false above Movies.
+  final bool episodes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
 
-    final items = ref.watch(resumeEntriesProvider);
+    final items = [
+      for (final e in ref.watch(resumeEntriesProvider))
+        if (e.episode == episodes) e,
+    ];
     if (items.isEmpty) return const SizedBox.shrink();
 
     final tileWidth = f == RelayFormFactor.phone ? 168.0 : 252.0;

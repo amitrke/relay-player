@@ -727,7 +727,16 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
-3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row, favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+   > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
+   > above the Movies grid, from the artboard. On the Chromecast a show in
+   > progress then appeared under Movies and read as a bug, so films now resume
+   > above Movies and episodes above Series. Panel items already knew which they
+   > were from their kind; Plex history did not, so `HistoryItem` gained an
+   > `episode` flag, written by the player from Plex's metadata type. Records
+   > from before it are treated as films until played again, unless Plex's On
+   > Deck lists the same item, in which case they take its type. Pinned by the
+   > `episode or film` group in `test/watch_state_test.dart`.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)

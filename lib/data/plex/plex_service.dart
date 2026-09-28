@@ -27,6 +27,7 @@ class PlexPlayable {
     this.posterUrl,
     this.posterPath,
     this.resumeFrom,
+    this.isEpisode = false,
   });
 
   final String url;
@@ -41,6 +42,10 @@ class PlexPlayable {
   /// Plex's own `viewOffset`. The server is the better authority here: the user
   /// may have watched part of this in the Plex app on another device.
   final Duration? resumeFrom;
+
+  /// Carried into history so the continue-watching tile lands above Series
+  /// rather than Movies.
+  final bool isEpisode;
 }
 
 /// A Plex item together with the server it came from.
@@ -474,6 +479,7 @@ class PlexService {
       posterUrl: posterUrl(item),
       posterPath: posterPathOf(item),
       resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
+      isEpisode: item.type == PlexMetadataType.episode,
     );
   }
 }

@@ -37,6 +37,7 @@ class _Playable {
     this.historyKind,
     this.historyId,
     this.resumeFrom,
+    this.episode,
   });
 
   final String url;
@@ -55,6 +56,9 @@ class _Playable {
   /// Where the *source* thinks the user got to. Plex knows this server-side,
   /// so its answer beats ours — the user may have watched on another client.
   final Duration? resumeFrom;
+
+  /// Plex only; see [HistoryItem.episode].
+  final bool? episode;
 }
 
 /// Playback surface (§6, §10).
@@ -479,6 +483,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       historyKind: PlaybackKind.plex,
       historyId: widget.ratingKey,
       resumeFrom: playable.resumeFrom,
+      episode: playable.isEpisode,
     );
   }
 
@@ -561,6 +566,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             itemId: playable.historyId!,
             title: playable.title,
             poster: playable.posterRef,
+            episode: playable.episode,
             position: position,
             duration: duration,
             lastWatchedAt: DateTime.now(),
