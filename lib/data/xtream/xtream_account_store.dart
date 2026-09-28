@@ -25,6 +25,7 @@ class XtreamAccount {
     this.liveCategoryIds = const [],
     this.vodCategoryIds = const [],
     this.seriesCategoryIds = const [],
+    this.liveCategoryNames = const {},
   });
 
   final String id;
@@ -44,16 +45,30 @@ class XtreamAccount {
   final List<String> vodCategoryIds;
   final List<String> seriesCategoryIds;
 
+  /// Names of the chosen live categories, by id, so the Live TV tab can group
+  /// its channels under headings without asking the panel again.
+  ///
+  /// Saved by the category picker, which already has them, since 2026-09-28.
+  /// A line saved before then has none until its picker is next saved; the tab
+  /// fetches the category list once to fill the gap rather than showing bare
+  /// ids. Live only, because only Live TV groups by category: Movies and
+  /// Series merge into the shared poster grids, where a panel's category is
+  /// not the unit anyone browses by.
+  final Map<String, String> liveCategoryNames;
+
   List<String> categoriesFor(XtreamCatalogue catalogue) => switch (catalogue) {
         XtreamCatalogue.live => liveCategoryIds,
         XtreamCatalogue.vod => vodCategoryIds,
         XtreamCatalogue.series => seriesCategoryIds,
       };
 
+  /// [names] is kept only for [XtreamCatalogue.live] (see [liveCategoryNames]),
+  /// and only for the ids being saved, so deselected categories do not linger.
   XtreamAccount withCategories(
     XtreamCatalogue catalogue,
-    List<String> ids,
-  ) =>
+    List<String> ids, {
+    Map<String, String> names = const {},
+  }) =>
       XtreamAccount(
         id: id,
         name: name,
@@ -65,6 +80,12 @@ class XtreamAccount {
             catalogue == XtreamCatalogue.vod ? ids : vodCategoryIds,
         seriesCategoryIds:
             catalogue == XtreamCatalogue.series ? ids : seriesCategoryIds,
+        liveCategoryNames: catalogue == XtreamCatalogue.live
+            ? {
+                for (final id in ids)
+                  id: ?(names[id] ?? liveCategoryNames[id]),
+              }
+            : liveCategoryNames,
       );
 
   Map<String, dynamic> toJson() => {
@@ -75,6 +96,7 @@ class XtreamAccount {
         'live': liveCategoryIds,
         'vod': vodCategoryIds,
         'series': seriesCategoryIds,
+        'liveNames': liveCategoryNames,
       };
 
   static XtreamAccount? fromJson(Object? raw) {
@@ -98,6 +120,11 @@ class XtreamAccount {
       seriesCategoryIds: [
         for (final c in raw['series'] as List? ?? const []) '$c',
       ],
+      liveCategoryNames: {
+        if (raw['liveNames'] case final Map names)
+          for (final MapEntry(:key, :value) in names.entries)
+            if (value is String) '$key': value,
+      },
     );
   }
 }

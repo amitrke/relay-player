@@ -137,6 +137,7 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
             controller: _name,
             label: 'Name (optional)',
             hint: 'What you want to call this line',
+            action: TextInputAction.done,
           ),
           const SizedBox(height: 10),
           if (_error != null) ...[
@@ -189,6 +190,7 @@ class _Field extends StatelessWidget {
     this.hint,
     this.obscure = false,
     this.keyboardType,
+    this.action = TextInputAction.next,
   });
 
   final TextEditingController controller;
@@ -196,6 +198,13 @@ class _Field extends StatelessWidget {
   final String? hint;
   final bool obscure;
   final TextInputType? keyboardType;
+
+  /// The keyboard's action key. On a TV this is the only way through the form
+  /// that does not mean dismissing the keyboard and walking focus by hand:
+  /// while the keyboard is up the D-pad moves across its keys, not between
+  /// fields (see TvImeProxyView on the Android side). `next` moves focus to the
+  /// following field and reopens the keyboard there.
+  final TextInputAction action;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +230,7 @@ class _Field extends StatelessWidget {
             autocorrect: false,
             enableSuggestions: false,
             keyboardType: keyboardType,
+            textInputAction: action,
             style: TextStyle(color: t.ink),
             decoration: InputDecoration(
               hintText: hint,

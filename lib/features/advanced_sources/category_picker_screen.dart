@@ -94,11 +94,36 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
   Set<String> get _current =>
       _selected ?? {...?_account?.categoriesFor(widget.catalogue)};
 
-  Future<void> _save() async {
+  /// Saves the selection in the panel's own category order, with names.
+  ///
+  /// The order was the order of ticking until 2026-09-28, which nothing read.
+  /// Live TV now groups channels under these categories in saved order, and
+  /// the panel's order is the one the viewer has just been scrolling through
+  /// here, so it is the least surprising. The names come along because this
+  /// screen already has them and Live TV would otherwise have to fetch the
+  /// whole category list again to label its groups.
+  ///
+  /// [categories] is null while the list is loading or failed; the selection
+  /// then saves as it stands, which is what Save did before.
+  Future<void> _save(List<XtreamCategory>? categories) async {
     final account = _account;
     if (account == null) return;
+    final chosen = _current;
+    final ids = categories == null
+        ? chosen.toList()
+        : [
+            for (final c in categories)
+              if (chosen.contains(c.id)) c.id,
+            // Chosen ids the panel no longer lists keep their place at the end
+            // rather than being dropped by a save that did not touch them.
+            ...chosen.where((id) => !categories.any((c) => c.id == id)),
+          ];
     await ref.read(xtreamAccountsProvider.notifier).save(
-          account.withCategories(widget.catalogue, _current.toList()),
+          account.withCategories(
+            widget.catalogue,
+            ids,
+            names: {for (final c in categories ?? const <XtreamCategory>[]) c.id: c.name},
+          ),
         );
     if (mounted) Navigator.of(context).maybePop();
   }
@@ -128,7 +153,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
         title: Text('${widget.catalogue.label} categories'),
         actions: [
           TextButton(
-            onPressed: _save,
+            onPressed: () => _save(categories.value),
             child: Text('Save', style: TextStyle(color: t.accent)),
           ),
           const SizedBox(width: 8),
@@ -254,7 +279,10 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
       ),
       bottomNavigationBar: Padding(
         padding: RelayLayout.pagePadding(f).copyWith(top: 8, bottom: 16),
-        child: RelayButton(label: 'Save selection', onPressed: _save),
+        child: RelayButton(
+          label: 'Save selection',
+          onPressed: () => _save(categories.value),
+        ),
       ),
     );
   }

@@ -196,6 +196,24 @@ isolate boundary*, not *always use `compute()`*.
 This applies to Live and Series as much as VOD, and it lives behind the
 Advanced Sources gate (§8) like the rest of the Xtream client.
 
+**Live TV groups by the chosen categories (2026-09-28).** The tab used to
+flatten the selection back into one list, which on a remote meant scrolling
+past every channel of every chosen category. It now shows them grouped:
+Favourites first, then each chosen category, with All as the old flat view. A
+row of chips on phone and tablet; on a TV, categories in a column on the left
+and channels on the right. A search always covers every group. The rules are in
+`lib/features/live_tv/channel_groups.dart`.
+
+This needed the category *names*, which were never stored: the picker saved
+ids only. It now saves the names for live categories alongside the ids, and
+saves the ids in the panel's order rather than the order they were ticked, so
+the groups read in the order the viewer saw in the picker. A line saved before
+this has no names; the tab fetches the category list once to label it rather
+than showing "Category 3", and the picker stores them at its next save. The
+names are the panel's own labels, often streaming-service brands (PHASE0_FINDINGS
+Q4). Showing them in the app is fine; the §13 Phase 6 rule that store assets
+never show Advanced Sources screens covers this one too.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.
@@ -638,6 +656,45 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 > combination was tried before landing on this one, and each failure narrowed
 > down which of the two causes above was load-bearing.
 
+> **Found on the Chromecast with Google TV, 2026-09-28: the on-screen keyboard
+> cannot be reached with the D-pad.** Focus a text field (seen first on the
+> Xtream form behind Advanced Sources), the keyboard appears, and the D-pad keeps
+> moving focus in the app behind it instead of across the keys. Nothing can be
+> typed, so no field in the app is usable on this device.
+>
+> This is an engine bug, flutter/flutter#177360, not ours. `FlutterView` never
+> overrides `View.onCheckIsTextEditor()`, so it always answers false, and
+> `InputMethodManager` turns that into a missing `IS_TEXT_EDITOR` start-input
+> flag. Low-RAM TV builds set `config_preventImeStartupUnlessTextEditor=true` and
+> answer any start without the flag with `NO_EDITOR`, unbinding the IME. The
+> keyboard is drawn but has no input session, so the IME stage has nothing to
+> give the arrow keys to and they fall through to the app. The engine fix
+> (flutter/flutter#193074) was unmerged on this date and is not in Flutter 3.47,
+> which this build uses (checked in the SDK's own `FlutterView.java`).
+>
+> **Workaround, 2026-09-28:** `TvImeProxyView` on the Android side, installed by
+> `MainActivity` on TVs only. It is a 1x1 view that takes Android focus, answers
+> true to `onCheckIsTextEditor`, and delegates the input connection, the
+> IME-proxy check and every key event back to `FlutterView`. `FlutterView` is
+> made unfocusable so `TextInputPlugin`'s `requestFocus()` before each
+> `showSoftInput` cannot take focus back, and `SOFT_INPUT_STATE_HIDDEN` stops the
+> system auto-showing a keyboard at launch now that the focused view claims to be
+> a text editor. The class comment has the full reasoning. Remove both once the
+> engine fix is in a stable release.
+>
+> **What is and is not verified.** The Google TV emulator does not reproduce the
+> bug: `cmd overlay lookup` shows it sets the config to `false`, and the image is
+> a `user` build, so it cannot be turned on there with a fabricated overlay. It
+> served only as a regression control. An identical D-pad sequence gave
+> pixel-identical screens with and without the workaround, and with it the
+> keyboard appeared, was the proxy's (`mServedView=TvImeProxyView`), typed via
+> D-pad and OK, and Back closed it and then left the screen. **Whether it fixes
+> the Chromecast is unverified** until run there (MANUAL_TESTING §6).
+>
+> The Xtream form also sets the keyboard's action key to *Next* on each field
+> and *Done* on the last, because while the keyboard is up the D-pad moves across
+> its keys, not between fields.
+
 **Android TV / Fire TV** — not a resize of the phone UI. Needs: D-pad focus traversal (`FocusNode`/`FocusTraversalGroup` wiring throughout), 10-foot-UI sized text/tap targets, a leanback-style row-based home screen, and a separate `AndroidManifest` `<intent-filter>` + banner asset for the TV launcher. Plan this as its own feature-flagged layout tree under `platform/tv/`, sharing the domain/data layers (Xtream, M3U, Plex, filesystem, AI) but not the widgets. A folder-tree browser (§7.3) is more awkward with a D-pad than a grid — budget extra design time for it specifically on TV.
 
 **Fire TV specifically — treat it as its own target, not a synonym for Android TV.** Three differences matter architecturally:
@@ -688,7 +745,16 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
-3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row, favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+   > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
+   > above the Movies grid, from the artboard. On the Chromecast a show in
+   > progress then appeared under Movies and read as a bug, so films now resume
+   > above Movies and episodes above Series. Panel items already knew which they
+   > were from their kind; Plex history did not, so `HistoryItem` gained an
+   > `episode` flag, written by the player from Plex's metadata type. Records
+   > from before it are treated as films until played again, unless Plex's On
+   > Deck lists the same item, in which case they take its type. Pinned by the
+   > `episode or film` group in `test/watch_state_test.dart`.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)

@@ -1,0 +1,5 @@
+On TV, the on-screen keyboard now follows the remote's arrow keys, so you can type into search and sign-in fields. If it still doesn't on your TV, please tell us which device.
+
+Continue watching is split: films you're part-way through appear above Movies, and episodes above Series.
+
+A layout fix for Settings on phones.

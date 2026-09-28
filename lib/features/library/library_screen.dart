@@ -341,13 +341,13 @@ class _TabBody extends ConsumerWidget {
               actionLabel: 'Add a source',
               onAction: () => context.push('/add-source'),
             )
-          // The artboard puts the row above the Movies grid, and it is
-          // deliberately not repeated per tab — it is one list of what the user
-          // was in the middle of, not a per-category view.
-          : tab == LibraryTab.movies
+          // Films resume above Movies and episodes above Series. It was one
+          // mixed row above Movies until 2026-09-28; see ContinueWatchingRow.
+          : tab == LibraryTab.movies || tab == LibraryTab.series
               ? Column(
                   children: [
-                    const ContinueWatchingRow(),
+                    ContinueWatchingRow(
+                        episodes: tab == LibraryTab.series),
                     Expanded(child: PosterGrid(items: list)),
                   ],
                 )
