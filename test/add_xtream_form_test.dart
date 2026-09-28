@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
+import 'dart:async';
+
+import 'package:relay_player/data/xtream/xtream_client.dart';
 import 'package:relay_player/features/advanced_sources/add_xtream_screen.dart';
+import 'package:relay_player/features/advanced_sources/xtream_controller.dart';
 
 /// The add-a-line form with a remote, as found on the Chromecast 2026-09-28:
 /// typing worked, but focus could not reach *Verify and add*, and one Back too
@@ -14,13 +18,26 @@ import 'package:relay_player/features/advanced_sources/add_xtream_screen.dart';
 /// on-screen keyboard is absent in widget tests, which is the state these
 /// cases are about: arrows arriving at Flutter because nothing above it took
 /// them.
+/// A panel check the test finishes when it chooses, so the form's busy state
+/// is drawn for real frames. No request is ever made.
+class _HeldClient extends XtreamClient {
+  _HeldClient(this.result)
+      : super(host: 'http://panel-host.example.invalid', username: '', password: '');
+
+  final Completer<XtreamAccountInfo> result;
+
+  @override
+  Future<XtreamAccountInfo> authenticate() => result.future;
+}
+
 void main() {
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(WidgetTester tester, {List overrides = const []}) async {
     tester.view.physicalSize = const Size(960, 540);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(ProviderScope(
+      overrides: [...overrides],
       child: MaterialApp(
         home: RelayTheme(
           tokens: RelayPalettes.midnight,
@@ -102,6 +119,37 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(focusIsOn(verify), isTrue);
+  });
+
+  // Checked with a control: it fails with the button swapped for a spinner
+  // while busy, as it was until 2026-09-28. It does not fail with the
+  // button's key removed, although the TV emulator lost focus without the key
+  // (architecture.md §11); that half rests on the emulator runs alone.
+  testWidgets('focus stays on Verify and add through a failed check',
+      (tester) async {
+    final check = Completer<XtreamAccountInfo>();
+    await pump(tester, overrides: [
+      xtreamClientFactoryProvider.overrideWithValue(
+          ({required host, required username, required password}) =>
+              _HeldClient(check)),
+    ]);
+    await tester.showKeyboard(field('Name (optional)'));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(focusIsOn(verify), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(find.text('Checking…'), findsOneWidget,
+        reason: 'the busy state must be drawn for this to test it');
+    expect(focusIsOn(find.widgetWithText(FilledButton, 'Checking…')), isTrue,
+        reason: 'busy must not take the button, and its focus, away');
+
+    check.completeError(const XtreamException('The panel refused the login.'));
+    await tester.pumpAndSettle();
+    expect(find.text('The panel refused the login.'), findsOneWidget);
+    expect(focusIsOn(verify), isTrue,
+        reason: 'the error box inserted above must not take focus either');
   });
 
   group('Back', () {

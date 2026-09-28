@@ -39,6 +39,24 @@ class XtreamAccountsController extends Notifier<List<XtreamAccount>> {
   }
 }
 
+/// Builds the client the add-a-line form verifies with.
+///
+/// A provider rather than a direct constructor call so a test can hand the
+/// form a client that fails slowly. The form's busy state, where focus used to
+/// be lost, only exists while a check is in flight, and flutter_test's own
+/// HTTP stub answers instantly, so without this the state could not be drawn
+/// in a test at all (architecture.md §11, 2026-09-28).
+typedef XtreamClientFactory = XtreamClient Function({
+  required String host,
+  required String username,
+  required String password,
+});
+
+final xtreamClientFactoryProvider = Provider<XtreamClientFactory>(
+  (ref) => ({required host, required username, required password}) =>
+      XtreamClient(host: host, username: username, password: password),
+);
+
 /// A ready-to-use client for [account], with its password joined back in.
 final xtreamClientProvider =
     FutureProvider.family<XtreamClient, XtreamAccount>((ref, account) async {

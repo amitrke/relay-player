@@ -548,13 +548,19 @@ class _ToggleRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: t.accentInk,
-          activeTrackColor: t.accent,
-          inactiveTrackColor: t.line,
-          inactiveThumbColor: t.inkDim,
+        // Material's Switch draws nothing on focus with this theme (§11), so on a TV
+        // the toggle looked unfocused. Caught by the D-pad audit (test/dpad),
+        // 2026-09-28.
+        RelayFocusHalo(
+          borderRadius: BorderRadius.circular(999),
+          child: Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: t.accentInk,
+            activeTrackColor: t.accent,
+            inactiveTrackColor: t.line,
+            inactiveThumbColor: t.inkDim,
+          ),
         ),
       ],
     );

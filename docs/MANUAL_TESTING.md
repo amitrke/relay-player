@@ -117,6 +117,7 @@ this code.
 | ✅ | **Focus was invisible on Material-drawn surfaces — fixed 2026-09-12 for the Settings sub-list.** The rail's own defect (§11 defect 3) and the Settings sub-list (Sources, Appearance, Playback…) shared the same cause; both now go through `RelayTappable`. Any other Material-drawn surface not yet checked on a TV should still be assumed guilty until proven otherwise |
 | ✅ | **On-screen keyboard with a D-pad on the Chromecast** (added 2026-09-28; **typing confirmed on the Chromecast the same day**, build 1.0.4 (10), by the account owner. The same test found that focus could not then reach *Verify and add*; see the next row). Found there: the keyboard appeared over a text field but the D-pad moved focus behind it, so nothing could be typed. Engine bug flutter/flutter#177360; worked around with `TvImeProxyView` (architecture.md §11). The Google TV emulator does not reproduce the bug, so it only showed the workaround breaks nothing there. Check on the Chromecast: the D-pad moves across the keys and OK types; *Next* on the Xtream form moves to the following field with the keyboard still up; Back closes the keyboard and a second Back leaves the screen; the D-pad still moves around the app once the keyboard is closed; no keyboard pops up on its own at launch or on returning to the app; the Search, Live TV filter and SMB fields behave the same. Voice input from the remote's mic, if the keyboard offers it, is worth one try |
 | ⬜ | **Add-line form with a remote, end to end** (added 2026-09-28). After typing, *Done* on the last field should land on *Verify and add* with a white ring; with the keyboard closed, Up and Down should move between fields and to the button; after a failed check (a wrong address) the ring should still be on the button; Back with anything typed should ask, with *Keep editing* focused. All four seen on the Google TV emulator with made-up text (architecture.md §11); the Chromecast is the real check. Also worth one pass: Up and Down out of the Search and Live TV filter fields, which got the same traversal fix |
+| ⬜ | **Focus rings found by the D-pad audit** (added 2026-09-28). On the Chromecast: Add source rows show a ring; on a Live TV channel, Right reaches the star beside the row and OK stars it; the Advanced sources switch, *Remove* and the category buttons show a ring. The switch and *Add a playlist or panel* were seen on the emulator; the rest only in tests |
 | ⬜ | **Install the right ABI on Google TV.** A Chromecast with Google TV (Android TV OS 14) refused `app-arm64-v8a-release.apk` with "app isn't compatible with your device": it runs a **32-bit userspace** on a 64-bit chip, so it needs `app-armeabi-v7a-release.apk` or the universal APK. Nothing else in the manifest gates it — minSdk is 24, no feature is required, all screen sizes are supported — so on Android TV, "not compatible" means the ABI. Confirm with `adb shell getprop ro.product.cpu.abi` |
 | ⬜ | **The banner in a real launcher row.** The system resolves it — `cmd package resolve-activity -c LEANBACK_LAUNCHER` returns our activity with `nonLocalizedLabel=Relay Player` and a bound `banner=` resource, and the package appears in a `LEANBACK_LAUNCHER` query — but the Google TV emulator image gates its home screen behind Google account setup, so the row itself has never been seen. Check on the Chromecast: whether sideloaded apps appear in the apps row at all, and whether the banner reads at the launcher's own scaling |
 | ⬜ | The banner at real launcher scale — it has only been checked as an image file, centre-line aligned, never on a panel at viewing distance |
@@ -190,6 +191,15 @@ with the gallery as its control. The loopback bridge now has real coverage — r
 unsatisfiable case, HEAD, and path rejection — which is the first piece of this
 app tested rather than demonstrated, and it paid for itself immediately by
 proving the bridge was correct while the Android path was still broken.
+
+**D-pad behaviour now has an automated audit** (added 2026-09-28).
+`test/dpad/` drives screens at TV size with arrow keys and checks four rules
+on each: focus after the first press, every control reachable, focus visible,
+text fields escapable. Its own controls are in `dpad_audit_test.dart`. It
+covers the add-line form, Add source, Settings' Advanced sources and Live TV
+so far; its first run found four defects (architecture.md §11). It does not
+replace the remote rows above: the keyboard, device quirks and legibility at
+a distance are still checks for a person with the device.
 
 Everything else is still thin. §15 asks for unit tests on Xtream response
 parsing, the Plex PIN state machine, M3U parser edge cases and Advanced Sources

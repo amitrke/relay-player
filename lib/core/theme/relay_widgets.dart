@@ -205,6 +205,12 @@ class RelayTappable extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            // RelayFocusable above is the one focus stop, and handles OK and
+            // Enter itself. Left focusable, the InkWell was a second stop in
+            // the same rectangle, so a D-pad press could move focus from one to
+            // the other with nothing visible changing: a dead press, found by
+            // the D-pad audit (test/dpad) on 2026-09-28.
+            canRequestFocus: false,
             onTap: onTap,
             onLongPress: onLongPress,
             borderRadius: radius,
@@ -261,6 +267,44 @@ class RelayFocusRing extends StatelessWidget {
             : null,
       ),
       child: child,
+    );
+  }
+}
+
+/// Draws [RelayFocusRing] around a Material control while it has focus.
+///
+/// For the few Material controls kept as they are, such as `IconButton`,
+/// whose own focus overlay draws nothing here because the theme sets no
+/// `focusColor` (§11). It adds no focus stop of its own: it only listens for
+/// focus arriving anywhere inside it.
+class RelayFocusHalo extends StatefulWidget {
+  const RelayFocusHalo({
+    super.key,
+    required this.child,
+    this.borderRadius,
+  });
+
+  final Widget child;
+  final BorderRadius? borderRadius;
+
+  @override
+  State<RelayFocusHalo> createState() => _RelayFocusHaloState();
+}
+
+class _RelayFocusHaloState extends State<RelayFocusHalo> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (v) => setState(() => _focused = v),
+      child: RelayFocusRing(
+        focused: _focused,
+        borderRadius: widget.borderRadius,
+        child: widget.child,
+      ),
     );
   }
 }
