@@ -196,6 +196,24 @@ isolate boundary*, not *always use `compute()`*.
 This applies to Live and Series as much as VOD, and it lives behind the
 Advanced Sources gate (§8) like the rest of the Xtream client.
 
+**Live TV groups by the chosen categories (2026-09-28).** The tab used to
+flatten the selection back into one list, which on a remote meant scrolling
+past every channel of every chosen category. It now shows them grouped:
+Favourites first, then each chosen category, with All as the old flat view. A
+row of chips on phone and tablet; on a TV, categories in a column on the left
+and channels on the right. A search always covers every group. The rules are in
+`lib/features/live_tv/channel_groups.dart`.
+
+This needed the category *names*, which were never stored: the picker saved
+ids only. It now saves the names for live categories alongside the ids, and
+saves the ids in the panel's order rather than the order they were ticked, so
+the groups read in the order the viewer saw in the picker. A line saved before
+this has no names; the tab fetches the category list once to label it rather
+than showing "Category 3", and the picker stores them at its next save. The
+names are the panel's own labels, often streaming-service brands (PHASE0_FINDINGS
+Q4). Showing them in the app is fine; the §13 Phase 6 rule that store assets
+never show Advanced Sources screens covers this one too.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.
