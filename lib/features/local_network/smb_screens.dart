@@ -159,30 +159,32 @@ class _Field extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          TextField(
-            controller: controller,
-            obscureText: obscure,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: TextStyle(color: t.ink),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: t.inkDim.withValues(alpha: 0.6)),
-              filled: true,
-              fillColor: t.surface,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: t.line),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: t.line),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: t.accent),
+          RelayFieldTraversal(
+            child: TextField(
+              controller: controller,
+              obscureText: obscure,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: TextStyle(color: t.ink),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(color: t.inkDim.withValues(alpha: 0.6)),
+                filled: true,
+                fillColor: t.surface,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: t.line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: t.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: t.accent),
+                ),
               ),
             ),
           ),

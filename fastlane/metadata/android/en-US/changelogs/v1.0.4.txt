@@ -1,4 +1,4 @@
-On TV, the on-screen keyboard now follows the remote's arrow keys, so you can type into search and sign-in fields. If it still doesn't on your TV, please tell us which device.
+On TV, the on-screen keyboard now follows the remote's arrow keys, so you can type into search and sign-in fields. With the keyboard closed, Up and Down move between fields and buttons, and Back asks before throwing away a half-filled form.
 
 Continue watching is split: films you're part-way through appear above Movies, and episodes above Series.
 

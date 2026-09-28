@@ -226,28 +226,34 @@ class RelayFocusRing extends StatelessWidget {
     required this.focused,
     required this.child,
     this.borderRadius,
+    this.color,
   });
 
   final bool focused;
   final Widget child;
   final BorderRadius? borderRadius;
 
+  /// Defaults to the accent. Pass the ink colour around something already
+  /// filled with the accent, where an accent ring would merge into it.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final radius = borderRadius ?? BorderRadius.circular(12);
+    final ring = color ?? t.accent;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       decoration: BoxDecoration(
         borderRadius: radius,
         border: Border.all(
-          color: focused ? t.accent : Colors.transparent,
+          color: focused ? ring : Colors.transparent,
           width: 3,
         ),
         boxShadow: focused
             ? [
                 BoxShadow(
-                  color: t.accent.withValues(alpha: 0.45),
+                  color: ring.withValues(alpha: 0.45),
                   blurRadius: 12,
                   spreadRadius: 1,
                 ),
@@ -260,7 +266,12 @@ class RelayFocusRing extends StatelessWidget {
 }
 
 /// Primary action, filled with the accent.
-class RelayButton extends StatelessWidget {
+///
+/// Draws [RelayFocusRing] in the ink colour when focused. Until 2026-09-28 it
+/// drew nothing: the theme sets no `focusColor` (§11), so a remote could land
+/// on *Verify and add* with no sign it had, which on the Chromecast read as the
+/// button being unreachable.
+class RelayButton extends StatefulWidget {
   const RelayButton({
     super.key,
     required this.label,
@@ -275,26 +286,39 @@ class RelayButton extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<RelayButton> createState() => _RelayButtonState();
+}
+
+class _RelayButtonState extends State<RelayButton> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    return FilledButton(
-      autofocus: autofocus,
-      focusNode: focusNode,
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: t.accent,
-        foregroundColor: t.accentInk,
-        minimumSize: Size(0, f == RelayFormFactor.tv ? 52 : 48),
-        padding: EdgeInsets.symmetric(
-            horizontal: f == RelayFormFactor.tv ? 32 : 24),
-        textStyle: TextStyle(
-          fontSize: RelayLayout.bodySize(f) + 1,
-          fontWeight: FontWeight.w600,
+    return RelayFocusRing(
+      focused: _focused,
+      color: t.ink,
+      borderRadius: BorderRadius.circular(13),
+      child: FilledButton(
+        autofocus: widget.autofocus,
+        focusNode: widget.focusNode,
+        onFocusChange: (v) => setState(() => _focused = v),
+        onPressed: widget.onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: t.accent,
+          foregroundColor: t.accentInk,
+          minimumSize: Size(0, f == RelayFormFactor.tv ? 52 : 48),
+          padding: EdgeInsets.symmetric(
+              horizontal: f == RelayFormFactor.tv ? 32 : 24),
+          textStyle: TextStyle(
+            fontSize: RelayLayout.bodySize(f) + 1,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Text(widget.label),
       ),
-      child: Text(label),
     );
   }
 }
@@ -385,6 +409,42 @@ class RelayDrmNotice extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Lets Up and Down leave a single-line text field, so a remote is not stuck
+/// in it. Wrap every such field in the app.
+///
+/// Found on the Chromecast 2026-09-28, on the Xtream form: with the keyboard
+/// closed, the D-pad could not get from the last field to *Verify and add*.
+/// Two things in Flutter combine to cause it (flutter/flutter#49335). The
+/// app-level text editing shortcuts turn Up and Down inside a field into caret
+/// moves, which on a single line go nowhere. And `EditableText` registers
+/// `DirectionalFocusAction.forTextField()`, which deliberately ignores any
+/// `DirectionalFocusIntent` whose `ignoreTextFields` is true, the default. So
+/// focus never leaves the field and the remote reads as dead.
+///
+/// This sits closer to the field than the app-level shortcuts, so it wins, and
+/// its intents set `ignoreTextFields: false` so the field's own action acts on
+/// them. Left and Right are left alone: they still move the caret, which is
+/// what they are for in a field. While the on-screen keyboard is up it takes
+/// the arrow keys before Flutter sees them (see TvImeProxyView), so this only
+/// applies once the keyboard is closed, which is exactly when it is needed.
+class RelayFieldTraversal extends StatelessWidget {
+  const RelayFieldTraversal({super.key, required this.child});
+
+  final Widget child;
+
+  static const _shortcuts = <ShortcutActivator, Intent>{
+    SingleActivator(LogicalKeyboardKey.arrowUp):
+        DirectionalFocusIntent(TraversalDirection.up, ignoreTextFields: false),
+    SingleActivator(LogicalKeyboardKey.arrowDown): DirectionalFocusIntent(
+        TraversalDirection.down,
+        ignoreTextFields: false),
+  };
+
+  @override
+  Widget build(BuildContext context) =>
+      Shortcuts(shortcuts: _shortcuts, child: child);
 }
 
 /// Carries D-pad focus across a boundary that directional traversal cannot.

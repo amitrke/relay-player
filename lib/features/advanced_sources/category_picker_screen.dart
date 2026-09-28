@@ -185,23 +185,27 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                 padding: RelayLayout.pagePadding(f).copyWith(top: 8),
                 child: Column(
                   children: [
-                    TextField(
-                      controller: _search,
-                      onChanged: (v) => setState(() => _query = v),
-                      style: TextStyle(color: t.ink),
-                      decoration: _decoration(t, 'Search categories',
-                          icon: Icons.search),
+                    RelayFieldTraversal(
+                      child: TextField(
+                        controller: _search,
+                        onChanged: (v) => setState(() => _query = v),
+                        style: TextStyle(color: t.ink),
+                        decoration: _decoration(t, 'Search categories',
+                            icon: Icons.search),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _pattern,
-                            style: TextStyle(color: t.ink),
-                            decoration: _decoration(
-                              t,
-                              'Bulk select by pattern or text',
+                          child: RelayFieldTraversal(
+                            child: TextField(
+                              controller: _pattern,
+                              style: TextStyle(color: t.ink),
+                              decoration: _decoration(
+                                t,
+                                'Bulk select by pattern or text',
+                              ),
                             ),
                           ),
                         ),

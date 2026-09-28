@@ -192,39 +192,41 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
           children: [
             Padding(
               padding: padding.copyWith(top: 10, bottom: 4),
-              child: TextField(
-                controller: _search,
-                onChanged: (v) => setState(() => _query = v),
-                autocorrect: false,
-                style: TextStyle(color: t.ink),
-                decoration: InputDecoration(
-                  hintText: 'Search ${list.length} channels',
-                  hintStyle: TextStyle(color: t.inkDim),
-                  prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: Icon(Icons.close, color: t.inkDim, size: 18),
-                          onPressed: () {
-                            _search.clear();
-                            setState(() => _query = '');
-                          },
-                        ),
-                  filled: true,
-                  fillColor: t.surface,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: t.line),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: t.line),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: t.accent),
+              child: RelayFieldTraversal(
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = v),
+                  autocorrect: false,
+                  style: TextStyle(color: t.ink),
+                  decoration: InputDecoration(
+                    hintText: 'Search ${list.length} channels',
+                    hintStyle: TextStyle(color: t.inkDim),
+                    prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(Icons.close, color: t.inkDim, size: 18),
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                    filled: true,
+                    fillColor: t.surface,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: t.line),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: t.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: t.accent),
+                    ),
                   ),
                 ),
               ),

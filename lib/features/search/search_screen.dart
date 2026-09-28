@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
 import '../accounts/plex_session.dart';
 import '../library/poster_grid.dart';
@@ -95,40 +96,42 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             Padding(
               padding:
                   RelayLayout.pagePadding(f).copyWith(top: 16, bottom: 8),
-              child: TextField(
-                controller: _controller,
-                onChanged: _onChanged,
-                autocorrect: false,
-                textInputAction: TextInputAction.search,
-                style: TextStyle(color: t.ink),
-                decoration: InputDecoration(
-                  hintText: 'Search your sources',
-                  hintStyle: TextStyle(color: t.inkDim),
-                  prefixIcon: Icon(Icons.search, color: t.inkDim, size: 20),
-                  suffixIcon: query.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: Icon(Icons.close, color: t.inkDim, size: 18),
-                          onPressed: () {
-                            _controller.clear();
-                            _debounce?.cancel();
-                            ref.read(_queryProvider.notifier).update('');
-                          },
-                        ),
-                  filled: true,
-                  fillColor: t.surface,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: t.line),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: t.line),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: t.accent),
+              child: RelayFieldTraversal(
+                child: TextField(
+                  controller: _controller,
+                  onChanged: _onChanged,
+                  autocorrect: false,
+                  textInputAction: TextInputAction.search,
+                  style: TextStyle(color: t.ink),
+                  decoration: InputDecoration(
+                    hintText: 'Search your sources',
+                    hintStyle: TextStyle(color: t.inkDim),
+                    prefixIcon: Icon(Icons.search, color: t.inkDim, size: 20),
+                    suffixIcon: query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(Icons.close, color: t.inkDim, size: 18),
+                            onPressed: () {
+                              _controller.clear();
+                              _debounce?.cancel();
+                              ref.read(_queryProvider.notifier).update('');
+                            },
+                          ),
+                    filled: true,
+                    fillColor: t.surface,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: t.line),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: t.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: t.accent),
+                    ),
                   ),
                 ),
               ),

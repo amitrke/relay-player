@@ -688,8 +688,42 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 > served only as a regression control. An identical D-pad sequence gave
 > pixel-identical screens with and without the workaround, and with it the
 > keyboard appeared, was the proxy's (`mServedView=TvImeProxyView`), typed via
-> D-pad and OK, and Back closed it and then left the screen. **Whether it fixes
-> the Chromecast is unverified** until run there (MANUAL_TESTING §6).
+> D-pad and OK, and Back closed it and then left the screen. ~~**Whether it fixes
+> the Chromecast is unverified** until run there (MANUAL_TESTING §6).~~
+> **Confirmed on the Chromecast 2026-09-28**, build 1.0.4 (10), by the account
+> owner: every field of the Xtream form could be typed into with the remote.
+>
+> **That test found the next layer, 2026-09-28: focus could not reach *Verify
+> and add*.** Reproduced on the Google TV emulator with made-up text, all from
+> the form, not the keyboard, and each fixed:
+>
+> 1. *Done* on the last field unfocused it, leaving no focus anywhere, so the
+>    D-pad did nothing. It now moves focus to the button and scrolls it into
+>    view.
+> 2. With the keyboard closed, Up and Down inside a field never left it
+>    (flutter/flutter#49335): the app-level text shortcuts turn them into caret
+>    moves, and `EditableText`'s own `DirectionalFocusAction.forTextField()`
+>    ignores any `DirectionalFocusIntent` with `ignoreTextFields: true`, the
+>    default. `RelayFieldTraversal` maps them to intents with it false, and
+>    now wraps every single-line field in the app.
+> 3. `RelayButton` drew no focus ring (the theme sets no `focusColor`), so a
+>    focused *Verify and add* looked exactly like an unfocused one. It now
+>    draws `RelayFocusRing` in the ink colour; the accent would merge into the
+>    button's own fill.
+> 4. After a failed check, focus was lost again: the button was swapped for a
+>    spinner while busy, and the error box inserted above it made the list
+>    rebuild it as a new element. It now stays in the tree reading
+>    "Checking…", and is keyed.
+>
+> Also found: Back with the keyboard closed left the screen and discarded a
+> half-typed form. It now asks, with *Keep editing* focused.
+>
+> Evidence: widget tests pin 1, 2 and the Back prompt, and each fails with its
+> fix removed. Item 4 is backed by the emulator alone: two runs differing only
+> by the key, no ring without it and a ring with it. A widget test was tried
+> and dropped because it passed without either fix: flutter_test answers HTTP
+> instantly, so busy and error land in one frame and the busy state is never
+> drawn, and a variant holding a real local socket hung under the harness.
 >
 > The Xtream form also sets the keyboard's action key to *Next* on each field
 > and *Done* on the last, because while the keyboard is up the D-pad moves across
