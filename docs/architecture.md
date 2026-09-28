@@ -724,6 +724,50 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 > and dropped because it passed without either fix: flutter_test answers HTTP
 > instantly, so busy and error land in one frame and the busy state is never
 > drawn, and a variant holding a real local socket hung under the harness.
+> **Partly superseded the same day:** the form now builds its client through
+> `xtreamClientFactoryProvider`, and a test hands it a check it fails on cue.
+> That test fails with the spinner swap restored, so the busy half of item 4
+> is now pinned. It still passes without the key, so the key rests on the
+> emulator runs alone.
+>
+> **The D-pad audit, `test/dpad/`, 2026-09-28.** Every defect above was a rule
+> a test could have stated once for every screen, so `DpadAudit` states them
+> and drives each screen at TV size with arrow keys: something is focused
+> after the first press; every focusable control is reachable by arrows;
+> whatever is focused shows it (a lit `RelayFocusRing`, or a text field's own
+> border; Material overlays do not count, per above); Up or Down leaves every
+> text field. `dpad_audit_test.dart` is its control: each rule is run against
+> a screen built to break it, one per defect this app has shipped, and against
+> one that should pass. Its first run on four screens found, and this change
+> fixed:
+>
+> - **Add source:** every row focused invisibly (bare `InkWell`s). Now
+>   `RelayTappable`. The rail became a scrolling list at the same time: the
+>   ring's 6 px a row overflowed 540 px with Advanced sources on.
+> - **Live TV:** the favourite star sat inside its channel row, a stop inside
+>   a stop, which directional traversal cannot enter; no channel could be
+>   starred with a remote. It now sits beside the row, with its own ring.
+> - **Everywhere `RelayTappable` is used:** its `InkWell` was a second focus
+>   stop in the same rectangle, so a press could move focus between the two
+>   with nothing visible changing. The `InkWell` is no longer focusable.
+> - **Settings, Advanced sources:** the switch, *Remove*, the three category
+>   buttons and *Add a playlist or panel* focused invisibly. Wrapped in the
+>   new `RelayFocusHalo`, a ring for Material controls kept as they are;
+>   checked on the emulator for the switch and the add button.
+>
+> Two artifacts found on the way, both in the test and not the app, are worth
+> knowing before extending it. The directional policy remembers recent moves
+> (Down after Up returns whence Up came), so a walk that jumps focus with
+> `requestFocus` must clear it first, or it reports reachable controls as
+> unreachable. And `Focus.of(someText)` returns the nearest focus node, which
+> after the `InkWell` change is a non-focusable one; find the
+> `RelayFocusRing`'s ancestor instead.
+>
+> What the audit cannot see is why MANUAL_TESTING.md stays: the on-screen
+> keyboard (absent in widget tests), device quirks such as the Chromecast's
+> IME flag, real timing, and whether a ring is legible from the sofa rather
+> than merely present. Screens not yet covered: Library, Search, Player, the
+> Plex link flow, SMB, the category picker.
 >
 > The Xtream form also sets the keyboard's action key to *Next* on each field
 > and *Done* on the last, because while the keyboard is up the D-pad moves across

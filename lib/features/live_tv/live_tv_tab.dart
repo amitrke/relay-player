@@ -342,58 +342,70 @@ class _ChannelRow extends StatelessWidget {
           child: Icon(Icons.tv, color: t.inkDim, size: 18),
         );
 
+    // The star sits beside the row rather than inside it. Inside, it was a
+    // focus stop within another stop's rectangle, which directional traversal
+    // cannot enter: Right from the row had nowhere to go, so on a TV a
+    // channel could not be starred at all (the D-pad audit, test/dpad,
+    // 2026-09-28).
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: RelayTappable(
-        borderRadius: 10,
-        onTap: () => context.push('/live/${account.id}/${channel.streamId}'),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: t.surface,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: SizedBox(
-                  width: 48,
-                  height: 36,
-                  child: channel.logoUrl == null
-                      ? placeholder()
-                      : Image.network(
-                          channel.logoUrl!,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => placeholder(),
+      child: Row(
+        children: [
+          Expanded(
+            child: RelayTappable(
+              borderRadius: 10,
+              onTap: () => context.push('/live/${account.id}/${channel.streamId}'),
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: t.surface,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: 48,
+                        height: 36,
+                        child: channel.logoUrl == null
+                            ? placeholder()
+                            : Image.network(
+                                channel.logoUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => placeholder(),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        channel.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: t.ink,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                    Icon(Icons.play_arrow, color: t.inkDim),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  channel.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: t.ink,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              FavoriteButton(
-                dense: true,
-                item: FavoriteItem(
-                  kind: FavoriteKind.channel,
-                  sourceId: account.id,
-                  itemId: channel.streamId,
-                ),
-              ),
-              Icon(Icons.play_arrow, color: t.inkDim),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(width: 4),
+          FavoriteButton(
+            dense: true,
+            item: FavoriteItem(
+              kind: FavoriteKind.channel,
+              sourceId: account.id,
+              itemId: channel.streamId,
+            ),
+          ),
+        ],
       ),
     );
   }

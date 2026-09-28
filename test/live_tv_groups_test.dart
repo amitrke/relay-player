@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/core/platform/device_kind.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
+import 'package:relay_player/core/theme/relay_widgets.dart';
 import 'package:relay_player/data/local/favorites_store.dart';
 import 'package:relay_player/data/xtream/xtream_account_store.dart';
 import 'package:relay_player/data/xtream/xtream_client.dart';
@@ -184,7 +185,11 @@ void main() {
 
       // Walk down to Sport from All, as a remote would. A tap would not do to
       // start from: it activates without moving focus.
-      Focus.of(tester.element(find.text('All'))).requestFocus();
+      // The row's own stop, RelayFocusable's, which sits above its ring; the
+      // InkWell below it is deliberately not focusable.
+      Focus.of(tester.element(find.ancestor(
+              of: find.text('All'), matching: find.byType(RelayFocusRing))))
+          .requestFocus();
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
