@@ -638,6 +638,45 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 > combination was tried before landing on this one, and each failure narrowed
 > down which of the two causes above was load-bearing.
 
+> **Found on the Chromecast with Google TV, 2026-09-28: the on-screen keyboard
+> cannot be reached with the D-pad.** Focus a text field (seen first on the
+> Xtream form behind Advanced Sources), the keyboard appears, and the D-pad keeps
+> moving focus in the app behind it instead of across the keys. Nothing can be
+> typed, so no field in the app is usable on this device.
+>
+> This is an engine bug, flutter/flutter#177360, not ours. `FlutterView` never
+> overrides `View.onCheckIsTextEditor()`, so it always answers false, and
+> `InputMethodManager` turns that into a missing `IS_TEXT_EDITOR` start-input
+> flag. Low-RAM TV builds set `config_preventImeStartupUnlessTextEditor=true` and
+> answer any start without the flag with `NO_EDITOR`, unbinding the IME. The
+> keyboard is drawn but has no input session, so the IME stage has nothing to
+> give the arrow keys to and they fall through to the app. The engine fix
+> (flutter/flutter#193074) was unmerged on this date and is not in Flutter 3.47,
+> which this build uses (checked in the SDK's own `FlutterView.java`).
+>
+> **Workaround, 2026-09-28:** `TvImeProxyView` on the Android side, installed by
+> `MainActivity` on TVs only. It is a 1x1 view that takes Android focus, answers
+> true to `onCheckIsTextEditor`, and delegates the input connection, the
+> IME-proxy check and every key event back to `FlutterView`. `FlutterView` is
+> made unfocusable so `TextInputPlugin`'s `requestFocus()` before each
+> `showSoftInput` cannot take focus back, and `SOFT_INPUT_STATE_HIDDEN` stops the
+> system auto-showing a keyboard at launch now that the focused view claims to be
+> a text editor. The class comment has the full reasoning. Remove both once the
+> engine fix is in a stable release.
+>
+> **What is and is not verified.** The Google TV emulator does not reproduce the
+> bug: `cmd overlay lookup` shows it sets the config to `false`, and the image is
+> a `user` build, so it cannot be turned on there with a fabricated overlay. It
+> served only as a regression control. An identical D-pad sequence gave
+> pixel-identical screens with and without the workaround, and with it the
+> keyboard appeared, was the proxy's (`mServedView=TvImeProxyView`), typed via
+> D-pad and OK, and Back closed it and then left the screen. **Whether it fixes
+> the Chromecast is unverified** until run there (MANUAL_TESTING §6).
+>
+> The Xtream form also sets the keyboard's action key to *Next* on each field
+> and *Done* on the last, because while the keyboard is up the D-pad moves across
+> its keys, not between fields.
+
 **Android TV / Fire TV** — not a resize of the phone UI. Needs: D-pad focus traversal (`FocusNode`/`FocusTraversalGroup` wiring throughout), 10-foot-UI sized text/tap targets, a leanback-style row-based home screen, and a separate `AndroidManifest` `<intent-filter>` + banner asset for the TV launcher. Plan this as its own feature-flagged layout tree under `platform/tv/`, sharing the domain/data layers (Xtream, M3U, Plex, filesystem, AI) but not the widgets. A folder-tree browser (§7.3) is more awkward with a D-pad than a grid — budget extra design time for it specifically on TV.
 
 **Fire TV specifically — treat it as its own target, not a synonym for Android TV.** Three differences matter architecturally:
