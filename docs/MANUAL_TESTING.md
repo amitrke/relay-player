@@ -106,6 +106,7 @@ this code.
 | ⬜ | **NAS goes away mid-playback** | §7.2 calls the connection "real state to manage". Connect-time failure is handled; a share that vanishes *during* playback is not |
 | ⬜ | Wi-Fi drop and reconnect | Same |
 | ⬜ | A full episode without the connection dropping | Phase 0 listed this explicitly and it is still open |
+| ⬜ | **Live channel freezes mid-watch, then recovers** | Written 2026-10-06 (§10 "Live reconnect"): 10s of no position movement stops and reopens, 3 tries at 2/4/6s. Untested. Needs a real freeze, e.g. Wi-Fi off for 15s mid-channel, then on. Check the spinner shows, picture returns, and that a one-connection line is not refused on reopen |
 
 ## 6. Not started at all
 

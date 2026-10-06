@@ -523,6 +523,28 @@ The only trustworthy evidence that playback is happening is
 indicator, dead-channel timeout (§4) or error state in the app must be built on
 that, not on the two signals above.
 
+**Live reconnect after a freeze (decided 2026-10-06).** Until now the stall
+guard covered startup only, so a channel that froze mid-watch sat on a still
+frame: mpv is still "playing", no error arrives, and nothing noticed. Built on
+the same position-clock rule as above:
+
+- While a live stream is started and not paused, if the position has not moved
+  for 10s, the player stops, waits, and reopens the same channel. The same
+  path handles a fatal mpv error after start.
+- Up to 3 consecutive attempts, waiting 2s, 4s and 6s. Playing 30s after a
+  reconnect resets the budget, so an occasional drop never uses it up. When it
+  is spent, the existing error screen appears.
+- **Stop before reopen, never open beside.** Same reason as §4: on a
+  `max_connections: 1` line the old connection must be released first, and the
+  wait gives the panel time to notice it is gone.
+- A first open that yields nothing still fails after 15s with no retries. A
+  dead listing should say so promptly, not after three more attempts. Only a
+  stream that has already played, or a reconnect that is itself retrying, gets
+  the extra tries.
+- **Not verified on a device.** The 10s threshold and the backoff are
+  untested guesses, and nobody has yet reproduced a mid-stream freeze to watch
+  it recover. Add it to `MANUAL_TESTING.md` once exercised.
+
 **Audio focus and going to the background (#17, decided 2026-09-22).** Before
 this there was no audio focus handling and no lifecycle observer: another app's
 music played underneath ours and a call did not pause playback. Decided before

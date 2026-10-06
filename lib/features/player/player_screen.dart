@@ -218,12 +218,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// yields a frame must *release* the connection or it burns the only slot.
   static const _stallTimeout = Duration(seconds: 15);
 
+  /// How long a live picture may sit still before it is treated as frozen. The
+  /// position clock is the signal for the same reason it is at startup: a frozen
+  /// frame still has a playing mpv behind it, so no error ever arrives.
+  static const _freezeTimeout = Duration(seconds: 10);
+
+  /// Consecutive reconnects before giving up and showing the error. Each waits
+  /// longer than the last (2s, 4s, 6s), so a panel that is briefly overloaded
+  /// gets room without a dead channel spinning forever.
+  static const _maxReconnects = 3;
+
+  /// Playing this long after a reconnect counts it as having worked, so a
+  /// channel that drops once an hour never exhausts its budget.
+  static const _stableAfter = Duration(seconds: 30);
+
   late final Player _player = Player();
   late final VideoController _controller = VideoController(_player);
   late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
   Timer? _stallTimer;
+  Timer? _freezeWatch;
+  Timer? _reconnectTimer;
+  DateTime _lastAdvance = DateTime.now();
+  DateTime _playingSince = DateTime.now();
+  Duration _lastPosition = Duration.zero;
+  int _reconnects = 0;
 
   String? _title;
   String? _error;
@@ -320,6 +340,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_released || !mounted) return;
     _stallTimer?.cancel();
     _progressTimer?.cancel();
+    _freezeWatch?.cancel();
+    _reconnectTimer?.cancel();
     unawaited(_player.stop());
     setState(() {
       _released = true;
@@ -328,6 +350,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _rejoin() {
+    _reconnects = 0;
     setState(() {
       _released = false;
       _error = null;
@@ -340,6 +363,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _lifecycle?.dispose();
     unawaited(_audioFocus?.dispose());
     _stallTimer?.cancel();
+    _freezeWatch?.cancel();
+    _reconnectTimer?.cancel();
     _progressTimer?.cancel();
     // Record where they actually got to before tearing down. Without this the
     // last up-to-ten-seconds is lost on every exit, which is exactly the moment
@@ -521,6 +546,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _player.stream.duration.firstWhere((d) => d > Duration.zero);
         await _player.seek(resume);
       }
+      _progressTimer?.cancel();
       _progressTimer =
           Timer.periodic(_progressInterval, (_) => _recordProgress());
     } catch (e) {
@@ -591,13 +617,73 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// The only trustworthy "it is playing" signal.
   void _onPosition(Duration position) {
+    if (position != _lastPosition) {
+      _lastPosition = position;
+      _lastAdvance = DateTime.now();
+    }
     if (_started || position <= Duration.zero) return;
     _stallTimer?.cancel();
+    _playingSince = DateTime.now();
+    if (_live) {
+      _freezeWatch?.cancel();
+      _freezeWatch = Timer.periodic(const Duration(seconds: 2), (_) => _watch());
+    }
     if (mounted) setState(() => _started = true);
+  }
+
+  /// Catches a live channel that froze *after* it started, which neither the
+  /// startup guard nor mpv's error stream sees. A viewer-paused stream is left
+  /// alone: its clock is meant to stand still.
+  void _watch() {
+    if (!_live || !_started || _released || _error != null) return;
+    final now = DateTime.now();
+    if (_reconnects > 0 && now.difference(_playingSince) >= _stableAfter) {
+      _reconnects = 0;
+    }
+    if (!_player.state.playing) return;
+    if (now.difference(_lastAdvance) >= _freezeTimeout) {
+      _reconnect('This channel stopped and did not come back.');
+    }
+  }
+
+  /// Stop, wait, reopen: never a second connection beside the first. §4's
+  /// `max_connections: 1` means the old one has to be released before the new
+  /// one is asked for, and the wait gives the panel time to notice it is gone.
+  ///
+  /// Returns false when the budget is spent, after showing [giveUp].
+  bool _reconnect(String giveUp) {
+    if (_reconnectTimer?.isActive ?? false) return true;
+    if (_reconnects >= _maxReconnects) {
+      _freezeWatch?.cancel();
+      unawaited(_player.stop());
+      _fail(giveUp);
+      return false;
+    }
+    _reconnects++;
+    debugPrint('Player: live stream stalled, reconnect $_reconnects of '
+        '$_maxReconnects');
+    _freezeWatch?.cancel();
+    _stallTimer?.cancel();
+    _progressTimer?.cancel();
+    unawaited(_player.stop());
+    _lastPosition = Duration.zero;
+    if (mounted) setState(() => _started = false);
+    _reconnectTimer = Timer(Duration(seconds: 2 * _reconnects), () {
+      if (mounted && !_released && _error == null) unawaited(_load());
+    });
+    return true;
   }
 
   void _onStalled() {
     if (_started) return;
+    // A reconnect that itself yields nothing tries again rather than giving up
+    // on the first miss. A first-ever open still fails straight away: a dead
+    // listing should say so in 15s, not after three more attempts.
+    if (_live && _reconnects > 0) {
+      _reconnect('This channel is not responding. Listings often outrun '
+          'reality on a panel - try another, or the same one again.');
+      return;
+    }
     // Release the connection rather than leaving it held. On a one-connection
     // line a dead channel would otherwise cost the user their only slot until
     // the panel times it out server-side.
@@ -613,6 +699,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _onPlayerError(String message) {
     if (isFatalPlayerError(message)) {
+      // A live stream that dies mid-watch is the common drop, so it gets the
+      // same reconnect as a freeze rather than an immediate error screen.
+      if (_live && !_released && (_started || _reconnects > 0)) {
+        _reconnect(message);
+        return;
+      }
       _fail(message);
     } else {
       debugPrint('Player: continuing past non-fatal mpv error: $message');
