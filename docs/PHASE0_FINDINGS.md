@@ -852,6 +852,6 @@ Phase 1 should not start until every line here is true:
       upstream archived — §14)
 - [ ] Play + App Store developer accounts confirmed active
 - [ ] Disclaimer copy drafted (general + Advanced Sources, §8.2)
-- [ ] Decision recorded on Firebase Remote Config kill switch (§16)
+- [x] ~~Decision recorded on Firebase Remote Config kill switch (§16)~~ Dropped 2026-10-06; see §16.1
 - [ ] `lib/features/_spike/` deleted, and the spike deps that Phase 1 doesn't
       need (`shelf`, `smb_connect`) re-justified or removed

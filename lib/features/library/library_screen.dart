@@ -151,8 +151,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       advancedSources: ref.watch(advancedSourcesEnabledProvider),
     );
 
-    // The gate can retract the tab the user is standing on (§15's kill-switch
-    // drill checks exactly this), so fall back rather than render a dead tab.
+    // The gate can retract the tab the user is standing on (toggling Advanced sources
+    // off while standing on it), so fall back rather than render a dead tab.
     final requested = _tabFromQuery(context);
     final selected = tabs.contains(_selected ?? requested)
         ? (_selected ?? requested)!

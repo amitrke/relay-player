@@ -31,7 +31,7 @@ None of this blocks building the app — it just means "publish to app stores" n
 
 ## 2. High-level architecture
 
-**Foundational decision: this app has no backend.** Every source is user-supplied, every credential is device-local, every AI call goes directly from the device to the user's own provider. There is no server of ours in any data path. This is a deliberate architectural commitment, not a gap to be filled in later, and it pays for itself several times over: no server costs, no data-controller obligations under GDPR, nothing to subpoena or seize when a rights-holder complaint arrives (§1.5), and a genuine privacy story that reinforces the neutral-tool framing the whole store-policy strategy rests on. §16 covers the one narrow, deliberately-bounded exception (crash reporting and a remote kill switch) and lists what must never be added.
+**Foundational decision: this app has no backend.** Every source is user-supplied, every credential is device-local, every AI call goes directly from the device to the user's own provider. There is no server of ours in any data path. This is a deliberate architectural commitment, not a gap to be filled in later, and it pays for itself several times over: no server costs, no data-controller obligations under GDPR, nothing to subpoena or seize when a rights-holder complaint arrives (§1.5), and a genuine privacy story that reinforces the neutral-tool framing the whole store-policy strategy rests on. §16 covers the one narrow, deliberately-bounded exception (crash reporting) and lists what must never be added.
 
 Layered, feature-first structure — standard for a Flutter app this size:
 
@@ -755,7 +755,7 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **Fire TV specifically — treat it as its own target, not a synonym for Android TV.** Three differences matter architecturally:
 
-- **No Google Play Services.** Fire OS ships without GMS, so any dependency that requires it silently does nothing on your Fire TV users' devices. This directly constrains §16: Crashlytics and Remote Config work without Play Services and are therefore safe, while Firebase Cloud Messaging requires it and Firebase Analytics degrades without it. Verify this on real hardware rather than assuming — a crash reporter that reports nothing is worse than no crash reporter, because it makes you believe the build is stable.
+- **No Google Play Services.** Fire OS ships without GMS, so any dependency that requires it silently does nothing on your Fire TV users' devices. This directly constrains §16: Crashlytics works without Play Services and is therefore safe, while Firebase Cloud Messaging requires it and Firebase Analytics degrades without it. Verify this on real hardware rather than assuming — a crash reporter that reports nothing is worse than no crash reporter, because it makes you believe the build is stable.
 - **It is the weakest hardware in the matrix.** A Fire TV stick has substantially less CPU and RAM than the phones you'll develop on. This is the device that makes the XMLTV isolate requirement (§5) non-negotiable, that will expose any main-isolate JSON parsing of large Xtream category responses, and where libmpv's software-decode fallback paths will hurt most. Profile here, not on a flagship phone.
 - **Separate store, separate submission.** The Amazon Appstore is its own listing, its own review process, and its own policy surface — distinct from the Play Console work in §13 Phase 6. It is also, usefully, a third distribution channel that is not affected by a Play or App Store takedown, which is worth something given §1.5.
 
@@ -908,7 +908,7 @@ version number describes contents while the **Play track** carries readiness,
 so the public launch is a track promotion rather than a version bump; and the
 ladder deliberately puts **Phase 3.5 (AI) last**, after Phase 4 and the Phase 6
 prerequisites, because nothing about a store submission depends on it whereas
-§12.1's About section does (§16's kill switch was on that list until
+§12.1's About section does (§16's kill switch, since dropped, was on that list until
 2026-09-21, when RELEASING.md withdrew it as a gate). The phase numbers below are
 still the map; the tag ladder is the schedule.
 
@@ -993,7 +993,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 | AI text generation | Custom dio-based clients per provider (Anthropic Messages API, OpenAI Chat Completions, Gemini `generateContent`); one shared client for generic-OpenAI-compatible + local endpoints |
 | AI transcription | OpenAI Whisper-style endpoint initially, **chunked under its 25 MB request cap** (§9.2). Audio extraction needs an ffmpeg binding — **`ffmpeg_kit_flutter` is discontinued and upstream `arthenica/ffmpeg-kit` is archived**; the community successor is `ffmpeg_kit_flutter_new`, but the post-retirement fork landscape is fragmented with no consensus winner, so pin a specific fork, vendor it if necessary, and have a platform-channel fallback in mind (§13 Phase 0) |
 | ffmpeg licensing | **Decided in Phase 0, not Phase 3.5** — media_kit bundles libmpv/ffmpeg, so the choice is made at engine selection (§10). Target an LGPL build, dynamically linked, with GPL-only encoders (x264/x265) excluded — this app decodes, it never encodes |
-| Crash reporting / kill switch | Firebase Crashlytics + Remote Config only — both work without Google Play Services, which Fire TV lacks (§11, §16). No Analytics, no FCM, no Auth, no Firestore |
+| Crash reporting | Firebase Crashlytics only — it works without Google Play Services, which Fire TV lacks (§11, §16). No Remote Config, no Analytics, no FCM, no Auth, no Firestore |
 | CI/build | GitHub Actions. Android goes to Play internal testing through `release.yml` with the `r0adkll/upload-google-play` action pinned to a commit, not fastlane, which it did not need for a single track ([RELEASING.md](RELEASING.md), 2026-09-13). iOS joined the same workflow on 2026-09-23 as a second job to TestFlight: `xcodebuild` with an App Store Connect API key and cloud-managed signing, not Xcode Cloud, so one tag and one run number drive both stores and the macOS minutes are free for a public repo (RELEASING.md, iOS: TestFlight). Verified by run 7 on 2026-09-23, which reached both stores. The Amazon Appstore (§11) is still undecided, and fastlane may yet earn its place there |
 
 ## 15. Testing plan
@@ -1010,7 +1010,6 @@ regardless of how finished it looks.
 - Manual device matrix: 1 real Android TV box, 1 Fire TV stick, 2 Android phones (different Android versions), 1–2 iOS devices, against at least 2 different real Xtream panels, one M3U source, one real Plex server (direct-play and forced-transcode content), one real SMB share (NAS or Windows PC), and each of the AI provider configurations (Anthropic, OpenAI, Gemini, a generic-compatible endpoint pointed at a real self-hosted server, and local Ollama) — behavior varies enough across all of these that "works on the emulator" tells you very little
 - Specifically verify SAF persisted folder permissions survive an app restart and a device reboot, not just the current session
 - Store-submission dry run: full App Store review-notes writeup (including the Advanced Sources disclosure, §8.4, and AI data-sharing disclosure per §9.3) and Play Console data-safety form filled out before the real submission, not during
-- **Kill-switch drill (§16)**: verify that flipping the remote Advanced Sources flag actually removes the Live TV tab, EPG screen, and Xtream/M3U account entries on a running install, and that the app behaves correctly when Remote Config is unreachable (fails to the last cached value, and to *enabled* on a fresh install that has never fetched — never trapping a paying user in a broken state because of a network blip)
 - **Transcription chunking (§9.2)**: verify chunk-boundary word handling and timestamp re-stitching against a file long enough to require many chunks, and that an interrupted job resumes from its checkpoint rather than restarting
 - **Credential storage (§3)**: assert by inspection that no secret material appears in the Hive/Isar files on disk
 
@@ -1020,16 +1019,16 @@ regardless of how finished it looks.
 
 §2 states the foundational decision: **this app has no backend.** That is a feature. It should be defended actively, because "just add a small server for X" is the kind of suggestion that arrives reasonably and compounds badly.
 
-### 16.1 The only two exceptions, and why they earn it
+### 16.1 The only exception, and why it earns it
 
-Two managed services are worth adopting. Both are free at this app's scale, both are Firebase, and both — critically — [work without Google Play Services](https://firebase.google.com/docs/android/android-play-services), which Fire TV lacks (§11).
+One managed service is worth adopting. It is free at this app's scale, it is Firebase, and — critically — it [works without Google Play Services](https://firebase.google.com/docs/android/android-play-services), which Fire TV lacks (§11).
 
-**Remote Config — a server-side kill switch for Advanced Sources.** This is the strongest backend argument in the entire document and the reason this section exists. §1.2 claims the IPTV feature "could be disabled via an update without touching the core app," but an App Store update is a multi-day review cycle. If a rights-holder complaint or a review threat arrives (§1.5 says to expect this as an operational reality, not a one-time gate), days is the wrong unit of response time. A remote flag gating an already-shipped feature flips in minutes.
-
-Implementation notes that matter:
-- The remote flag **ANDs with** the user's local toggle (§8.2) — it can force the feature off globally, but it never forces it *on* for a user who hasn't opted in.
-- Fail safe and fail *quiet*: cache the last fetched value, and on a fresh install that has never reached the network, default to the user's local setting. A network blip must not silently disable a working app.
-- **This does not touch Guideline 2.5.2.** That rule bars downloading and executing *code*; this is a boolean toggling a feature already present and disclosed in the reviewed binary. Remote configuration of shipped features is ordinary and universal. Worth stating explicitly since §1.4 draws a hard line on the code-download question and the distinction should not blur.
+**Remote Config kill switch: dropped, 2026-10-06.** This section used to adopt a
+Firebase Remote Config flag that could switch Advanced Sources off in minutes,
+ANDed with the user's local toggle (§8.2). It is no longer planned (#16 closed).
+§1.2's "disabled via an update" is the mechanism, and RELEASING.md records
+why a store update is fast enough on Play. Reopen it only if a complaint
+arrives that an update cannot answer in time, and argue it against §16.3.
 
 **Crashlytics — field crash reporting.** The app ships libmpv across phone, tablet, Android TV, Fire TV, and iOS, pointed at deliberately malformed streams from cheap panels. Field crashes here will not reproduce locally. Make it **opt-in** at first run to stay consistent with the privacy posture below, and declare it in Play Data Safety and Apple's privacy labels either way. The toggle lives in Settings → **Privacy and data** (§12.1), alongside the statement that the app has no backend — one screen where a user can see everything that does and does not leave the device.
 
@@ -1138,19 +1137,15 @@ The test for any future proposal: *does this put our server in the path of user 
 
 ### Open — decide before the relevant phase
 
-- **§16 backend exceptions** — adopt Firebase Remote Config as the Advanced
-  Sources kill switch (recommended: the difference between a minutes-long and a
-  multi-day response to a takedown threat), and whether Crashlytics ships
-  opt-in. **Deferred out of the MVP, 2026-09-21:** neither ships in the first
-  Play release, so the MVP contains no Firebase at all. The kill switch stays
-  recommended and designed (§16.1, #16), but it is no longer a gate on
-  promotion; the reasoning, and when to revisit it (before Phase 5, or on the
-  first complaint), is in RELEASING.md under the ladder's second gate.
-  Everything else backend-shaped stays out; §16.3 is the standing
-  answer. **Tested once already, 2026-09-13:** issue #6 asked for Firebase
-  Analytics alongside Crashlytics, and Analytics was dropped rather than
-  §16.3 revised. #6 is now Crashlytics only. A future case for analytics has
-  to be argued against §16.3 here first, not in an issue.
+- **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
+  out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
+  the MVP contains no Firebase at all. **The Remote Config kill switch was
+  dropped, 2026-10-06** (§16.1, #16 closed). Everything else backend-shaped
+  stays out; §16.3 is the standing answer. **Tested once already,
+  2026-09-13:** issue #6 asked for Firebase Analytics alongside Crashlytics,
+  and Analytics was dropped rather than §16.3 revised. #6 is now Crashlytics
+  only. A future case for analytics has to be argued against §16.3 here first,
+  not in an issue.
 - ~~**iOS ATS position (§11)**~~ **Resolved 2026-09-23:** none of the three
   options is needed. ATS does not govern `dart:io` or libmpv's sockets, shown
   with a `URLSession` control that ATS did block (§11). Reopen only if

@@ -415,13 +415,13 @@ the reasons the ladder is ordered this way rather than by §13's phase numbers:
 
   The argument is strongest for iOS, where review is stricter and slower.
   **Revisit before the Phase 5 submission, or the first time a complaint
-  arrives**, whichever comes first. The design in §16.1 and #16 stands; only
-  its place on the schedule changed.
+  arrives**, whichever comes first. **Superseded 2026-10-06:** the kill switch was dropped
+  altogether (§16.1, #16 closed), so there is nothing left to schedule.
 
 This ladder puts AI (§13 Phase 3.5) *after* Phase 4 and the Phase 6
 prerequisites, which is a deliberate reordering: it is the largest remaining
 block of work and nothing about a store submission depends on it, whereas
-§12.1's About section does. (It also said §16's kill switch did, until that
+§12.1's About section does. (It also said §16's kill switch, since dropped, did, until that
 gate was withdrawn above.)
 
 ## Failure modes to expect
