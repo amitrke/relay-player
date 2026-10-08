@@ -55,7 +55,13 @@ class RelaySurface extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           boxShadow: focused
-              ? [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 0, spreadRadius: 3)]
+              ? [
+                  BoxShadow(
+                    color: t.accent.withValues(alpha: 0.5),
+                    blurRadius: 0,
+                    spreadRadius: 3,
+                  ),
+                ]
               : null,
         ),
         child: Material(
@@ -310,12 +316,15 @@ class _RelayButtonState extends State<RelayButton> {
           foregroundColor: t.accentInk,
           minimumSize: Size(0, f == RelayFormFactor.tv ? 52 : 48),
           padding: EdgeInsets.symmetric(
-              horizontal: f == RelayFormFactor.tv ? 32 : 24),
+            horizontal: f == RelayFormFactor.tv ? 32 : 24,
+          ),
           textStyle: TextStyle(
             fontSize: RelayLayout.bodySize(f) + 1,
             fontWeight: FontWeight.w600,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
         child: Text(widget.label),
       ),
@@ -349,6 +358,42 @@ class RelayTextButton extends StatelessWidget {
         textStyle: TextStyle(fontSize: RelayLayout.bodySize(f)),
       ),
       child: Text(label),
+    );
+  }
+}
+
+/// Folds [child] away to nothing, and takes it out of focus traversal while it
+/// is folded.
+///
+/// For chrome that is in the way once the viewer is deep in a grid. A 1080p TV
+/// reports 540 dp of height (see [RelayLayout.bodySize]), and a page title, a
+/// tab strip and a continue-watching row used up enough of it that not even
+/// two rows of posters were left. Excluding focus matters as much as the
+/// clipping: a folded row that stayed focusable would let a remote land on
+/// something the viewer cannot see.
+class RelayCollapsible extends StatelessWidget {
+  const RelayCollapsible({
+    super.key,
+    required this.collapsed,
+    required this.child,
+  });
+
+  final bool collapsed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      excluding: collapsed,
+      child: ClipRect(
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          heightFactor: collapsed ? 0 : 1,
+          child: child,
+        ),
+      ),
     );
   }
 }
@@ -435,11 +480,14 @@ class RelayFieldTraversal extends StatelessWidget {
   final Widget child;
 
   static const _shortcuts = <ShortcutActivator, Intent>{
-    SingleActivator(LogicalKeyboardKey.arrowUp):
-        DirectionalFocusIntent(TraversalDirection.up, ignoreTextFields: false),
+    SingleActivator(LogicalKeyboardKey.arrowUp): DirectionalFocusIntent(
+      TraversalDirection.up,
+      ignoreTextFields: false,
+    ),
     SingleActivator(LogicalKeyboardKey.arrowDown): DirectionalFocusIntent(
-        TraversalDirection.down,
-        ignoreTextFields: false),
+      TraversalDirection.down,
+      ignoreTextFields: false,
+    ),
   };
 
   @override

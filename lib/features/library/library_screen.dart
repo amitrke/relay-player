@@ -24,18 +24,20 @@ import 'poster_grid.dart';
 /// One server's video libraries. Shared by the tabs and by Settings → Sources,
 /// so the mapping UI lists exactly what the tabs draw from.
 final plexSectionsProvider =
-    FutureProvider.family<List<PlexLibrarySection>, String>(
-        (ref, serverId) async {
-  final servers = ref.watch(connectedServersProvider);
-  for (final server in servers) {
-    if (server.id == serverId) {
-      // The timeout belongs here, not at each call site. It used to be applied
-      // only where the library tabs merge sources, which left Settings →
-      // Sources — the one screen that watches this provider directly — spinning
-      // forever on a server that hangs instead of failing. That is the normal
-      // behaviour of a sleeping NAS or a dead relay connection, not an edge
-      // case, and it made adding a second server look like it never completed.
-      return server.service.sections().timeout(
+    FutureProvider.family<List<PlexLibrarySection>, String>((
+      ref,
+      serverId,
+    ) async {
+      final servers = ref.watch(connectedServersProvider);
+      for (final server in servers) {
+        if (server.id == serverId) {
+          // The timeout belongs here, not at each call site. It used to be applied
+          // only where the library tabs merge sources, which left Settings →
+          // Sources — the one screen that watches this provider directly — spinning
+          // forever on a server that hangs instead of failing. That is the normal
+          // behaviour of a sleeping NAS or a dead relay connection, not an edge
+          // case, and it made adding a second server look like it never completed.
+          return server.service.sections().timeout(
             _perServerTimeout,
             onTimeout: () => throw TimeoutException(
               '${server.name} did not respond within '
@@ -43,10 +45,10 @@ final plexSectionsProvider =
               'the network.',
             ),
           );
-    }
-  }
-  return const [];
-});
+        }
+      }
+      return const [];
+    });
 
 /// How long one server gets before the rest of the library goes on without it.
 ///
@@ -61,8 +63,10 @@ const _perServerTimeout = Duration(seconds: 10);
 /// §12 screen 3: "Movies/Series merge across Plex accounts". One server failing
 /// or stalling must not blank the tab — it should cost you its own titles, not
 /// everyone else's.
-final _libraryProvider =
-    FutureProvider.family<List<CatalogItem>, LibraryTab>((ref, tab) async {
+final _libraryProvider = FutureProvider.family<List<CatalogItem>, LibraryTab>((
+  ref,
+  tab,
+) async {
   final servers = ref.watch(connectedServersProvider);
   final mapping = ref.watch(libraryMappingProvider);
 
@@ -70,10 +74,12 @@ final _libraryProvider =
     for (final server in servers)
       () async {
         try {
-          final sections =
-              await ref.watch(plexSectionsProvider(server.id).future);
-          final items = await server.service
-              .itemsFrom(mapping.sectionsFor(tab, server.id, sections));
+          final sections = await ref.watch(
+            plexSectionsProvider(server.id).future,
+          );
+          final items = await server.service.itemsFrom(
+            mapping.sectionsFor(tab, server.id, sections),
+          );
           return [
             for (final i in items) server.service.toCatalogItem(i.metadata),
           ];
@@ -89,8 +95,9 @@ final _libraryProvider =
       if (_catalogueFor(tab) case final catalogue?)
         () async {
           try {
-            return await ref
-                .watch(xtreamCatalogProvider((account, catalogue)).future);
+            return await ref.watch(
+              xtreamCatalogProvider((account, catalogue)).future,
+            );
           } catch (_) {
             return const <CatalogItem>[];
           }
@@ -98,10 +105,10 @@ final _libraryProvider =
   ];
 
   final gathered = await Future.wait(
-    perSource.map((f) => f.timeout(
-          _perServerTimeout,
-          onTimeout: () => const <CatalogItem>[],
-        )),
+    perSource.map(
+      (f) =>
+          f.timeout(_perServerTimeout, onTimeout: () => const <CatalogItem>[]),
+    ),
   );
 
   return gathered.expand((items) => items).toList()
@@ -109,10 +116,10 @@ final _libraryProvider =
 });
 
 XtreamCatalogue? _catalogueFor(LibraryTab tab) => switch (tab) {
-      LibraryTab.movies => XtreamCatalogue.vod,
-      LibraryTab.series => XtreamCatalogue.series,
-      _ => null,
-    };
+  LibraryTab.movies => XtreamCatalogue.vod,
+  LibraryTab.series => XtreamCatalogue.series,
+  _ => null,
+};
 
 /// Home (§12 screen 3).
 ///
@@ -131,6 +138,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   /// Null until the user picks one, so a `?tab=` deep link is not immediately
   /// overwritten by a default.
   LibraryTab? _selected;
+
+  /// True while a remote is browsing below the first row of a poster grid.
+  ///
+  /// On a TV the page title, tab strip and continue-watching row together took
+  /// so much of the 540 dp height that fewer than two rows of posters showed.
+  /// They fold away once focus is past row 0 and return when it comes back, so
+  /// pressing Up from the first row still reaches them. TV only: a phone
+  /// scrolls with a finger and has no such problem.
+  bool _browsing = false;
+
+  void _onRowFocused(int row) {
+    final browsing = row > 0;
+    if (browsing != _browsing) setState(() => _browsing = browsing);
+  }
 
   static LibraryTab? _tabFromQuery(BuildContext context) {
     final name = GoRouterState.of(context).uri.queryParameters['tab'];
@@ -158,6 +179,41 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ? (_selected ?? requested)!
         : LibraryTab.movies;
 
+    final folded = f == RelayFormFactor.tv && _browsing;
+
+    final tabBar = _TabBar(
+      tabs: tabs,
+      selected: selected,
+      onSelect: (tab) => setState(() {
+        _selected = tab;
+        _browsing = false;
+      }),
+    );
+
+    // A count, not a source name. Titles here are merged across Plex servers,
+    // panels and this device, so naming one source would misdescribe most of
+    // what is on screen.
+    final trailing = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (selected.drawsFromPlex) ...[
+          _SortButton(tab: selected),
+          if (f != RelayFormFactor.phone) ...[
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(switch (ref.watch(_libraryProvider(selected))) {
+                AsyncData(:final value) =>
+                  '${value.length} ${selected.label.toLowerCase()}',
+                _ => '',
+              }, style: TextStyle(color: t.inkDim, fontSize: 12)),
+            ),
+          ],
+        ],
+      ],
+    );
+
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
@@ -165,48 +221,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Library',
-                      style: TextStyle(
-                        color: t.ink,
-                        fontSize: RelayLayout.titleSize(f) - 4,
-                        fontWeight: FontWeight.w700,
+            RelayCollapsible(
+              collapsed: folded,
+              // No "Library" heading on any form factor: the rail, or the phone's
+              // bottom bar, already says where you are and the tabs say what you
+              // are looking at. On a 540 dp TV it cost ~65 dp for nothing. Sort
+              // and count ride on the tab row instead.
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: f == RelayFormFactor.phone ? 4 : 8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: tabBar),
+                    if (selected.drawsFromPlex)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          right: f == RelayFormFactor.phone
+                              ? 12
+                              : RelayLayout.pagePadding(f).right,
+                        ),
+                        child: trailing,
                       ),
-                    ),
-                  ),
-                  // A count, not a source name. Titles here are merged across
-                  // Plex servers, panels and this device, so naming one source
-                  // would misdescribe most of what is on screen.
-                  if (selected.drawsFromPlex) ...[
-                    _SortButton(tab: selected),
-                    const SizedBox(width: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        switch (ref.watch(_libraryProvider(selected))) {
-                          AsyncData(:final value) =>
-                            '${value.length} ${selected.label.toLowerCase()}',
-                          _ => '',
-                        },
-                        style: TextStyle(color: t.inkDim, fontSize: 12),
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
-            _TabBar(
-              tabs: tabs,
-              selected: selected,
-              onSelect: (tab) => setState(() => _selected = tab),
+            Expanded(
+              child: _TabBody(
+                tab: selected,
+                folded: folded,
+                onRowFocused: f == RelayFormFactor.tv ? _onRowFocused : null,
+              ),
             ),
-            Expanded(child: _TabBody(tab: selected)),
           ],
         ),
       ),
@@ -268,8 +315,7 @@ class _TabBar extends StatelessWidget {
                       Container(
                         height: 2,
                         width: 100,
-                        color:
-                            tab == selected ? t.accent : Colors.transparent,
+                        color: tab == selected ? t.accent : Colors.transparent,
                       ),
                     ],
                   ),
@@ -283,9 +329,13 @@ class _TabBar extends StatelessWidget {
 }
 
 class _TabBody extends ConsumerWidget {
-  const _TabBody({required this.tab});
+  const _TabBody({required this.tab, this.folded = false, this.onRowFocused});
 
   final LibraryTab tab;
+
+  /// Folds the continue-watching row away; see [_LibraryScreenState._browsing].
+  final bool folded;
+  final ValueChanged<int>? onRowFocused;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -293,10 +343,7 @@ class _TabBody extends ConsumerWidget {
     if (tab == LibraryTab.localNetwork) return const LocalNetworkTab();
 
     if (!tab.drawsFromPlex) {
-      return LibraryEmptyState(
-        icon: tab.emptyIcon,
-        message: tab.emptyMessage,
-      );
+      return LibraryEmptyState(icon: tab.emptyIcon, message: tab.emptyMessage);
     }
 
     final items = ref.watch(_libraryProvider(tab));
@@ -311,8 +358,8 @@ class _TabBody extends ConsumerWidget {
       ),
       data: (unsorted) {
         final sorted = ref.watch(librarySortProvider).apply(unsorted);
-        final filtering = tab == LibraryTab.movies &&
-            ref.watch(libraryUnwatchedOnlyProvider);
+        final filtering =
+            tab == LibraryTab.movies && ref.watch(libraryUnwatchedOnlyProvider);
         final list = filtering
             ? unwatchedOnly(
                 sorted,
@@ -332,26 +379,33 @@ class _TabBody extends ConsumerWidget {
           );
         }
         return list.isEmpty
-          ? LibraryEmptyState(
-              icon: tab.emptyIcon,
-              message: ref.watch(connectedServersProvider).isEmpty &&
-                      ref.watch(xtreamAccountsProvider).isEmpty
-                  ? 'No sources connected yet.'
-                  : 'Nothing in ${tab.label.toLowerCase()} yet.',
-              actionLabel: 'Add a source',
-              onAction: () => context.push('/add-source'),
-            )
-          // Films resume above Movies and episodes above Series. It was one
-          // mixed row above Movies until 2026-09-28; see ContinueWatchingRow.
-          : tab == LibraryTab.movies || tab == LibraryTab.series
-              ? Column(
-                  children: [
-                    ContinueWatchingRow(
-                        episodes: tab == LibraryTab.series),
-                    Expanded(child: PosterGrid(items: list)),
-                  ],
-                )
-              : PosterGrid(items: list);
+            ? LibraryEmptyState(
+                icon: tab.emptyIcon,
+                message:
+                    ref.watch(connectedServersProvider).isEmpty &&
+                        ref.watch(xtreamAccountsProvider).isEmpty
+                    ? 'No sources connected yet.'
+                    : 'Nothing in ${tab.label.toLowerCase()} yet.',
+                actionLabel: 'Add a source',
+                onAction: () => context.push('/add-source'),
+              )
+            // Films resume above Movies and episodes above Series. It was one
+            // mixed row above Movies until 2026-09-28; see ContinueWatchingRow.
+            : tab == LibraryTab.movies || tab == LibraryTab.series
+            ? Column(
+                children: [
+                  RelayCollapsible(
+                    collapsed: folded,
+                    child: ContinueWatchingRow(
+                      episodes: tab == LibraryTab.series,
+                    ),
+                  ),
+                  Expanded(
+                    child: PosterGrid(items: list, onRowFocused: onRowFocused),
+                  ),
+                ],
+              )
+            : PosterGrid(items: list);
       },
     );
   }
@@ -399,7 +453,10 @@ class _SortButton extends ConsumerWidget {
   }
 
   Future<void> _choose(
-      BuildContext context, WidgetRef ref, LibrarySort current) async {
+    BuildContext context,
+    WidgetRef ref,
+    LibrarySort current,
+  ) async {
     final picked = await showModalBottomSheet<LibrarySort>(
       context: context,
       backgroundColor: RelayTheme.of(context).surface,
@@ -431,7 +488,9 @@ class _SortButton extends ConsumerWidget {
                     onTap: () => Navigator.of(context).pop(option),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 14),
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -459,7 +518,8 @@ class _SortButton extends ConsumerWidget {
         );
       },
     );
-    if (picked != null) await ref.read(librarySortProvider.notifier).set(picked);
+    if (picked != null)
+      await ref.read(librarySortProvider.notifier).set(picked);
   }
 }
 

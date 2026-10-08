@@ -10,9 +10,13 @@ import 'poster_tile.dart';
 
 /// The responsive poster grid shared by Library and Search.
 class PosterGrid extends ConsumerWidget {
-  const PosterGrid({super.key, required this.items});
+  const PosterGrid({super.key, required this.items, this.onRowFocused});
 
   final List<CatalogItem> items;
+
+  /// Told which row of the grid took focus, so a screen can fold its own chrome
+  /// away once the viewer is past the first row and bring it back on row 0.
+  final ValueChanged<int>? onRowFocused;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,11 +55,26 @@ class PosterGrid extends ConsumerWidget {
       // The first tile takes focus on a TV so a remote starts on the content
       // instead of nowhere. Only on a TV: on a phone it would pull an unwanted
       // focus highlight onto a tile nobody touched.
-      itemBuilder: (context, i) => PosterTile(
-        item: ordered[i],
-        showSource: mixed,
-        autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
-      ),
+      itemBuilder: (context, i) {
+        final tile = PosterTile(
+          item: ordered[i],
+          showSource: mixed,
+          autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
+        );
+        final onRowFocused = this.onRowFocused;
+        if (onRowFocused == null) return tile;
+        // A passive node above the tile: it never takes focus or joins
+        // traversal itself, but `onFocusChange` fires when focus arrives
+        // anywhere beneath it.
+        return Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: (focused) {
+            if (focused) onRowFocused(i ~/ columns);
+          },
+          child: tile,
+        );
+      },
     );
   }
 }
