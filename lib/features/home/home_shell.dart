@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -70,8 +73,63 @@ class _HomeShellState extends State<HomeShell> {
     initialLocation: index == widget.navigationShell.currentIndex,
   );
 
+  /// Back with nothing left to go back to would close the app. Ask first.
+  ///
+  /// Reported on a TV: a few Backs too many out of a title or a folder and the
+  /// app was gone, with a cold start to get back to where you were. The shell is
+  /// the bottom of the stack, so this is only reached once every pushed page and
+  /// every branch-local page has already been popped. *Stay* takes focus, and a
+  /// further Back dismisses the dialog, so leaving takes a deliberate choice
+  /// rather than one press too many. Android only: it is the one platform here
+  /// where Back exits the app.
+  Future<void> _confirmExit() async {
+    final t = RelayTheme.of(context);
+    final exit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(
+          'Exit Subnext Player?',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: t.inkDim),
+            child: const Text('Exit'),
+          ),
+          FilledButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            style: FilledButton.styleFrom(
+              backgroundColor: t.accent,
+              foregroundColor: t.accentInk,
+            ),
+            child: const Text('Stay'),
+          ),
+        ],
+      ),
+    );
+    if (exit == true) await SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: defaultTargetPlatform != TargetPlatform.android,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmExit();
+      },
+      child: _shell(context),
+    );
+  }
+
+  Widget _shell(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final wide = f == RelayFormFactor.desktop || f == RelayFormFactor.tv;
