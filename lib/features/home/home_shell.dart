@@ -153,6 +153,14 @@ class _HomeShellState extends State<HomeShell> {
                   child: widget.navigationShell,
                 ),
               ),
+              // Under the rail, not over it: drawn last it ran through the
+              // labels whenever the rail opened across it.
+              Positioned(
+                left: _Rail.collapsedWidth,
+                top: 0,
+                bottom: 0,
+                child: VerticalDivider(width: 1, color: t.line),
+              ),
               Positioned(
                 left: 0,
                 top: 0,
@@ -165,12 +173,6 @@ class _HomeShellState extends State<HomeShell> {
                     expanded: _railFocused,
                   ),
                 ),
-              ),
-              Positioned(
-                left: _Rail.collapsedWidth,
-                top: 0,
-                bottom: 0,
-                child: VerticalDivider(width: 1, color: t.line),
               ),
             ],
           ),
