@@ -10,9 +10,17 @@ import 'poster_tile.dart';
 
 /// The responsive poster grid shared by Library and Search.
 class PosterGrid extends ConsumerWidget {
-  const PosterGrid({super.key, required this.items, this.onRowFocused});
+  const PosterGrid({
+    super.key,
+    required this.items,
+    this.onRowFocused,
+    this.showKind = false,
+  });
 
   final List<CatalogItem> items;
+
+  /// Passed to each tile; see [PosterTile.showKind].
+  final bool showKind;
 
   /// Told which row of the grid took focus, so a screen can fold its own chrome
   /// away once the viewer is past the first row and bring it back on row 0.
@@ -59,6 +67,7 @@ class PosterGrid extends ConsumerWidget {
         final tile = PosterTile(
           item: ordered[i],
           showSource: mixed,
+          showKind: showKind,
           autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
         );
         final onRowFocused = this.onRowFocused;

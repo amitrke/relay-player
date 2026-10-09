@@ -6,8 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
+import '../../data/xtream/xtream_account_store.dart';
 import '../accounts/plex_session.dart';
+import '../advanced_sources/xtream_controller.dart';
+import '../metadata/tmdb_controller.dart';
+import '../library/library_screen.dart' show plexSectionsProvider;
 import '../library/poster_grid.dart';
+import '../settings/settings_controller.dart';
+import 'search_filters.dart';
+import 'search_results_view.dart';
+import 'suggestions_provider.dart';
+import 'suggestions_view.dart';
 
 final _queryProvider = NotifierProvider<_QueryController, String>(
   _QueryController.new,
@@ -20,31 +29,100 @@ class _QueryController extends Notifier<String> {
   void update(String value) => state = value;
 }
 
-/// Search every connected server and merge.
+final _filtersProvider = NotifierProvider<_FiltersController, SearchFilters>(
+  _FiltersController.new,
+);
+
+class _FiltersController extends Notifier<SearchFilters> {
+  @override
+  SearchFilters build() => const SearchFilters();
+
+  void set(SearchFilters value) => state = value;
+}
+
+/// Search every connected server and every panel catalogue, and merge.
 ///
-/// One unreachable server must not blank the results — it should cost you its
+/// One unreachable source must not blank the results — it should cost you its
 /// own matches, not everyone else's.
+///
+/// Panels are matched locally on title, against the categories the user chose
+/// for the library tabs. There is no panel-side search call to lean on, and
+/// fetching a whole panel to look through it is exactly what §4.1 forbids, so
+/// "searchable" and "chosen in Settings" are the same set.
 final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final query = ref.watch(_queryProvider);
   if (query.trim().length < 2) return const [];
 
-  final servers = ref.watch(connectedServersProvider);
-  final perServer = await Future.wait(
-    servers.map((server) async {
-      try {
-        final found = await server.service.search(query);
-        return [
-          for (final i in found) server.service.toCatalogItem(i.metadata),
-        ];
-      } catch (_) {
-        return const <CatalogItem>[];
-      }
-    }).map((f) => f.timeout(
+  final needle = query.trim().toLowerCase();
+  final panels = Future.wait([
+    for (final account in ref.watch(xtreamAccountsProvider))
+      for (final catalogue in const [
+        XtreamCatalogue.vod,
+        XtreamCatalogue.series,
+      ])
+        () async {
+          try {
+            final all = await ref.watch(
+              xtreamCatalogProvider((account, catalogue)).future,
+            );
+            return [
+              for (final i in all)
+                if (i.title.toLowerCase().contains(needle)) i,
+            ];
+          } catch (_) {
+            return const <CatalogItem>[];
+          }
+        }().timeout(
           const Duration(seconds: 10),
           onTimeout: () => const <CatalogItem>[],
-        )),
+        ),
+  ]);
+
+  final servers = ref.watch(connectedServersProvider);
+  final mapping = ref.watch(libraryMappingProvider);
+  final perServer = await Future.wait(
+    servers
+        .map((server) async {
+          try {
+            // Only libraries not hidden in Settings → Sources; see
+            // PlexService.searchIn for why this cannot be filtered afterwards.
+            final sections = await ref.watch(
+              plexSectionsProvider(server.id).future,
+            );
+            final found = await server.service.searchIn(
+              mapping.visibleSections(server.id, sections),
+              query,
+            );
+            return [
+              for (final i in found) server.service.toCatalogItem(i.metadata),
+            ];
+          } catch (_) {
+            return const <CatalogItem>[];
+          }
+        })
+        .map(
+          (f) => f.timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => const <CatalogItem>[],
+          ),
+        ),
   );
-  return perServer.expand((items) => items).toList();
+  return rankByTitleMatch([
+    ...perServer.expand((items) => items),
+    ...(await panels).expand((items) => items),
+  ], query);
+});
+
+/// The results with TMDB metadata folded in, when there is a key.
+///
+/// Separate from [_resultsProvider] on purpose: the grid shows the moment the
+/// sources answer, and this lands a few seconds later and only adds chips. A
+/// lookup that fails or finds nothing leaves its items as they were.
+final _enrichedProvider = FutureProvider<List<CatalogItem>>((ref) async {
+  final results = await ref.watch(_resultsProvider.future);
+  final enricher = await ref.watch(tmdbEnricherProvider.future);
+  if (enricher == null || results.isEmpty) return results;
+  return enricher.enrich(results);
 });
 
 /// Search across the connected sources (§12 screen 8).
@@ -86,6 +164,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final f = RelayLayout.of(context);
     final query = ref.watch(_queryProvider);
     final results = ref.watch(_resultsProvider);
+    final filters = ref.watch(_filtersProvider);
+    // The plain results until the enriched ones arrive, so a slow or failing
+    // TMDB never holds the grid back.
+    final enriched = ref.watch(_enrichedProvider).value;
+    final sourceNames = <String, String>{
+      for (final s in ref.watch(connectedServersProvider)) s.id: s.name,
+      for (final a in ref.watch(xtreamAccountsProvider)) a.id: a.name,
+    };
 
     return Scaffold(
       backgroundColor: t.bg,
@@ -94,8 +180,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Column(
           children: [
             Padding(
-              padding:
-                  RelayLayout.pagePadding(f).copyWith(top: 16, bottom: 8),
+              padding: RelayLayout.pagePadding(f).copyWith(top: 16, bottom: 8),
               child: RelayFieldTraversal(
                 child: TextField(
                   controller: _controller,
@@ -138,29 +223,43 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             Expanded(
               child: switch (query.trim().length) {
-                0 => const LibraryEmptyState(
+                // Suggestions when there are honest ones, else the plain prompt.
+                // While they load, or if they fail, the prompt shows: nothing
+                // here is worth a spinner or an error.
+                0 => switch (ref.watch(suggestionsProvider).value) {
+                  final rows? when rows.isNotEmpty => SuggestionsView(
+                    rows: rows,
+                  ),
+                  _ => const LibraryEmptyState(
                     icon: Icons.search,
                     message: 'Search movies and series across your server.',
                   ),
+                },
                 1 => const LibraryEmptyState(
-                    icon: Icons.search,
-                    message: 'Keep typing…',
-                  ),
+                  icon: Icons.search,
+                  message: 'Keep typing…',
+                ),
                 _ => results.when(
-                    loading: () =>
-                        Center(child: CircularProgressIndicator(color: t.accent)),
-                    error: (e, _) => LibraryEmptyState(
-                      icon: Icons.cloud_off_outlined,
-                      message: '$e',
-                      onRetry: () => ref.invalidate(_resultsProvider),
-                    ),
-                    data: (list) => list.isEmpty
-                        ? LibraryEmptyState(
-                            icon: Icons.search_off,
-                            message: 'Nothing matching "$query".',
-                          )
-                        : PosterGrid(items: list),
+                  loading: () =>
+                      Center(child: CircularProgressIndicator(color: t.accent)),
+                  error: (e, _) => LibraryEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    message: '$e',
+                    onRetry: () => ref.invalidate(_resultsProvider),
                   ),
+                  data: (list) => list.isEmpty
+                      ? LibraryEmptyState(
+                          icon: Icons.search_off,
+                          message: 'Nothing matching "$query".',
+                        )
+                      : SearchResultsView(
+                          all: enriched ?? list,
+                          filters: filters,
+                          sourceNames: sourceNames,
+                          onFilters: (v) =>
+                              ref.read(_filtersProvider.notifier).set(v),
+                        ),
+                ),
               },
             ),
           ],

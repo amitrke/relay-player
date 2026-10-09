@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../advanced_sources/xtream_accounts_pane.dart';
 import 'about_pane.dart';
+import 'metadata_pane.dart';
 import 'playback_panes.dart';
 import 'sources_pane.dart';
 
@@ -142,6 +143,9 @@ enum SettingsSection {
   // subtitles on/off, language and size, all read by the player.
   playback('Playback', built: true),
   subtitles('Subtitles', built: true),
+  // Built 2026-10-08: the user's own TMDB key, which unlocks genre, rating and
+  // original-language filters in Search.
+  metadata('Metadata', built: true),
   aiFeatures('AI features'),
   advancedSources('Advanced sources', built: true),
   // Unbuilt again since 2026-09-22. Its only control was "Send crash
@@ -238,6 +242,9 @@ class _PhoneSettings extends StatelessWidget {
         const SizedBox(height: 22),
 
         const _Section(title: 'Subtitles', child: SubtitlesPane()),
+        const SizedBox(height: 22),
+
+        const _Section(title: 'Metadata', child: MetadataPane()),
         const SizedBox(height: 22),
 
         _Section(
@@ -631,6 +638,10 @@ class _DesktopSettings extends StatelessWidget {
               SettingsSection.subtitles => const _DesktopPane(
                   title: 'Subtitles',
                   child: SubtitlesPane(),
+                ),
+              SettingsSection.metadata => const _DesktopPane(
+                  title: 'Metadata',
+                  child: MetadataPane(),
                 ),
               SettingsSection.advancedSources => _DesktopPane(
                   title: 'Advanced sources',

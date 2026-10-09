@@ -18,6 +18,7 @@ class PosterTile extends ConsumerWidget {
     required this.item,
     this.autofocus = false,
     this.showSource = false,
+    this.showKind = false,
   });
 
   final CatalogItem item;
@@ -25,6 +26,12 @@ class PosterTile extends ConsumerWidget {
   /// Whether to label the poster with where it comes from. The grid decides,
   /// because only it knows whether its items come from more than one source.
   final bool showSource;
+
+  /// Whether to say "Movie" or "Series" beside the year. Search turns it on:
+  /// results from every source and both kinds share one grid there, and a
+  /// poster alone does not say which it is. The library tabs are already split
+  /// by kind, so a label on every tile would only repeat the tab.
+  final bool showKind;
 
   /// The first tile in a grid takes focus, so a remote lands on the content
   /// rather than nowhere.
@@ -44,18 +51,16 @@ class PosterTile extends ConsumerWidget {
       // Plex only: a panel has no watched state to set.
       onLongPress: item.source == CatalogSource.plex
           ? () => showWatchActions(
-                context,
-                ref,
-                WatchTarget(
-                  serverId: item.sourceId,
-                  ratingKey: item.id,
-                  title: item.title,
-                  isShow: item.kind == CatalogKind.show,
-                  watched: item.kind == CatalogKind.show
-                      ? null
-                      : watch.watched,
-                ),
-              )
+              context,
+              ref,
+              WatchTarget(
+                serverId: item.sourceId,
+                ratingKey: item.id,
+                title: item.title,
+                isShow: item.kind == CatalogKind.show,
+                watched: item.kind == CatalogKind.show ? null : watch.watched,
+              ),
+            )
           : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,9 +139,13 @@ class PosterTile extends ConsumerWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (item.year != null)
+          if (item.year != null || showKind)
             Text(
-              '${item.year}',
+              [
+                if (item.year != null) '${item.year}',
+                if (showKind)
+                  item.kind == CatalogKind.show ? 'Series' : 'Movie',
+              ].join(' · '),
               style: TextStyle(
                 color: t.inkDim,
                 fontSize: f == RelayFormFactor.tv ? 15 : 11,
@@ -155,8 +164,11 @@ WatchState _watchStateOf(CatalogItem item, WidgetRef ref) {
   if (key == null) return WatchState.none;
   return WatchState.forItem(
     item,
-    local: ref.watch(historyProvider
-        .select((all) => all.where((h) => h.key == key).firstOrNull)),
+    local: ref.watch(
+      historyProvider.select(
+        (all) => all.where((h) => h.key == key).firstOrNull,
+      ),
+    ),
     override: ref.watch(watchOverridesProvider.select((m) => m[key])),
   );
 }
@@ -220,9 +232,9 @@ class SourceBadge extends StatelessWidget {
   final CatalogSource source;
 
   static String labelFor(CatalogSource source) => switch (source) {
-        CatalogSource.plex => 'Plex',
-        CatalogSource.xtream => 'IPTV',
-      };
+    CatalogSource.plex => 'Plex',
+    CatalogSource.xtream => 'IPTV',
+  };
 
   @override
   Widget build(BuildContext context) {

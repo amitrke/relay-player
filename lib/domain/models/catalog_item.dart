@@ -28,6 +28,10 @@ class CatalogItem {
     this.viewOffset,
     this.duration,
     this.lastViewedAt,
+    this.language,
+    this.genres = const [],
+    this.rating,
+    this.originalLanguage,
   });
 
   final CatalogSource source;
@@ -60,18 +64,67 @@ class CatalogItem {
   final Duration? duration;
   final DateTime? lastViewedAt;
 
+  /// Display name of the language, when something told us ("English", "Hindi").
+  ///
+  /// **Inferred, not read.** `dart_plex` 0.1.2 does not parse a language off
+  /// Plex metadata and a panel has no such field, so this is guessed from the
+  /// category a panel title was filed under (`languageOfCategory`). Null means
+  /// "unknown", never "English": every Plex item and any panel category with no
+  /// recognisable marker is null, and a language filter must say so rather than
+  /// treat the gap as a language.
+  final String? language;
+
+  /// From TMDB, when the user has given a key and a lookup matched. Empty,
+  /// null and null mean "not looked up or not found", never "no genres".
+  final List<String> genres;
+
+  /// TMDB's average vote out of 10.
+  final double? rating;
+
+  /// Display name of the *original* language. Distinct from [language], which
+  /// is a guess at what a panel copy is dubbed in: a Korean film dubbed into
+  /// English has `originalLanguage` Korean and `language` English.
+  final String? originalLanguage;
+
+  /// Stable across rebuilds, unique across sources. [id] alone is not: a Plex
+  /// `ratingKey` and a panel `stream_id` collide freely.
+  String get key => '${source.name}|$sourceId|$id';
+
+  CatalogItem withMetadata({
+    required List<String> genres,
+    double? rating,
+    String? originalLanguage,
+  }) =>
+      CatalogItem(
+        source: source,
+        sourceId: sourceId,
+        kind: kind,
+        id: id,
+        title: title,
+        year: year,
+        posterUrl: posterUrl,
+        addedAt: addedAt,
+        viewCount: viewCount,
+        viewOffset: viewOffset,
+        duration: duration,
+        lastViewedAt: lastViewedAt,
+        language: language,
+        genres: genres,
+        rating: rating,
+        originalLanguage: originalLanguage,
+      );
+
   /// Where tapping this item leads.
   ///
   /// A show has no file of its own and resolves to seasons and episodes; a movie
   /// resolves straight to a stream.
   String get route => switch ((source, kind)) {
-        (CatalogSource.plex, CatalogKind.show) => '/show/$sourceId/$id',
-        (CatalogSource.plex, CatalogKind.movie) => '/play/$sourceId/$id',
-        (CatalogSource.xtream, CatalogKind.show) =>
-          '/advanced/xtream/$sourceId/series/$id',
-        (CatalogSource.xtream, CatalogKind.movie) =>
-          '/vod/$sourceId/$id',
-      };
+    (CatalogSource.plex, CatalogKind.show) => '/show/$sourceId/$id',
+    (CatalogSource.plex, CatalogKind.movie) => '/play/$sourceId/$id',
+    (CatalogSource.xtream, CatalogKind.show) =>
+      '/advanced/xtream/$sourceId/series/$id',
+    (CatalogSource.xtream, CatalogKind.movie) => '/vod/$sourceId/$id',
+  };
 
   String get sortKey => title.toLowerCase();
 }

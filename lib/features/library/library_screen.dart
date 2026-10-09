@@ -115,6 +115,9 @@ final _libraryProvider = FutureProvider.family<List<CatalogItem>, LibraryTab>((
     ..sort((a, b) => a.sortKey.compareTo(b.sortKey));
 });
 
+/// Everything a tab shows, for screens that need to look titles up in it.
+final libraryItemsProvider = _libraryProvider;
+
 XtreamCatalogue? _catalogueFor(LibraryTab tab) => switch (tab) {
   LibraryTab.movies => XtreamCatalogue.vod,
   LibraryTab.series => XtreamCatalogue.series,

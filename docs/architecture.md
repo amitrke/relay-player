@@ -816,6 +816,61 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)
+   > **Search as built, 2026-10-08.** It queries every connected Plex server and
+   > every panel catalogue the user has chosen categories for (§4.1: a panel is
+   > matched locally on title, never fetched whole to be searched). Each result
+   > says "Movie" or "Series" beside its year, and Type, Source, Year (by decade)
+   > and Language chips narrow the grid. A chip is offered only when it could
+   > change the result, so Source appears once more than one source answers.
+   > **Language is a guess.** Neither `dart_plex` 0.1.2 nor a panel gives a
+   > language, so it is read from the panel *category name* ("EN | Movies",
+   > "Hindi Dubbed"; `category_language.dart`). Plex titles and unmarked
+   > categories have none and fall out of a language filter rather than being
+   > counted as any language. If `dart_plex` ever parses a Plex audio language,
+   > that is the better source and this should defer to it. Open question: whether
+   > panel category naming is consistent enough across providers for the guess to
+   > be worth keeping; only tested here against made-up names.
+   >
+   > **Hidden libraries and search, 2026-10-08.** Search used Plex's `/search`,
+   > which covers every library and says nothing about which one a hit came from,
+   > so a library set to *Hidden* in Settings → Sources still leaked into results
+   > (the Movies and Series tabs had always respected it). The obvious fix,
+   > `/hubs/search?sectionId=`, **does not work on the server tested**: different
+   > `sectionId`s returned identical, unscoped hubs. A library's own listing
+   > (`/library/sections/{id}/all`) with a `title` filter does scope, so search now
+   > asks each non-hidden library in turn (`PlexService.searchIn`). The cost is
+   > looser matching, since Plex reads that filter as "contains" ("man" finds
+   > "Mansion"), so results are ranked exact title, whole word, word start, then
+   > the rest (`rankByTitleMatch`). Plex's own per-library `hidden` flag was
+   > checked and is 0 for every library on the test server, so it is not what
+   > "hidden" means here.
+   >
+   > **TMDB enrichment, 2026-10-08.** Settings → Metadata takes the user's own TMDB
+   > key (secure storage only, §3; verified against TMDB before it is saved). With
+   > one, the first 120 search results are looked up on TMDB (title cleaned and
+   > matched by year, `title_match.dart`), adding Genre, Rating and *Original*
+   > language chips. The cache is its own Hive box and remembers misses for 14
+   > days. Matching prefers returning nothing to a wrong match: with a year, a hit
+   > must be within a year of it; without one, the title must match exactly.
+   > Original language is deliberately a separate chip from the guessed Language,
+   > because a dubbed copy has one and not the other. Lookups are for what is on
+   > screen, never a whole catalogue (a panel can hold ~70k titles, two requests
+   > each). The titles looked up leave the device for TMDB, which the pane says
+   > in plain words, and TMDB's attribution line is shown there as its terms ask.
+   > **"Because you watched", 2026-10-09.** The empty Search screen shows up to
+   > four rows, one per recently watched film, of titles TMDB recommends *that the
+   > user already has* (`matchRecommendations`): TMDB proposes and anything not in
+   > a connected source is dropped, so this stays a library-navigation aid and not
+   > a way to find things to acquire (§9.2). Seeds come from Plex's own watch
+   > state (any Plex app, present from first launch) and this device's history
+   > together. Episodes are not seeds, because history stores an episode's own
+   > title and not its show's; a series-aware seed needs the show title recorded.
+   > Already-watched titles are excluded, the same film on two sources shows once
+   > (Plex first), and with no TMDB key, no seeds or no match the plain search
+   > prompt shows instead.
+   >
+   > The AI provider layer of §9 is not built: its Settings pane is still hidden
+   > demo data.
 9. Settings — see §12.1 for the section breakdown
 
 ### 12.1 Settings sections
