@@ -1296,6 +1296,54 @@ A preference crosses only if it is on `TransferPreferences`'s allowlist and has 
 
 ---
 
+## 18. Downloads: watching Plex titles with no network
+
+Added 2026-10-09. A film or episode from the user's own Plex server can be saved on the device and played with no network: a flight, a holiday, a TV in a house with bad Wi-Fi.
+
+### 18.1 Scope, and what is deliberately out
+
+**Plex only.** The reasoning, so nobody has to re-derive it:
+
+- **IPTV panels (Xtream) are excluded.** §1 and §8.3 rest on the app being a player that does not curate, host or copy a provider's catalogue. A "download from my provider" action is the thing a reviewer reads as piracy tooling, however it is meant. A panel's `max_connections` (§4) would also make a second fetch fail in a way that looks like a flaky provider. A *record what you are watching* feature for live channels was discussed (mpv can write the stream it is already playing, using no second connection) and set aside; if it comes back, it needs its own section, the §8.2 acknowledgement widened to cover recording, and a test that `stream-record` produces a playable file from the extensions a real panel serves.
+- **SMB and device files are excluded** for now: the file is already on a NAS or the phone, and copying a NAS file to a phone for a trip is a smaller, separate feature.
+- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list.
+
+### 18.2 How
+
+The original file, not a transcode. `PlexService.downloadSource` resolves the same Part key direct play streams (`/library/parts/{id}/{ts}/file.mkv`), so the server does no work beyond serving a file with byte ranges, and nothing in the existing direct-play findings (§6, §10) changes. A press-and-hold on a film or episode offers **Download to this device**, or **Delete download** / **Cancel download** if one exists. The **Downloads** tab lists everything, with progress, size and runtime, and plays a finished one.
+
+Files live in the app's private support directory (not documents, which iOS exposes to the Files app and backs up). They are not exported or shareable out of the app.
+
+**Credentials (§3).** The URL that fetches a file carries the server's token, so it is built fresh from the live connection each time a download starts or resumes and is never stored. A `DownloadRecord` holds ids, the title, the unsigned artwork path (as history does), sizes and a state, and `downloads_test.dart` asserts the stored JSON contains no token and no URL.
+
+**Resuming.** The fetch continues a partial `.part` file with `Range: bytes=N-`. Three server behaviours are handled and tested against a real socket: a server that ignores `Range` and sends the whole file (start over, never append: appending would make a file twice as long), `416` at exactly the file's length (already complete), and `416` past it (the file changed: remove the partial and say so). A body that ends before the promised length is a dropped connection, not a finished file. On completion the size is compared with what Plex reported, and a mismatch deletes the file and fails, rather than keeping something that will stop part-way through.
+
+### 18.3 Foreground only, one at a time
+
+There is **no background service**. Downloads run while the app is open; closing it stops them, and what was running comes back **paused** with the partial file kept. The Downloads screen says so while anything is unfinished. One download runs at a time: several at once would split the server's upstream and the Wi-Fi between files none of which is watchable yet.
+
+This is the smaller first version on purpose. Real background transfer is a project of its own, and the platform halves are not alike:
+
+- **Android** needs a foreground service (a manifest permission, a notification, and a Play declaration of the service type).
+- **iOS** needs background `URLSession` transfers, which is the same decision §9.2 already lists as open for transcription. If that gets decided for transcription, downloads should reuse it.
+
+### 18.4 Playing a saved copy
+
+The player prefers a finished copy over the server's, online or not: no bandwidth, an instant start, and the only thing that works with no network. Everything about the title except the file comes from the record, because the server may not be reachable to ask. The resume point is taken from Plex if it answers within 3 seconds (another device may have watched on), otherwise from this device's own history. Progress is reported to Plex best-effort, as it already is, so watching offline simply does not reach the server.
+
+A saved copy outlives the connection to its server: removing the Plex server does not delete its downloads, and playing one with no connected server works, with no progress reported.
+
+### 18.5 Open
+
+- **Not run against a real Plex server or on a device.** Everything is tested against a local file server that behaves like Plex's part endpoint; whether a *shared* server (one the owner has not allowed downloads on) refuses `/library/parts` for download but serves it for streaming is not known. The engine reports a 401 or 403 as "the server would not let this device download that".
+- **Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does. A small offline queue is the obvious next piece.
+- **iOS backup.** The downloads directory is in Application Support, which iCloud backup includes unless excluded. Excluding it needs a native `isExcludedFromBackup` call that is not written.
+- **Storage limits.** There is no cap and no "remove after watching" yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space".
+- **Artwork** is not saved, so the Downloads list shows no posters offline.
+- **Library when offline.** Cached lists still show (§12, the library cache); tapping a title that is not downloaded fails with the player's usual error. A badge on downloaded titles, and an offline-only filter, are not built.
+
+---
+
 ## Open items
 
 ### ✅ Closed by Phase 0 (2026-09-11)

@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/downloads/download_record.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
+import '../downloads/downloads_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
 
@@ -59,6 +61,8 @@ class WatchTarget {
     required this.title,
     this.watched,
     this.isShow = false,
+    this.downloadable = false,
+    this.isEpisode = false,
   });
 
   final String serverId;
@@ -71,9 +75,19 @@ class WatchTarget {
 
   /// A show marks every episode, and the wording says so.
   final bool isShow;
+
+  /// Whether the sheet offers to save it on this device (§18). A film or an
+  /// episode, never a show: a show is a folder, and downloading every episode
+  /// of one is a decision about gigabytes that a single press should not make.
+  final bool downloadable;
+  final bool isEpisode;
 }
 
-/// The long-press sheet for a Plex title: mark it watched or unwatched.
+/// What was picked in the sheet.
+enum _Choice { watched, unwatched, download, removeDownload }
+
+/// The long-press sheet for a Plex title: mark it watched or unwatched, and
+/// save it on this device or take the saved copy off.
 ///
 /// A sheet of [RelayTappable] rows, as with the library sort, so a remote can
 /// reach it with a visible ring. On a TV it opens from a held centre button.
@@ -82,7 +96,13 @@ Future<void> showWatchActions(
   WidgetRef ref,
   WatchTarget target,
 ) async {
-  final choice = await showModalBottomSheet<bool>(
+  final existing = target.downloadable
+      ? ref
+            .read(downloadsProvider.notifier)
+            .find(target.serverId, target.ratingKey)
+      : null;
+  if (!context.mounted) return;
+  final choice = await showModalBottomSheet<_Choice>(
     context: context,
     backgroundColor: RelayTheme.of(context).surface,
     builder: (context) {
@@ -90,7 +110,7 @@ Future<void> showWatchActions(
       final f = RelayLayout.of(context);
       final scope = target.isShow ? ' (every episode)' : '';
 
-      Widget option(String label, IconData icon, bool value, bool first) =>
+      Widget option(String label, IconData icon, _Choice value, bool first) =>
           RelayTappable(
             borderRadius: 10,
             autofocus: first,
@@ -117,6 +137,21 @@ Future<void> showWatchActions(
 
       final offerWatched = target.watched != true;
       final offerUnwatched = target.watched != false;
+      // Download follows the state of any copy already there: nothing yet or a
+      // failed one offers to fetch, a finished one offers to delete, and one in
+      // progress offers to cancel.
+      final offerDownload =
+          target.downloadable &&
+          (existing == null || existing.state == DownloadState.failed);
+      final offerRemove =
+          target.downloadable && existing != null && !offerDownload;
+      var first = true;
+      bool takeFirst() {
+        final v = first;
+        first = false;
+        return v;
+      }
+
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -138,11 +173,33 @@ Future<void> showWatchActions(
                 ),
               ),
               if (offerWatched)
-                option('Mark as watched$scope', Icons.check_circle_outline,
-                    true, true),
+                option(
+                  'Mark as watched$scope',
+                  Icons.check_circle_outline,
+                  _Choice.watched,
+                  takeFirst(),
+                ),
               if (offerUnwatched)
-                option('Mark as unwatched$scope', Icons.radio_button_unchecked,
-                    false, !offerWatched),
+                option(
+                  'Mark as unwatched$scope',
+                  Icons.radio_button_unchecked,
+                  _Choice.unwatched,
+                  takeFirst(),
+                ),
+              if (offerDownload)
+                option(
+                  'Download to this device',
+                  Icons.download_outlined,
+                  _Choice.download,
+                  takeFirst(),
+                ),
+              if (offerRemove)
+                option(
+                  existing.isComplete ? 'Delete download' : 'Cancel download',
+                  Icons.delete_outline,
+                  _Choice.removeDownload,
+                  takeFirst(),
+                ),
             ],
           ),
         ),
@@ -152,15 +209,38 @@ Future<void> showWatchActions(
   if (choice == null || !context.mounted) return;
 
   final messenger = ScaffoldMessenger.maybeOf(context);
+
+  if (choice == _Choice.download || choice == _Choice.removeDownload) {
+    final downloads = ref.read(downloadsProvider.notifier);
+    if (choice == _Choice.download) {
+      await downloads.enqueue(
+        serverId: target.serverId,
+        ratingKey: target.ratingKey,
+        title: target.title,
+        isEpisode: target.isEpisode,
+      );
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Downloading. See the Downloads tab.')),
+      );
+    } else {
+      await downloads.remove(target.serverId, target.ratingKey);
+    }
+    return;
+  }
+
   try {
-    await ref.read(watchOverridesProvider.notifier).mark(
+    await ref
+        .read(watchOverridesProvider.notifier)
+        .mark(
           serverId: target.serverId,
           ratingKey: target.ratingKey,
-          watched: choice,
+          watched: choice == _Choice.watched,
         );
   } catch (_) {
-    messenger?.showSnackBar(const SnackBar(
-      content: Text("Plex didn't accept that. The server may be offline."),
-    ));
+    messenger?.showSnackBar(
+      const SnackBar(
+        content: Text("Plex didn't accept that. The server may be offline."),
+      ),
+    );
   }
 }

@@ -58,6 +58,7 @@ class PosterTile extends ConsumerWidget {
                 ratingKey: item.id,
                 title: item.title,
                 isShow: item.kind == CatalogKind.show,
+                downloadable: item.kind != CatalogKind.show,
                 watched: item.kind == CatalogKind.show ? null : watch.watched,
               ),
             )

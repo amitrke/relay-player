@@ -48,6 +48,36 @@ class PlexPlayable {
   final bool isEpisode;
 }
 
+/// What a download needs to fetch one item and label the copy (§18).
+///
+/// [url] carries the server token, so this lives for one fetch and is never
+/// stored. What outlives it is everything else: the title, the unsigned artwork
+/// path, and the size to check the file against.
+class PlexDownloadSource {
+  const PlexDownloadSource({
+    required this.url,
+    required this.title,
+    required this.duration,
+    required this.extension,
+    required this.isEpisode,
+    this.sizeBytes,
+    this.posterPath,
+  });
+
+  final String url;
+  final String title;
+  final Duration duration;
+
+  /// The container, as a file extension (`mkv`, `mp4`). libmpv sniffs content,
+  /// but a wrong extension on a file the user may find again is confusing.
+  final String extension;
+  final bool isEpisode;
+
+  /// What Plex says the file is, or null when it does not say.
+  final int? sizeBytes;
+  final String? posterPath;
+}
+
 /// A Plex item together with the server it came from.
 ///
 /// A `ratingKey` is only meaningful relative to one server — two servers will
@@ -504,6 +534,23 @@ class PlexService {
   /// that still routes through `/video/:/transcode/universal/`, and Phase 0
   /// caught the server saying so ("App cannot direct play this item").
   Future<PlexPlayable> directPlay(String ratingKey) async {
+    final (item, part) = await _itemAndPart(ratingKey);
+    final (base, token) = _credentials();
+
+    final offset = item.viewOffsetMs ?? 0;
+    return PlexPlayable(
+      url: '$base${part.key}?X-Plex-Token=$token',
+      title: item.title,
+      duration: Duration(milliseconds: item.durationMs ?? 0),
+      posterUrl: posterUrl(item),
+      posterPath: posterPathOf(item),
+      resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
+      isEpisode: item.type == PlexMetadataType.episode,
+    );
+  }
+
+  /// The item and the file direct play (and a download) would use.
+  Future<(PlexMetadata, PlexPart)> _itemAndPart(String ratingKey) async {
     final item = await _client.library.item(ratingKey);
     if (item == null) {
       throw const PlexUnreachable('That item is no longer on the server.');
@@ -519,22 +566,39 @@ class PlexService {
         'supported yet.',
       );
     }
+    return (item, part);
+  }
 
+  (String, String) _credentials() {
     final base = _client.baseUrl;
     final token = _client.token;
     if (base == null || token == null) {
       throw const PlexUnreachable('Not connected to a Plex server.');
     }
+    return (base, token);
+  }
 
-    final offset = item.viewOffsetMs ?? 0;
-    return PlexPlayable(
+  /// Resolves [ratingKey] to the original file, for saving on this device
+  /// (§18).
+  ///
+  /// The same Part key direct play streams, fetched whole instead of watched,
+  /// so nothing here is a transcode and the server does no work beyond
+  /// serving a file. Called again whenever a download starts or resumes
+  /// rather than remembered, because the URL carries the token (§3) and the
+  /// server's address may have changed since.
+  Future<PlexDownloadSource> downloadSource(String ratingKey) async {
+    final (item, part) = await _itemAndPart(ratingKey);
+    final (base, token) = _credentials();
+    final container = (part.container ?? '').toLowerCase();
+    final fromKey = RegExp(r'\.([A-Za-z0-9]{2,5})$').firstMatch(part.key!);
+    return PlexDownloadSource(
       url: '$base${part.key}?X-Plex-Token=$token',
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
-      posterUrl: posterUrl(item),
-      posterPath: posterPathOf(item),
-      resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
+      extension: container.isNotEmpty ? container : (fromKey?.group(1) ?? 'mkv'),
       isEpisode: item.type == PlexMetadataType.episode,
+      sizeBytes: part.size,
+      posterPath: posterPathOf(item),
     );
   }
 }

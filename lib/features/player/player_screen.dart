@@ -17,6 +17,7 @@ import '../../data/filesystem/loopback_bridge.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
+import '../downloads/downloads_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
 import 'playback_focus.dart';
@@ -498,6 +499,40 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
     }
 
+    // A saved copy is played in preference to the server's, online or not
+    // (§18.4): it needs no bandwidth, starts at once, and is the only thing
+    // that works with no network. Everything about the title except the file
+    // comes from the record, because the server may not be reachable to ask.
+    final saved = await ref
+        .read(downloadsProvider.notifier)
+        .fileFor(widget.serverId!, widget.ratingKey!);
+    if (saved != null) {
+      final record = ref
+          .read(downloadsProvider.notifier)
+          .find(widget.serverId!, widget.ratingKey!)!;
+      Duration? resumeFrom;
+      try {
+        // Where Plex last saw this title, if it can be asked quickly. Another
+        // device may have watched on since. Offline this just fails, and the
+        // position kept on this device is used instead.
+        resumeFrom = (await plexServiceFor(
+          ref,
+          widget.serverId!,
+        ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3)))
+            .resumeFrom;
+      } catch (_) {}
+      return _Playable(
+        url: saved.path,
+        title: record.title,
+        live: false,
+        posterRef: record.posterPath,
+        historyKind: PlaybackKind.plex,
+        historyId: widget.ratingKey,
+        resumeFrom: resumeFrom,
+        episode: record.isEpisode,
+      );
+    }
+
     final playable = await plexServiceFor(ref, widget.serverId!)
         .directPlay(widget.ratingKey!);
     return _Playable(
@@ -519,7 +554,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (!mounted) return;
       _history = ref.read(historyProvider.notifier);
       if (widget.serverId != null) {
-        _plexService = plexServiceFor(ref, widget.serverId!);
+        // A saved copy outlives the server it came from (§18.4): with the
+        // server removed there is nobody to report progress to, and that must
+        // not stop the film playing.
+        try {
+          _plexService = plexServiceFor(ref, widget.serverId!);
+        } on StateError {
+          _plexService = null;
+        }
         _container = ProviderScope.containerOf(context, listen: false);
       }
       setState(() {

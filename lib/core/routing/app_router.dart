@@ -13,6 +13,7 @@ import '../../features/advanced_sources/channel_picker_screen.dart';
 import '../../features/advanced_sources/xtream_series_screen.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../features/accounts/plex_session.dart';
+import '../../features/downloads/downloads_screen.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
 import '../../features/onboarding/onboarding_route.dart';
@@ -98,6 +99,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/downloads',
+                builder: (_, _) => const DownloadsScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
