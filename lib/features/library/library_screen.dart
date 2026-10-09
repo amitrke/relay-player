@@ -577,8 +577,9 @@ class _SortButton extends ConsumerWidget {
         );
       },
     );
-    if (picked != null)
+    if (picked != null) {
       await ref.read(librarySortProvider.notifier).set(picked);
+    }
   }
 }
 
