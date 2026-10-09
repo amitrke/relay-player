@@ -364,8 +364,10 @@ void main() {
     });
 
     test('runs one at a time, in order', () async {
-      final slow = _FileServer(_bytes(1024 * 1024))
-        ..pace = const Duration(milliseconds: 15);
+      // Slow enough (about 3 s) that it is still running when the assertions
+      // below look, even on a loaded machine; a faster one made this flaky.
+      final slow = _FileServer(_bytes(2 * 1024 * 1024))
+        ..pace = const Duration(milliseconds: 45);
       final quick = _FileServer(_bytes(20 * 1024));
       await slow.start();
       await quick.start();

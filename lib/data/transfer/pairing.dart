@@ -80,9 +80,8 @@ class PairingInfo {
       return PairingInfo(host: host, port: port, secret: secret);
     }
 
-    final address = RegExp(
-      r'(\d{1,3}(?:\.\d{1,3}){3})\s*:\s*(\d{1,5})',
-    ).firstMatch(text);
+    final address = RegExp(r'(\d{1,3}(?:\.\d{1,3}){3})\s*:\s*(\d{1,5})')
+        .firstMatch(text);
     if (address == null) return null;
     final host = address.group(1)!;
     final port = int.parse(address.group(2)!);

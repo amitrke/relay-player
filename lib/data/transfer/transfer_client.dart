@@ -17,8 +17,9 @@ class TransferException implements Exception {
 
 /// The person at the other device said no (or never answered).
 class TransferDeclined extends TransferException {
-  const TransferDeclined()
-    : super('The other device did not accept the settings.');
+  const TransferDeclined([
+    super.message = 'The other device did not accept the settings.',
+  ]);
 }
 
 /// The sending end of a transfer (§17).
@@ -38,16 +39,77 @@ class TransferClient {
   /// receiver has applied it; throws [TransferException] otherwise.
   Future<void> send(PairingInfo pairing, TransferBundle bundle) async {
     final sealed = await TransferCipher(pairing.secret).seal(bundle.encode());
+    final (status, body) = await _post(pairing, 'transfer', sealed);
 
+    switch (status) {
+      case HttpStatus.ok:
+        return;
+      case HttpStatus.forbidden:
+        throw const TransferException(
+          'The code was not right. Check it against the other screen.',
+        );
+      case HttpStatus.conflict:
+        if (body == 'declined') throw const TransferDeclined();
+        throw const TransferException(
+          'The other device already received something. Open Receive again '
+          'there for a fresh code.',
+        );
+      case HttpStatus.requestEntityTooLarge:
+        throw const TransferException('That was too much to send.');
+      case HttpStatus.badRequest:
+        throw TransferException(
+          body.isEmpty ? 'The other device could not read that.' : body,
+        );
+      default:
+        throw TransferException(
+          'The other device answered unexpectedly ($status).',
+        );
+    }
+  }
+
+  /// For when the other device is showing the code (§17.7): tells it which port
+  /// this device is listening on, and waits for its person to agree. When this
+  /// completes, the bundle is on its way to the listener at [listenPort], so the
+  /// caller should already be waiting there.
+  Future<void> requestPush(PairingInfo offer, int listenPort) async {
+    final sealed = await TransferCipher(offer.secret)
+        .seal(utf8.encode(jsonEncode({'port': listenPort})));
+    final (status, body) = await _post(offer, 'callback', sealed);
+
+    switch (status) {
+      case HttpStatus.ok:
+        return;
+      case HttpStatus.forbidden:
+        throw const TransferException(
+          'The code was not right. Check it against the other screen.',
+        );
+      case HttpStatus.conflict:
+        if (body == 'declined') {
+          throw const TransferDeclined(
+            'The other device did not agree to send its settings.',
+          );
+        }
+        throw const TransferException(
+          'The other device is already answering someone else. Ask it for a '
+          'fresh code.',
+        );
+      default:
+        throw TransferException(
+          'The other device answered unexpectedly ($status).',
+        );
+    }
+  }
+
+  /// One sealed POST, with every way it can fail already put into words.
+  Future<(int, String)> _post(
+    PairingInfo to,
+    String path,
+    List<int> sealed,
+  ) async {
     final client = HttpClient()..connectionTimeout = connectTimeout;
     try {
       final request = await client.postUrl(
-        Uri(
-          scheme: 'http',
-          host: pairing.host,
-          port: pairing.port,
-          path: '/transfer',
-        ),
+        Uri(scheme: 'http', host: to.host, port: to.port, path: '/$path'),
       );
       request.headers.contentType = ContentType.binary;
       request.contentLength = sealed.length;
@@ -55,41 +117,17 @@ class TransferClient {
 
       final response = await request.close().timeout(decisionTimeout);
       final body = await response.transform(utf8.decoder).join();
-
-      switch (response.statusCode) {
-        case HttpStatus.ok:
-          return;
-        case HttpStatus.forbidden:
-          throw const TransferException(
-            'The code was not right. Check it against the other screen.',
-          );
-        case HttpStatus.conflict:
-          if (body == 'declined') throw const TransferDeclined();
-          throw const TransferException(
-            'The other device already received something. Open Receive again '
-            'there for a fresh code.',
-          );
-        case HttpStatus.requestEntityTooLarge:
-          throw const TransferException('That was too much to send.');
-        case HttpStatus.badRequest:
-          throw TransferException(
-            body.isEmpty ? 'The other device could not read that.' : body,
-          );
-        default:
-          throw TransferException(
-            'The other device answered unexpectedly (${response.statusCode}).',
-          );
-      }
+      return (response.statusCode, body);
     } on SocketException {
       throw TransferException(
-        'Could not reach ${pairing.address}. Both devices need to be on the '
+        'Could not reach ${to.address}. Both devices need to be on the '
         'same Wi-Fi, and the other one has to still be showing its code.',
       );
     } on HttpException {
       throw const TransferException('The connection dropped part-way.');
     } on TimeoutException {
       throw TransferException(
-        'No answer from ${pairing.address}. Check the other screen.',
+        'No answer from ${to.address}. Check the other screen.',
       );
     } finally {
       client.close(force: true);

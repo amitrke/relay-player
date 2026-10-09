@@ -68,11 +68,18 @@ class TransferServer {
   /// Starts listening and returns what a sender needs. [host] is this device's
   /// LAN address; the listener itself accepts on every interface, since the
   /// address that reaches a phone is not always the one the OS lists first.
-  Future<PairingInfo> start({required String host}) async {
+  ///
+  /// [secret] is for the other direction (§17.7): when the *sender* shows the
+  /// code, the receiver scans it and listens under that same secret, so one
+  /// code seals both the request to push and the bundle itself. Left null, a
+  /// fresh one is made, which is the usual case of this device showing the code.
+  Future<PairingInfo> start({required String host, Uint8List? secret}) async {
     if (_server != null) throw StateError('Already listening.');
     final server = await shelf_io.serve(_handle, InternetAddress.anyIPv4, 0);
     _server = server;
-    final info = PairingInfo.generate(host: host, port: server.port);
+    final info = secret == null
+        ? PairingInfo.generate(host: host, port: server.port)
+        : PairingInfo(host: host, port: server.port, secret: secret);
     _cipher = TransferCipher(info.secret);
     _expiry = Timer(lifetime, close);
     return info;

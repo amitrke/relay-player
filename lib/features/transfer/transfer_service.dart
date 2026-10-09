@@ -221,10 +221,7 @@ class TransferService {
           // library, and a TV linked to a server the phone has never seen would
           // otherwise lose those choices. The sender's entry wins on a match,
           // like every other same-id item (§17.3).
-          await store.setStringMap(e.key, {
-            ...store.getStringMap(e.key),
-            ...v,
-          });
+          await store.setStringMap(e.key, {...store.getStringMap(e.key), ...v});
       }
     }
     _ref.invalidate(playbackPrefsProvider);

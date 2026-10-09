@@ -4,32 +4,46 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/platform/device_kind.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/transfer/lan_address.dart';
 import '../../data/transfer/pairing.dart';
 import '../../data/transfer/transfer_bundle.dart';
 import '../../data/transfer/transfer_client.dart';
+import '../../data/transfer/transfer_offer.dart';
+import 'pairing_widgets.dart';
 import 'transfer_service.dart';
 import 'transfer_widgets.dart';
 
 /// Settings -> Move to another device -> Send (§17).
 ///
-/// Pick what to move, then scan the code the other device is showing (or type
-/// it). Nothing leaves this device until a pairing is in hand, and what is sent
-/// is sealed with that pairing's secret.
+/// Pick what to move, then pair with the other device in whichever of three ways
+/// suits the two of them (§17.7):
+///
+/// - **Scan** the code it shows, on a device with a camera.
+/// - **Show** a code for it to scan, on a device without one. This is how a TV
+///   sends to a phone with nothing typed.
+/// - **Type** the address and code, when neither can scan.
+///
+/// Nothing leaves this device until a pairing is in hand, and what is sent is
+/// sealed with that pairing's secret. When this device shows the code, each
+/// request to be sent the settings also waits for a person here to say yes.
 class SendScreen extends ConsumerStatefulWidget {
   const SendScreen({
     super.key,
     this.client = const TransferClient(),
     this.canScan,
+    this.makeOfferServer,
+    this.findAddress = findLanAddress,
   });
 
   /// Test seams. [canScan] defaults to "a phone or tablet with a camera".
   final TransferClient client;
   final bool? canScan;
+  final TransferOfferServer Function()? makeOfferServer;
+  final Future<String?> Function() findAddress;
 
   @override
   ConsumerState<SendScreen> createState() => _SendScreenState();
@@ -37,20 +51,24 @@ class SendScreen extends ConsumerStatefulWidget {
 
 enum _Phase { loading, choose, connect, sending, done, failed }
 
+enum _Mode { scan, show, type }
+
 class _SendScreenState extends ConsumerState<SendScreen> {
   _Phase _phase = _Phase.loading;
   CollectedSettings? _collected;
   Set<TransferItem> _selected = {};
   String? _error;
 
-  bool _typing = false;
-  String? _scanHint;
-  MobileScannerController? _scanner;
-  final _address = TextEditingController();
-  final _code = TextEditingController();
+  _Mode _mode = _Mode.type;
+  TransferOfferServer? _offer;
+  PairingInfo? _offerPairing;
+
+  /// Bumped whenever the code on offer changes or is withdrawn, so a late answer
+  /// from an old listener is recognised and ignored.
+  int _generation = 0;
 
   /// The camera exists on a phone or tablet. A TV has none, and a desktop's
-  /// webcam is not what anyone points at another screen, so both type.
+  /// webcam is not what anyone points at another screen.
   bool get _canScan =>
       widget.canScan ??
       (!DeviceKind.isTelevision && (Platform.isAndroid || Platform.isIOS));
@@ -63,9 +81,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
 
   @override
   void dispose() {
-    _scanner?.dispose();
-    _address.dispose();
-    _code.dispose();
+    _generation++;
+    unawaited(_offer?.close());
     super.dispose();
   }
 
@@ -91,57 +108,156 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     });
   }
 
-  void _toConnect() {
+  // --- Pairing ---------------------------------------------------------
+
+  /// Where to start: scan when there is a camera, otherwise show a code, so a
+  /// device that cannot scan is never left typing by default.
+  void _toConnect() => unawaited(_setMode(_canScan ? _Mode.scan : _Mode.show));
+
+  Future<void> _setMode(_Mode mode) async {
+    await _withdrawOffer();
+    if (!mounted) return;
     setState(() {
-      _typing = !_canScan;
-      _scanHint = null;
+      _mode = mode;
       _error = null;
       _phase = _Phase.connect;
     });
-    if (!_typing) _scanner ??= _newScanner();
+    if (mode == _Mode.show) await _startOffer();
   }
 
-  MobileScannerController _newScanner() => MobileScannerController(
-    formats: const [BarcodeFormat.qrCode],
-    detectionSpeed: DetectionSpeed.noDuplicates,
-  );
-
-  void _onScan(BarcodeCapture capture) {
-    if (_phase != _Phase.connect) return;
-    for (final barcode in capture.barcodes) {
-      final pairing = PairingInfo.tryParse(barcode.rawValue ?? '');
-      if (pairing != null) {
-        unawaited(_send(pairing));
-        return;
-      }
-    }
-    if (capture.barcodes.isNotEmpty) {
-      setState(() => _scanHint = 'That is not a code from this app.');
-    }
+  Future<void> _withdrawOffer() async {
+    _generation++;
+    final offer = _offer;
+    _offer = null;
+    _offerPairing = null;
+    await offer?.close();
   }
 
-  void _sendTyped() {
-    final pairing = PairingInfo.tryParse('${_address.text} ${_code.text}');
-    if (pairing == null) {
-      setState(() {
-        _scanHint =
-            'Check the address (like 192.168.1.20:41234) and the 16-character '
-            'code.';
-      });
+  Future<void> _startOffer() async {
+    final generation = ++_generation;
+    final host = await widget.findAddress();
+    if (!mounted || generation != _generation) return;
+    if (host == null) {
+      _fail(
+        'This device is not on a Wi-Fi or Ethernet network. Connect it to the '
+        'same network as the other device and try again.',
+      );
       return;
     }
-    unawaited(_send(pairing));
+
+    final offer = widget.makeOfferServer?.call() ?? TransferOfferServer();
+    try {
+      final pairing = await offer.start(host: host);
+      if (!mounted || generation != _generation) {
+        await offer.close();
+        return;
+      }
+      setState(() {
+        _offer = offer;
+        _offerPairing = pairing;
+      });
+      unawaited(_awaitRequest(offer, pairing, generation));
+    } catch (e) {
+      _fail('Could not start listening: $e');
+    }
+  }
+
+  Future<void> _awaitRequest(
+    TransferOfferServer offer,
+    PairingInfo pairing,
+    int generation,
+  ) async {
+    final request = await offer.request;
+    if (!mounted || generation != _generation) {
+      request?.deny();
+      return;
+    }
+    if (request == null) {
+      _fail('That code has expired. Start again for a new one.');
+      return;
+    }
+
+    final allowed = await _askApproval(request);
+    if (!mounted || generation != _generation) {
+      request.deny();
+      return;
+    }
+    if (allowed != true) {
+      request.deny();
+      // Back to a fresh code: the old one has answered once and is spent.
+      await _setMode(_Mode.show);
+      return;
+    }
+    request.approve();
+    await _send(
+      PairingInfo(
+        host: request.host,
+        port: request.port,
+        secret: pairing.secret,
+      ),
+    );
+  }
+
+  /// The person here sees who is asking, and what would go, before anything does.
+  ///
+  /// This is the control that makes showing a code safe. A code on a screen can
+  /// be photographed by anyone in the room, and without this they would simply be
+  /// handed the settings. "Not now" is focused first so a stray press on a remote
+  /// refuses rather than sends.
+  Future<bool?> _askApproval(PushRequest request) {
+    final bundle = _collected!.bundle.only(_selected);
+    final kinds = TransferItem.values.where(bundle.items.contains);
+    final summary = [for (final k in kinds) bundle.titled(k)].join('\n');
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final t = RelayTheme.of(context);
+        return AlertDialog(
+          backgroundColor: t.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          title: Text(
+            'Send to ${request.host}?',
+            style: TextStyle(
+              color: t.ink,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'A device on your network scanned this code and is asking for:\n\n'
+            '$summary\n\n'
+            'Only agree if you just asked for this on that device.',
+            style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
+          ),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(context, false),
+              style: TextButton.styleFrom(foregroundColor: t.inkDim),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: t.accent,
+                foregroundColor: t.accentInk,
+              ),
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _send(PairingInfo pairing) async {
     if (_phase == _Phase.sending) return;
     setState(() => _phase = _Phase.sending);
-    unawaited(_scanner?.stop());
     try {
-      await widget.client.send(
-        pairing,
-        _collected!.bundle.only(_selected),
-      );
+      await widget.client.send(pairing, _collected!.bundle.only(_selected));
       if (!mounted) return;
       setState(() => _phase = _Phase.done);
     } on TransferException catch (e) {
@@ -150,6 +266,8 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       _fail('Something went wrong: $e');
     }
   }
+
+  // --- Build -----------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +301,9 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       ),
       const SizedBox(height: 18),
       if (items.isEmpty)
-        const TransferText('There is nothing set up on this device to send yet.')
+        const TransferText(
+          'There is nothing set up on this device to send yet.',
+        )
       else
         TransferChecklist(
           items: items,
@@ -210,122 +330,87 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     ];
   }
 
-  List<Widget> _connect(BuildContext context) {
-    final t = RelayTheme.of(context);
-    final hint = _scanHint;
-    final scanning = !_typing && _scanner != null;
+  /// The ways to pair other than the one on screen, and Back.
+  List<Widget> _modeButtons({bool autofocusFirst = false}) {
+    var first = autofocusFirst;
+    bool take() {
+      final v = first;
+      first = false;
+      return v;
+    }
 
     return [
-      TransferText(
-        scanning
-            ? 'On the other device, open Settings, Move to another device, '
-                  'and choose Receive. Point the camera at the code it shows.'
-            : 'On the other device, open Settings, Move to another device, and '
-                  'choose Receive. Then enter what it shows.',
-      ),
-      const SizedBox(height: 16),
-      if (scanning)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: SizedBox(
-            height: 300,
-            child: MobileScanner(
-              controller: _scanner,
-              onDetect: _onScan,
-              errorBuilder: (context, error) => Container(
-                color: t.surface,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  error.errorCode == MobileScannerErrorCode.permissionDenied
-                      ? 'The camera is switched off for this app. Type the '
-                            'code instead, or allow the camera in your '
-                            'phone\'s settings.'
-                      : 'The camera could not start. Type the code instead.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: t.inkDim, height: 1.5),
-                ),
-              ),
-            ),
-          ),
-        )
-      else ...[
-        _field(context, 'Address', _address, '192.168.1.20:41234'),
-        const SizedBox(height: 12),
-        _field(context, 'Code', _code, 'ABCD-EFGH-JKMN-PQRS', caps: true),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: RelayButton(label: 'Send', onPressed: _sendTyped),
+      if (_mode != _Mode.scan && _canScan)
+        RelayTextButton(
+          label: 'Scan its code instead',
+          autofocus: take(),
+          onPressed: () => unawaited(_setMode(_Mode.scan)),
         ),
-      ],
-      if (hint != null) ...[
-        const SizedBox(height: 12),
-        TransferText(hint),
-      ],
-      const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        children: [
-          if (_canScan)
-            RelayTextButton(
-              label: scanning ? 'Type the code instead' : 'Scan instead',
-              onPressed: () => setState(() {
-                _typing = !_typing;
-                _scanHint = null;
-                // The scanner widget starts its controller when it is built,
-                // so showing it needs no start() here (a second one races it).
-                if (!_typing) {
-                  _scanner ??= _newScanner();
-                } else {
-                  unawaited(_scanner?.stop());
-                }
-              }),
-            ),
-          RelayTextButton(
-            label: 'Back',
-            onPressed: () {
-              unawaited(_scanner?.stop());
-              setState(() => _phase = _Phase.choose);
-            },
-          ),
-        ],
+      if (_mode != _Mode.show)
+        RelayTextButton(
+          label: 'Show a code instead',
+          autofocus: take(),
+          onPressed: () => unawaited(_setMode(_Mode.show)),
+        ),
+      if (_mode != _Mode.type)
+        RelayTextButton(
+          label: 'Type the code instead',
+          autofocus: take(),
+          onPressed: () => unawaited(_setMode(_Mode.type)),
+        ),
+      RelayTextButton(
+        label: 'Back',
+        autofocus: take(),
+        onPressed: () async {
+          await _withdrawOffer();
+          if (mounted) setState(() => _phase = _Phase.choose);
+        },
       ),
     ];
   }
 
-  Widget _field(
-    BuildContext context,
-    String label,
-    TextEditingController controller,
-    String hint, {
-    bool caps = false,
-  }) {
-    final t = RelayTheme.of(context);
-    return TextField(
-      controller: controller,
-      autocorrect: false,
-      enableSuggestions: false,
-      textCapitalization: caps
-          ? TextCapitalization.characters
-          : TextCapitalization.none,
-      keyboardType: caps ? TextInputType.visiblePassword : TextInputType.url,
-      style: TextStyle(color: t.ink),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: TextStyle(color: t.inkDim),
-        hintStyle: TextStyle(color: t.inkDim.withValues(alpha: 0.6)),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: t.line),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: t.accent, width: 2),
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
+  List<Widget> _connect(BuildContext context) {
+    switch (_mode) {
+      case _Mode.scan:
+        return [
+          const TransferText(
+            'On the other device, open Settings, Move to another device, and '
+            'choose Receive. Point the camera at the code it shows.',
+          ),
+          const SizedBox(height: 16),
+          PairingScanner(onPairing: (p) => unawaited(_send(p))),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: _modeButtons()),
+        ];
+      case _Mode.show:
+        final pairing = _offerPairing;
+        if (pairing == null) return const [TransferBusy('Getting ready…')];
+        return [
+          PairingDisplay(
+            pairing: pairing,
+            instructions:
+                'On the other device, open Settings, Move to another device, '
+                'and choose Receive, then Scan its code and point its camera '
+                'here. You will be asked before anything is sent.',
+            waitingLabel: 'Waiting for the other device…',
+            actions: _modeButtons(autofocusFirst: true),
+          ),
+        ];
+      case _Mode.type:
+        return [
+          const TransferText(
+            'On the other device, open Settings, Move to another device, and '
+            'choose Receive. Then enter what it shows.',
+          ),
+          const SizedBox(height: 16),
+          PairingEntry(
+            submitLabel: 'Send',
+            onSubmit: (p) => unawaited(_send(p)),
+          ),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: _modeButtons()),
+        ];
+    }
   }
 
   List<Widget> _done(BuildContext context) => [

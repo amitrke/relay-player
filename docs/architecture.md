@@ -1244,8 +1244,9 @@ Settings → **Move to another device** has two ends. The same pair is offered o
 
 - **Receive** (usually the TV). Starts a short-lived HTTP listener on the LAN and shows a QR code, plus the address and a 16-character code for a device that cannot scan. Nothing is written until the person here has seen *what* arrived (by kind and count, never a host, username or key) and ticked what to keep.
 - **Send** (usually the phone). Lists what this device has, lets the person untick kinds, then scans the QR (or takes the address and code typed) and posts the bundle. The sender's call does not return until the receiver has **saved** it, so "Sent" on the phone means it is on the TV, and a failed save reaches the phone as a refusal.
+- **Either end can show the code instead** (§17.7), so a device with no camera is never made to scan or, by default, to type: a TV can send to a phone by showing the code and being scanned. Whoever shows the code, the data flows the same way and the receiver reviews it the same way.
 
-`lib/data/transfer/` is the protocol and format (no Flutter); `lib/features/transfer/` is the screens and `TransferService`, which reads and writes through the same stores and controllers the rest of the app uses, so a transferred account is stored exactly as a typed one is (§3).
+`lib/data/transfer/` is the protocol and format (no widgets; it still cannot run as plain Dart, because the bundle carries the stores' record types and those pull in the secure-storage package); `lib/features/transfer/` is the screens and `TransferService`, which reads and writes through the same stores and controllers the rest of the app uses, so a transferred account is stored exactly as a typed one is (§3).
 
 ### 17.2 Security model
 
@@ -1278,7 +1279,7 @@ A preference crosses only if it is on `TransferPreferences`'s allowlist and has 
 - **Export to a file, or to cloud storage.** A file is awkward to put on a TV, and anything cloud-hosted puts credentials on a server (§16.3).
 - **Typing a short code only.** Fine as the fallback, and it is: address plus 16 characters. A 4-6 character code would have to be rate-limited at the receiver and could not also be the encryption key.
 - **A PAKE** (so a short code could be strong). Right in principle, a dependency and a protocol to get wrong in practice, for a one-off copy between two devices in one room.
-- **TV as the sender.** A TV has no camera, and the one thing it cannot do is type; the phone is the device with both.
+- ~~**TV as the sender.** A TV has no camera, and the one thing it cannot do is type; the phone is the device with both.~~ **Superseded 2026-10-09 (§17.7).** The reasoning was sound for the first design, where the sender had to scan, and wrong as a ceiling: the fix was not to forbid a TV sending but to let the sender *show* the code and be scanned. A TV can now send with nothing typed, at the cost of an approval step on the sender.
 
 ### 17.5 Platform notes
 
@@ -1293,6 +1294,32 @@ A preference crosses only if it is on `TransferPreferences`'s allowlist and has 
 - **Fire TV and Google TV listening.** Whether a TV accepts an inbound connection from a phone on the same Wi-Fi depends on the router (client isolation) as much as the app; the error text names the address so that can be told apart.
 - **The privacy policy** says the app has no backend and sends nothing to us. That stays true, but it does not yet mention device-to-device copying; add a sentence before the next policy revision.
 - **Plex on the receiving device** could be offered as part of a transfer if copying the account token plus client identifier proves safe. Measure first (link a token from one client identifier, use it from another).
+
+### 17.7 Either end can show the code
+
+Added 2026-10-09, after the first version, which had the **receiver always show the code and the sender always scan it**. That works for a TV receiving from a phone, and for nothing else a camera-less device might do: a TV *sending* to a phone could only type. Which device shows the code and which way the data flows are separate questions, so both are now a choice, and a device with no camera never has to scan.
+
+| Data flows | Code is shown by | Camera needed on |
+|---|---|---|
+| phone to TV | the TV (receiver), as before | the phone |
+| TV to phone | the TV (sender), new | the phone |
+| phone to phone | either | the one that scans |
+| either, no camera anywhere | either, typed | none |
+
+Each screen offers the other two ways: **Scan its code instead**, **Show a code instead** (or *Show my code*), and **Type the code instead**. The default is to scan on a device with a camera and to **show a code on a device without one**, so typing is the last resort and not the fallback it was.
+
+**How it works when the sender shows the code.** Nothing new is sent in the clear and the bundle still travels by the same sealed push. The sender runs a small listener (`TransferOfferServer`) that answers one question, `POST /callback`: "I scanned your code and am listening on port N, may I have your settings?". The receiver listens under the **scanned secret** (`TransferServer.start(secret:)`), so the one code seals the request and the bundle both, tells the sender its port, and the sender, if its person agrees, pushes to the address the request **came from** (never one the request named). The receiver then reviews exactly as it always did.
+
+**What this adds to the threat model, and the control for it.** When the receiver shows the code, a stranger who photographs it can only *push* at a screen that reviews and can decline: they learn nothing. When the **sender** shows it, the same stranger could be *given* the credentials, because scanning is asking. So:
+
+- **Every request waits for a person at the sender**, who sees the requester's address and the kinds of data (counts, never contents), and must press Send. "Not now" holds focus, so a stray select on a remote refuses. A refusal makes a fresh code, since the old one has answered once.
+- The receiver still reviews and can decline: two separate yeses.
+- The push goes to the connecting address, so a code cannot be used to make the sender push credentials to a third host.
+- The offer listener takes one request, lives at most 5 minutes (3 more to decide), and closes after 5 wrong tries, as the receiving one does.
+
+This is a real weakening against the original design: a person in the room who can see the screen and is quick enough to scan and be on the same Wi-Fi can *ask*, and it is the person at the sender who must notice that the address is not theirs. The dialog says "Only agree if you just asked for this on that device." It is the reason the approval exists and the reason it cannot be skipped.
+
+**Not seen on two real devices.** The protocol (`transfer_protocol_test.dart`, "the sender shows the code", including an end-to-end run through request, approval, push, review and save) and both screens (`transfer_screens_test.dart`, with a fake listener for the dialog and a real socket for the receiver joining) are tested on loopback. The camera is not.
 
 ---
 

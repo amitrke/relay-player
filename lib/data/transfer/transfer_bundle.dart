@@ -109,9 +109,17 @@ class TransferBundle {
       '${preferences.length} setting${preferences.length == 1 ? '' : 's'}',
     TransferItem.xtream => _count(xtream.length, 'account'),
     TransferItem.smb => _count(smb.length, 'share'),
-    TransferItem.tmdb => 'Key',
-    TransferItem.ai => 'Provider and key',
+    // Nothing to count: the label already says it ("TMDB key", "AI provider"),
+    // and adding "Key" after it read as a stutter on the confirmation screen.
+    TransferItem.tmdb || TransferItem.ai => '',
   };
+
+  /// [describe] set after the item's label, for a title or a list line:
+  /// "IPTV accounts, 2 accounts" but just "TMDB key".
+  String titled(TransferItem item, {String separator = ', '}) {
+    final detail = describe(item);
+    return detail.isEmpty ? item.label : '${item.label}$separator$detail';
+  }
 
   static String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
 
@@ -190,7 +198,10 @@ class TransferBundle {
         if (raw['smb'] case final List list)
           for (final e in list)
             if (e is Map && SmbShare.fromJson(e['share']) != null)
-              TransferredSmb(SmbShare.fromJson(e['share'])!, _text(e['password'])),
+              TransferredSmb(
+                SmbShare.fromJson(e['share'])!,
+                _text(e['password']),
+              ),
       ],
       tmdbKey: _text(raw['tmdbKey']),
       ai: _ai(raw['ai']),

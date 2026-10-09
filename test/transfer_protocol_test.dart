@@ -10,6 +10,7 @@ import 'package:relay_player/data/transfer/lan_address.dart';
 import 'package:relay_player/data/transfer/pairing.dart';
 import 'package:relay_player/data/transfer/transfer_bundle.dart';
 import 'package:relay_player/data/transfer/transfer_client.dart';
+import 'package:relay_player/data/transfer/transfer_offer.dart';
 import 'package:relay_player/data/transfer/transfer_server.dart';
 import 'package:relay_player/data/xtream/xtream_account_store.dart';
 
@@ -50,7 +51,10 @@ void main() {
     final info = PairingInfo(host: '192.168.1.20', port: 41234, secret: secret);
 
     test('is sixteen characters in four groups', () {
-      expect(info.displayCode, matches(RegExp(r'^([0-9A-Z]{4}-){3}[0-9A-Z]{4}$')));
+      expect(
+        info.displayCode,
+        matches(RegExp(r'^([0-9A-Z]{4}-){3}[0-9A-Z]{4}$')),
+      );
     });
 
     test('survives the QR round trip', () {
@@ -144,10 +148,12 @@ void main() {
     });
 
     test('does not leave the plaintext readable', () async {
-      final sealed = await TransferCipher(
-        secret,
-      ).seal(utf8.encode('a very recognisable password'));
-      expect(utf8.decode(sealed, allowMalformed: true), isNot(contains('password')));
+      final sealed = await TransferCipher(secret)
+          .seal(utf8.encode('a very recognisable password'));
+      expect(
+        utf8.decode(sealed, allowMalformed: true),
+        isNot(contains('password')),
+      );
     });
 
     test('seals the same message differently each time', () async {
@@ -268,7 +274,13 @@ void main() {
     test('what the confirmation screen says never includes a secret', () {
       final b = _bundle();
       final text = [for (final i in b.items) b.describe(i)].join(' | ');
-      for (final secret in ['hunter2', 'user', 'panel-host', 'tmdb-key', 'sk-test']) {
+      for (final secret in [
+        'hunter2',
+        'user',
+        'panel-host',
+        'tmdb-key',
+        'sk-test',
+      ]) {
         expect(text, isNot(contains(secret)));
       }
       expect(b.describe(TransferItem.xtream), '1 account');
@@ -339,25 +351,28 @@ void main() {
       decisionTimeout: Duration(seconds: 5),
     );
 
-    test('delivers a bundle, and the sender hears yes only after accept', () async {
-      await startServer();
+    test(
+      'delivers a bundle, and the sender hears yes only after accept',
+      () async {
+        await startServer();
 
-      var sendReturned = false;
-      final sent = client.send(pairing, _bundle()).then((_) {
-        sendReturned = true;
-      });
+        var sendReturned = false;
+        final sent = client.send(pairing, _bundle()).then((_) {
+          sendReturned = true;
+        });
 
-      final incoming = (await server.incoming)!;
-      expect(incoming.bundle.xtream.single.password, 'hunter2');
+        final incoming = (await server.incoming)!;
+        expect(incoming.bundle.xtream.single.password, 'hunter2');
 
-      // Received and understood, not yet agreed to: the sender is still waiting.
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      expect(sendReturned, isFalse);
+        // Received and understood, not yet agreed to: the sender is still waiting.
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        expect(sendReturned, isFalse);
 
-      incoming.accept();
-      await sent;
-      expect(sendReturned, isTrue);
-    });
+        incoming.accept();
+        await sent;
+        expect(sendReturned, isTrue);
+      },
+    );
 
     test('a refusal reaches the sender as a refusal', () async {
       await startServer();
@@ -367,28 +382,31 @@ void main() {
       await expectation;
     });
 
-    test('a wrong code is refused and nothing is surfaced to the user', () async {
-      await startServer();
-      final wrong = PairingInfo(
-        host: pairing.host,
-        port: pairing.port,
-        secret: Uint8List.fromList([...pairing.secret]..[0] ^= 1),
-      );
-      await expectLater(
-        client.send(wrong, _bundle()),
-        throwsA(
-          isA<TransferException>().having(
-            (e) => e.message,
-            'message',
-            contains('code was not right'),
+    test(
+      'a wrong code is refused and nothing is surfaced to the user',
+      () async {
+        await startServer();
+        final wrong = PairingInfo(
+          host: pairing.host,
+          port: pairing.port,
+          secret: Uint8List.fromList([...pairing.secret]..[0] ^= 1),
+        );
+        await expectLater(
+          client.send(wrong, _bundle()),
+          throwsA(
+            isA<TransferException>().having(
+              (e) => e.message,
+              'message',
+              contains('code was not right'),
+            ),
           ),
-        ),
-      );
-      var surfaced = false;
-      unawaited(server.incoming.then((i) => surfaced = i != null));
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(surfaced, isFalse);
-    });
+        );
+        var surfaced = false;
+        unawaited(server.incoming.then((i) => surfaced = i != null));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(surfaced, isFalse);
+      },
+    );
 
     test('too many wrong codes close the listener', () async {
       await startServer(TransferServer(maxFailures: 3));
@@ -474,7 +492,9 @@ void main() {
     });
 
     test('a listener that nobody uses closes itself', () async {
-      await startServer(TransferServer(lifetime: const Duration(milliseconds: 200)));
+      await startServer(
+        TransferServer(lifetime: const Duration(milliseconds: 200)),
+      );
       expect(await server.incoming, isNull);
       expect(server.isRunning, isFalse);
     });
@@ -496,6 +516,224 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('the sender shows the code', () {
+    late TransferOfferServer offer;
+    late PairingInfo pairing;
+
+    Future<void> startOffer([TransferOfferServer? custom]) async {
+      offer = custom ?? TransferOfferServer();
+      pairing = await offer.start(host: '127.0.0.1');
+    }
+
+    tearDown(() async => offer.close());
+
+    const client = TransferClient(
+      connectTimeout: Duration(seconds: 3),
+      decisionTimeout: Duration(seconds: 5),
+    );
+
+    test('an approved request names where to push, taken from the connection', () async {
+      await startOffer();
+      final asked = client.requestPush(pairing, 40123);
+
+      final request = (await offer.request)!;
+      // The address is the one the request came from, not anything it claimed.
+      expect(request.host, '127.0.0.1');
+      expect(request.port, 40123);
+
+      request.approve();
+      await asked;
+    });
+
+    test('a refusal reaches the requester as a refusal', () async {
+      await startOffer();
+      final asked = client.requestPush(pairing, 40123);
+      final expectation = expectLater(
+        asked,
+        throwsA(
+          isA<TransferDeclined>().having(
+            (e) => e.message,
+            'message',
+            contains('did not agree'),
+          ),
+        ),
+      );
+      (await offer.request)!.deny();
+      await expectation;
+    });
+
+    test('a wrong code is refused and never reaches the person', () async {
+      await startOffer();
+      final wrong = PairingInfo(
+        host: pairing.host,
+        port: pairing.port,
+        secret: Uint8List.fromList([...pairing.secret]..[3] ^= 1),
+      );
+      await expectLater(
+        client.requestPush(wrong, 40123),
+        throwsA(
+          isA<TransferException>().having(
+            (e) => e.message,
+            'message',
+            contains('code was not right'),
+          ),
+        ),
+      );
+      var surfaced = false;
+      unawaited(offer.request.then((r) => surfaced = r != null));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(surfaced, isFalse);
+    });
+
+    test('too many wrong codes close it', () async {
+      await startOffer(TransferOfferServer(maxFailures: 3));
+      final wrong = PairingInfo(
+        host: pairing.host,
+        port: pairing.port,
+        secret: Uint8List(10),
+      );
+      for (var i = 0; i < 3; i++) {
+        await expectLater(
+          client.requestPush(wrong, 1),
+          throwsA(isA<TransferException>()),
+        );
+      }
+      expect(await offer.request, isNull);
+      await expectLater(
+        client.requestPush(pairing, 1),
+        throwsA(isA<TransferException>()),
+      );
+    });
+
+    test('answers one request; a second is told it is busy', () async {
+      await startOffer();
+      final first = client.requestPush(pairing, 40123);
+      final request = (await offer.request)!;
+      await expectLater(
+        client.requestPush(pairing, 40124),
+        throwsA(
+          isA<TransferException>().having(
+            (e) => e.message,
+            'message',
+            contains('already answering'),
+          ),
+        ),
+      );
+      request.approve();
+      await first;
+    });
+
+    test('a port that is not a port is refused', () async {
+      await startOffer();
+      for (final bad in [0, 70000, -5]) {
+        await expectLater(
+          client.requestPush(pairing, bad),
+          throwsA(
+            isA<TransferException>().having(
+              (e) => e.message,
+              'message',
+              contains('400'),
+            ),
+          ),
+          reason: '$bad',
+        );
+      }
+    });
+
+    test(
+      'closing while the person is deciding gives the requester a no',
+      () async {
+        await startOffer();
+        final asked = client.requestPush(pairing, 40123);
+        final expectation = expectLater(
+          asked,
+          throwsA(isA<TransferDeclined>()),
+        );
+        await offer.request;
+        await offer.close();
+        await expectation;
+      },
+    );
+
+    test('an unused code closes itself', () async {
+      await startOffer(
+        TransferOfferServer(lifetime: const Duration(milliseconds: 200)),
+      );
+      expect(await offer.request, isNull);
+      expect(offer.isRunning, isFalse);
+    });
+
+    test('only POST /callback is answered', () async {
+      await startOffer();
+      final http = HttpClient();
+      addTearDown(() => http.close(force: true));
+      final get = await (await http.getUrl(
+        Uri.parse('http://127.0.0.1:${pairing.port}/callback'),
+      )).close();
+      expect(get.statusCode, 404);
+      await get.drain<void>();
+      // And not the receiving side's path: this is not a listener for bundles.
+      final other = await (await http.postUrl(
+        Uri.parse('http://127.0.0.1:${pairing.port}/transfer'),
+      )).close();
+      expect(other.statusCode, 404);
+      await other.drain<void>();
+    });
+
+    test('a receiver can listen under the scanned secret', () async {
+      await startOffer();
+      final receiving = TransferServer();
+      addTearDown(receiving.close);
+      final listening = await receiving.start(
+        host: '127.0.0.1',
+        secret: pairing.secret,
+      );
+      expect(listening.secret, pairing.secret);
+      expect(listening.port, isNot(pairing.port));
+    });
+
+    test('end to end: request, approval, push, review, saved', () async {
+      await startOffer();
+
+      // The phone scanned the TV's code: it listens under that secret...
+      final receiving = TransferServer();
+      addTearDown(receiving.close);
+      final listening = await receiving.start(
+        host: '127.0.0.1',
+        secret: pairing.secret,
+      );
+
+      // ...and asks the TV to send.
+      final asked = client.requestPush(pairing, listening.port);
+      final request = (await offer.request)!;
+      request.approve();
+      await asked;
+
+      // The TV pushes the way any sender does, to where the request came from.
+      var delivered = false;
+      final pushed = client
+          .send(
+            PairingInfo(
+              host: request.host,
+              port: request.port,
+              secret: pairing.secret,
+            ),
+            _bundle(),
+          )
+          .then((_) => delivered = true);
+
+      final incoming = (await receiving.incoming)!;
+      expect(incoming.bundle.xtream.single.password, 'hunter2');
+      // Still waiting on the person at the receiving end.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(delivered, isFalse);
+
+      incoming.accept();
+      await pushed;
+      expect(delivered, isTrue);
     });
   });
 }

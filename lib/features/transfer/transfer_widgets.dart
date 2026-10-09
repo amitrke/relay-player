@@ -31,9 +31,8 @@ class TransferScaffold extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: RelayLayout.pagePadding(
-              f,
-            ).add(const EdgeInsets.symmetric(vertical: 16)),
+            padding: RelayLayout.pagePadding(f)
+                .add(const EdgeInsets.symmetric(vertical: 16)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 760),
               child: Column(
@@ -62,7 +61,12 @@ class TransferScaffold extends StatelessWidget {
 
 /// Body text in the transfer screens' one reading size.
 class TransferText extends StatelessWidget {
-  const TransferText(this.text, {super.key, this.dim = true, this.bold = false});
+  const TransferText(
+    this.text, {
+    super.key,
+    this.dim = true,
+    this.bold = false,
+  });
 
   final String text;
   final bool dim;
@@ -130,7 +134,9 @@ class TransferChecklist extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${item.label} · ${describe(item)}',
+                        describe(item).isEmpty
+                            ? item.label
+                            : '${item.label} · ${describe(item)}',
                         style: TextStyle(
                           color: t.ink,
                           fontSize: RelayLayout.bodySize(f) + 1,

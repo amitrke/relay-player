@@ -1,95 +1,207 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../core/platform/device_kind.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/transfer/lan_address.dart';
 import '../../data/transfer/pairing.dart';
 import '../../data/transfer/transfer_bundle.dart';
+import '../../data/transfer/transfer_client.dart';
 import '../../data/transfer/transfer_server.dart';
+import 'pairing_widgets.dart';
 import 'transfer_service.dart';
 import 'transfer_widgets.dart';
 
 /// Settings -> Move to another device -> Receive (§17).
 ///
-/// Shows a QR code and a short code, listens on the local network until a
-/// bundle arrives, and writes nothing until the person here has seen what is in
-/// it and said yes. The listener lives only as long as this screen does.
+/// By default it shows a QR code and a short code and listens on the local
+/// network until a bundle arrives. When the *other* device is the one without a
+/// camera, it can instead **scan or type that device's code** (§17.7): this
+/// device then listens under that code's secret and asks the other to send,
+/// and the other asks its own person first.
+///
+/// Either way nothing is written until the person here has seen what arrived
+/// and said yes, and the listener lives only as long as this screen does.
 class ReceiveScreen extends ConsumerStatefulWidget {
-  const ReceiveScreen({super.key, this.server, this.findAddress = findLanAddress});
+  const ReceiveScreen({
+    super.key,
+    this.server,
+    this.makeServer,
+    this.client = const TransferClient(),
+    this.canScan,
+    this.findAddress = findLanAddress,
+  });
 
-  /// Test seams; the app always makes its own server and asks the OS for its
-  /// address.
+  /// Test seams. [server] is the first listener this screen starts, and
+  /// [makeServer] makes any later one (a screen that joins the other device's
+  /// code replaces its listener). The app makes its own, asks the OS for its
+  /// address, and decides for itself whether there is a camera.
   final TransferServer? server;
+  final TransferServer Function()? makeServer;
+  final TransferClient client;
+  final bool? canScan;
   final Future<String?> Function() findAddress;
 
   @override
   ConsumerState<ReceiveScreen> createState() => _ReceiveScreenState();
 }
 
-enum _Phase { starting, waiting, review, applying, done, failed }
+enum _Phase {
+  starting,
+  waiting,
+  scan,
+  type,
+  joining,
+  awaitingPush,
+  review,
+  applying,
+  done,
+  failed,
+}
 
 class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
-  late final TransferServer _server = widget.server ?? TransferServer();
-
   _Phase _phase = _Phase.starting;
+  TransferServer? _server;
   PairingInfo? _pairing;
   IncomingTransfer? _incoming;
   Set<TransferItem> _selected = {};
   String? _error;
   List<String> _notes = const [];
+  bool _usedSeam = false;
+
+  /// Bumped whenever the listener changes, so an answer from one that has been
+  /// replaced is recognised and ignored.
+  int _generation = 0;
+
+  bool get _canScan =>
+      widget.canScan ??
+      (!DeviceKind.isTelevision && (Platform.isAndroid || Platform.isIOS));
 
   @override
   void initState() {
     super.initState();
-    unawaited(_start());
+    unawaited(_showMine());
   }
 
   @override
   void dispose() {
+    _generation++;
     // Also tells a sender who is still waiting that the answer is no.
-    unawaited(_server.close());
+    unawaited(_server?.close());
     super.dispose();
   }
 
-  Future<void> _start() async {
+  // --- Listening -------------------------------------------------------
+
+  /// Starts a listener, replacing any there is, and waits in the background for
+  /// something to arrive. [secret] is the other device's, when joining its code.
+  Future<PairingInfo?> _listen({Uint8List? secret}) async {
+    final generation = ++_generation;
+    final previous = _server;
+    _server = null;
+    await previous?.close();
+
+    final host = await widget.findAddress();
+    if (!mounted || generation != _generation) return null;
+    if (host == null) {
+      _fail(
+        'This device is not on a Wi-Fi or Ethernet network. Connect it to '
+        'the same network as the other device and try again.',
+      );
+      return null;
+    }
+
+    final TransferServer server;
+    if (!_usedSeam && widget.server != null) {
+      _usedSeam = true;
+      server = widget.server!;
+    } else {
+      server = widget.makeServer?.call() ?? TransferServer();
+    }
     try {
-      final host = await widget.findAddress();
-      if (host == null) {
-        _fail(
-          'This device is not on a Wi-Fi or Ethernet network. Connect it to '
-          'the same network as the other device and try again.',
-        );
-        return;
+      final pairing = await server.start(host: host, secret: secret);
+      if (!mounted || generation != _generation) {
+        await server.close();
+        return null;
       }
-      final pairing = await _server.start(host: host);
-      if (!mounted) return;
-      setState(() {
-        _pairing = pairing;
-        _phase = _Phase.waiting;
-      });
-      final incoming = await _server.incoming;
-      if (!mounted) return;
-      if (incoming == null) {
-        // Closed with nothing received: it ran out of time, or was shut after
-        // too many wrong codes. Either way the code on screen is dead.
-        if (_phase == _Phase.waiting) {
-          _fail('That code has expired. Start again for a new one.');
-        }
-        return;
-      }
-      setState(() {
-        _incoming = incoming;
-        _selected = {...incoming.bundle.items};
-        _phase = _Phase.review;
-      });
+      _server = server;
+      unawaited(_awaitIncoming(server, generation));
+      return pairing;
     } catch (e) {
       _fail('Could not start listening: $e');
+      return null;
+    }
+  }
+
+  Future<void> _awaitIncoming(TransferServer server, int generation) async {
+    final incoming = await server.incoming;
+    if (!mounted || generation != _generation) return;
+    if (incoming == null) {
+      // Closed with nothing received: it ran out of time, or was shut after
+      // too many wrong codes. Either way the code involved is dead.
+      if (_phase == _Phase.waiting ||
+          _phase == _Phase.joining ||
+          _phase == _Phase.awaitingPush) {
+        _fail('That code has expired. Start again for a new one.');
+      }
+      return;
+    }
+    setState(() {
+      _incoming = incoming;
+      _selected = {...incoming.bundle.items};
+      _phase = _Phase.review;
+    });
+  }
+
+  Future<void> _stopListening() async {
+    _generation++;
+    final server = _server;
+    _server = null;
+    await server?.close();
+  }
+
+  /// Shows this device's own code, which is where it starts.
+  Future<void> _showMine() async {
+    setState(() => _phase = _Phase.starting);
+    final pairing = await _listen();
+    if (pairing == null || !mounted) return;
+    setState(() {
+      _pairing = pairing;
+      _phase = _Phase.waiting;
+    });
+  }
+
+  Future<void> _choose(_Phase phase) async {
+    // No code is on screen while this device reads the other's, so nothing
+    // should be listening for it.
+    await _stopListening();
+    if (mounted) setState(() => _phase = phase);
+  }
+
+  /// Joins a code the other device is showing: listens under its secret, then
+  /// asks it to send. It asks its own person first, so this may take a while.
+  Future<void> _join(PairingInfo offer) async {
+    if (_phase == _Phase.joining) return;
+    setState(() => _phase = _Phase.joining);
+    final mine = await _listen(secret: offer.secret);
+    if (mine == null || !mounted) return;
+    try {
+      await widget.client.requestPush(offer, mine.port);
+      // The bundle can arrive before this returns; only step forward, never
+      // back over the review.
+      if (mounted && _phase == _Phase.joining) {
+        setState(() => _phase = _Phase.awaitingPush);
+      }
+    } on TransferException catch (e) {
+      _fail(e.message);
+    } catch (e) {
+      _fail('Something went wrong: $e');
     }
   }
 
@@ -100,6 +212,8 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       _phase = _Phase.failed;
     });
   }
+
+  // --- Applying --------------------------------------------------------
 
   Future<void> _apply() async {
     final incoming = _incoming;
@@ -135,6 +249,8 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     context.pushReplacement('/transfer/receive');
   }
 
+  // --- Build -----------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return TransferScaffold(
@@ -142,6 +258,15 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       children: switch (_phase) {
         _Phase.starting => const [TransferBusy('Getting ready…')],
         _Phase.waiting => [_waiting(context)],
+        _Phase.scan => _scan(context),
+        _Phase.type => _type(context),
+        _Phase.joining => const [TransferBusy('Asking the other device…')],
+        _Phase.awaitingPush => const [
+          TransferBusy(
+            'Waiting for the other device to send. Say yes there when it '
+            'asks.',
+          ),
+        ],
         _Phase.review => _review(context),
         _Phase.applying => const [TransferBusy('Saving…')],
         _Phase.done => _done(context),
@@ -151,99 +276,88 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   }
 
   Widget _waiting(BuildContext context) {
-    final t = RelayTheme.of(context);
-    final f = RelayLayout.of(context);
     final pairing = _pairing!;
-
-    final steps = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const TransferText(
+    return PairingDisplay(
+      pairing: pairing,
+      instructions:
           'On the device that has your settings, open Settings, Move to '
           'another device, and choose Send. Then scan this code.',
+      waitingLabel: 'Waiting for the other device…',
+      actions: [
+        RelayTextButton(
+          label: 'Cancel',
+          autofocus: true,
+          onPressed: () => context.pop(),
         ),
-        const SizedBox(height: 16),
-        const TransferText(
-          'No camera? Choose Type the code there, and enter:',
-        ),
-        const SizedBox(height: 10),
-        Text(
-          pairing.address,
-          style: TextStyle(
-            color: t.ink,
-            fontSize: RelayLayout.bodySize(f) + 4,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          pairing.displayCode,
-          style: TextStyle(
-            color: t.ink,
-            fontSize: RelayLayout.bodySize(f) + 8,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 18),
-        const TransferBusy('Waiting for the other device…'),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            RelayTextButton(
-              label: 'Cancel',
-              autofocus: true,
-              onPressed: () => context.pop(),
+        if (RelayLayout.of(context) != RelayFormFactor.tv)
+          RelayTextButton(
+            label: 'Copy code',
+            onPressed: () => Clipboard.setData(
+              ClipboardData(text: '${pairing.address} ${pairing.displayCode}'),
             ),
-            if (RelayLayout.of(context) != RelayFormFactor.tv)
-              RelayTextButton(
-                label: 'Copy code',
-                onPressed: () => Clipboard.setData(
-                  ClipboardData(text: '${pairing.address} ${pairing.displayCode}'),
-                ),
-              ),
-          ],
+          ),
+        // For when the other device has no camera and is showing the code.
+        if (_canScan)
+          RelayTextButton(
+            label: 'Scan its code instead',
+            onPressed: () => unawaited(_choose(_Phase.scan)),
+          ),
+        RelayTextButton(
+          label: 'Type its code instead',
+          onPressed: () => unawaited(_choose(_Phase.type)),
         ),
       ],
     );
-
-    // White with black modules whatever the theme: a scanner needs the contrast,
-    // and an inverted code in a dark theme is the commonest way for scanning to
-    // fail. The one place a fixed colour is correct.
-    final qr = Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(6),
-      child: QrImageView(
-        data: pairing.uri,
-        size: f == RelayFormFactor.tv ? 200 : 220,
-        backgroundColor: Colors.white,
-        semanticsLabel: 'Code to scan from the other device',
-      ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, box) => box.maxWidth >= 600
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Flexible(child: steps),
-                const SizedBox(width: 32),
-                qr,
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(child: qr),
-                const SizedBox(height: 20),
-                steps,
-              ],
-            ),
-    );
   }
+
+  List<Widget> _scan(BuildContext context) => [
+    const TransferText(
+      'On the device that has your settings, open Settings, Move to another '
+      'device, and choose Send, then Show a code. Point the camera at it.',
+    ),
+    const SizedBox(height: 16),
+    PairingScanner(onPairing: (p) => unawaited(_join(p))),
+    const SizedBox(height: 8),
+    Wrap(
+      spacing: 8,
+      children: [
+        RelayTextButton(
+          label: 'Show my code instead',
+          onPressed: () => unawaited(_showMine()),
+        ),
+        RelayTextButton(
+          label: 'Type its code instead',
+          onPressed: () => unawaited(_choose(_Phase.type)),
+        ),
+        RelayTextButton(label: 'Cancel', onPressed: () => context.pop()),
+      ],
+    ),
+  ];
+
+  List<Widget> _type(BuildContext context) => [
+    const TransferText(
+      'On the device that has your settings, open Settings, Move to another '
+      'device, and choose Send, then Show a code. Then enter what it shows.',
+    ),
+    const SizedBox(height: 16),
+    PairingEntry(submitLabel: 'Connect', onSubmit: (p) => unawaited(_join(p))),
+    const SizedBox(height: 8),
+    Wrap(
+      spacing: 8,
+      children: [
+        RelayTextButton(
+          label: 'Show my code instead',
+          onPressed: () => unawaited(_showMine()),
+        ),
+        if (_canScan)
+          RelayTextButton(
+            label: 'Scan its code instead',
+            onPressed: () => unawaited(_choose(_Phase.scan)),
+          ),
+        RelayTextButton(label: 'Cancel', onPressed: () => context.pop()),
+      ],
+    ),
+  ];
 
   List<Widget> _review(BuildContext context) {
     final bundle = _incoming!.bundle;
@@ -280,7 +394,11 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   }
 
   List<Widget> _done(BuildContext context) => [
-    const TransferText('Done. Your settings are on this device.', dim: false, bold: true),
+    const TransferText(
+      'Done. Your settings are on this device.',
+      dim: false,
+      bold: true,
+    ),
     for (final note in _notes) ...[
       const SizedBox(height: 12),
       TransferText(note),
