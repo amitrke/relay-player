@@ -126,7 +126,7 @@ void main() {
           CachedSource(
             items: [_plex('1', 'Old')],
             signature: 'a',
-            at: DateTime(2026),
+            at: DateTime.now(),
           ),
         );
         final out = await _run([
@@ -149,7 +149,7 @@ void main() {
         CachedSource(
           items: [_plex('1', 'Kept')],
           signature: 'a',
-          at: DateTime(2026),
+          at: DateTime.now(),
         ),
       );
       final out = await _run([
@@ -172,7 +172,7 @@ void main() {
         CachedSource(
           items: [_plex('1', 'Kept')],
           signature: 'a',
-          at: DateTime(2026),
+          at: DateTime.now(),
         ),
       );
       final out = await _run([
@@ -218,7 +218,7 @@ void main() {
         CachedSource(
           items: [_plex('1', 'Gone')],
           signature: 'a',
-          at: DateTime(2026),
+          at: DateTime.now(),
         ),
       );
       final out = await _run([
@@ -237,7 +237,7 @@ void main() {
           CachedSource(
             items: [_plex('1', 'Wrong')],
             signature: 'old-categories',
-            at: DateTime(2026),
+            at: DateTime.now(),
           ),
         );
         final out = await _run([
@@ -260,7 +260,7 @@ void main() {
           CachedSource(
             items: [_plex('1', 'Heat', path: '/thumb')],
             signature: 'a',
-            at: DateTime(2026),
+            at: DateTime.now(),
           ),
         );
         final out = await _run([
@@ -282,6 +282,74 @@ void main() {
         ),
       ], null);
       expect(_titles(out.single), ['Heat']);
+    });
+  });
+
+  group('keeping the cache bounded', () {
+    CachedSource at(DateTime when, [String title = 'X']) =>
+        CachedSource(items: [_plex('1', title)], signature: 'a', at: when);
+    final now = DateTime(2026, 10, 9);
+
+    test(
+      'prune drops entries older than the limit and keeps the rest',
+      () async {
+        final cache = MemoryLibraryCache();
+        await cache.write('old', at(now.subtract(const Duration(days: 31))));
+        await cache.write('new', at(now.subtract(const Duration(days: 2))));
+        await cache.prune(libraryCacheMaxAge, now: now);
+        expect(await cache.read('old'), isNull);
+        expect(await cache.read('new'), isNotNull);
+      },
+    );
+
+    test('deletePrefix removes one source and leaves the others', () async {
+      final cache = MemoryLibraryCache();
+      await cache.write('plex|s1|movies', at(now));
+      await cache.write('plex|s1|series', at(now));
+      await cache.write('plex|s2|movies', at(now));
+      await cache.write('xtream|p1|vod', at(now));
+      await cache.deletePrefix('plex|s1|');
+      expect(await cache.read('plex|s1|movies'), isNull);
+      expect(await cache.read('plex|s1|series'), isNull);
+      expect(await cache.read('plex|s2|movies'), isNotNull);
+      expect(await cache.read('xtream|p1|vod'), isNotNull);
+    });
+
+    test('signing out clears every Plex entry, and only those', () async {
+      final cache = MemoryLibraryCache();
+      await cache.write('plex|s1|movies', at(now));
+      await cache.write('plex|s2|series', at(now));
+      await cache.write('xtream|p1|vod', at(now));
+      await cache.deletePrefix('plex|');
+      expect(cache.map.keys, ['xtream|p1|vod']);
+    });
+
+    test(
+      'a kept answer past the age limit is not used as a stand-in',
+      () async {
+        final cache = MemoryLibraryCache();
+        await cache.write(
+          'a',
+          at(DateTime.now().subtract(const Duration(days: 45)), 'Stale'),
+        );
+        final out = await _run([
+          LibrarySource(key: 'a', fetch: () async => throw Exception('down')),
+        ], cache);
+        // Neither shown first nor used after the failure.
+        expect(out, [<CatalogItem>[]]);
+      },
+    );
+
+    test('control: the same entry a day old is used', () async {
+      final cache = MemoryLibraryCache();
+      await cache.write(
+        'a',
+        at(DateTime.now().subtract(const Duration(days: 1)), 'Fresh'),
+      );
+      final out = await _run([
+        LibrarySource(key: 'a', fetch: () async => throw Exception('down')),
+      ], cache);
+      expect(_titles(out.last), ['Fresh']);
     });
   });
 }

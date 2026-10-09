@@ -19,6 +19,7 @@ import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../live_tv/live_tv_tab.dart';
 import '../local_network/local_network_tab.dart';
+import 'library_cache_provider.dart';
 import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
@@ -59,12 +60,6 @@ final plexSectionsProvider =
 /// a single sleeping NAS leaves every tab spinning forever — observed with a
 /// relay-connected server that never answered.
 const _perServerTimeout = Duration(seconds: 10);
-
-/// The library cache, opened once. Null when it cannot be (a test, or a box
-/// that will not open), in which case the library simply loads without one.
-final libraryCacheProvider = FutureProvider<LibraryCache>((ref) async {
-  return HiveLibraryCache.open();
-});
 
 /// Everything feeding [tab], merged across every source, kept between launches.
 ///

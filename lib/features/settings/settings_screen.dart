@@ -4,6 +4,7 @@ import '../advanced_sources/xtream_accounts_pane.dart';
 import 'about_pane.dart';
 import 'ai_pane.dart';
 import 'metadata_pane.dart';
+import 'privacy_pane.dart';
 import 'playback_panes.dart';
 import 'sources_pane.dart';
 
@@ -134,12 +135,12 @@ enum SettingsSection {
   // Ollama or any other), a key in secure storage, and a real consent record.
   aiFeatures('AI features', built: true),
   advancedSources('Advanced sources', built: true),
-  // Unbuilt again since 2026-09-22. Its only control was "Send crash
+  // Unbuilt from 2026-09-22 to 2026-10-09: its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
-  // says no crash reports are sent. A switch for a data flow that does not
-  // exist is the same fault as the AI pane's demo data. It returns with
-  // Crashlytics (#6), which left the MVP on 2026-09-21.
-  privacy('Privacy and data'),
+  // says no crash reports are sent. Built again around clearing cached data,
+  // which does something. The crash switch stays out until crash reporting
+  // (#6) exists.
+  privacy('Privacy and data', built: true),
   about('About', built: true);
 
   const SettingsSection(this.label, {this.built = false});
@@ -222,18 +223,7 @@ class _PhoneSettings extends StatelessWidget {
 
         // Hand-listed here rather than driven by the enum, so it has to ask.
         if (SettingsSection.privacy.built) ...[
-          _Section(
-            title: 'Privacy and data',
-            child: _ToggleRow(
-              title: 'Send crash reports',
-              subtitle:
-                  'Off by default. Reports contain no library or account data. '
-                  'Subnext Player has no backend and no analytics.',
-              value: state.crashReportingEnabled,
-              onChanged: (v) =>
-                  onStateChanged(state.copyWith(crashReportingEnabled: v)),
-            ),
-          ),
+          const _Section(title: 'Privacy and data', child: PrivacyPane()),
           const SizedBox(height: 22),
         ],
 
@@ -650,17 +640,9 @@ class _DesktopSettings extends StatelessWidget {
                   ],
                 ),
               ),
-              SettingsSection.privacy => _DesktopPane(
+              SettingsSection.privacy => const _DesktopPane(
                 title: 'Privacy and data',
-                child: _ToggleRow(
-                  title: 'Send crash reports',
-                  subtitle:
-                      'Off by default. Reports contain no library or account '
-                      'data. Subnext Player has no backend and no analytics.',
-                  value: state.crashReportingEnabled,
-                  onChanged: (v) =>
-                      onStateChanged(state.copyWith(crashReportingEnabled: v)),
-                ),
+                child: PrivacyPane(),
               ),
               SettingsSection.about => const _DesktopPane(
                 title: 'About',

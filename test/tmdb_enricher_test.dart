@@ -11,14 +11,21 @@ class _FakeApi implements TmdbApi {
   bool fail = false;
 
   @override
-  Future<List<TmdbCandidate>> search(String title,
-      {required bool tv, int? year}) async {
+  Future<List<TmdbCandidate>> search(
+    String title, {
+    required bool tv,
+    int? year,
+  }) async {
     searches++;
     if (fail) throw const TmdbException('down');
     if (title == 'Parasite') {
       return const [
         TmdbCandidate(
-            id: 7, title: 'Parasite', originalTitle: 'Gisaengchung', year: 2019),
+          id: 7,
+          title: 'Parasite',
+          originalTitle: 'Gisaengchung',
+          year: 2019,
+        ),
       ];
     }
     return const [];
@@ -37,30 +44,33 @@ class _FakeApi implements TmdbApi {
   }
 
   @override
-  Future<List<TmdbCandidate>> recommendations(int id,
-          {required bool tv}) async =>
-      const [];
+  Future<List<TmdbCandidate>> recommendations(
+    int id, {
+    required bool tv,
+  }) async => const [];
 }
 
 CatalogItem _item(String title, {int? year}) => CatalogItem(
-      source: CatalogSource.xtream,
-      sourceId: 'p',
-      kind: CatalogKind.movie,
-      id: title,
-      title: title,
-      year: year,
-    );
+  source: CatalogSource.xtream,
+  sourceId: 'p',
+  kind: CatalogKind.movie,
+  id: title,
+  title: title,
+  year: year,
+);
 
 void main() {
-  test('finds a title through a messy panel name and fills the metadata',
-      () async {
-    final api = _FakeApi();
-    final e = TmdbEnricher(api, MemoryTmdbCache());
-    final out = await e.enrich([_item('EN - Parasite (2019) 4K')]);
-    expect(out.single.genres, ['Thriller', 'Drama']);
-    expect(out.single.originalLanguage, 'Korean');
-    expect(out.single.rating, 8.5);
-  });
+  test(
+    'finds a title through a messy panel name and fills the metadata',
+    () async {
+      final api = _FakeApi();
+      final e = TmdbEnricher(api, MemoryTmdbCache());
+      final out = await e.enrich([_item('EN - Parasite (2019) 4K')]);
+      expect(out.single.genres, ['Thriller', 'Drama']);
+      expect(out.single.originalLanguage, 'Korean');
+      expect(out.single.rating, 8.5);
+    },
+  );
 
   test('a second lookup of the same title is served from the cache', () async {
     final api = _FakeApi();
@@ -108,5 +118,21 @@ void main() {
     expect(out.map((i) => i.id), items.map((i) => i.id));
     expect(out[0].genres, isNotEmpty);
     expect(out[2].genres, isEmpty);
+  });
+
+  test('records past the age limit are pruned, newer ones stay', () async {
+    final cache = MemoryTmdbCache();
+    final now = DateTime(2026, 10, 9);
+    await cache.put(
+      'old',
+      TmdbLookup(null, now.subtract(const Duration(days: 91))),
+    );
+    await cache.put(
+      'new',
+      TmdbLookup(null, now.subtract(const Duration(days: 5))),
+    );
+    await cache.prune(tmdbCacheMaxAge, now: now);
+    expect(await cache.get('old'), isNull);
+    expect(await cache.get('new'), isNotNull);
   });
 }

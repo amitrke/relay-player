@@ -59,6 +59,7 @@ Stream<List<CatalogItem>> loadLibrary(
   required LibraryCache? cache,
   Duration timeout = const Duration(seconds: 10),
   Duration timeoutWithCache = const Duration(seconds: 25),
+  Duration maxAge = libraryCacheMaxAge,
   DateTime Function()? now,
 }) async* {
   final clock = now ?? DateTime.now;
@@ -73,6 +74,9 @@ Stream<List<CatalogItem>> loadLibrary(
         hit = null;
       }
       if (hit == null) continue;
+      // Too old to stand in for the source: it has been unreachable for a month,
+      // or is gone, and its old titles would only mislead.
+      if (clock().difference(hit.at) > maxAge) continue;
       final expected = s.expectedSignature;
       if (expected != null && hit.signature != expected) continue;
       kept[s.key] = [

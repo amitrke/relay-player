@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -27,6 +29,11 @@ Future<void> main() async {
   // the Advanced Sources gate would flicker a tab into existence on every
   // launch.
   final settings = await AppSettingsStore.open();
+
+  // Hive appends rather than overwrites, so rewritten values (the AI picks, the
+  // library mapping) linger in the file until a compaction. Not awaited: the
+  // first frame should not wait on tidying.
+  unawaited(settings.compact());
 
   runApp(
     ProviderScope(

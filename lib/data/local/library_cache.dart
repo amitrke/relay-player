@@ -24,10 +24,24 @@ class CachedSource {
   final DateTime at;
 }
 
+/// How long a kept answer is trusted, and how long it is kept at all.
+///
+/// A source that has been down for a month is not worth showing the old titles
+/// of, and an entry nothing has refreshed in that long belongs to a source that
+/// is gone. Both are decided by this one number, so the cache cannot hold things
+/// nobody will use.
+const libraryCacheMaxAge = Duration(days: 30);
+
 abstract class LibraryCache {
   Future<CachedSource?> read(String key);
   Future<void> write(String key, CachedSource value);
   Future<void> clear();
+
+  /// Deletes every entry whose key starts with [prefix].
+  Future<void> deletePrefix(String prefix);
+
+  /// Deletes entries last refreshed more than [age] ago.
+  Future<void> prune(Duration age, {DateTime? now});
 }
 
 class MemoryLibraryCache implements LibraryCache {
@@ -41,6 +55,16 @@ class MemoryLibraryCache implements LibraryCache {
 
   @override
   Future<void> clear() async => map.clear();
+
+  @override
+  Future<void> deletePrefix(String prefix) async =>
+      map.removeWhere((k, _) => k.startsWith(prefix));
+
+  @override
+  Future<void> prune(Duration age, {DateTime? now}) async {
+    final cutoff = (now ?? DateTime.now()).subtract(age);
+    map.removeWhere((_, v) => v.at.isBefore(cutoff));
+  }
 }
 
 /// In its own Hive box: tens of thousands of titles do not belong in the
@@ -54,8 +78,23 @@ class HiveLibraryCache implements LibraryCache {
 
   final Box<dynamic> _box;
 
-  static Future<HiveLibraryCache> open() async =>
-      HiveLibraryCache._(await Hive.openBox<dynamic>('library_cache'));
+  /// Opens the box, drops entries over [libraryCacheMaxAge], and compacts.
+  ///
+  /// Hive appends rather than overwrites, so every refresh leaves the previous
+  /// copy of a source in the file until a compaction. Compacting here, once a
+  /// launch, keeps the file at the size of what is actually kept.
+  static Future<HiveLibraryCache> open() async {
+    final cache = HiveLibraryCache._(
+      await Hive.openBox<dynamic>('library_cache'),
+    );
+    try {
+      await cache.prune(libraryCacheMaxAge);
+      await cache._box.compact();
+    } catch (_) {
+      // Tidying is best effort; a cache that opens is a cache that works.
+    }
+    return cache;
+  }
 
   @override
   Future<CachedSource?> read(String key) async {
@@ -89,7 +128,34 @@ class HiveLibraryCache implements LibraryCache {
   );
 
   @override
-  Future<void> clear() => _box.clear();
+  Future<void> clear() async {
+    await _box.clear();
+    await _box.compact();
+  }
+
+  @override
+  Future<void> deletePrefix(String prefix) => _box.deleteAll(
+    _box.keys.where((k) => k is String && k.startsWith(prefix)).toList(),
+  );
+
+  @override
+  Future<void> prune(Duration age, {DateTime? now}) async {
+    final cutoff = (now ?? DateTime.now()).subtract(age);
+    final stale = <dynamic>[];
+    for (final key in _box.keys) {
+      final raw = _box.get(key);
+      // `at` is the first field written, so it can be read without decoding
+      // the whole entry, which is hundreds of kilobytes.
+      final at = raw is String
+          ? DateTime.tryParse(
+              RegExp(r'^\{"at":"([^"]+)"').firstMatch(raw)?.group(1) ?? '',
+            )
+          : null;
+      // An entry that cannot be read is as good as old.
+      if (at == null || at.isBefore(cutoff)) stale.add(key);
+    }
+    if (stale.isNotEmpty) await _box.deleteAll(stale);
+  }
 }
 
 /// A catalogue item as it is written to disk.

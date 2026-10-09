@@ -4,6 +4,7 @@ import '../../data/xtream/category_language.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
 import '../../domain/models/catalog_item.dart';
+import '../library/library_cache_provider.dart';
 import '../settings/settings_controller.dart';
 
 final xtreamAccountStoreProvider = Provider<XtreamAccountStore>((ref) {
@@ -36,6 +37,8 @@ class XtreamAccountsController extends Notifier<List<XtreamAccount>> {
 
   Future<void> remove(String id) async {
     await _store.remove(id);
+    // Its kept catalogue goes with it, not onto disk to wait for the age limit.
+    await forgetSourceCache(ref, 'xtream|$id|');
     state = _store.accounts();
   }
 }

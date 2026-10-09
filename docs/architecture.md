@@ -944,9 +944,18 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > (`CatalogItem.posterPath`) and signed again on read, because the signed image
    > URL carries `X-Plex-Token`; `catalogItemToJson` drops any URL containing one,
    > and the file on a device was checked and held no token and no transcode URL.
-   > Limits: watch state is as old as the last refresh (so recently watched can lag
-   > until the background refresh lands); removing a server leaves its entry in the
-   > box unread; TMDB metadata is not part of it (it has its own cache).
+   > **Kept bounded, 2026-10-09.** None of this may grow without limit, so: an
+   > entry older than 30 days is neither shown nor used as a stand-in, and is
+   > deleted when the box opens (`libraryCacheMaxAge`); TMDB records are pruned at
+   > 90 days (`tmdbCacheMaxAge`); each box is compacted once a launch, because Hive
+   > appends and a rewritten entry would otherwise linger, and so is the settings
+   > box, which the AI picks are rewritten into; removing a server or a panel (or
+   > signing out of Plex) deletes its entry at once (`forgetSourceCache`), and
+   > anything that slips past ages out; and Settings → Privacy and data has *Clear
+   > cached data*, which empties the library, TMDB and AI-pick caches and leaves
+   > sources, keys, settings and watch history alone. Limits: watch state is as old
+   > as the last refresh (so recently watched can lag until the background refresh
+   > lands); TMDB metadata is not part of the library cache (it has its own cache).
    > `LibraryController` is an `AsyncNotifier`, not a `StreamProvider`: consumers
    > read `.future` without listening, which never completes for a stream provider
    > in this Riverpod version, and the fresh answer arrives after `build` has
