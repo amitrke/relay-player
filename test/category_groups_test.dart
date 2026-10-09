@@ -150,4 +150,44 @@ void main() {
   test('empty in, empty out', () {
     expect(groupCategories(const []), isEmpty);
   });
+
+  group('browsing a big group by letter', () {
+    test('a name files under its first letter, digits and symbols under #', () {
+      expect(letterOf('Amazon'), 'A');
+      expect(letterOf('  hbo max'), 'H');
+      expect(letterOf('24/7 Music'), '#');
+      expect(letterOf('(2024) Films'), '#');
+      expect(letterOf('...'), '#');
+      expect(letterOf(''), '#');
+    });
+
+    test(
+      'sorts A to Z ignoring case and leading punctuation, digits first',
+      () {
+        final sorted = sortedAlphabetically(
+          _cats(['banana', 'Apple', '*Cherry', '24/7 X', 'apple pie']),
+          (c) => c.name,
+        );
+        expect(
+          [for (final c in sorted) c.name],
+          ['24/7 X', 'Apple', 'apple pie', 'banana', '*Cherry'],
+        );
+      },
+    );
+
+    test('equal names keep the panel order', () {
+      final input = _cats(['Same', 'Other', 'Same']);
+      final sorted = sortedAlphabetically(input, (c) => c.name);
+      expect([for (final c in sorted) c.id], ['1', '0', '2']);
+    });
+
+    test('sorts by what is shown, not by the full name', () {
+      final input = _cats(['Z ➾ Apple', 'A ➾ Zebra']);
+      final sorted = sortedAlphabetically(
+        input,
+        (c) => categoryLabelInGroup(c.name),
+      );
+      expect([for (final c in sorted) c.name], ['Z ➾ Apple', 'A ➾ Zebra']);
+    });
+  });
 }

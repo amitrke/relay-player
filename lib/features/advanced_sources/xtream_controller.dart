@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/xtream/category_language.dart';
+import '../../data/xtream/hidden_words.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
 import '../../domain/models/catalog_item.dart';
 import '../library/library_cache_provider.dart';
 import '../settings/settings_controller.dart';
+import 'hidden_words_controller.dart';
 
 final xtreamAccountStoreProvider = Provider<XtreamAccountStore>((ref) {
   return XtreamAccountStore(settings: ref.watch(appSettingsStoreProvider));
@@ -93,6 +95,20 @@ List<XtreamChannel> pickChannels(List<XtreamChannel> all, List<String>? picks) {
   ];
 }
 
+/// [channels] without those whose name has a hidden word in it. Applied to the
+/// channels of the categories that were kept, after any picks, so a channel the
+/// user hid is gone from Live TV whichever category it sits in.
+List<XtreamChannel> withoutHidden(
+  List<XtreamChannel> channels,
+  HiddenWords hidden,
+) =>
+    hidden.isEmpty
+        ? channels
+        : [
+            for (final c in channels)
+              if (!hidden.matches(c.name)) c,
+          ];
+
 /// Every channel in one category, for the screen that picks among them. Not the
 /// chosen categories: that is [xtreamChannelsProvider], which applies the picks.
 final xtreamCategoryChannelsProvider =
@@ -112,6 +128,8 @@ final xtreamChannelsProvider =
     ) async {
       if (account.liveCategoryIds.isEmpty) return const [];
       final client = await ref.watch(xtreamClientProvider(account).future);
+      // Watched, so adding a word takes effect without a restart.
+      final hidden = HiddenWords(ref.watch(hiddenWordsProvider));
 
       final pages = await Future.wait(
         account.liveCategoryIds.map((id) async {
@@ -126,7 +144,7 @@ final xtreamChannelsProvider =
           }
         }),
       );
-      return pages.expand((page) => page).toList();
+      return withoutHidden(pages.expand((page) => page).toList(), hidden);
     });
 
 /// Panel movies and series, as catalogue items for the shared grid.

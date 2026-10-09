@@ -6,9 +6,12 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/category_groups.dart';
+import '../../data/xtream/hidden_words.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
 import 'channel_picker_screen.dart';
+import 'hidden_words_controller.dart';
+import 'hidden_words_sheet.dart';
 import 'xtream_controller.dart';
 
 /// §4.1 — choose which categories to keep, before any stream list is fetched.
@@ -47,6 +50,7 @@ class CategoryPickerScreen extends ConsumerStatefulWidget {
 class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
   final _search = TextEditingController();
   final _pattern = TextEditingController();
+  final _scroll = ScrollController();
 
   Set<String>? _selected;
 
@@ -61,14 +65,23 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
   bool _selectedOnly = false;
   bool _showPattern = false;
 
+  /// Reveal the categories the hidden words would leave out.
+  bool _showHidden = false;
+
+  /// Said once after adding a word, when it un-ticked something.
+  String? _note;
+
   // Grouping is not free on hundreds of names, so it is done once per list.
   List<XtreamCategory>? _groupedFrom;
+  String _groupedWords = '';
+  bool _groupedShowing = false;
   List<CategoryGroup> _groups = const [];
 
   @override
   void dispose() {
     _search.dispose();
     _pattern.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -79,10 +92,18 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     return null;
   }
 
-  List<CategoryGroup> _groupsOf(List<XtreamCategory> list) {
-    if (!identical(_groupedFrom, list)) {
-      _groupedFrom = list;
-      _groups = groupCategories(list);
+  List<CategoryGroup> _groupsOf(
+    List<XtreamCategory> all,
+    List<XtreamCategory> visible,
+    String wordsKey,
+  ) {
+    if (!identical(_groupedFrom, all) ||
+        _groupedWords != wordsKey ||
+        _groupedShowing != _showHidden) {
+      _groupedFrom = all;
+      _groupedWords = wordsKey;
+      _groupedShowing = _showHidden;
+      _groups = groupCategories(visible);
     }
     return _groups;
   }
@@ -285,14 +306,25 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
   Widget _body(BuildContext context, List<XtreamCategory> list) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    final groups = _groupsOf(list);
+    final words = ref.watch(hiddenWordsProvider);
+    final hidden = HiddenWords(words);
+    // What the lists show. The hidden ones stay in [list] so the Chosen view can
+    // still show something chosen before its word was hidden.
+    final visible = _showHidden
+        ? list
+        : [
+            for (final c in list)
+              if (!hidden.matches(c.name)) c,
+          ];
+    final hiddenCount = list.length - visible.length;
+    final groups = _groupsOf(list, visible, words.join('\u0001'));
     final chosen = _current;
 
     final Widget content;
     if (_query.isNotEmpty) {
       final needle = _query.toLowerCase();
       final hits = [
-        for (final c in list)
+        for (final c in visible)
           if (c.name.toLowerCase().contains(needle)) c,
       ];
       content = _categoryList(hits, empty: 'Nothing matches "$_query".');
@@ -302,12 +334,23 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           if (chosen.contains(c.id)) c,
       ], empty: 'Nothing chosen yet.');
     } else if (_open != null) {
+      // A big group is browsed by letter: A to Z, with a chip per letter to
+      // jump to. A small one keeps the panel's order, which usually means
+      // something and is short enough to read through.
+      final big = _open!.categories.length > alphabetiseAbove;
+      final shown = big
+          ? sortedAlphabetically(
+              _open!.categories,
+              (c) => categoryLabelInGroup(c.name),
+            )
+          : _open!.categories;
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _groupHeader(_open!),
+          if (big) _letterRow(shown),
           // Under its group a name drops the part the group already says.
-          Expanded(child: _categoryList(_open!.categories, shorten: true)),
+          Expanded(child: _categoryList(shown, shorten: true, fixedRows: big)),
         ],
       );
     } else {
@@ -345,6 +388,15 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
               ),
               const SizedBox(width: 8),
               _ModeChip(
+                label: words.isEmpty ? 'Hide words' : 'Hide ${words.length}',
+                on: words.isNotEmpty,
+                onTap: () => showHiddenWordsSheet(
+                  context,
+                  onAdded: (word) => _onWordAdded(word, list),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _ModeChip(
                 label: 'Pattern',
                 on: _showPattern,
                 onTap: () => setState(() => _showPattern = !_showPattern),
@@ -352,9 +404,71 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             ],
           ),
         ),
-        if (_showPattern) _patternRow(list),
+        if (_note != null || hiddenCount > 0 || _showHidden)
+          _hiddenNote(hiddenCount),
+        if (_showPattern) _patternRow(visible),
         Expanded(child: content),
       ],
+    );
+  }
+
+  /// A word was just hidden: anything already chosen that it matches is
+  /// un-ticked, and the screen says so, since an un-ticked category that is also
+  /// now out of sight would otherwise just be missing. Nothing is saved until
+  /// Save, like every other change here.
+  void _onWordAdded(String word, List<XtreamCategory> list) {
+    final matcher = HiddenWords([word]);
+    final chosen = _current;
+    final dropped = [
+      for (final c in list)
+        if (chosen.contains(c.id) && matcher.matches(c.name)) c,
+    ];
+    setState(() {
+      if (dropped.isNotEmpty) {
+        final ids = {for (final c in dropped) c.id};
+        _selected = chosen.where((id) => !ids.contains(id)).toSet();
+        _picks = {
+          for (final e in _currentPicks.entries)
+            if (!ids.contains(e.key)) e.key: e.value,
+        };
+        _note = dropped.length == 1
+            ? 'Un-ticked "${dropped.first.name}", which "$word" hides. Save to keep that.'
+            : 'Un-ticked ${dropped.length} chosen categories that "$word" hides. Save to keep that.';
+      } else {
+        _note = null;
+      }
+      _open = null;
+    });
+  }
+
+  Widget _hiddenNote(int hiddenCount) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    return Padding(
+      padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _note ??
+                  (_showHidden
+                      ? 'Showing the categories your hidden words leave out.'
+                      : '$hiddenCount hidden by your words.'),
+              style: TextStyle(color: t.inkDim, fontSize: 12.5, height: 1.4),
+            ),
+          ),
+          if (hiddenCount > 0 || _showHidden)
+            _ModeChip(
+              label: _showHidden ? 'Hide again' : 'Show them',
+              on: _showHidden,
+              onTap: () => setState(() {
+                _showHidden = !_showHidden;
+                _note = null;
+                _open = null;
+              }),
+            ),
+        ],
+      ),
     );
   }
 
@@ -461,10 +575,57 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     );
   }
 
+  /// The height every row is given when [fixedRows] is set, so a letter chip can
+  /// scroll to a row by arithmetic: a lazy list has not built the rows below the
+  /// screen, so there is nothing to ask for their position. Scaled with the text
+  /// so large type does not overflow it.
+  double get _rowExtent {
+    final f = RelayLayout.of(context);
+    final text = MediaQuery.textScalerOf(context)
+        .scale(RelayLayout.bodySize(f));
+    return (38 + text * 1.45).clamp(60.0, 104.0);
+  }
+
+  Widget _letterRow(List<XtreamCategory> sorted) {
+    final f = RelayLayout.of(context);
+    // The first row of each letter, in the order the rows are shown.
+    final firstOf = <String, int>{};
+    for (final (i, c) in sorted.indexed) {
+      firstOf.putIfAbsent(letterOf(categoryLabelInGroup(c.name)), () => i);
+    }
+    return SizedBox(
+      height: 54,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 4),
+        children: [
+          for (final e in firstOf.entries)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: _ModeChip(
+                label: e.key,
+                on: false,
+                onTap: () {
+                  if (!_scroll.hasClients) return;
+                  final max = _scroll.position.maxScrollExtent;
+                  _scroll.animateTo(
+                    (e.value * _rowExtent).clamp(0.0, max),
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _categoryList(
     List<XtreamCategory> items, {
     String? empty,
     bool shorten = false,
+    bool fixedRows = false,
   }) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
@@ -475,12 +636,15 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     }
     final chosen = _current;
     return ListView.builder(
+      controller: fixedRows ? _scroll : null,
+      itemExtent: fixedRows ? _rowExtent : null,
       padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 28),
       itemCount: items.length,
       itemBuilder: (context, i) {
         final c = items[i];
         final picked = _currentPicks[c.id]?.length ?? 0;
         return _CategoryRow(
+          singleLine: fixedRows,
           name: shorten ? categoryLabelInGroup(c.name) : c.name,
           checked: chosen.contains(c.id),
           onTap: () => _toggle(c),
@@ -636,6 +800,7 @@ class _CategoryRow extends StatelessWidget {
     required this.onTap,
     this.note,
     this.onChannels,
+    this.singleLine = false,
   });
 
   final String name;
@@ -647,6 +812,9 @@ class _CategoryRow extends StatelessWidget {
 
   /// Opens the channels inside, for a live category; null elsewhere.
   final VoidCallback? onChannels;
+
+  /// One line and no more, for a list whose rows are all the same height.
+  final bool singleLine;
 
   @override
   Widget build(BuildContext context) {
@@ -677,7 +845,7 @@ class _CategoryRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         name,
-                        maxLines: 2,
+                        maxLines: singleLine ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: t.ink,

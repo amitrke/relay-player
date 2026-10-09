@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/xtream/hidden_words.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
+import 'hidden_words_controller.dart';
 import 'xtream_controller.dart';
 
 /// What the category screen hands over: which category, and what is already
@@ -134,7 +136,13 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
             ),
           ),
         ),
-        data: (all) {
+        data: (everything) {
+          // The ones hidden by the user's words are not offered, so the count
+          // and "Select all" cover what Live TV would show.
+          final all = withoutHidden(
+            everything,
+            HiddenWords(ref.watch(hiddenWordsProvider)),
+          );
           final needle = _query.toLowerCase();
           final shown = _query.isEmpty
               ? all

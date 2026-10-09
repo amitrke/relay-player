@@ -216,3 +216,42 @@ String _key(String head) => head
     .trim();
 
 String _firstWord(String head) => head.split(' ').first;
+
+/// A group this big is browsed by letter: sorted A to Z, with a chip per letter
+/// to jump to. Smaller ones keep the panel's own order, which is usually
+/// meaningful (a country's categories, newest year first) and short enough to
+/// read through.
+const alphabetiseAbove = 20;
+
+/// The letter [label] files under: its first letter or digit, upper-cased, or
+/// `#` for a name that starts with anything else. A digit also files under `#`,
+/// so "24/7" and "4K Movies" sit together at the front.
+String letterOf(String label) {
+  for (final rune in label.runes) {
+    final ch = String.fromCharCode(rune);
+    if (RegExp(r'[A-Za-z]').hasMatch(ch)) return ch.toUpperCase();
+    if (RegExp(r'[0-9]').hasMatch(ch)) return '#';
+  }
+  return '#';
+}
+
+/// [categories] sorted A to Z by their label, ignoring case and any leading
+/// punctuation. Digits come first, as under [letterOf]'s `#`. Stable, so equal
+/// names keep the panel's order.
+List<XtreamCategory> sortedAlphabetically(
+  List<XtreamCategory> categories,
+  String Function(XtreamCategory) labelOf,
+) {
+  String key(XtreamCategory c) {
+    final label = labelOf(c).toLowerCase();
+    final start = label.indexOf(RegExp(r'[a-z0-9]'));
+    return start < 0 ? label : label.substring(start);
+  }
+
+  final indexed = [for (final (i, c) in categories.indexed) (i, c)];
+  indexed.sort((a, b) {
+    final byKey = key(a.$2).compareTo(key(b.$2));
+    return byKey != 0 ? byKey : a.$1.compareTo(b.$1);
+  });
+  return [for (final e in indexed) e.$2];
+}

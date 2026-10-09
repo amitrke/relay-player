@@ -380,7 +380,24 @@ nobody wants them all). Picks are stored per category on the account
 (`liveChannelPicks`), apply wherever channels are fetched (`pickChannels`), drop
 with their category, and "keep the whole category" is the default and the empty
 state, so picking every channel is stored as whole and a channel the panel adds
-later is not silently left out. Movies and series get no item-level picking yet:
+later is not silently left out. **Series do not group:** they are named by streaming
+service or network, one category each, so 68 of 83 on the real panel land in
+"Everything else". A group over 20 categories is therefore browsed by letter
+(`alphabetiseAbove`): sorted A to Z by what is shown, with a chip per letter that
+jumps to it (rows have a fixed height so a jump is arithmetic, since a lazy list has
+not built the rows below the screen). **Hidden words (2026-10-09).** A list of words and phrases the user never wants to
+see ("Pakistan", "Germany", "south indian"), edited from a *Hide words* chip in
+the picker. One list for every panel, kept in the settings box, because it records
+a taste and not a property of a line. Matching is by **whole word**, case ignored
+(`HiddenWords`): "UK" hides "UK ➾ News" and leaves "Ukraine" and "Luke Cage" alone,
+and a phrase must match as a phrase, in order. It applies to category names in the
+picker (groups, search, *Select all* and the pattern tool never see a hidden
+category) and to channel names in Live TV and the channel picker (`withoutHidden`).
+It does **not** apply to movie or series titles: hiding by title is a much bigger
+decision. Nothing disappears silently: the picker says how many are hidden and has
+a *Show them* switch, and adding a word un-ticks anything already chosen that it
+matches and says so, saving nothing until Save like every other change here.
+Movies and series get no item-level picking yet:
 a movie category can hold thousands of titles and needs a different screen.
 ### 7.1 Local device storage — compliant approach
 
