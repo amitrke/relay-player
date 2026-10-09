@@ -12,11 +12,25 @@ class TmdbInfo {
     this.rating,
     this.runtime,
     this.overview,
+    this.releaseDate,
+    this.releaseChecked = false,
   });
 
   final int id;
   final bool isTv;
   final List<String> genres;
+
+  /// When it was first released: a film's `release_date`, a series' first air
+  /// date. Null when TMDB has none (not yet announced), which is a real answer
+  /// and not a gap: see [releaseChecked].
+  final DateTime? releaseDate;
+
+  /// Whether the date was asked for. Records kept before 2026-10-09 hold no date
+  /// because none was saved, not because TMDB has none, and without this the two
+  /// look the same and every old record would be asked again on every run, or
+  /// never. False means "ask once"; true with a null [releaseDate] means "asked,
+  /// there is none".
+  final bool releaseChecked;
 
   /// ISO 639-1 code of the *original* language, which is not the audio language
   /// of a dubbed copy. Shown as "Original language" for that reason.
@@ -35,6 +49,8 @@ class TmdbInfo {
     'rating': rating,
     'runtime': runtime,
     'overview': overview,
+    // Present even when null, so a reader can tell "none" from "never saved".
+    'released': releaseChecked ? (releaseDate?.toIso8601String() ?? '') : null,
   };
 
   static TmdbInfo? fromJson(Object? json) {
@@ -52,7 +68,22 @@ class TmdbInfo {
       rating: (json['rating'] as num?)?.toDouble(),
       runtime: json['runtime'] as int?,
       overview: json['overview'] as String?,
+      // A string (a date, or empty for "none") means it was asked; absent or
+      // null means a record from before the date was kept.
+      releaseChecked: json['released'] is String,
+      releaseDate: parseDate(json['released']),
     );
+  }
+
+  /// A TMDB date (`2019-05-30`), or null for anything else, including the empty
+  /// string TMDB sends for "no date yet". UTC, so a date sorts the same wherever
+  /// the device is.
+  static DateTime? parseDate(Object? raw) {
+    if (raw is! String || raw.length < 10) return null;
+    final parsed = DateTime.tryParse(raw.substring(0, 10));
+    return parsed == null
+        ? null
+        : DateTime.utc(parsed.year, parsed.month, parsed.day);
   }
 }
 
@@ -181,6 +212,10 @@ class TmdbClient implements TmdbApi {
       rating: (body['vote_average'] as num?)?.toDouble(),
       runtime: runtime == 0 ? null : runtime,
       overview: body['overview'] as String?,
+      releaseDate: TmdbInfo.parseDate(
+        tv ? body['first_air_date'] : body['release_date'],
+      ),
+      releaseChecked: true,
     );
   }
 

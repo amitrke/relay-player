@@ -18,6 +18,8 @@ import '../favorites_history/continue_watching_row.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../live_tv/live_tv_tab.dart';
+import '../metadata/release_dates.dart';
+import '../metadata/tmdb_controller.dart';
 import '../local_network/local_network_tab.dart';
 import 'library_cache_provider.dart';
 import 'library_sort.dart';
@@ -257,7 +259,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (selected.drawsFromPlex) ...[
-          _SortButton(tab: selected),
+          LibrarySortButton(tab: selected),
           if (f != RelayFormFactor.phone) ...[
             const SizedBox(width: 12),
             Padding(
@@ -416,7 +418,17 @@ class _TabBody extends ConsumerWidget {
         onRetry: () => ref.invalidate(_libraryProvider(tab)),
       ),
       data: (unsorted) {
-        final sorted = ref.watch(librarySortProvider).apply(unsorted);
+        final sorted = ref
+            .watch(librarySortProvider)
+            .apply(
+              unsorted,
+              // Only read for the one sort that uses it, so a date arriving in
+              // the background does not rebuild a list sorted by title.
+              releaseDates:
+                  ref.watch(librarySortProvider) == LibrarySort.releaseDate
+                  ? ref.watch(releaseDatesProvider.select((s) => s.dates))
+                  : const {},
+            );
         final filtering =
             tab == LibraryTab.movies && ref.watch(libraryUnwatchedOnlyProvider);
         final list = filtering
@@ -476,8 +488,8 @@ class _TabBody extends ConsumerWidget {
 /// the app is built from [RelayTappable] so a remote can reach it with a
 /// visible ring, and Material's menu items have not been checked on a TV
 /// (MANUAL_TESTING.md §6 treats unchecked Material surfaces as guilty).
-class _SortButton extends ConsumerWidget {
-  const _SortButton({required this.tab});
+class LibrarySortButton extends ConsumerWidget {
+  const LibrarySortButton({super.key, required this.tab});
 
   /// "Unwatched only" is offered on Movies alone; see [unwatchedOnly].
   final LibraryTab tab;
@@ -519,11 +531,17 @@ class _SortButton extends ConsumerWidget {
     final picked = await showModalBottomSheet<LibrarySort>(
       context: context,
       backgroundColor: RelayTheme.of(context).surface,
+      // Scroll-controlled, and the content scrolls: a sheet is capped at about
+      // half the screen height otherwise, and a 1080p TV is only 540 dp tall
+      // (section 11). Four options plus the Unwatched row no longer fit in that,
+      // and overflowed by 83 px when Release date was added (seen on the Google
+      // TV emulator), which in a release build silently clips the bottom row.
+      isScrollControlled: true,
       builder: (context) {
         final t = RelayTheme.of(context);
         final f = RelayLayout.of(context);
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -540,7 +558,11 @@ class _SortButton extends ConsumerWidget {
                     ),
                   ),
                 ),
-                for (final option in LibrarySort.values)
+                for (final option in LibrarySort.values.where(
+                  (o) =>
+                      o != LibrarySort.releaseDate ||
+                      ref.read(tmdbKeyProvider).value != null,
+                ))
                   RelayTappable(
                     borderRadius: 10,
                     autofocus: option == current,

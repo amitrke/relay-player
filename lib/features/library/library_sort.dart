@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../../data/local/history_store.dart';
+import '../../data/tmdb/tmdb_enricher.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/watch_state.dart';
 import '../settings/settings_controller.dart';
@@ -14,7 +15,12 @@ import '../settings/settings_controller.dart';
 enum LibrarySort {
   title('Title'),
   recentlyAdded('Recently added'),
-  year('Year');
+  year('Year'),
+
+  /// Offered only once a TMDB key is saved (the sort sheet decides). Orders by
+  /// the exact release date where TMDB has given one, and by year otherwise, so
+  /// with nothing looked up it is the Year sort.
+  releaseDate('Release date');
 
   const LibrarySort(this.label);
 
@@ -33,9 +39,11 @@ enum LibrarySort {
   /// panel that sends no `added` field would otherwise put its whole catalogue
   /// at the top of "Recently added". Title breaks every tie, so the order is
   /// stable across refreshes.
-  List<CatalogItem> apply(List<CatalogItem> items) {
-    int byTitle(CatalogItem a, CatalogItem b) =>
-        a.sortKey.compareTo(b.sortKey);
+  List<CatalogItem> apply(
+    List<CatalogItem> items, {
+    Map<String, DateTime> releaseDates = const {},
+  }) {
+    int byTitle(CatalogItem a, CatalogItem b) => a.sortKey.compareTo(b.sortKey);
 
     int newestFirst(Comparable<dynamic>? a, Comparable<dynamic>? b) {
       if (a == null && b == null) return 0;
@@ -58,6 +66,28 @@ enum LibrarySort {
           final c = newestFirst(a.year, b.year);
           return c != 0 ? c : byTitle(a, b);
         });
+      case releaseDate:
+        // A known date, else the start of the year. So a title TMDB has not
+        // been asked about is still placed by its year among those it has, and
+        // one with no year at all goes last, as in every other sort. The date is
+        // worked out once per title, not once per comparison.
+        DateTime? when(CatalogItem item) {
+          final exact = releaseDates[TmdbEnricher.cacheKey(item)];
+          if (exact != null) return exact;
+          final year = item.year;
+          return year == null ? null : DateTime.utc(year);
+        }
+
+        // By identity: two sources can hold an item with the same id, and they
+        // are different titles here.
+        final dates = Map<CatalogItem, DateTime?>.identity();
+        for (final item in sorted) {
+          dates[item] = when(item);
+        }
+        sorted.sort((a, b) {
+          final c = newestFirst(dates[a], dates[b]);
+          return c != 0 ? c : byTitle(a, b);
+        });
     }
     return sorted;
   }
@@ -70,22 +100,23 @@ List<CatalogItem> unwatchedOnly(
   List<CatalogItem> items, {
   required Map<String, HistoryItem> history,
   required Map<String, bool> overrides,
-}) =>
-    items.where((item) {
-      final key = historyKeyOf(item);
-      if (key == null) return true;
-      return !WatchState.forItem(item,
-              local: history[key], override: overrides[key])
-          .watched;
-    }).toList();
+}) => items.where((item) {
+  final key = historyKeyOf(item);
+  if (key == null) return true;
+  return !WatchState.forItem(
+    item,
+    local: history[key],
+    override: overrides[key],
+  ).watched;
+}).toList();
 
 const _kLibrarySort = 'librarySort';
 const _kUnwatchedOnly = 'libraryUnwatchedOnly';
 
 final libraryUnwatchedOnlyProvider =
     NotifierProvider<UnwatchedOnlyController, bool>(
-  UnwatchedOnlyController.new,
-);
+      UnwatchedOnlyController.new,
+    );
 
 class UnwatchedOnlyController extends Notifier<bool> {
   AppSettingsStore get _store => ref.read(appSettingsStoreProvider);
@@ -101,8 +132,8 @@ class UnwatchedOnlyController extends Notifier<bool> {
 
 final librarySortProvider =
     NotifierProvider<LibrarySortController, LibrarySort>(
-  LibrarySortController.new,
-);
+      LibrarySortController.new,
+    );
 
 class LibrarySortController extends Notifier<LibrarySort> {
   AppSettingsStore get _store => ref.read(appSettingsStoreProvider);

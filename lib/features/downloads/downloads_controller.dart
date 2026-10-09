@@ -148,7 +148,12 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
   /// Stops it if it is running, and deletes the file, partial or whole.
   Future<void> remove(String serverId, String ratingKey) async {
     final key = DownloadRecord.keyOf(serverId, ratingKey);
-    if (_active == key) {
+    // A finished one is not running, even in the instant before its run has
+    // finished tidying up (it is still the active key until then). Treating it
+    // as running deferred the delete to that tidy-up, which is correct but left
+    // the file there for a moment after the person was told it was gone.
+    final finished = find(serverId, ratingKey)?.isComplete ?? false;
+    if (_active == key && !finished) {
       // Deleting under a running fetch would just recreate the file. Stop it,
       // and let it clean up after itself when it has let go.
       _removeWhenStopped = key;

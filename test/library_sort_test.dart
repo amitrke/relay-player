@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
+import 'package:relay_player/data/tmdb/tmdb_enricher.dart';
 import 'package:relay_player/domain/models/catalog_item.dart';
 import 'package:relay_player/data/local/history_store.dart';
 import 'package:relay_player/features/favorites_history/favorites_controller.dart';
@@ -38,6 +39,93 @@ class _NoHistory extends HistoryController {
 }
 
 void main() {
+  group('LibrarySort.releaseDate', () {
+    List<String> titles(List<CatalogItem> l) => [for (final i in l) i.title];
+    String keyOf(CatalogItem i) => TmdbEnricher.cacheKey(i);
+
+    test('with nothing looked up it is the Year sort', () {
+      final items = [
+        _item('charlie', year: 2001),
+        _item('alpha', year: 2020),
+        _item('bravo'),
+        _item('delta', year: 2020),
+      ];
+      expect(
+        titles(LibrarySort.releaseDate.apply(items)),
+        titles(LibrarySort.year.apply(items)),
+      );
+    });
+
+    test('an exact date orders titles within the same year', () {
+      final a = _item('alpha', year: 2020);
+      final b = _item('bravo', year: 2020);
+      final c = _item('charlie', year: 2020);
+      final sorted = LibrarySort.releaseDate.apply(
+        [a, b, c],
+        releaseDates: {
+          keyOf(a): DateTime.utc(2020, 2, 1),
+          keyOf(b): DateTime.utc(2020, 11, 20),
+          keyOf(c): DateTime.utc(2020, 7, 4),
+        },
+      );
+      // Year alone would have left these in title order.
+      expect(titles(sorted), ['bravo', 'charlie', 'alpha']);
+    });
+
+    test('a known date places a title that has no year', () {
+      final dated = _item('dated');
+      final sorted = LibrarySort.releaseDate.apply(
+        [_item('old', year: 1999), dated, _item('new', year: 2024)],
+        releaseDates: {keyOf(dated): DateTime.utc(2010, 5, 5)},
+      );
+      expect(titles(sorted), ['new', 'dated', 'old']);
+    });
+
+    test('a title not looked up falls back to the start of its year', () {
+      final looked = _item('looked', year: 2020);
+      final notYet = _item('notyet', year: 2020);
+      final sorted = LibrarySort.releaseDate.apply(
+        [notYet, looked],
+        releaseDates: {keyOf(looked): DateTime.utc(2020, 6, 1)},
+      );
+      // The exact date is later in the year than 1 January.
+      expect(titles(sorted), ['looked', 'notyet']);
+    });
+
+    test('a title with neither a date nor a year goes last', () {
+      final sorted = LibrarySort.releaseDate.apply([
+        _item('nothing'),
+        _item('old', year: 1950),
+      ]);
+      expect(titles(sorted), ['old', 'nothing']);
+    });
+
+    test('ties are broken by title, so the order is stable', () {
+      final a = _item('alpha', year: 2020);
+      final b = _item('bravo', year: 2020);
+      final same = {
+        keyOf(a): DateTime.utc(2020, 3, 3),
+        keyOf(b): DateTime.utc(2020, 3, 3),
+      };
+      expect(
+        titles(LibrarySort.releaseDate.apply([b, a], releaseDates: same)),
+        ['alpha', 'bravo'],
+      );
+    });
+
+    test('two sources holding an item with the same id stay separate', () {
+      final plex = _item('same', year: 2020);
+      final panel = _item('same', source: CatalogSource.xtream, year: 2020);
+      final sorted = LibrarySort.releaseDate.apply([plex, panel]);
+      expect(sorted, hasLength(2));
+    });
+
+    test('is remembered by name, and an unknown name falls back to title', () {
+      expect(LibrarySort.fromName('releaseDate'), LibrarySort.releaseDate);
+      expect(LibrarySort.fromName('nonsense'), LibrarySort.title);
+    });
+  });
+
   group('LibrarySort', () {
     final items = [
       _item('charlie', added: DateTime.utc(2026, 1, 1), year: 2001),

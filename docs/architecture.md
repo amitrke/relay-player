@@ -896,6 +896,38 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > screen, never a whole catalogue (a panel can hold ~70k titles, two requests
    > each). The titles looked up leave the device for TMDB, which the pane says
    > in plain words, and TMDB's attribution line is shown there as its terms ask.
+   > **Release dates in the background, 2026-10-09.** *Revises the "never a whole
+   > catalogue" rule above for one opt-in case.* With a TMDB key saved, Settings →
+   > Metadata offers **Release dates for your library**: a background job that
+   > looks up the release date of every title the person has *chosen to keep* (a
+   > chosen category on a panel, not the panel's 70k), and a **Release date** sort
+   > that uses it. What it does and does not do:
+   > - **Consent, not a preference.** Off until the person turns it on from a
+   >   dialog saying that it sends the title (and year) of *every* film and series
+   >   in the library to TMDB, not only the ones searched for, and that it also
+   >   fills in genre and rating. The moment is stored beside the switch
+   >   (`metadata.releaseDatesAt`). Removing the key withdraws it, so a new key
+   >   asks again. It is never copied to another device (§17.3).
+   > - **Bounded and polite.** Starts 4 s after the library loads, 3 workers
+   >   pausing 200 ms between requests (about 15 a second at most), at most 600
+   >   titles a run so a big library fills over several launches, and a streak of 6
+   >   failures (a rate limit, no network) ends the run and tells the person. Titles
+   >   with no year go first, since a date helps them most. One lookup per distinct
+   >   title, so the same film on Plex and on a panel is asked once.
+   > - **Kept, not re-asked.** The date lives in the TMDB cache with the rest of the
+   >   lookup (90 days). A record saved before dates existed has no date because
+   >   none was saved, which `TmdbInfo.releaseChecked` tells apart from "TMDB has
+   >   none"; it costs one request (details by the id already known), not two.
+   >   "TMDB has nothing for this title" is remembered 14 days, as for search.
+   > - **The sort.** Release date uses the exact date where there is one, else the
+   >   start of the title's year, so with nothing looked up it equals Year, and a
+   >   title with neither goes last. The sort sheet offers it only when a key is
+   >   saved. Dates reach the sort in batches of 40 so the list does not reorder
+   >   under someone browsing after every lookup; it can still move while a run is
+   >   in progress, which is the cost of not waiting for the whole library.
+   > - **Found on the Google TV emulator:** a fourth sort option made the sheet
+   >   overflow a 540 dp TV by 83 px, which in a release build silently clips the
+   >   *Unwatched only* row. The sheet is now scroll-controlled and scrolls.
    > **"Because you watched", 2026-10-09.** The empty Search screen shows up to
    > four rows, one per recently watched film, of titles TMDB recommends *that the
    > user already has* (`matchRecommendations`): TMDB proposes and anything not in

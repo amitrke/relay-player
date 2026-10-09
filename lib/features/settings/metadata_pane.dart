@@ -4,7 +4,153 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/tmdb/tmdb_client.dart';
+import '../metadata/release_dates.dart';
 import '../metadata/tmdb_controller.dart';
+
+/// What the person is agreeing to when they switch on the background lookup, in
+/// the same words as the dialog, so a test can pin that it says what it sends.
+const releaseDatesConsentText =
+    'This looks up the release date of every film and series in your library on '
+    'TMDB, in the background, a few at a time. To do that it sends the title '
+    '(and the year, when there is one) of each of them from this device to '
+    'TMDB, and to no one else, not only the ones you search for. It also fills '
+    'in genre and rating for the filters. Results are kept on this device for '
+    '90 days, and titles already looked up are not asked again.\n\n'
+    'You can switch it off at any time. Removing your TMDB key switches it off '
+    'too.';
+
+Future<bool> confirmReleaseDates(BuildContext context) async {
+  final t = RelayTheme.of(context);
+  final agreed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: t.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      title: Text(
+        'Send your library titles to TMDB?',
+        style: TextStyle(
+          color: t.ink,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: Text(
+        releaseDatesConsentText,
+        style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
+      ),
+      actions: [
+        TextButton(
+          // The safe answer, focused first so a stray press on a remote declines.
+          autofocus: true,
+          onPressed: () => Navigator.pop(context, false),
+          style: TextButton.styleFrom(foregroundColor: t.inkDim),
+          child: const Text('Not now'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: t.accent,
+            foregroundColor: t.accentInk,
+          ),
+          child: const Text('Look them up'),
+        ),
+      ],
+    ),
+  );
+  return agreed == true;
+}
+
+/// The switch for the background release-date lookup, and how it is going.
+class _ReleaseDatesControl extends ConsumerWidget {
+  const _ReleaseDatesControl();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final enabled = ref.watch(releaseDatesEnabledProvider);
+    final state = ref.watch(releaseDatesProvider);
+
+    final status = !enabled
+        ? null
+        : state.total == 0
+        ? 'Waiting for your library to load.'
+        : state.stoppedEarly
+        ? 'Paused: TMDB stopped answering. It carries on the next time the app '
+              'opens, and what it found is kept.'
+        : state.running
+        ? 'Looked up ${state.settled} of ${state.total} titles.'
+        : state.settled < state.total
+        ? 'Looked up ${state.settled} of ${state.total} titles. The rest '
+              'carry on the next time the app opens.'
+        : 'Done: ${state.dates.length} release dates found for '
+              '${state.total} titles.';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Release dates for your library',
+                    style: TextStyle(
+                      color: t.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Adds exact release dates in the background, so Sort by '
+                    'Release date can order your library properly, including '
+                    'titles with no year. Sends every title in your library '
+                    'to TMDB.',
+                    style: TextStyle(
+                      color: t.inkDim,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Switch(
+              value: enabled,
+              onChanged: (on) async {
+                if (!on) {
+                  await ref
+                      .read(releaseDatesEnabledProvider.notifier)
+                      .disable();
+                  return;
+                }
+                final agreed = await confirmReleaseDates(context);
+                if (agreed) {
+                  await ref.read(releaseDatesEnabledProvider.notifier).enable();
+                }
+              },
+              activeThumbColor: t.accentInk,
+              activeTrackColor: t.accent,
+              inactiveTrackColor: t.line,
+              inactiveThumbColor: t.inkDim,
+            ),
+          ],
+        ),
+        if (status != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            status,
+            style: TextStyle(color: t.inkDim, fontSize: 12.5, height: 1.5),
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 /// Settings → Metadata: the user's own TMDB key.
 ///
@@ -88,7 +234,9 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
+          const _ReleaseDatesControl(),
+          const SizedBox(height: 18),
           Align(
             alignment: Alignment.centerLeft,
             child: RelayButton(
