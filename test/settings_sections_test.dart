@@ -81,6 +81,7 @@ void main() {
       'Metadata',
       'AI features',
       'Advanced sources',
+      'Move to another device',
       'Privacy and data',
       'About',
     ]) {

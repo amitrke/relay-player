@@ -35,6 +35,15 @@ class TmdbKeyController extends AsyncNotifier<String?> {
     state = AsyncData(trimmed);
   }
 
+  /// Stores a key that arrived from another device (§17) without asking TMDB
+  /// about it again. It was checked when it was saved there, and this has to
+  /// work on a TV that is offline for a moment.
+  Future<void> restore(String key) async {
+    final trimmed = key.trim();
+    await _storage.write(key: _kTmdbKey, value: trimmed);
+    state = AsyncData(trimmed);
+  }
+
   /// Forgets the key and everything looked up with it.
   Future<void> remove() async {
     await _storage.delete(key: _kTmdbKey);

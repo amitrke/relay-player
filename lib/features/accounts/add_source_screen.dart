@@ -23,6 +23,7 @@ class AddSourceScreen extends StatelessWidget {
     required this.onBack,
     required this.onPickSource,
     this.onOpenSettings,
+    this.onReceiveFromDevice,
   });
 
   /// Mirrors the Advanced sources toggle (§8.2).
@@ -30,6 +31,10 @@ class AddSourceScreen extends StatelessWidget {
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
   final VoidCallback? onOpenSettings;
+
+  /// Copy the setup from another device on the network (§17). Null hides it,
+  /// which is how the design gallery shows this screen.
+  final VoidCallback? onReceiveFromDevice;
 
   /// The privacy line the canvas leads with. It is the no-backend decision
   /// (§16) stated where it is most reassuring — at the moment credentials are
@@ -50,12 +55,14 @@ class AddSourceScreen extends StatelessWidget {
             ? _DesktopAddSource(
                 advancedEnabled: advancedEnabled,
                 onPickSource: onPickSource,
+                onReceiveFromDevice: onReceiveFromDevice,
               )
             : _CompactAddSource(
                 advancedEnabled: advancedEnabled,
                 onBack: onBack,
                 onPickSource: onPickSource,
                 onOpenSettings: onOpenSettings,
+                onReceiveFromDevice: onReceiveFromDevice,
               ),
       ),
     );
@@ -154,18 +161,73 @@ class _SourceTile extends StatelessWidget {
   }
 }
 
+/// Copy the setup from a phone or another device already configured (§17).
+///
+/// Not a [SourceKind]: it adds no source of its own, it brings the others
+/// across, and the Advanced sources gate (§8.2) is the receiving device's to
+/// open, so nothing here depends on it.
+class _ReceiveTile extends StatelessWidget {
+  const _ReceiveTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final form = RelayLayout.of(context);
+    return RelaySurface(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.devices_outlined, size: 22, color: t.accent),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Copy from another device',
+                  style: TextStyle(
+                    color: t.ink,
+                    fontSize: RelayLayout.bodySize(form) + 1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Already set up on your phone? Send it here instead of '
+                  'typing it again.',
+                  style: TextStyle(
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(form) - 1,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 20, color: t.inkDim),
+        ],
+      ),
+    );
+  }
+}
+
 class _CompactAddSource extends StatelessWidget {
   const _CompactAddSource({
     required this.advancedEnabled,
     required this.onBack,
     required this.onPickSource,
     this.onOpenSettings,
+    this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onReceiveFromDevice;
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +286,12 @@ class _CompactAddSource extends StatelessWidget {
               ] else ...[
                 const SizedBox(height: 18),
                 _AdvancedOffHint(onOpenSettings: onOpenSettings),
+              ],
+              if (onReceiveFromDevice != null) ...[
+                const SizedBox(height: 22),
+                _SectionLabel(text: 'Or'),
+                const SizedBox(height: 10),
+                _ReceiveTile(onTap: onReceiveFromDevice!),
               ],
             ],
           ),
@@ -311,10 +379,12 @@ class _DesktopAddSource extends StatelessWidget {
   const _DesktopAddSource({
     required this.advancedEnabled,
     required this.onPickSource,
+    this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final ValueChanged<SourceKind> onPickSource;
+  final VoidCallback? onReceiveFromDevice;
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +438,18 @@ class _DesktopAddSource extends StatelessWidget {
                       selected: false,
                       onTap: () => onPickSource(kind),
                     ),
+                ],
+                if (onReceiveFromDevice != null) ...[
+                  const SizedBox(height: 14),
+                  _SectionLabel(text: 'Or'),
+                  const SizedBox(height: 10),
+                  _RailItem(
+                    title: 'Copy from another device',
+                    subtitle: 'Send it from your phone',
+                    icon: Icons.devices_outlined,
+                    selected: false,
+                    onTap: onReceiveFromDevice!,
+                  ),
                 ],
                 const Spacer(),
                 Text(

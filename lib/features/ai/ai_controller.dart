@@ -83,6 +83,27 @@ class AiSetupController extends AsyncNotifier<AiSetup?> {
     state = AsyncData(AiSetup(config, trimmedKey));
   }
 
+  /// Stores a provider that arrived from another device (§17) without trying
+  /// it again: it was tried when it was saved there, and a TV that is offline
+  /// for a moment should still take it.
+  ///
+  /// Consent is deliberately not part of this. §9.3's moment belongs to the
+  /// person at this device, so the first feature to use the provider asks.
+  Future<void> restore(AiProviderConfig config, String? key) async {
+    final trimmedKey = key?.trim();
+    await ref
+        .read(appSettingsStoreProvider)
+        .setStringMap(_kProvider, config.toJson());
+    if (trimmedKey != null && trimmedKey.isNotEmpty) {
+      await _storage.write(key: _kKey, value: trimmedKey);
+    } else {
+      await _storage.delete(key: _kKey);
+    }
+    state = AsyncData(
+      AiSetup(config, trimmedKey == null || trimmedKey.isEmpty ? null : trimmedKey),
+    );
+  }
+
   /// Forgets the provider, its key and every consent given for it.
   Future<void> remove() async {
     await ref.read(appSettingsStoreProvider).setStringMap(_kProvider, const {});

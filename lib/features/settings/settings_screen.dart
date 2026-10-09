@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../advanced_sources/xtream_accounts_pane.dart';
+import '../transfer/transfer_pane.dart';
 import 'about_pane.dart';
 import 'ai_pane.dart';
 import 'metadata_pane.dart';
@@ -135,6 +136,9 @@ enum SettingsSection {
   // Ollama or any other), a key in secure storage, and a real consent record.
   aiFeatures('AI features', built: true),
   advancedSources('Advanced sources', built: true),
+  // Built 2026-10-09: copies sources, keys and preferences to another device on
+  // the same network (section 17), so a TV is not set up by typing on it.
+  transfer('Move to another device', built: true),
   // Unbuilt from 2026-09-22 to 2026-10-09: its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
   // says no crash reports are sent. Built again around clearing cached data,
@@ -220,6 +224,14 @@ class _PhoneSettings extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 22),
+
+        if (SettingsSection.transfer.built) ...[
+          const _Section(
+            title: 'Move to another device',
+            child: TransferPane(),
+          ),
+          const SizedBox(height: 22),
+        ],
 
         // Hand-listed here rather than driven by the enum, so it has to ask.
         if (SettingsSection.privacy.built) ...[
@@ -582,17 +594,25 @@ class _DesktopSettings extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border(right: BorderSide(color: t.line)),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final s in sections)
-                  _RailRow(
-                    label: s.label,
-                    selected: section == s,
-                    onTap: () => onStateChanged(state.copyWith(section: s)),
-                  ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+            // Scrolls because the list outgrew a TV: 1080p is 540 dp tall (§11),
+            // and with "Move to another device" added ten rows needed 35 dp more
+            // than the rail has, which left About unreachable. The spacing was
+            // tightened so today's ten rows fit without scrolling; this is for
+            // the eleventh, and focus traversal scrolls the focused row into
+            // view, so a remote still gets there.
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final s in sections)
+                    _RailRow(
+                      label: s.label,
+                      selected: section == s,
+                      onTap: () => onStateChanged(state.copyWith(section: s)),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -640,6 +660,10 @@ class _DesktopSettings extends StatelessWidget {
                   ],
                 ),
               ),
+              SettingsSection.transfer => const _DesktopPane(
+                title: 'Move to another device',
+                child: TransferPane(),
+              ),
               SettingsSection.privacy => const _DesktopPane(
                 title: 'Privacy and data',
                 child: PrivacyPane(),
@@ -681,7 +705,7 @@ class _RailRow extends StatelessWidget {
         onTap: onTap,
         child: Container(
           color: selected ? t.bg : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             label,
             style: TextStyle(

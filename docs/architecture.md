@@ -1230,7 +1230,69 @@ Each of these looks locally reasonable and each would spend something the no-bac
 - **Analytics.** §13 Phase 6 commits to "no analytics/tracking that could be read as fingerprinting without disclosure." Adding it contradicts a stated goal and expands both stores' privacy declarations. Crashlytics is the bounded exception; general product analytics is not.
 - **Hosting content, catalogs, or provider directories of any kind.** See §8.3 — this is the line that protects the primary-purpose argument the entire §1 strategy depends on.
 
-The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does.
+The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does. **Moving settings between the user's own devices (§17) passes that test: it goes device to device on the local network, and we run nothing.** It is not the cross-device sync this section rules out, because it is a one-off copy the user starts on both screens, with nothing kept anywhere afterwards.
+
+---
+
+## 17. Moving settings to another device
+
+Added 2026-10-09. Setting up a TV by typing on it is the worst part of using this app there: a panel host, a username, a password and two API keys, entered with a D-pad (§11 records how hard even one text field was on the Chromecast). The way round it is to do the setup once, on a phone, and copy it.
+
+### 17.1 Shape
+
+Settings → **Move to another device** has two ends. The same pair is offered on Add a source ("Copy from another device"), because that is where a fresh TV lands.
+
+- **Receive** (usually the TV). Starts a short-lived HTTP listener on the LAN and shows a QR code, plus the address and a 16-character code for a device that cannot scan. Nothing is written until the person here has seen *what* arrived (by kind and count, never a host, username or key) and ticked what to keep.
+- **Send** (usually the phone). Lists what this device has, lets the person untick kinds, then scans the QR (or takes the address and code typed) and posts the bundle. The sender's call does not return until the receiver has **saved** it, so "Sent" on the phone means it is on the TV, and a failed save reaches the phone as a refusal.
+
+`lib/data/transfer/` is the protocol and format (no Flutter); `lib/features/transfer/` is the screens and `TransferService`, which reads and writes through the same stores and controllers the rest of the app uses, so a transferred account is stored exactly as a typed one is (§3).
+
+### 17.2 Security model
+
+The pairing secret is **never sent over the network**. It is shown on one screen and read by a camera or a person, and everything the sender transmits is AES-256-GCM sealed under a key derived from it (HKDF-SHA256). GCM is both confidentiality and authentication, so anyone else on the Wi-Fi who finds the port can neither read a message nor push one of their own: a message that does not open is refused with no hint why.
+
+- 80 bits of secret. Long enough that capturing one sealed message and guessing offline is not a plan, short enough to type.
+- The listener takes **one** bundle, lives at most 5 minutes (3 more for the person to answer), closes after 5 wrong tries, and exists only while the Receive screen does. Bodies over 2 MB are refused as they stream in.
+- The QR and the typed form accept a dotted-quad IPv4 address only. A name would let a crafted code point the sender, and the credentials with it, at any host.
+- **No key exchange on top.** A Diffie-Hellman round would protect nothing the secret does not already, since an attacker who can read the screen has the secret anyway.
+
+Not defended against: someone who can see the receiving screen (the code is on it) and is on the same network before the person scans. That is the same trust a Plex PIN asks for, and the five-try limit and single use bound it.
+
+### 17.3 What moves, and what deliberately does not
+
+| Moves | Left behind, and why |
+|---|---|
+| Playback and subtitle preferences, hidden words, the Plex library placement map | **The Advanced sources switch** and **onboarding state**. §8.2's acknowledgement is the person's, at the device that will use it; copying a "yes" would skip it. Accounts therefore arrive saved but hidden, and the receiver says so |
+| Xtream accounts with passwords, and the categories and channel picks chosen | **AI consent** (§9.3). It is per feature, per provider, per device. The provider and key arrive; the first feature to use them asks |
+| SMB shares with passwords | **Plex.** A Plex token is bound to the client identifier that requested it (`PlexSessionStore`), so a copied token cannot be assumed to work, and sharing one identifier across devices would make them one device to Plex. Linking Plex on a TV is already a code on the screen and nothing to type. **Not tested against a real server**, so this is a decision from the stored design rather than a measured failure |
+| The user's TMDB key | **Theme** (not persisted yet, so there is nothing to copy), **caches**, **watch history and favourites** (§16.3) |
+| The AI provider and key, unless it points at `localhost` | An AI provider at `localhost` or `127.x`: on a TV that would be the TV. Left out, and the sender says so |
+
+Same-id items are **replaced**, everything else on the receiver is **kept** (the Plex placement map is merged entry by entry, so a server only the receiver is linked to keeps its choices; a first version replaced the whole map, found and fixed the same day): copying a phone to a TV that already has one line does not delete the line. There is no "make the receiver identical" mode, because it would delete what the person cannot see being deleted.
+
+A preference crosses only if it is on `TransferPreferences`'s allowlist and has the right type, checked when the bundle is read and again when it is written. `test/transfer_service_test.dart` writes through the real controllers on a sending device and reads back on a receiving one, so a renamed storage key fails there rather than silently dropping out of transfers.
+
+### 17.4 Alternatives rejected
+
+- **mDNS discovery, no code.** Convenient, but it would let anything on the network offer to receive a TV's credentials, or push to it. It could still be added to *find* the receiver, with the code required either way.
+- **Export to a file, or to cloud storage.** A file is awkward to put on a TV, and anything cloud-hosted puts credentials on a server (§16.3).
+- **Typing a short code only.** Fine as the fallback, and it is: address plus 16 characters. A 4-6 character code would have to be rate-limited at the receiver and could not also be the encryption key.
+- **A PAKE** (so a short code could be strong). Right in principle, a dependency and a protocol to get wrong in practice, for a one-off copy between two devices in one room.
+- **TV as the sender.** A TV has no camera, and the one thing it cannot do is type; the phone is the device with both.
+
+### 17.5 Platform notes
+
+- **Android camera.** The scanner (`mobile_scanner`, ML Kit bundled so it does not need Google Play Services, which Fire TV lacks) needs the `CAMERA` permission. `android.hardware.camera` and `.autofocus` are declared `required="false"` in the manifest: without that, the permission alone makes Play treat a camera as required and filter the app off every TV. Frames are read for a QR code and dropped; the Data safety form is unaffected because nothing is collected.
+- **iOS.** `NSCameraUsageDescription` added; `NSLocalNetworkUsageDescription` widened to cover this. The scanner and the listener are both prompt-gated on a real device.
+- **Windows and desktop** have no camera path in the sender; they type the code. Receiving works anywhere the app does.
+
+### 17.6 Open
+
+- **Never run between two real devices.** Everything above is exercised on loopback in tests (`transfer_protocol_test.dart` over a real socket, `transfer_screens_test.dart` driving both screens) and nothing else. See MANUAL_TESTING.md §6.
+- **Android's local-network permission.** Android is moving LAN access behind a runtime permission for apps that target a new enough SDK. This was not checked against this app's `targetSdk` or against the Pixel (Android 17) and Chromecast, and neither the listener nor the sender asks for such a permission. If it applies, the symptom is "could not reach" with both screens showing the right address. SMB (§7.2) reaches the LAN the same way and has the same exposure.
+- **Fire TV and Google TV listening.** Whether a TV accepts an inbound connection from a phone on the same Wi-Fi depends on the router (client isolation) as much as the app; the error text names the address so that can be told apart.
+- **The privacy policy** says the app has no backend and sends nothing to us. That stays true, but it does not yet mention device-to-device copying; add a sentence before the next policy revision.
+- **Plex on the receiving device** could be offered as part of a transfer if copying the account token plus client identifier proves safe. Measure first (link a token from one client identifier, use it from another).
 
 ---
 

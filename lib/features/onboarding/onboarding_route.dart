@@ -43,6 +43,7 @@ class AddSourceRoute extends ConsumerWidget {
       advancedEnabled: ref.watch(advancedSourcesEnabledProvider),
       onBack: () => context.canPop() ? context.pop() : context.go('/library'),
       onOpenSettings: () => context.go('/settings'),
+      onReceiveFromDevice: () => context.push('/transfer/receive'),
       onPickSource: (kind) => _open(context, kind),
     );
   }

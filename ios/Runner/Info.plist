@@ -59,7 +59,13 @@
 	  device run (MANUAL_TESTING.md).
 	-->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Subnext Player connects to media servers and network shares on your home network, such as Plex or a NAS.</string>
+	<string>Subnext Player connects to media servers and network shares on your home network, such as Plex or a NAS, and to your other devices when you copy your settings between them.</string>
+	<!--
+	  Only to scan the pairing code when sending settings to another device
+	  (architecture.md section 17). Frames are read for a QR code and dropped.
+	-->
+	<key>NSCameraUsageDescription</key>
+	<string>Subnext Player uses the camera only to scan the code another device shows when you copy your settings to it. Nothing is recorded.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

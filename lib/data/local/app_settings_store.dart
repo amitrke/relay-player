@@ -34,6 +34,11 @@ class AppSettingsStore {
     return AppSettingsStore._(await Hive.openBox<dynamic>(_boxName));
   }
 
+  /// Whether [key] was ever written. The typed getters answer with a fallback
+  /// for a missing key, which is right for reading a setting and wrong for
+  /// moving one to another device: a default nobody chose should not travel.
+  bool has(String key) => _box.containsKey(key);
+
   bool getBool(String key, {required bool fallback}) {
     final value = _box.get(key);
     return value is bool ? value : fallback;

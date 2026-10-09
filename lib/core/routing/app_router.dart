@@ -24,6 +24,8 @@ import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
 import '../../features/settings/settings_route.dart';
+import '../../features/transfer/receive_screen.dart';
+import '../../features/transfer/send_screen.dart';
 import '../theme/theme_controller.dart';
 
 /// Routes, with sign-in state as the only gate for now.
@@ -169,6 +171,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             LocalFolderScreen(folderId: state.pathParameters['folderId']!),
       ),
+      // Pushed from Settings and from Add a source (§17). The second is where a
+      // fresh TV lands, which is exactly when copying a phone's setup beats
+      // typing one; onboarding is already marked seen by then, so the redirect
+      // above lets it through.
+      GoRoute(
+        path: '/transfer/receive',
+        builder: (_, _) => const ReceiveScreen(),
+      ),
+      GoRoute(path: '/transfer/send', builder: (_, _) => const SendScreen()),
       GoRoute(path: '/smb/new', builder: (_, _) => const AddSmbScreen()),
       GoRoute(
         // Path travels as a query parameter rather than a path segment: an SMB
