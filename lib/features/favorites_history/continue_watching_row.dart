@@ -27,6 +27,15 @@ const double _gapBetweenLines = 2;
 /// cannot be.
 const double _lineFactor = 1.25;
 
+/// Poster height over width. Portrait, like the grid below it.
+///
+/// These were landscape tiles until 2026-10-08, which was wrong for the only
+/// artwork a resume entry keeps: a portrait poster. Fitted whole into a wide
+/// tile it left a column of empty surface either side of it, and cropped to
+/// fill it, it sliced the artwork through the middle. A tile the shape of the
+/// poster has neither problem, and shows several more entries in the same row.
+const double _posterAspect = 1.5;
+
 /// Height of one resume tile: poster, then the title and remaining-time lines.
 ///
 /// The text block was a flat `54` until 2026-09-22, which silently assumed a
@@ -37,11 +46,12 @@ const double _lineFactor = 1.25;
 /// Reserving against the live [TextScaler] is what makes it follow the user.
 double _tileHeight(BuildContext context, double tileWidth) {
   final scaler = MediaQuery.textScalerOf(context);
-  final text = _gapAbovePoster +
+  final text =
+      _gapAbovePoster +
       scaler.scale(_titleSize) * _lineFactor +
       _gapBetweenLines +
       scaler.scale(_metaSize) * _lineFactor;
-  return tileWidth * 0.62 + text.ceilToDouble();
+  return tileWidth * _posterAspect + text.ceilToDouble();
 }
 
 /// The continue-watching row from the Home artboard, one per tab.
@@ -72,7 +82,7 @@ class ContinueWatchingRow extends ConsumerWidget {
     ];
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final tileWidth = f == RelayFormFactor.phone ? 168.0 : 252.0;
+    final tileWidth = f == RelayFormFactor.phone ? 104.0 : 128.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,10 +105,8 @@ class ContinueWatchingRow extends ConsumerWidget {
             padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
             itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => _ResumeTile(
-              item: items[i],
-              width: tileWidth,
-            ),
+            itemBuilder: (context, i) =>
+                _ResumeTile(item: items[i], width: tileWidth),
           ),
         ),
       ],
@@ -160,10 +168,9 @@ class _ResumeTile extends ConsumerWidget {
                           ? Icon(Icons.play_circle_outline, color: t.inkDim)
                           : Image.network(
                               poster,
-                              // Contain, not cover: sources give us portrait
-                              // posters and this tile is landscape, so cropping
-                              // slices the artwork through the middle.
-                              fit: BoxFit.contain,
+                              // Cover is safe now that the tile is portrait
+                              // too; see [_posterAspect].
+                              fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => Icon(
                                 Icons.play_circle_outline,
                                 color: t.inkDim,
