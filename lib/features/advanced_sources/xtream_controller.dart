@@ -79,6 +79,31 @@ final xtreamCategoriesProvider =
       };
     });
 
+/// [all] narrowed to the channels picked from a category, or all of them when
+/// nothing was picked (the whole category is kept).
+///
+/// A picked channel the panel no longer lists simply drops out; the pick is not
+/// an error. Order is the panel's, not the order of picking.
+List<XtreamChannel> pickChannels(List<XtreamChannel> all, List<String>? picks) {
+  if (picks == null || picks.isEmpty) return all;
+  final wanted = picks.toSet();
+  return [
+    for (final c in all)
+      if (wanted.contains(c.streamId)) c,
+  ];
+}
+
+/// Every channel in one category, for the screen that picks among them. Not the
+/// chosen categories: that is [xtreamChannelsProvider], which applies the picks.
+final xtreamCategoryChannelsProvider =
+    FutureProvider.family<List<XtreamChannel>, (XtreamAccount, String)>((
+      ref,
+      arg,
+    ) async {
+      final client = await ref.watch(xtreamClientProvider(arg.$1).future);
+      return client.liveStreams(arg.$2);
+    });
+
 /// Channels for the categories the user actually chose (§4.1).
 final xtreamChannelsProvider =
     FutureProvider.family<List<XtreamChannel>, XtreamAccount>((
@@ -91,7 +116,10 @@ final xtreamChannelsProvider =
       final pages = await Future.wait(
         account.liveCategoryIds.map((id) async {
           try {
-            return await client.liveStreams(id);
+            return pickChannels(
+              await client.liveStreams(id),
+              account.liveChannelPicks[id],
+            );
           } catch (_) {
             // One bad category should cost its own channels, not the whole list.
             return const <XtreamChannel>[];

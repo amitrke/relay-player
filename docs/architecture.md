@@ -360,6 +360,28 @@ that, and both are this caution applied:
 
 This is the VLC-style feature: playing whatever's already on the device or on a home NAS/Windows share, no account/login model at all beyond (for SMB) server credentials. Also flagship, always-visible functionality — not gated. Scoped to **local storage + SMB** for this phase; FTP, WebDAV, and UPnP/DLNA discovery follow the same patterns below and can be added later as separate `FileSystemRepository` implementations if there's demand.
 
+**Choosing categories, as built (2026-10-09).** A flat list of 466 categories was
+unusable on a TV (about three visible rows and a keyboard to get anywhere), so the
+picker now opens on **groups** found from the names (`groupCategories`). Nothing
+is configured and no scheme is assumed, because the real panel used all of these
+at once: a bare country, "Country ➾ Genre", "PREFIX | NAME", year buckets
+("BOLLYWOOD (2016-2018)", "(2024) HOLLYWOOD"), a "24/7" prefix, and one-offs. The
+leading part of each name, with years and quality tags removed, is its key;
+categories sharing a key form a group; a longer name joins the group it extends;
+singletons that open with the same word cluster; the rest go to "Everything
+else", so every category is somewhere and none is dropped. On that panel Movies
+went from 156 categories to about 15 groups (Hollywood 61, Bollywood 17, ...).
+Separators are matched by arrow *ranges*, not one glyph: the panel used U+27BE and
+a list of the arrows seen would miss the next panel's. A *Chosen* switch shows
+only what is selected, and search and the regex pattern still work across
+everything. **Channels inside a category:** for Live TV only, each category has a
+*Channels* button to keep a few of its channels ("USA ➾ News" holds 555 and
+nobody wants them all). Picks are stored per category on the account
+(`liveChannelPicks`), apply wherever channels are fetched (`pickChannels`), drop
+with their category, and "keep the whole category" is the default and the empty
+state, so picking every channel is stored as whole and a channel the panel adds
+later is not silently left out. Movies and series get no item-level picking yet:
+a movie category can hold thousands of titles and needs a different screen.
 ### 7.1 Local device storage — compliant approach
 
 Per §1.7, this must avoid `MANAGE_EXTERNAL_STORAGE`. Two complementary pieces, both standard for compliant media players:
