@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../advanced_sources/xtream_accounts_pane.dart';
 import 'about_pane.dart';
+import 'ai_pane.dart';
 import 'metadata_pane.dart';
 import 'playback_panes.dart';
 import 'sources_pane.dart';
@@ -55,8 +56,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final form = RelayLayout.of(context);
-    final wide =
-        form == RelayFormFactor.desktop || form == RelayFormFactor.tv;
+    final wide = form == RelayFormFactor.desktop || form == RelayFormFactor.tv;
 
     return Scaffold(
       backgroundColor: t.bg,
@@ -66,9 +66,13 @@ class SettingsScreen extends StatelessWidget {
                 theme: theme,
                 state: state,
                 onStateChanged: onStateChanged,
-                showUnbuiltSections: showUnbuiltSections)
+                showUnbuiltSections: showUnbuiltSections,
+              )
             : _PhoneSettings(
-                theme: theme, state: state, onStateChanged: onStateChanged),
+                theme: theme,
+                state: state,
+                onStateChanged: onStateChanged,
+              ),
       ),
     );
   }
@@ -81,7 +85,6 @@ class SettingsState {
   const SettingsState({
     this.advancedSourcesEnabled = false,
     this.crashReportingEnabled = false,
-    this.consents = defaultConsents,
     this.section = SettingsSection.appearance,
   });
 
@@ -91,41 +94,22 @@ class SettingsState {
   /// §16 — opt-in, never on by default.
   final bool crashReportingEnabled;
 
-  final List<ConsentRow> consents;
-
   /// Which section the desktop rail has selected. Defaults to Appearance, the
   /// section users actually visit (§12.2), and never to an unbuilt one: the
   /// default used to be AI features, which is how the demo pane became the
   /// first thing the real TV layout showed.
   final SettingsSection section;
 
-  static const List<ConsentRow> defaultConsents = [
-    ConsentRow('Natural-language search', 'OpenAI', 'Query, titles, years',
-        'Granted 2 Sep', true),
-    ConsentRow('Recommendations', 'OpenAI', 'Titles, watch history',
-        'Granted 2 Sep', true),
-    ConsentRow('Subtitle generation', 'OpenAI', 'Audio from the file',
-        'Granted 6 Sep', true),
-    // Deliberately not granted. This row is what proves the granularity in
-    // §9.3 is real rather than decorative — do not "tidy" it to true.
-    ConsentRow('Subtitle translation', 'OpenAI', 'Existing subtitle text', '',
-        false),
-  ];
-
   SettingsState copyWith({
     bool? advancedSourcesEnabled,
     bool? crashReportingEnabled,
-    List<ConsentRow>? consents,
     SettingsSection? section,
-  }) =>
-      SettingsState(
-        advancedSourcesEnabled:
-            advancedSourcesEnabled ?? this.advancedSourcesEnabled,
-        crashReportingEnabled:
-            crashReportingEnabled ?? this.crashReportingEnabled,
-        consents: consents ?? this.consents,
-        section: section ?? this.section,
-      );
+  }) => SettingsState(
+    advancedSourcesEnabled:
+        advancedSourcesEnabled ?? this.advancedSourcesEnabled,
+    crashReportingEnabled: crashReportingEnabled ?? this.crashReportingEnabled,
+    section: section ?? this.section,
+  );
 }
 
 /// §12.1's section list, in order.
@@ -134,8 +118,8 @@ class SettingsState {
 /// absent from the app rather than shown as a stub, for the same reason
 /// Advanced sources is absent rather than greyed out while off: a section that
 /// exists advertises a feature. Flip it only when the pane reads and writes
-/// real state — AI features in particular has a finished-looking pane that is
-/// entirely demo data.
+/// real state. AI features was the cautionary case: it was a finished-looking
+/// pane of demo data until 2026-10-09.
 enum SettingsSection {
   sources('Sources', built: true),
   appearance('Appearance', built: true),
@@ -146,7 +130,9 @@ enum SettingsSection {
   // Built 2026-10-08: the user's own TMDB key, which unlocks genre, rating and
   // original-language filters in Search.
   metadata('Metadata', built: true),
-  aiFeatures('AI features'),
+  // Built 2026-10-09: one OpenAI-compatible provider (OpenRouter, OpenAI,
+  // Ollama or any other), a key in secure storage, and a real consent record.
+  aiFeatures('AI features', built: true),
   advancedSources('Advanced sources', built: true),
   // Unbuilt again since 2026-09-22. Its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
@@ -159,47 +145,6 @@ enum SettingsSection {
   const SettingsSection(this.label, {this.built = false});
   final String label;
   final bool built;
-}
-
-/// One row of `AiConsentRecord` (§3), rendered.
-@immutable
-class ConsentRow {
-  const ConsentRow(
-      this.feature, this.provider, this.data, this.granted, this.enabled);
-
-  final String feature;
-  final String provider;
-  final String data;
-
-  /// Human-readable grant date, empty when never granted.
-  final String granted;
-  final bool enabled;
-
-  ConsentRow toggled(bool value) =>
-      ConsentRow(feature, provider, data, value ? granted : '', value);
-}
-
-/// A configured AI provider.
-@immutable
-class ProviderRowData {
-  const ProviderRowData(this.name, this.model, this.status, this.note,
-      {this.isLocal = false});
-
-  final String name;
-  final String model;
-  final String status;
-  final String note;
-
-  /// Local/LAN providers skip the consent list entirely (§9.3).
-  final bool isLocal;
-
-  static const List<ProviderRowData> demo = [
-    ProviderRowData('OpenAI', 'gpt-4o-mini · whisper-1', 'Key saved',
-        'Text and transcription. Used for subtitle generation.'),
-    ProviderRowData('Ollama on this network', 'llama3.1 · 192.168.1.24:11434',
-        'Reachable', 'Nothing leaves your network, so no consent list applies.',
-        isLocal: true),
-  ];
 }
 
 // --- Phone ------------------------------------------------------------
@@ -223,16 +168,22 @@ class _PhoneSettings extends StatelessWidget {
     return ListView(
       padding: RelayLayout.pagePadding(form).copyWith(top: 20, bottom: 40),
       children: [
-        Text('Settings',
-            style: TextStyle(
-                color: t.ink,
-                fontSize: RelayLayout.titleSize(form),
-                fontWeight: FontWeight.w700)),
+        Text(
+          'Settings',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: RelayLayout.titleSize(form),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 24),
 
         // Appearance first: it is the section users actually visit, and theme
         // is a real runtime setting (§12.2).
-        _Section(title: 'Appearance', child: _AppearanceControls(theme: theme)),
+        _Section(
+          title: 'Appearance',
+          child: _AppearanceControls(theme: theme),
+        ),
         const SizedBox(height: 22),
 
         const _Section(title: 'Sources', child: SourcesPane()),
@@ -245,6 +196,9 @@ class _PhoneSettings extends StatelessWidget {
         const SizedBox(height: 22),
 
         const _Section(title: 'Metadata', child: MetadataPane()),
+        const SizedBox(height: 22),
+
+        const _Section(title: 'AI features', child: AiPane()),
         const SizedBox(height: 22),
 
         _Section(
@@ -288,7 +242,6 @@ class _PhoneSettings extends StatelessWidget {
       ],
     );
   }
-
 }
 
 /// The §8.2 acknowledgement. Separate from, and additional to, the general
@@ -301,11 +254,15 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
       final t = RelayTheme.of(context);
       return AlertDialog(
         backgroundColor: t.surface,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: Text('Turning on advanced sources',
-            style: TextStyle(
-                color: t.ink, fontSize: 18, fontWeight: FontWeight.w700)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(
+          'Turning on advanced sources',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,23 +270,20 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
             Text(
               'You are about to connect a third-party provider using your own '
               'credentials.',
-              style: TextStyle(
-                  color: t.ink, fontSize: 14, height: 1.55),
+              style: TextStyle(color: t.ink, fontSize: 14, height: 1.55),
             ),
             const SizedBox(height: 12),
             Text(
               'Subnext Player does not provide, host, or endorse any content or '
               'provider. You supply the address and the login, and the app '
               'plays whatever that address returns.',
-              style:
-                  TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
+              style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
             ),
             const SizedBox(height: 12),
             Text(
               'You are responsible for holding the rights to whatever you '
               'connect to.',
-              style:
-                  TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
+              style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
             ),
           ],
         ),
@@ -342,7 +296,9 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-                backgroundColor: t.accent, foregroundColor: t.accentInk),
+              backgroundColor: t.accent,
+              foregroundColor: t.accentInk,
+            ),
             child: const Text('I understand — turn on'),
           ),
         ],
@@ -352,8 +308,10 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
 }
 
 class _AdvancedSourcesControl extends StatelessWidget {
-  const _AdvancedSourcesControl(
-      {required this.enabled, required this.onChanged});
+  const _AdvancedSourcesControl({
+    required this.enabled,
+    required this.onChanged,
+  });
 
   final bool enabled;
   final ValueChanged<bool> onChanged;
@@ -397,9 +355,14 @@ class _AppearanceControls extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Theme',
-            style: TextStyle(
-                color: t.ink, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          'Theme',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -414,9 +377,14 @@ class _AppearanceControls extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
-        Text('Accent',
-            style: TextStyle(
-                color: t.ink, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          'Accent',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -436,8 +404,11 @@ class _AppearanceControls extends StatelessWidget {
 }
 
 class _ThemeChip extends StatelessWidget {
-  const _ThemeChip(
-      {required this.label, required this.selected, required this.onTap});
+  const _ThemeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -456,19 +427,25 @@ class _ThemeChip extends StatelessWidget {
           border: Border.all(color: selected ? t.accent : t.line),
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: selected ? t.accentInk : t.inkDim,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? t.accentInk : t.inkDim,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
       ),
     );
   }
 }
 
 class _Swatch extends StatelessWidget {
-  const _Swatch(
-      {required this.color, required this.selected, required this.onTap});
+  const _Swatch({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
 
   final Color color;
   final bool selected;
@@ -487,7 +464,9 @@ class _Swatch extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-              color: selected ? t.ink : Colors.transparent, width: 2),
+            color: selected ? t.ink : Colors.transparent,
+            width: 2,
+          ),
         ),
       ),
     );
@@ -506,12 +485,15 @@ class _Section extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title.toUpperCase(),
-            style: TextStyle(
-                color: t.inkDim,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8)),
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: t.inkDim,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+        ),
         const SizedBox(height: 10),
         RelaySurface(child: child),
       ],
@@ -542,15 +524,19 @@ class _ToggleRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(
-                      color: t.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: t.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle,
-                  style: TextStyle(
-                      color: t.inkDim, fontSize: 12, height: 1.5)),
+              Text(
+                subtitle,
+                style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
+              ),
             ],
           ),
         ),
@@ -603,8 +589,9 @@ class _DesktopSettings extends StatelessWidget {
         SizedBox(
           width: 260,
           child: Container(
-            decoration:
-                BoxDecoration(border: Border(right: BorderSide(color: t.line))),
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: t.line)),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -623,57 +610,62 @@ class _DesktopSettings extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(40, 32, 40, 32),
             child: switch (section) {
-              SettingsSection.aiFeatures => _AiFeaturesPane(state: state,
-                  onStateChanged: onStateChanged),
+              SettingsSection.aiFeatures => const _DesktopPane(
+                title: 'AI features',
+                child: AiPane(),
+              ),
               SettingsSection.appearance => SingleChildScrollView(
-                  child: _AppearanceControls(theme: theme)),
+                child: _AppearanceControls(theme: theme),
+              ),
               SettingsSection.sources => const _DesktopPane(
-                  title: 'Sources',
-                  child: SourcesPane(),
-                ),
+                title: 'Sources',
+                child: SourcesPane(),
+              ),
               SettingsSection.playback => const _DesktopPane(
-                  title: 'Playback',
-                  child: PlaybackPane(),
-                ),
+                title: 'Playback',
+                child: PlaybackPane(),
+              ),
               SettingsSection.subtitles => const _DesktopPane(
-                  title: 'Subtitles',
-                  child: SubtitlesPane(),
-                ),
+                title: 'Subtitles',
+                child: SubtitlesPane(),
+              ),
               SettingsSection.metadata => const _DesktopPane(
-                  title: 'Metadata',
-                  child: MetadataPane(),
-                ),
+                title: 'Metadata',
+                child: MetadataPane(),
+              ),
               SettingsSection.advancedSources => _DesktopPane(
-                  title: 'Advanced sources',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _AdvancedSourcesControl(
-                        enabled: state.advancedSourcesEnabled,
-                        onChanged: (v) => setAdvancedSources(
-                            context, state, onStateChanged, v),
-                      ),
-                      if (state.advancedSourcesEnabled) ...[
-                        const SizedBox(height: 22),
-                        const XtreamAccountsPane(),
-                      ],
+                title: 'Advanced sources',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AdvancedSourcesControl(
+                      enabled: state.advancedSourcesEnabled,
+                      onChanged: (v) =>
+                          setAdvancedSources(context, state, onStateChanged, v),
+                    ),
+                    if (state.advancedSourcesEnabled) ...[
+                      const SizedBox(height: 22),
+                      const XtreamAccountsPane(),
                     ],
-                  ),
+                  ],
                 ),
+              ),
               SettingsSection.privacy => _DesktopPane(
-                  title: 'Privacy and data',
-                  child: _ToggleRow(
-                    title: 'Send crash reports',
-                    subtitle:
-                        'Off by default. Reports contain no library or account '
-                        'data. Subnext Player has no backend and no analytics.',
-                    value: state.crashReportingEnabled,
-                    onChanged: (v) => onStateChanged(
-                        state.copyWith(crashReportingEnabled: v)),
-                  ),
+                title: 'Privacy and data',
+                child: _ToggleRow(
+                  title: 'Send crash reports',
+                  subtitle:
+                      'Off by default. Reports contain no library or account '
+                      'data. Subnext Player has no backend and no analytics.',
+                  value: state.crashReportingEnabled,
+                  onChanged: (v) =>
+                      onStateChanged(state.copyWith(crashReportingEnabled: v)),
                 ),
-              SettingsSection.about =>
-                const _DesktopPane(title: 'About', child: AboutPane()),
+              ),
+              SettingsSection.about => const _DesktopPane(
+                title: 'About',
+                child: AboutPane(),
+              ),
             },
           ),
         ),
@@ -683,8 +675,11 @@ class _DesktopSettings extends StatelessWidget {
 }
 
 class _RailRow extends StatelessWidget {
-  const _RailRow(
-      {required this.label, required this.selected, required this.onTap});
+  const _RailRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -754,238 +749,18 @@ class _DesktopPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: TextStyle(
-                  color: t.ink, fontSize: 24, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: TextStyle(
+              color: t.ink,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 20),
           child,
         ],
       ),
     );
   }
-}
-
-/// The AI features pane. The part worth getting right is the consent table:
-/// §9.3 requires naming the provider, naming the data category, and letting
-/// each pairing be revoked independently while the key stays saved.
-class _AiFeaturesPane extends StatelessWidget {
-  const _AiFeaturesPane(
-      {required this.state, required this.onStateChanged});
-
-  final SettingsState state;
-  final ValueChanged<SettingsState> onStateChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('AI features',
-              style: TextStyle(
-                  color: t.ink, fontSize: 26, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Text(
-              'You connect your own provider and your own key. Requests go '
-              'from this PC straight to the provider you chose — they are '
-              'never routed through us, because there is no server in the '
-              'middle.',
-              style:
-                  TextStyle(color: t.inkDim, fontSize: 14, height: 1.65),
-            ),
-          ),
-          const SizedBox(height: 26),
-          for (final p in ProviderRowData.demo) ...[
-            _ProviderCard(data: p),
-            const SizedBox(height: 12),
-          ],
-          const SizedBox(height: 20),
-          Text('Consent, per feature and provider',
-              style: TextStyle(
-                  color: t.ink, fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          _ConsentTable(
-            rows: state.consents,
-            onToggle: (index, value) {
-              final next = [...state.consents];
-              next[index] = next[index].toggled(value);
-              onStateChanged(state.copyWith(consents: next));
-            },
-          ),
-          const SizedBox(height: 14),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Text(
-              'Switching a row off stops sending that data immediately and '
-              'keeps your key. Pointing a provider at a machine on your own '
-              'network skips this list entirely, since nothing leaves your '
-              'network.',
-              style:
-                  TextStyle(color: t.inkDim, fontSize: 12.5, height: 1.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderCard extends StatelessWidget {
-  const _ProviderCard({required this.data});
-
-  final ProviderRowData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 760),
-      child: RelaySurface(
-        borderColor: data.isLocal ? null : t.accent,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(data.name,
-                          style: TextStyle(
-                              color: t.ink,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: data.isLocal ? t.line : t.accent),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(data.status,
-                            style: TextStyle(
-                                color: data.isLocal ? t.inkDim : t.accent,
-                                fontSize: 11)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(data.model,
-                      style: TextStyle(
-                          color: t.inkDim,
-                          fontSize: 12,
-                          fontFamily: 'monospace')),
-                  const SizedBox(height: 6),
-                  Text(data.note,
-                      style: TextStyle(
-                          color: t.inkDim, fontSize: 12.5, height: 1.5)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ConsentTable extends StatelessWidget {
-  const _ConsentTable({required this.rows, required this.onToggle});
-
-  final List<ConsentRow> rows;
-  final void Function(int index, bool value) onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = RelayTheme.of(context);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 760),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: t.line),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            Container(
-              color: t.surface,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  _cell('Feature', flex: 3, header: true, t: t),
-                  _cell('Provider', flex: 2, header: true, t: t),
-                  _cell('Data sent', flex: 3, header: true, t: t),
-                  _cell('Status', flex: 2, header: true, t: t),
-                  const SizedBox(width: 52),
-                ],
-              ),
-            ),
-            for (var i = 0; i < rows.length; i++)
-              Container(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: t.line)),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    _cell(rows[i].feature, flex: 3, t: t, strong: true),
-                    _cell(rows[i].provider, flex: 2, t: t),
-                    _cell(rows[i].data, flex: 3, t: t),
-                    _cell(
-                      rows[i].enabled ? rows[i].granted : 'Not granted',
-                      flex: 2,
-                      t: t,
-                      color: rows[i].enabled ? t.accent : t.inkDim,
-                    ),
-                    SizedBox(
-                      width: 52,
-                      child: Switch(
-                        value: rows[i].enabled,
-                        onChanged: (v) => onToggle(i, v),
-                        activeThumbColor: t.accentInk,
-                        activeTrackColor: t.accent,
-                        inactiveTrackColor: t.line,
-                        inactiveThumbColor: t.inkDim,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _cell(
-    String text, {
-    required int flex,
-    required RelayTokens t,
-    bool header = false,
-    bool strong = false,
-    Color? color,
-  }) =>
-      Expanded(
-        flex: flex,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: color ?? (header ? t.inkDim : t.ink),
-            fontSize: header ? 11 : 13,
-            fontWeight: header || strong ? FontWeight.w600 : FontWeight.w400,
-            letterSpacing: header ? 0.6 : 0,
-          ),
-        ),
-      );
 }

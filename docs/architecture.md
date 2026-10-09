@@ -869,8 +869,26 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > (Plex first), and with no TMDB key, no seeds or no match the plain search
    > prompt shows instead.
    >
-   > The AI provider layer of §9 is not built: its Settings pane is still hidden
-   > demo data.
+   > **AI provider layer and natural-language search, 2026-10-09.** One
+   > OpenAI-compatible client (`OpenAiCompatibleClient`) serves OpenRouter, OpenAI,
+   > Ollama and any other service speaking the Chat Completions format, per §9.1.
+   > Anthropic and Gemini need their own clients and are not built. One provider
+   > at a time. Settings → AI features tries the provider with a one-word request
+   > before saving it, keeps the key in secure storage only (§3), and records
+   > consent per feature and provider (`aiConsentProvider`, §9.3): the dialog names
+   > the provider and the data, and is skipped for a local address (private range,
+   > loopback or `.local`, decided from the address and not the preset). With a
+   > provider set, Search offers *Ask AI*: the query plus a numbered list of library
+   > titles and years (no ids, paths or source names) goes to the model, which
+   > answers with a JSON array of list numbers. The reply is read back only as
+   > numbers that exist on the list, so a title or a reply carrying instructions
+   > can at worst reorder picks. The list is capped at 700 titles (about 24 KB
+   > measured on an 800-title library), so a larger library is truncated, not
+   > ranked; that is the main limit to revisit. Genres are not in the list yet
+   > even when TMDB has them. Not done: AI recommendations, subtitles and
+   > translation, Anthropic and Gemini, several providers at once. Android's
+   > cleartext rules do not apply to this app's Dart sockets, so an `http://`
+   > LAN address for Ollama needs no manifest change.
 9. Settings — see §12.1 for the section breakdown
 
 ### 12.1 Settings sections

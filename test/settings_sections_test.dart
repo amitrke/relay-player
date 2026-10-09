@@ -7,15 +7,20 @@ import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/core/theme/theme_controller.dart';
 import 'package:relay_player/features/accounts/plex_session.dart';
+import 'package:relay_player/features/ai/ai_controller.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
 
 /// Guards the release-build Settings against unbuilt sections.
 ///
-/// Until 2026-09-21 the TV/desktop layout opened on AI features, whose pane is
-/// the design canvas's demo data — a "saved" OpenAI key and consent rows
+/// Until 2026-09-21 the TV/desktop layout opened on AI features, whose pane was
+/// the design canvas's demo data: a "saved" OpenAI key and consent rows
 /// "granted" on dates nobody chose. It looked finished, so nothing about the
 /// code reading correctly would have caught it coming back; this does.
+///
+/// AI features was built for real on 2026-10-09, so Privacy and data is now the
+/// section that stands in for "unbuilt" here, and a separate test pins that the
+/// AI pane is real controls and never the old demo rows.
 void main() {
   setUp(() {
     DeviceKind.debugSetTelevision(true);
@@ -61,15 +66,13 @@ void main() {
       (tester) async {
     await pump(tester);
 
-    for (final label in [
-      'AI features',
-      // Hidden 2026-09-22: its one switch sent nothing anywhere.
-      'Privacy and data',
-    ]) {
-      expect(find.text(label), findsNothing, reason: label);
-    }
-    expect(find.textContaining('OpenAI'), findsNothing);
+    // Hidden 2026-09-22: its one switch sent nothing anywhere.
+    expect(find.text('Privacy and data'), findsNothing);
+    expect(find.textContaining('Granted'), findsNothing);
     expect(find.textContaining('Not implemented'), findsNothing);
+    // Built 2026-10-09, so listed now.
+    expect(find.text('AI features'), findsOneWidget);
+    expect(find.text('Metadata'), findsOneWidget);
     // Built 2026-09-23, so listed now.
     expect(find.text('Playback'), findsOneWidget);
     expect(find.text('Subtitles'), findsOneWidget);
@@ -81,23 +84,54 @@ void main() {
   testWidgets('a state pointing at an unbuilt section still renders a built one',
       (tester) async {
     await pump(
-        tester, state: const SettingsState(section: SettingsSection.aiFeatures));
+        tester, state: const SettingsState(section: SettingsSection.privacy));
 
-    expect(find.textContaining('OpenAI'), findsNothing);
-    expect(find.textContaining('Not implemented'), findsNothing);
+    // Not the unbuilt section's own content, and the section it falls back to.
+    expect(find.text('Send crash reports'), findsNothing);
+    expect(find.text('Theme'), findsOneWidget);
+  });
+
+  testWidgets('AI features is real controls, never the old demo rows',
+      (tester) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [aiSetupProvider.overrideWith(_NoAi.new)],
+      child: MaterialApp(
+        home: RelayTheme(
+          tokens: RelayPalettes.midnight,
+          palette: RelayPalette.midnight,
+          child: SettingsScreen(
+            theme: ThemeController(),
+            state: const SettingsState(section: SettingsSection.aiFeatures),
+            onStateChanged: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // What a person with no provider sees: a form to set one up.
+    expect(find.text('Test and save'), findsOneWidget);
+    expect(find.text('OpenRouter'), findsOneWidget);
+    // And none of the demo data that used to stand in for it.
+    expect(find.textContaining('Granted'), findsNothing);
+    expect(find.textContaining('Key saved'), findsNothing);
+    expect(find.textContaining('192.168.1.24'), findsNothing);
   });
 
   // The control. Without it the two tests above would pass just as happily if
   // the finders were looking in the wrong place.
   testWidgets('the gallery still reaches the unbuilt sections', (tester) async {
     await pump(tester,
-        state: const SettingsState(section: SettingsSection.aiFeatures),
+        state: const SettingsState(section: SettingsSection.privacy),
         showUnbuiltSections: true);
 
-    expect(find.text('AI features'), findsWidgets);
-    expect(find.textContaining('OpenAI'), findsWidgets);
+    expect(find.text('Privacy and data'), findsWidgets);
+    expect(find.text('Send crash reports'), findsOneWidget);
     expect(find.text('Playback'), findsOneWidget);
-    expect(find.text('Privacy and data'), findsOneWidget);
   });
 
   testWidgets('the phone layout has no crash-report switch', (tester) async {
@@ -196,4 +230,10 @@ class _Prefs extends PlaybackPrefsController {
 
   @override
   Future<void> update(PlaybackPrefs next) async => state = next;
+}
+
+/// No provider configured, without reaching for the settings box.
+class _NoAi extends AiSetupController {
+  @override
+  Future<AiSetup?> build() async => null;
 }

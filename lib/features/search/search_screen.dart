@@ -6,15 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
+import '../../data/ai/ai_provider.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../accounts/plex_session.dart';
 import '../advanced_sources/xtream_controller.dart';
+import '../ai/ai_controller.dart';
 import '../metadata/tmdb_controller.dart';
 import '../library/library_screen.dart' show plexSectionsProvider;
 import '../library/poster_grid.dart';
 import '../settings/settings_controller.dart';
 import 'search_filters.dart';
 import 'search_results_view.dart';
+import 'ai_results_view.dart';
 import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
 
@@ -27,6 +30,20 @@ class _QueryController extends Notifier<String> {
   String build() => '';
 
   void update(String value) => state = value;
+}
+
+/// The query the user has handed to the AI provider, or null for ordinary
+/// search. It only applies while the box still holds that exact text, so
+/// editing the query drops back to ordinary results with nothing to reset.
+final _askAiProvider = NotifierProvider<_AskAiController, String?>(
+  _AskAiController.new,
+);
+
+class _AskAiController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? query) => state = query;
 }
 
 final _filtersProvider = NotifierProvider<_FiltersController, SearchFilters>(
@@ -163,6 +180,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final query = ref.watch(_queryProvider);
+    // AI is offered only once a provider is set up (section 9.1), and only on
+    // text long enough to be a request.
+    final hasAi = ref.watch(aiSetupProvider).value != null;
+    final askedAi = ref.watch(_askAiProvider);
+    final aiOn = hasAi && query.trim().isNotEmpty && askedAi == query.trim();
     final results = ref.watch(_resultsProvider);
     final filters = ref.watch(_filtersProvider);
     // The plain results until the enriched ones arrive, so a slow or failing
@@ -221,46 +243,120 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
+            if (hasAi && query.trim().length >= 3)
+              Padding(
+                padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _AskAiChip(
+                    active: aiOn,
+                    onTap: () async {
+                      if (aiOn) {
+                        ref.read(_askAiProvider.notifier).set(null);
+                        return;
+                      }
+                      final go = await ensureAiConsent(
+                        context,
+                        ref,
+                        AiFeature.naturalSearch,
+                      );
+                      if (go && mounted) {
+                        ref.read(_askAiProvider.notifier).set(query.trim());
+                      }
+                    },
+                  ),
+                ),
+              ),
             Expanded(
-              child: switch (query.trim().length) {
-                // Suggestions when there are honest ones, else the plain prompt.
-                // While they load, or if they fail, the prompt shows: nothing
-                // here is worth a spinner or an error.
-                0 => switch (ref.watch(suggestionsProvider).value) {
-                  final rows? when rows.isNotEmpty => SuggestionsView(
-                    rows: rows,
-                  ),
-                  _ => const LibraryEmptyState(
-                    icon: Icons.search,
-                    message: 'Search movies and series across your server.',
-                  ),
-                },
-                1 => const LibraryEmptyState(
-                  icon: Icons.search,
-                  message: 'Keep typing…',
-                ),
-                _ => results.when(
-                  loading: () =>
-                      Center(child: CircularProgressIndicator(color: t.accent)),
-                  error: (e, _) => LibraryEmptyState(
-                    icon: Icons.cloud_off_outlined,
-                    message: '$e',
-                    onRetry: () => ref.invalidate(_resultsProvider),
-                  ),
-                  data: (list) => list.isEmpty
-                      ? LibraryEmptyState(
-                          icon: Icons.search_off,
-                          message: 'Nothing matching "$query".',
-                        )
-                      : SearchResultsView(
-                          all: enriched ?? list,
-                          filters: filters,
-                          sourceNames: sourceNames,
-                          onFilters: (v) =>
-                              ref.read(_filtersProvider.notifier).set(v),
+              child: aiOn
+                  ? AiResultsView(query: query.trim())
+                  : switch (query.trim().length) {
+                      // Suggestions when there are honest ones, else the plain prompt.
+                      // While they load, or if they fail, the prompt shows: nothing
+                      // here is worth a spinner or an error.
+                      0 => switch (ref.watch(suggestionsProvider).value) {
+                        final rows? when rows.isNotEmpty => SuggestionsView(
+                          rows: rows,
                         ),
-                ),
-              },
+                        _ => const LibraryEmptyState(
+                          icon: Icons.search,
+                          message:
+                              'Search movies and series across your server.',
+                        ),
+                      },
+                      1 => const LibraryEmptyState(
+                        icon: Icons.search,
+                        message: 'Keep typing…',
+                      ),
+                      _ => results.when(
+                        loading: () => Center(
+                          child: CircularProgressIndicator(color: t.accent),
+                        ),
+                        error: (e, _) => LibraryEmptyState(
+                          icon: Icons.cloud_off_outlined,
+                          message: '$e',
+                          onRetry: () => ref.invalidate(_resultsProvider),
+                        ),
+                        data: (list) => list.isEmpty
+                            ? LibraryEmptyState(
+                                icon: Icons.search_off,
+                                message: 'Nothing matching "$query".',
+                              )
+                            : SearchResultsView(
+                                all: enriched ?? list,
+                                filters: filters,
+                                sourceNames: sourceNames,
+                                onFilters: (v) =>
+                                    ref.read(_filtersProvider.notifier).set(v),
+                              ),
+                      ),
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Ask AI" beside the results, and "Back to results" while its picks show.
+class _AskAiChip extends StatelessWidget {
+  const _AskAiChip({required this.active, required this.onTap});
+
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    final size = f == RelayFormFactor.tv ? 15.0 : 13.0;
+    return RelayTappable(
+      borderRadius: 20,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? t.surface : t.accent.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? t.line : t.accent),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              active ? Icons.arrow_back : Icons.auto_awesome,
+              size: size + 3,
+              color: active ? t.inkDim : t.accent,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              active ? 'Back to results' : 'Ask AI',
+              style: TextStyle(
+                color: active ? t.inkDim : t.ink,
+                fontSize: size,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

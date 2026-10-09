@@ -26,10 +26,11 @@ class SettingsController extends Notifier<SettingsState> {
   @override
   SettingsState build() {
     return SettingsState(
-      advancedSourcesEnabled:
-          _store.getBool(_kAdvancedSources, fallback: false),
-      crashReportingEnabled:
-          _store.getBool(_kCrashReporting, fallback: false),
+      advancedSourcesEnabled: _store.getBool(
+        _kAdvancedSources,
+        fallback: false,
+      ),
+      crashReportingEnabled: _store.getBool(_kCrashReporting, fallback: false),
     );
   }
 
@@ -55,15 +56,15 @@ class SettingsController extends Notifier<SettingsState> {
 /// framing, and screen 2 makes Plex and Local & Network both optional — an app
 /// that re-demands setup on every launch until you connect something has turned
 /// one source into a gate.
-final onboardingSeenProvider =
-    NotifierProvider<OnboardingSeenController, bool>(
+final onboardingSeenProvider = NotifierProvider<OnboardingSeenController, bool>(
   OnboardingSeenController.new,
 );
 
 class OnboardingSeenController extends Notifier<bool> {
   @override
-  bool build() =>
-      ref.read(appSettingsStoreProvider).getBool(_kOnboardingSeen, fallback: false);
+  bool build() => ref
+      .read(appSettingsStoreProvider)
+      .getBool(_kOnboardingSeen, fallback: false);
 
   Future<void> markSeen() async {
     state = true;
@@ -82,8 +83,8 @@ final advancedSourcesEnabledProvider = Provider<bool>((ref) {
 
 final libraryMappingProvider =
     NotifierProvider<LibraryMappingController, LibraryMapping>(
-  LibraryMappingController.new,
-);
+      LibraryMappingController.new,
+    );
 
 class LibraryMappingController extends Notifier<LibraryMapping> {
   AppSettingsStore get _store => ref.read(appSettingsStoreProvider);

@@ -23,7 +23,8 @@ class PlaybackPane extends ConsumerWidget {
       children: [
         _ChoiceRow(
           title: 'Skip back and forward',
-          subtitle: 'The skip buttons, the fast-forward and rewind keys on a '
+          subtitle:
+              'The skip buttons, the fast-forward and rewind keys on a '
               'remote, and the first step when moving along the seek bar.',
           options: [
             for (final s in PlaybackPrefs.skipChoices)
@@ -37,11 +38,13 @@ class PlaybackPane extends ConsumerWidget {
         const SizedBox(height: 18),
         _LanguageRow(
           title: 'Preferred audio language',
-          subtitle: 'Used when a file has more than one audio track. '
+          subtitle:
+              'Used when a file has more than one audio track. '
               "Otherwise the file's own default plays.",
           value: prefs.audioLanguage,
           noneLabel: "File's default",
-          onChanged: (lang) => edit((p) => p.copyWith(audioLanguage: () => lang)),
+          onChanged: (lang) =>
+              edit((p) => p.copyWith(audioLanguage: () => lang)),
         ),
       ],
     );
@@ -62,7 +65,8 @@ class SubtitlesPane extends ConsumerWidget {
       children: [
         _CheckRow(
           title: 'Show subtitles',
-          subtitle: 'Turn them on when a file has them. You can always switch '
+          subtitle:
+              'Turn them on when a file has them. You can always switch '
               'in the player.',
           value: prefs.subtitlesOn,
           onChanged: (v) => edit((p) => p.copyWith(subtitlesOn: v)),
@@ -70,7 +74,8 @@ class SubtitlesPane extends ConsumerWidget {
         const SizedBox(height: 18),
         _LanguageRow(
           title: 'Preferred subtitle language',
-          subtitle: 'If a file has no subtitles in this language, none are '
+          subtitle:
+              'If a file has no subtitles in this language, none are '
               'shown.',
           value: prefs.subtitleLanguage,
           noneLabel: 'Any',
@@ -160,8 +165,10 @@ class _ChoiceRow extends StatelessWidget {
                 borderRadius: 18,
                 onTap: onTap,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: selected ? t.accent : t.surface,
                     borderRadius: BorderRadius.circular(18),
@@ -210,7 +217,9 @@ class _CheckRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _Label(title: title, subtitle: subtitle)),
+            Expanded(
+              child: _Label(title: title, subtitle: subtitle),
+            ),
             const SizedBox(width: 14),
             Icon(
               value ? Icons.check_box : Icons.check_box_outline_blank,
@@ -245,8 +254,9 @@ class _LanguageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    final current =
-        value == null ? noneLabel : (playbackLanguages[value] ?? value!);
+    final current = value == null
+        ? noneLabel
+        : (playbackLanguages[value] ?? value!);
     return RelayTappable(
       borderRadius: 10,
       onTap: () async {
@@ -254,11 +264,8 @@ class _LanguageRow extends StatelessWidget {
           context: context,
           backgroundColor: t.surface,
           isScrollControlled: true,
-          builder: (context) => _LanguageSheet(
-            title: title,
-            value: value,
-            noneLabel: noneLabel,
-          ),
+          builder: (context) =>
+              _LanguageSheet(title: title, value: value, noneLabel: noneLabel),
         );
         // A record, so "picked no preference" (null inside) is told apart
         // from "dismissed the sheet" (no record at all).
@@ -269,7 +276,9 @@ class _LanguageRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _Label(title: title, subtitle: subtitle)),
+            Expanded(
+              child: _Label(title: title, subtitle: subtitle),
+            ),
             const SizedBox(width: 14),
             Text(
               current,
@@ -332,8 +341,10 @@ class _LanguageSheet extends StatelessWidget {
                 autofocus: code == value,
                 onTap: () => Navigator.of(context).pop((code,)),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
