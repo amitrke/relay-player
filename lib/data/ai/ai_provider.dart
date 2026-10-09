@@ -133,6 +133,9 @@ enum AiFeature {
   naturalSearch(
     'Natural-language search',
     'Your search text, and the titles and years in your library.',
+    timing:
+        'A large library is sent in several requests of a few hundred titles '
+        'each, so a search makes more than one.',
   ),
   recommendations(
     'Recommendations',

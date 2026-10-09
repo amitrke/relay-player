@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -100,7 +102,10 @@ class AiSetupController extends AsyncNotifier<AiSetup?> {
       await _storage.delete(key: _kKey);
     }
     state = AsyncData(
-      AiSetup(config, trimmedKey == null || trimmedKey.isEmpty ? null : trimmedKey),
+      AiSetup(
+        config,
+        trimmedKey == null || trimmedKey.isEmpty ? null : trimmedKey,
+      ),
     );
   }
 
@@ -228,40 +233,215 @@ Future<bool> ensureAiConsent(
   return true;
 }
 
-/// Library titles a model picked for [query] (section 9.2).
+/// How far a search has got, and what it has found so far.
+class AiSearchProgress {
+  const AiSearchProgress({
+    this.items = const [],
+    this.total = 0,
+    this.covered = 0,
+    this.searched = 0,
+    this.parts = 0,
+    this.partsFailed = 0,
+    this.done = false,
+  });
+
+  /// Picks so far, in the order they arrived. An item never moves once shown,
+  /// so a later answer adds to the end and does not shuffle what is on screen.
+  final List<CatalogItem> items;
+
+  /// Distinct titles in the library, and how many of them went into a request.
+  /// They differ only for a library past [naturalSearchMaxChunks] requests.
+  final int total;
+  final int covered;
+
+  /// Titles whose request has been answered, or has failed.
+  final int searched;
+
+  final int parts;
+
+  /// Requests that failed (a rate limit, no network), whose titles were not
+  /// searched. Everything else in the library was.
+  final int partsFailed;
+  final bool done;
+
+  bool get truncated => covered < total;
+
+  AiSearchProgress copyWith({
+    List<CatalogItem>? items,
+    int? searched,
+    int? partsFailed,
+    bool? done,
+  }) => AiSearchProgress(
+    items: items ?? this.items,
+    total: total,
+    covered: covered,
+    searched: searched ?? this.searched,
+    parts: parts,
+    partsFailed: partsFailed ?? this.partsFailed,
+    done: done ?? this.done,
+  );
+}
+
+/// Most picks kept from a whole search, however many parts answer.
+const aiSearchMaxResults = 36;
+
+/// One more try for a part that failed, after [aiSearchRetryDelayProvider]. Free
+/// tiers answer a burst with a rate limit and a router sometimes sends back
+/// nothing, and both usually pass on a second ask, whereas dropping that part
+/// meant a slice of the library silently went unsearched (seen on the Google TV
+/// emulator, 2026-10-09: 1 of 6 parts failed on the first real run).
+const aiSearchRetries = 1;
+
+/// A provider, so a test can run without waiting.
+final aiSearchRetryDelayProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 2),
+);
+
+/// How many requests of one search are in flight at once. Two: enough that the
+/// slowest part is not the only thing waited on, few enough that a free tier's
+/// rate limit is not hit by a single search.
+const aiSearchConcurrency = 2;
+
+/// Library titles a model picked for [query] (section 9.2), as they are found.
+///
+/// A library past a few hundred titles does not fit one request that a free or
+/// local model can handle, and cutting it at the first few hundred (which this
+/// did until 2026-10-09) meant most of it was never searched, silently. So it is
+/// sent in parts, [aiSearchConcurrency] at a time, and this emits again as each
+/// part is answered: the first picks appear after the first part, and the rest
+/// join them. Each pick is checked against its title (see [parseCheckedPicks]);
+/// one that is not, is dropped.
+///
+/// One part failing does not fail the search. Only when every part has does it
+/// become an error. Leaving the screen stops it asking for more.
 ///
 /// Re-checks consent itself, so no caller can reach the provider around the
 /// dialog; the screen asks first and this is the backstop.
-final aiSearchProvider = FutureProvider.family<List<CatalogItem>, String>((
-  ref,
-  query,
-) async {
-  final setup = ref.watch(aiSetupProvider).value;
-  final client = ref.watch(aiClientProvider);
-  if (setup == null || client == null) {
-    throw const AiException('No AI provider is set up.');
-  }
-  if (!ref
-      .read(aiConsentProvider.notifier)
-      .allows(AiFeature.naturalSearch, setup.config)) {
-    throw const AiException(
-      'Natural-language search is switched off for this provider.',
+final aiSearchProvider = StreamProvider.autoDispose
+    .family<AiSearchProgress, String>(
+      // No automatic retry. Riverpod 3 retries a provider that fails, up to ten
+      // times with a growing delay, for anything that is an Exception, which an
+      // AiException is. For this provider that is ten more rounds of paid
+      // requests after a rate limit or a bad key, the whole multi-part search
+      // each time, with the spinner up throughout. A failure here is shown, and
+      // the person decides whether to try again.
+      retry: (_, _) => null,
+      (ref, query) {
+        final setup = ref.watch(aiSetupProvider).value;
+        final client = ref.watch(aiClientProvider);
+        if (setup == null || client == null) {
+          throw const AiException('No AI provider is set up.');
+        }
+        if (!ref
+            .read(aiConsentProvider.notifier)
+            .allows(AiFeature.naturalSearch, setup.config)) {
+          throw const AiException(
+            'Natural-language search is switched off for this provider.',
+          );
+        }
+
+        final retryDelay = ref.read(aiSearchRetryDelayProvider);
+        final controller = StreamController<AiSearchProgress>();
+        var cancelled = false;
+        ref.onDispose(() {
+          cancelled = true;
+          controller.close();
+        });
+
+        void emit(AiSearchProgress p) {
+          if (!cancelled && !controller.isClosed) controller.add(p);
+        }
+
+        Future<void> run() async {
+          final library = <CatalogItem>[];
+          for (final tab in [LibraryTab.movies, LibraryTab.series]) {
+            try {
+              library.addAll(await ref.read(libraryItemsProvider(tab).future));
+            } catch (_) {}
+          }
+          if (cancelled) return;
+
+          final cut = buildLibraryChunks(library);
+          var progress = AiSearchProgress(
+            total: cut.total,
+            covered: cut.covered,
+            parts: cut.chunks.length,
+          );
+          if (cut.chunks.isEmpty) {
+            emit(progress.copyWith(done: true));
+            return;
+          }
+          emit(progress);
+
+          Object? firstError;
+          var next = 0;
+
+          Future<void> worker() async {
+            while (!cancelled && next < cut.chunks.length) {
+              final chunk = cut.chunks[next++];
+              try {
+                String answer;
+                for (var attempt = 0; ; attempt++) {
+                  try {
+                    answer = await client.complete(
+                      system: naturalSearchCheckedSystemPrompt,
+                      user: naturalSearchUserMessage(query, chunk),
+                      maxTokens: aiPickMaxTokens,
+                    );
+                    break;
+                  } catch (_) {
+                    if (cancelled || attempt >= aiSearchRetries) rethrow;
+                    await Future<void>.delayed(retryDelay);
+                    if (cancelled) return;
+                  }
+                }
+                if (cancelled) return;
+                final found = parseCheckedPicks(answer, chunk);
+                progress = progress.copyWith(
+                  items: [
+                    ...progress.items,
+                    ...found,
+                  ].take(aiSearchMaxResults).toList(),
+                  searched: progress.searched + chunk.items.length,
+                );
+              } catch (e) {
+                if (cancelled) return;
+                firstError ??= e;
+                progress = progress.copyWith(
+                  searched: progress.searched + chunk.items.length,
+                  partsFailed: progress.partsFailed + 1,
+                );
+              }
+              emit(progress);
+            }
+          }
+
+          await Future.wait([
+            for (var i = 0; i < aiSearchConcurrency; i++) worker(),
+          ]);
+          if (cancelled) return;
+
+          if (progress.partsFailed == progress.parts) {
+            if (!controller.isClosed) {
+              controller.addError(
+                firstError is AiException
+                    ? firstError as AiException
+                    : AiException('${firstError ?? 'The search failed.'}'),
+              );
+            }
+          } else {
+            // Kept once finished, so coming back to the same search shows the
+            // answer and does not ask the provider again.
+            ref.keepAlive();
+            emit(progress.copyWith(done: true));
+          }
+        }
+
+        unawaited(
+          run().whenComplete(() {
+            if (!controller.isClosed) controller.close();
+          }),
+        );
+        return controller.stream;
+      },
     );
-  }
-
-  final library = <CatalogItem>[];
-  for (final tab in [LibraryTab.movies, LibraryTab.series]) {
-    try {
-      library.addAll(await ref.watch(libraryItemsProvider(tab).future));
-    } catch (_) {}
-  }
-  final index = buildLibraryIndex(library);
-  if (index.items.isEmpty) return const [];
-
-  final answer = await client.complete(
-    system: naturalSearchSystemPrompt,
-    user: naturalSearchUserMessage(query, index),
-    maxTokens: aiPickMaxTokens,
-  );
-  return resolvePicks(answer, index);
-});
