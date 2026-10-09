@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dart_plex/dart_plex.dart';
 
 import '../../domain/models/catalog_item.dart';
+import 'paging.dart';
 
 /// A 4-character code the user types at plex.tv/link.
 class PlexLinkCode {
@@ -303,22 +304,39 @@ class PlexService {
         .toList();
   }
 
+  Future<PlexMediaContainer<PlexMetadata>> _page(
+    PlexLibrarySection section,
+    int start,
+    int size,
+  ) => _client.library.allByType(
+    sectionId: section.id,
+    type: section.type == PlexLibraryType.show
+        ? PlexMetadataType.show
+        : PlexMetadataType.movie,
+    start: start,
+    size: size,
+    sort: 'titleSort',
+  );
+
   Future<List<PlexMetadata>> items(
     PlexLibrarySection section, {
     int start = 0,
     int size = 60,
-  }) async {
-    final container = await _client.library.allByType(
-      sectionId: section.id,
-      type: section.type == PlexLibraryType.show
-          ? PlexMetadataType.show
-          : PlexMetadataType.movie,
-      start: start,
-      size: size,
-      sort: 'titleSort',
-    );
-    return container.items;
-  }
+  }) async => (await _page(section, start, size)).items;
+
+  /// Every title in [section], sorted by title, page by page.
+  ///
+  /// Until 2026-10-09 the library asked for the first 60 of each section and
+  /// stopped, so a Plex library showed (and the AI search could see) only its
+  /// first 60 titles alphabetically. The rest were on the server, reachable by
+  /// searching for them by name, and absent from every list built on this one:
+  /// found when "James Bond movies" found no Bond film that the Continue
+  /// watching row was showing.
+  Future<List<PlexMetadata>> allItems(PlexLibrarySection section) =>
+      readAllPages<PlexMetadata>((start, size) async {
+        final page = await _page(section, start, size);
+        return (total: page.totalSize, items: page.items);
+      });
 
   /// Items from [wanted], merged and sorted by title.
   ///
@@ -326,13 +344,17 @@ class PlexService {
   /// one tab per section, so someone with "Films" and "4K Films" sees one list.
   /// *Which* libraries feed a tab is the caller's decision — Plex's library type
   /// is only a default, and the user can override it.
+  ///
+  /// All of each section, unless [perSection] says otherwise.
   Future<List<SourcedItem>> itemsFrom(
     List<PlexLibrarySection> wanted, {
-    int perSection = 60,
+    int? perSection,
   }) async {
     if (wanted.isEmpty) return const [];
     final pages = await Future.wait(
-      wanted.map((s) => items(s, size: perSection)),
+      wanted.map(
+        (s) => perSection == null ? allItems(s) : items(s, size: perSection),
+      ),
     );
     return [for (final item in pages.expand((page) => page)) sourced(item)];
   }
