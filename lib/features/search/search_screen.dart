@@ -210,6 +210,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   onChanged: _onChanged,
                   autocorrect: false,
                   textInputAction: TextInputAction.search,
+                  // A touch anywhere else puts the keyboard away. Android has
+                  // Back for this, iOS has nothing, so without it the keyboard
+                  // stayed over the results after typing a query and tapping
+                  // Ask AI or scrolling. Only a pointer triggers this, so a
+                  // remote's focus (section 11) is left where it is.
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   style: TextStyle(color: t.ink),
                   decoration: InputDecoration(
                     hintText: 'Search your sources',
