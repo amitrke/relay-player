@@ -324,6 +324,7 @@ class PlexService {
     title: metadata.title,
     year: metadata.year,
     posterUrl: posterUrl(metadata),
+    posterPath: posterPathOf(metadata),
     addedAt: metadata.addedAt,
     viewCount: metadata.viewCount,
     viewOffset: _ms(metadata.viewOffsetMs),

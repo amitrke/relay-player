@@ -12,7 +12,8 @@ import 'package:relay_player/features/ai/ai_controller.dart';
 import 'package:relay_player/features/ai/ai_recommendations_controller.dart';
 import 'package:relay_player/features/favorites_history/history_controller.dart';
 import 'package:relay_player/features/library/library_screen.dart'
-    show libraryItemsProvider;
+    show LibraryController, libraryItemsProvider;
+import 'package:relay_player/features/library/library_tab.dart';
 import 'package:relay_player/features/settings/settings_controller.dart';
 
 /// The behaviour that keeps background recommendations from becoming a drain on
@@ -34,6 +35,18 @@ CatalogItem _film(
   viewCount: views,
   lastViewedAt: watchedAt,
 );
+
+/// The library, per tab. Static because a family override builds its own
+/// instance and has no other way to be handed the list.
+class _FakeLibrary extends LibraryController {
+  _FakeLibrary(super.tab);
+
+  static List<CatalogItem> movies = const [];
+
+  @override
+  Future<List<CatalogItem>> build() async =>
+      tab == LibraryTab.movies ? movies : const <CatalogItem>[];
+}
 
 class _Client implements TextGenerationClient {
   int calls = 0;
@@ -117,15 +130,13 @@ void main() {
     AiProviderConfig config = _local,
     List<CatalogItem>? items,
   }) {
+    _FakeLibrary.movies = items ?? library;
     final c = ProviderContainer(
       overrides: [
         appSettingsStoreProvider.overrideWithValue(store),
         aiSetupProvider.overrideWith(() => _Setup(config)),
         aiClientProvider.overrideWithValue(client),
-        libraryItemsProvider.overrideWith(
-          (ref, tab) async =>
-              tab.name == 'movies' ? (items ?? library) : const <CatalogItem>[],
-        ),
+        libraryItemsProvider.overrideWith2(_FakeLibrary.new),
         historyProvider.overrideWith(() => _History(const [])),
       ],
     );

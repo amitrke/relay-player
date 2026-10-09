@@ -23,6 +23,7 @@ class CatalogItem {
     required this.title,
     this.year,
     this.posterUrl,
+    this.posterPath,
     this.addedAt,
     this.viewCount,
     this.viewOffset,
@@ -47,6 +48,13 @@ class CatalogItem {
   /// Already resolved and authenticated — Plex artwork needs a token on the
   /// query string, so the URL cannot be rebuilt by the widget that shows it.
   final String? posterUrl;
+
+  /// The unsigned artwork reference, for Plex: a server-relative path that
+  /// [posterUrl] was made from. The one form that is safe to write to disk
+  /// (section 3), since the signed URL carries `X-Plex-Token`; the library cache
+  /// stores this and signs it again when it reads. Null for a panel, whose
+  /// [posterUrl] is an absolute address with no credential in it.
+  final String? posterPath;
 
   /// When the item arrived in its source, for "Recently added". Plex reports
   /// it per item. Panels report `added` for films and only `last_modified` for
@@ -90,6 +98,27 @@ class CatalogItem {
   /// `ratingKey` and a panel `stream_id` collide freely.
   String get key => '${source.name}|$sourceId|$id';
 
+  /// This item with its artwork URL replaced, for re-signing a cached Plex path.
+  CatalogItem withPosterUrl(String? url) => CatalogItem(
+        source: source,
+        sourceId: sourceId,
+        kind: kind,
+        id: id,
+        title: title,
+        year: year,
+        posterUrl: url,
+        posterPath: posterPath,
+        addedAt: addedAt,
+        viewCount: viewCount,
+        viewOffset: viewOffset,
+        duration: duration,
+        lastViewedAt: lastViewedAt,
+        language: language,
+        genres: genres,
+        rating: rating,
+        originalLanguage: originalLanguage,
+      );
+
   CatalogItem withMetadata({
     required List<String> genres,
     double? rating,
@@ -103,6 +132,7 @@ class CatalogItem {
         title: title,
         year: year,
         posterUrl: posterUrl,
+        posterPath: posterPath,
         addedAt: addedAt,
         viewCount: viewCount,
         viewOffset: viewOffset,

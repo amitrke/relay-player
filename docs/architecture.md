@@ -926,8 +926,31 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > libraries of 982 and 1124 items, the first with no watched films in it. A
    > partial list is kept for the session with no retry, which starves anything
    > built on it (here: the picks and the "because you watched" rows). The library
-   > is not cached across launches; see MANUAL_TESTING.md. Not done:
-   > subtitles and translation, Anthropic and Gemini, several providers at once. Android's
+   > was not cached across launches. **Resolved 2026-10-09:** see the library cache
+   > note below. Not done:
+   > subtitles and translation, Anthropic and Gemini, several providers at once.
+   >
+   > **Library cache, 2026-10-09.** Each tab's library is kept between launches,
+   > per source (`plex|<server>|<tab>`, `xtream|<account>|<catalogue>`) in its own
+   > Hive box (`library_cache`). Opening the app shows the kept library at once and
+   > the sources refresh it in the background (stale while revalidate,
+   > `loadLibrary`). A source that fails or times out keeps its kept answer in the
+   > merge instead of dropping out for the session, which was the 982-or-1124
+   > problem; a source's fetch therefore throws on failure and no longer returns an
+   > empty list, so "did not answer" and "has nothing" can be told apart. An
+   > answer made for other choices (a panel's categories) is not used as a stand-in.
+   > The timeout is 25 s when something is kept to show meanwhile and 10 s when
+   > nothing is. **§3:** a Plex poster is stored only as its unsigned server path
+   > (`CatalogItem.posterPath`) and signed again on read, because the signed image
+   > URL carries `X-Plex-Token`; `catalogItemToJson` drops any URL containing one,
+   > and the file on a device was checked and held no token and no transcode URL.
+   > Limits: watch state is as old as the last refresh (so recently watched can lag
+   > until the background refresh lands); removing a server leaves its entry in the
+   > box unread; TMDB metadata is not part of it (it has its own cache).
+   > `LibraryController` is an `AsyncNotifier`, not a `StreamProvider`: consumers
+   > read `.future` without listening, which never completes for a stream provider
+   > in this Riverpod version, and the fresh answer arrives after `build` has
+   > returned, so it can only `read`, never `watch`. Android's
    > cleartext rules do not apply to this app's Dart sockets, so an `http://`
    > LAN address for Ollama needs no manifest change.
 9. Settings — see §12.1 for the section breakdown

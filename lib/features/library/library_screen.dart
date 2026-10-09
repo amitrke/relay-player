@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/local/library_cache.dart';
+import '../../data/local/library_loader.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../advanced_sources/xtream_controller.dart';
@@ -58,62 +60,121 @@ final plexSectionsProvider =
 /// relay-connected server that never answered.
 const _perServerTimeout = Duration(seconds: 10);
 
-/// Everything feeding [tab], merged across every connected server.
-///
-/// §12 screen 3: "Movies/Series merge across Plex accounts". One server failing
-/// or stalling must not blank the tab — it should cost you its own titles, not
-/// everyone else's.
-final _libraryProvider = FutureProvider.family<List<CatalogItem>, LibraryTab>((
-  ref,
-  tab,
-) async {
-  final servers = ref.watch(connectedServersProvider);
-  final mapping = ref.watch(libraryMappingProvider);
-
-  final perSource = <Future<List<CatalogItem>>>[
-    for (final server in servers)
-      () async {
-        try {
-          final sections = await ref.watch(
-            plexSectionsProvider(server.id).future,
-          );
-          final items = await server.service.itemsFrom(
-            mapping.sectionsFor(tab, server.id, sections),
-          );
-          return [
-            for (final i in items) server.service.toCatalogItem(i.metadata),
-          ];
-        } catch (_) {
-          return const <CatalogItem>[];
-        }
-      }(),
-
-    // Panel catalogues merge into the same tabs: a VOD title is a movie and a
-    // panel series is a series, so splitting them out would make the user
-    // remember which source something came from in order to find it.
-    for (final account in ref.watch(xtreamAccountsProvider))
-      if (_catalogueFor(tab) case final catalogue?)
-        () async {
-          try {
-            return await ref.watch(
-              xtreamCatalogProvider((account, catalogue)).future,
-            );
-          } catch (_) {
-            return const <CatalogItem>[];
-          }
-        }(),
-  ];
-
-  final gathered = await Future.wait(
-    perSource.map(
-      (f) =>
-          f.timeout(_perServerTimeout, onTimeout: () => const <CatalogItem>[]),
-    ),
-  );
-
-  return gathered.expand((items) => items).toList()
-    ..sort((a, b) => a.sortKey.compareTo(b.sortKey));
+/// The library cache, opened once. Null when it cannot be (a test, or a box
+/// that will not open), in which case the library simply loads without one.
+final libraryCacheProvider = FutureProvider<LibraryCache>((ref) async {
+  return HiveLibraryCache.open();
 });
+
+/// Everything feeding [tab], merged across every source, kept between launches.
+///
+/// §12 screen 3: "Movies/Series merge across Plex accounts". One source failing
+/// or stalling must not blank the tab: it costs you nothing, because its last
+/// answer is kept and used in its place.
+///
+/// It answers twice when something was kept: `build` returns that at once, and
+/// the fresh answer replaces it as the provider's state when the sources reply
+/// (see `loadLibrary`). Until 2026-10-09 this waited for every source up to a 10
+/// second timeout and dropped any that missed it, for the whole session. On an
+/// emulator that gave 982 items one launch and 1124 the next, the first with no
+/// watched films in it, which starved the TMDB rows and the AI picks built on
+/// it.
+///
+/// A notifier and not a `StreamProvider` because the consumers read `.future`
+/// without listening, and a stream provider's future never completes in that
+/// case in this Riverpod version. Reading ahead of a rebuild is what the
+/// background half needs, so everything it asks for is `read`, not `watch`:
+/// `watch` is only allowed while `build` is running, and the fresh answer arrives
+/// after it has returned.
+final _libraryProvider =
+    AsyncNotifierProvider.family<
+      LibraryController,
+      List<CatalogItem>,
+      LibraryTab
+    >(LibraryController.new);
+
+class LibraryController extends AsyncNotifier<List<CatalogItem>> {
+  LibraryController(this.tab);
+
+  final LibraryTab tab;
+
+  @override
+  Future<List<CatalogItem>> build() async {
+    // Watched here, while build runs, so a change to any of them rebuilds.
+    final servers = ref.watch(connectedServersProvider);
+    final mapping = ref.watch(libraryMappingProvider);
+    final accounts = ref.watch(xtreamAccountsProvider);
+    final cacheFuture = ref.watch(libraryCacheProvider.future);
+
+    LibraryCache? cache;
+    try {
+      cache = await cacheFuture;
+    } catch (_) {}
+
+    final sources = <LibrarySource>[
+      for (final server in servers)
+        LibrarySource(
+          key: 'plex|${server.id}|${tab.name}',
+          // A kept Plex item has no signed poster URL (§3), so sign its path
+          // against the live connection. Null until the server is reachable.
+          revive: (item) {
+            final path = item.posterPath;
+            return path == null
+                ? item
+                : item.withPosterUrl(server.service.posterUrlForPath(path));
+          },
+          fetch: () async {
+            final sections = await ref.read(
+              plexSectionsProvider(server.id).future,
+            );
+            final wanted = mapping.sectionsFor(tab, server.id, sections);
+            final items = await server.service.itemsFrom(wanted);
+            return LibraryFetch([
+              for (final i in items) server.service.toCatalogItem(i.metadata),
+            ], wanted.map((s) => s.id).join(','));
+          },
+        ),
+
+      // Panel catalogues merge into the same tabs: a VOD title is a movie and a
+      // panel series is a series, so splitting them out would make the user
+      // remember which source something came from in order to find it.
+      for (final account in accounts)
+        if (_catalogueFor(tab) case final catalogue?)
+          LibrarySource(
+            key: 'xtream|${account.id}|${catalogue.name}',
+            expectedSignature: account.categoriesFor(catalogue).join(','),
+            fetch: () async => LibraryFetch(
+              await ref.read(
+                xtreamCatalogProvider((account, catalogue)).future,
+              ),
+              account.categoriesFor(catalogue).join(','),
+            ),
+          ),
+    ];
+
+    final events = StreamIterator(
+      loadLibrary(sources, cache: cache, timeout: _perServerTimeout),
+    );
+    if (!await events.moveNext()) return const [];
+    final first = events.current;
+    // Whatever follows is the fresh answer, replacing what was kept.
+    unawaited(_applyLater(events));
+    return first;
+  }
+
+  Future<void> _applyLater(StreamIterator<List<CatalogItem>> events) async {
+    try {
+      while (await events.moveNext()) {
+        if (!ref.mounted) break;
+        state = AsyncData(events.current);
+      }
+    } catch (_) {
+      // The kept answer stands; a failed refresh is not an error to show.
+    } finally {
+      await events.cancel();
+    }
+  }
+}
 
 /// Everything a tab shows, for screens that need to look titles up in it.
 final libraryItemsProvider = _libraryProvider;
