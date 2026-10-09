@@ -7,6 +7,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
 import 'resume_entries.dart';
+import 'watch_actions.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
 // around them. Shared because the row must reserve exactly the height the tile
@@ -145,6 +146,25 @@ class _ResumeTile extends ConsumerWidget {
       child: RelayTappable(
         borderRadius: 10,
         onTap: () => context.push(item.route),
+        // The same sheet as a poster in the grid, for Plex entries only: a panel
+        // title has no watched state to set and nothing here to download
+        // (architecture.md section 18.1). This row is where a half-watched title
+        // is, which makes it the likeliest place to want a copy for later: until
+        // 2026-10-09 it took a tap and nothing else, so a title in progress could
+        // not be downloaded without finding it again in the library.
+        onLongPress: item.kind == PlaybackKind.plex
+            ? () => showWatchActions(
+                context,
+                ref,
+                WatchTarget(
+                  serverId: item.sourceId,
+                  ratingKey: item.itemId,
+                  title: item.title,
+                  downloadable: true,
+                  isEpisode: item.episode,
+                ),
+              )
+            : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

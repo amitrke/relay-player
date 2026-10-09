@@ -1337,7 +1337,7 @@ Added 2026-10-09. A film or episode from the user's own Plex server can be saved
 
 ### 18.2 How
 
-The original file, not a transcode. `PlexService.downloadSource` resolves the same Part key direct play streams (`/library/parts/{id}/{ts}/file.mkv`), so the server does no work beyond serving a file with byte ranges, and nothing in the existing direct-play findings (§6, §10) changes. A press-and-hold on a film or episode offers **Download to this device**, or **Delete download** / **Cancel download** if one exists. The **Downloads** tab lists everything, with progress, size and runtime, and plays a finished one.
+The original file, not a transcode. `PlexService.downloadSource` resolves the same Part key direct play streams (`/library/parts/{id}/{ts}/file.mkv`), so the server does no work beyond serving a file with byte ranges, and nothing in the existing direct-play findings (§6, §10) changes. A press-and-hold on a film or episode, in the library, a season list or the **Continue watching** row (added 2026-10-09: a title part-way through is the likeliest one to want a copy of, and those tiles took a tap and nothing else), offers **Download to this device**, or **Delete download** / **Cancel download** if one exists. The **Downloads** tab lists everything, with progress, size and runtime, and plays a finished one.
 
 Files live in the app's private support directory (not documents, which iOS exposes to the Files app and backs up). They are not exported or shareable out of the app.
 
