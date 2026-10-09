@@ -6,6 +6,7 @@ import '../favorites_history/history_controller.dart';
 import '../library/library_screen.dart' show libraryItemsProvider;
 import '../library/library_tab.dart';
 import '../metadata/tmdb_controller.dart';
+import 'watch_signals.dart';
 
 /// "Because you watched [seedTitle]": titles the user has that TMDB considers
 /// close to it.
@@ -46,43 +47,11 @@ final suggestionsProvider = FutureProvider<List<Suggestion>>((ref) async {
 
   final history = ref.watch(historyProvider);
 
-  // Candidate seeds from both places, newest first, one per title.
-  final candidates = <({CatalogItem item, DateTime at})>[
-    for (final i in library)
-      if (i.kind == CatalogKind.movie && i.lastViewedAt != null)
-        (item: i, at: i.lastViewedAt!),
-    for (final h in history)
-      // History keeps an episode's own title, not its show's, so an episode
-      // would be looked up as a film called "Pilot". Only a film watched past
-      // a glance says anything about taste.
-      if (!h.isEpisode && h.position >= const Duration(minutes: 1))
-        (
-          item: CatalogItem(
-            source: CatalogSource.plex,
-            sourceId: h.sourceId,
-            kind: CatalogKind.movie,
-            id: h.itemId,
-            title: h.title,
-          ),
-          at: h.lastWatchedAt,
-        ),
-  ]..sort((a, b) => b.at.compareTo(a.at));
-
-  final seeds = <CatalogItem>[];
-  final seenTitles = <String>{};
-  for (final c in candidates) {
-    if (!seenTitles.add(c.item.title.toLowerCase())) continue;
-    seeds.add(c.item);
-    if (seeds.length == _maxSeeds) break;
-  }
+  final seeds = recentlyWatchedFilms(library, history).take(_maxSeeds).toList();
   if (seeds.isEmpty) return const [];
 
   // Anything already watched is not a suggestion.
-  final watched = {
-    for (final h in history) h.title.toLowerCase(),
-    for (final i in library)
-      if ((i.viewCount ?? 0) > 0) i.title.toLowerCase(),
-  };
+  final watched = watchedTitles(library, history);
   final shownKeys = <String>{};
 
   final rows = <Suggestion>[];

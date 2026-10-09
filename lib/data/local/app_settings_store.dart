@@ -21,6 +21,10 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 class AppSettingsStore {
   AppSettingsStore._(this._box);
 
+  /// Over an already open [box], for tests that cannot reach the platform
+  /// storage path [open] uses. The app itself always goes through [open].
+  AppSettingsStore.withBox(Box<dynamic> box) : _box = box;
+
   static const _boxName = 'settings';
 
   final Box<dynamic> _box;

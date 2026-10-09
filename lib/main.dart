@@ -7,6 +7,7 @@ import 'core/platform/device_kind.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/theme_controller.dart';
 import 'data/local/app_settings_store.dart';
+import 'features/ai/ai_recommendations_controller.dart';
 import 'features/settings/settings_controller.dart';
 
 Future<void> main() async {
@@ -40,6 +41,9 @@ class RelayPlayerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Gets AI recommendations ready in the background, if they are allowed.
+    // Does nothing without a provider and the user's consent.
+    ref.watch(aiRecommendationsPrefetchProvider);
     return RelayApp(
       controller: ref.watch(themeControllerProvider),
       routerConfig: ref.watch(routerProvider),

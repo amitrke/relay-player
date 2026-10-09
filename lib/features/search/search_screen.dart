@@ -17,6 +17,7 @@ import '../library/poster_grid.dart';
 import '../settings/settings_controller.dart';
 import 'search_filters.dart';
 import 'search_results_view.dart';
+import 'ai_recommendations_view.dart';
 import 'ai_results_view.dart';
 import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
@@ -274,9 +275,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       // Suggestions when there are honest ones, else the plain prompt.
                       // While they load, or if they fail, the prompt shows: nothing
                       // here is worth a spinner or an error.
+                      // With an AI provider the AI section leads, even when there
+                      // are no TMDB rows: it is the one thing here that can run
+                      // with no TMDB key and no history of its own.
                       0 => switch (ref.watch(suggestionsProvider).value) {
-                        final rows? when rows.isNotEmpty => SuggestionsView(
-                          rows: rows,
+                        final rows? when rows.isNotEmpty || hasAi =>
+                          SuggestionsView(
+                            rows: rows,
+                            leading: hasAi
+                                ? const AiRecommendationsSection()
+                                : null,
+                          ),
+                        null when hasAi => const SuggestionsView(
+                          rows: [],
+                          leading: AiRecommendationsSection(),
                         ),
                         _ => const LibraryEmptyState(
                           icon: Icons.search,

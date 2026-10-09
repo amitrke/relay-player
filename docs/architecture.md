@@ -885,8 +885,49 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > can at worst reorder picks. The list is capped at 700 titles (about 24 KB
    > measured on an 800-title library), so a larger library is truncated, not
    > ranked; that is the main limit to revisit. Genres are not in the list yet
-   > even when TMDB has them. Not done: AI recommendations, subtitles and
-   > translation, Anthropic and Gemini, several providers at once. Android's
+   > even when TMDB has them.
+   >
+   > **AI recommendations, 2026-10-09.** The empty Search screen, when a provider
+   > is set up, leads with *What should I watch?*. The model is shown the user's
+   > few most recently watched films and a numbered list of what they have **not**
+   > watched, and can only answer with numbers from that list, so it has nothing
+   > outside the library to recommend (§9.2). Watched titles are taken out of the
+   > list before it is sent, by Plex's play count and this device's history. It is
+   > a separate consent from natural-language search (§9.3). Watch signals are
+   > shared with the TMDB rows (`watch_signals.dart`) so both agree on what counts
+   > as watched; episodes still do not count.
+   >
+   > **Kept ready in the background, 2026-10-09.** It first ran when a button was
+   > pressed and took as long as the model did, which read as slow. Once allowed,
+   > picks are now prepared in advance: the last picks are stored (only item keys
+   > and a signature, under `ai.recs`) and shown the instant Search opens, and a
+   > newer set is fetched shortly after launch. That is background sending, so the
+   > consent dialog says so in its own words. What bounds it: nothing happens
+   > until recommendations are allowed for that provider; a refresh happens only
+   > when the recent films or the model changed, or the picks are over 24 hours
+   > old (`recommendationsStale`), so relaunching with nothing new sends nothing;
+   > and a failed attempt is not retried until the next launch, so a rejected key
+   > or a rate limit cannot become a loop. *Again* leaves the current picks out of
+   > the list so the answer actually differs. The cache is cleared with the
+   > provider. Pinned by `ai_recommendations_controller_test.dart`.
+   >
+   > **Two findings from running it against a real provider, 2026-10-09.**
+   > (1) *Reasoning models can return no answer.* An OpenRouter free model came
+   > back with `finish_reason: length`, `content: null` and a `reasoning` field: it
+   > spent its whole reply budget thinking. This was the earlier unexplained
+   > "nothing picked". The client now says so in words, the reply cap is 1500
+   > tokens (providers bill for tokens generated, not for the limit), and
+   > OpenRouter alone is sent `reasoning: {enabled: false}` (OpenAI's API rejects
+   > unknown fields). It is a request: a model that cannot run without reasoning
+   > ignores it, and the `openrouter/free` router picks a different model each
+   > time, so a fixed non-reasoning model is more dependable. (2) *The library
+   > loads differently from one launch to the next.* Each source has a 10 s
+   > timeout and a slow one is simply missing, so the same install produced
+   > libraries of 982 and 1124 items, the first with no watched films in it. A
+   > partial list is kept for the session with no retry, which starves anything
+   > built on it (here: the picks and the "because you watched" rows). The library
+   > is not cached across launches; see MANUAL_TESTING.md. Not done:
+   > subtitles and translation, Anthropic and Gemini, several providers at once. Android's
    > cleartext rules do not apply to this app's Dart sockets, so an `http://`
    > LAN address for Ollama needs no manifest change.
 9. Settings — see §12.1 for the section breakdown

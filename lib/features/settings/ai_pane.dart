@@ -331,7 +331,8 @@ class _ConsentRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Sends to $providerName: ${feature.dataSent}',
+                  'Sends to $providerName: ${feature.dataSent}'
+                  '${feature.timing == null ? '' : ' ${feature.timing}'}',
                   style: TextStyle(
                     color: t.inkDim,
                     fontSize: 12.5,

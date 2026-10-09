@@ -65,6 +65,7 @@ class AiSetupController extends AsyncNotifier<AiSetup?> {
       baseUrl: config.baseUrl,
       model: config.model,
       apiKey: trimmedKey,
+      extraBody: config.requestExtras,
     ).complete(
       system: 'Reply with the single word OK.',
       user: 'ping',
@@ -87,6 +88,8 @@ class AiSetupController extends AsyncNotifier<AiSetup?> {
     await ref.read(appSettingsStoreProvider).setStringMap(_kProvider, const {});
     await _storage.delete(key: _kKey);
     await ref.read(aiConsentProvider.notifier).clear();
+    // The picks were made by this provider and mean nothing without it.
+    await ref.read(appSettingsStoreProvider).setString('ai.recs', '');
     state = const AsyncData(null);
   }
 }
@@ -98,6 +101,7 @@ final aiClientProvider = Provider<TextGenerationClient?>((ref) {
     baseUrl: setup.config.baseUrl,
     model: setup.config.model,
     apiKey: setup.apiKey,
+    extraBody: setup.config.requestExtras,
   );
 });
 
@@ -173,7 +177,9 @@ Future<bool> ensureAiConsent(
       ),
       content: Text(
         '${feature.label} will send this to ${config.displayName}: '
-        '${feature.dataSent}\n\nIt goes straight from this device to them, '
+        '${feature.dataSent}'
+        '${feature.timing == null ? '' : '\n\n${feature.timing}'}'
+        '\n\nIt goes straight from this device to them, '
         'never through us. You can switch this off again in Settings, AI '
         'features.',
         style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
@@ -234,7 +240,7 @@ final aiSearchProvider = FutureProvider.family<List<CatalogItem>, String>((
   final answer = await client.complete(
     system: naturalSearchSystemPrompt,
     user: naturalSearchUserMessage(query, index),
-    maxTokens: 120,
+    maxTokens: aiPickMaxTokens,
   );
   return resolvePicks(answer, index);
 });

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/data/ai/ai_provider.dart';
+import 'package:relay_player/data/ai/ai_recommendations.dart';
 import 'package:relay_player/data/ai/natural_search.dart';
 import 'package:relay_player/data/ai/text_client.dart';
 import 'package:relay_player/domain/models/catalog_item.dart';
@@ -173,6 +174,70 @@ void main() {
       expect(await failing(500), contains('HTTP 500'));
     });
 
+    test(
+      'a model that spent its reply thinking is told apart from empty',
+      () async {
+        // Real shape from an OpenRouter free model, 2026-10-09.
+        final adapter = _FakeAdapter(200, {
+          'choices': [
+            {
+              'finish_reason': 'length',
+              'message': {
+                'content': null,
+                'reasoning': 'Thinking Process: ...',
+              },
+            },
+          ],
+        });
+        expect(
+          _client(adapter).complete(system: 's', user: 'u'),
+          throwsA(
+            isA<AiException>().having(
+              (e) => e.message,
+              'message',
+              contains('ran out of reply space'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'extra request fields reach the provider that asked for them',
+      () async {
+        final adapter = _FakeAdapter(200, {
+          'choices': [
+            {
+              'message': {'content': 'ok'},
+            },
+          ],
+        });
+        final client = OpenAiCompatibleClient(
+          baseUrl: 'https://example.test/v1',
+          model: 'm',
+          extraBody: const {
+            'reasoning': {'enabled': false},
+          },
+          dio: Dio(BaseOptions(baseUrl: 'https://example.test/v1'))
+            ..httpClientAdapter = adapter,
+        );
+        await client.complete(system: 's', user: 'u');
+        expect((adapter.last!.data as Map)['reasoning'], {'enabled': false});
+      },
+    );
+
+    test('only OpenRouter is sent the reasoning flag', () {
+      AiProviderConfig at(String url) =>
+          AiProviderConfig(preset: AiPreset.custom, baseUrl: url, model: 'm');
+      expect(
+        at('https://openrouter.ai/api/v1').requestExtras,
+        containsPair('reasoning', {'enabled': false}),
+      );
+      // OpenAI's API answers an unknown field with a 400.
+      expect(at('https://api.openai.com/v1').requestExtras, isEmpty);
+      expect(at('http://192.168.1.5:11434/v1').requestExtras, isEmpty);
+    });
+
     test('an empty answer is an error, not an empty success', () async {
       final adapter = _FakeAdapter(200, {'choices': []});
       expect(
@@ -242,6 +307,119 @@ void main() {
         _item('c', 'Gamma'),
       ]);
       expect(resolvePicks('[3, 1]', index).map((i) => i.id), ['c', 'a']);
+    });
+  });
+
+  group('recommendations', () {
+    final library = [
+      _item('1', 'Heat', year: 1995),
+      _item('2', 'Ronin', year: 1998),
+      _item('3', 'Casino', year: 1995),
+    ];
+
+    test('sends what was watched, and only the unwatched library', () {
+      final input = buildRecommendationInput(
+        recentlyWatched: [library[0]],
+        library: library,
+        isWatched: (i) => i.id == '1',
+      );
+      expect(input.watched, ['Heat (1995)']);
+      expect(input.index.items.map((i) => i.id), ['2', '3']);
+      final message = recommendationUserMessage(input);
+      expect(message, contains('- Heat (1995)'));
+      expect(message, contains('1. Ronin (1998) | film'));
+      // Heat is watched, so it is in the taste section and not on the list.
+      expect(message.split('Not watched yet:').last.contains('Heat'), isFalse);
+    });
+
+    test('without anything watched there is no signal to recommend from', () {
+      final input = buildRecommendationInput(
+        recentlyWatched: const [],
+        library: library,
+        isWatched: (_) => false,
+      );
+      expect(input.hasSignal, isFalse);
+    });
+
+    test('a watched title repeated across sources is sent once', () {
+      final input = buildRecommendationInput(
+        recentlyWatched: [
+          _item('1', 'Heat', year: 1995, source: 'plex'),
+          _item('9', 'EN - Heat (1995) 4K', source: 'panel'),
+        ],
+        library: library,
+        isWatched: (_) => false,
+      );
+      expect(input.watched, ['Heat (1995)']);
+    });
+
+    test('only a handful of watched titles are sent', () {
+      final many = [for (var i = 0; i < 40; i++) _item('$i', 'Watched $i')];
+      final input = buildRecommendationInput(
+        recentlyWatched: many,
+        library: library,
+        isWatched: (_) => false,
+      );
+      expect(input.watched.length, recommendationMaxWatched);
+    });
+  });
+
+  group('recommendation cache', () {
+    final now = DateTime(2026, 10, 9, 12);
+    RecommendationInput input(List<String> watched) =>
+        RecommendationInput(watched, buildLibraryIndex([_item('1', 'X')]));
+
+    test('survives storage, and rejects junk', () {
+      final c = RecommendationCache(at: now, signature: 's', keys: ['a|b|1']);
+      final back = RecommendationCache.fromJson(c.toJson());
+      expect(back?.keys, ['a|b|1']);
+      expect(back?.signature, 's');
+      expect(RecommendationCache.fromJson('nonsense'), isNull);
+      expect(RecommendationCache.fromJson(null), isNull);
+    });
+
+    test('is stale with no cache, a changed signature, or old picks', () {
+      final sig = recommendationSignature(input(['Heat (1995)']), 'm');
+      final fresh = RecommendationCache(at: now, signature: sig, keys: []);
+      expect(recommendationsStale(null, sig, now), isTrue);
+      expect(recommendationsStale(fresh, sig, now), isFalse);
+      expect(
+        recommendationsStale(
+          fresh,
+          recommendationSignature(input(['Ronin (1998)']), 'm'),
+          now,
+        ),
+        isTrue,
+      );
+      expect(
+        recommendationsStale(
+          fresh,
+          sig,
+          now.add(recommendationMaxAge + const Duration(minutes: 1)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('changing the model makes the picks stale', () {
+      final a = recommendationSignature(input(['Heat (1995)']), 'one');
+      final b = recommendationSignature(input(['Heat (1995)']), 'two');
+      expect(a == b, isFalse);
+    });
+
+    test('asking again leaves the previous picks out of the list', () {
+      final library = [
+        _item('1', 'Heat'),
+        _item('2', 'Ronin'),
+        _item('3', 'Casino'),
+      ];
+      final input = buildRecommendationInput(
+        recentlyWatched: [_item('9', 'Seen')],
+        library: library,
+        isWatched: (_) => false,
+        exclude: {library[1].key},
+      );
+      expect(input.index.items.map((i) => i.id), ['1', '3']);
     });
   });
 }

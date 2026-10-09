@@ -69,6 +69,19 @@ class AiProviderConfig {
   /// would skip a disclosure Apple requires.
   bool get isLocal => isPrivateHost(host);
 
+  /// Request fields only this provider understands.
+  ///
+  /// OpenRouter takes `reasoning: {enabled: false}`, which stops a reasoning
+  /// model burning the reply budget on thinking. It is a request, not a
+  /// guarantee: a model that cannot run without reasoning ignores it. Keyed on
+  /// the host, not the preset, so "Other" pointed at openrouter.ai gets it too,
+  /// and nothing else does, since OpenAI's API rejects fields it does not know.
+  Map<String, Object?> get requestExtras => host.endsWith('openrouter.ai')
+      ? const {
+          'reasoning': {'enabled': false},
+        }
+      : const {};
+
   /// What the consent dialog and the settings list call this provider. The
   /// real name where there is one (section 9.3 forbids "AI service"), the host
   /// for anything custom.
@@ -120,10 +133,23 @@ enum AiFeature {
   naturalSearch(
     'Natural-language search',
     'Your search text, and the titles and years in your library.',
+  ),
+  recommendations(
+    'Recommendations',
+    'The films you watched recently, and the titles and years of what you '
+        'have not watched yet in your library.',
+    timing:
+        'Picks are prepared in the background shortly after the app opens, '
+        'but only when what you watched has changed or they are over a day '
+        'old, so it is not a request on every launch.',
   );
 
-  const AiFeature(this.label, this.dataSent);
+  const AiFeature(this.label, this.dataSent, {this.timing});
 
   final String label;
   final String dataSent;
+
+  /// When sending happens, if that is not simply "when you ask". Shown in the
+  /// consent dialog, because background sending is part of what is agreed to.
+  final String? timing;
 }
