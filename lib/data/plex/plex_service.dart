@@ -87,17 +87,20 @@ class PlexUnreachable implements Exception {
 /// open, with a leaked server-side session as the named risk, so this class
 /// deliberately exposes direct play only.
 class PlexService {
-  PlexService({required String clientId, this.serverId = '', this.serverName = ''})
-      : _client = PlexClient(
-          credentials: PlexCredentials(
-            clientIdentifier: clientId,
-            product: 'Subnext Player',
-            version: '0.1.0',
-            device: Platform.operatingSystem,
-            deviceName: Platform.localHostname,
-            platform: Platform.operatingSystem,
-          ),
-        );
+  PlexService({
+    required String clientId,
+    this.serverId = '',
+    this.serverName = '',
+  }) : _client = PlexClient(
+         credentials: PlexCredentials(
+           clientIdentifier: clientId,
+           product: 'Subnext Player',
+           version: '0.1.0',
+           device: Platform.operatingSystem,
+           deviceName: Platform.localHostname,
+           platform: Platform.operatingSystem,
+         ),
+       );
 
   final PlexClient _client;
 
@@ -145,11 +148,10 @@ class PlexService {
   Future<List<PlexResource>> servers() async {
     final resources = await _client.account.fetchResources();
     final servers = resources.where((r) => r.provides.contains('server'));
-    return servers.toList()
-      ..sort((a, b) {
-        if (a.owned == b.owned) return a.name.compareTo(b.name);
-        return a.owned ? -1 : 1;
-      });
+    return servers.toList()..sort((a, b) {
+      if (a.owned == b.owned) return a.name.compareTo(b.name);
+      return a.owned ? -1 : 1;
+    });
   }
 
   /// Connects to [server] using a route that actually answers.
@@ -181,10 +183,7 @@ class PlexService {
       ),
       // Relay last and slowest: it is the fallback that usually works for a
       // shared server, and it is not fast.
-      (
-        server.connections.where((c) => c.relay),
-        const Duration(seconds: 6),
-      ),
+      (server.connections.where((c) => c.relay), const Duration(seconds: 6)),
     ];
 
     for (final (candidates, timeout) in tiers) {
@@ -267,8 +266,10 @@ class PlexService {
   Future<List<PlexLibrarySection>> sections() async {
     final all = await _client.library.sections();
     return all
-        .where((s) =>
-            s.type == PlexLibraryType.movie || s.type == PlexLibraryType.show)
+        .where(
+          (s) =>
+              s.type == PlexLibraryType.movie || s.type == PlexLibraryType.show,
+        )
         .toList();
   }
 
@@ -300,8 +301,9 @@ class PlexService {
     int perSection = 60,
   }) async {
     if (wanted.isEmpty) return const [];
-    final pages =
-        await Future.wait(wanted.map((s) => items(s, size: perSection)));
+    final pages = await Future.wait(
+      wanted.map((s) => items(s, size: perSection)),
+    );
     return [for (final item in pages.expand((page) => page)) sourced(item)];
   }
 
@@ -313,31 +315,31 @@ class PlexService {
   /// Artwork is resolved here because a Plex thumb needs the server's token on
   /// the query string — the widget that renders it has no way to rebuild that.
   CatalogItem toCatalogItem(PlexMetadata metadata) => CatalogItem(
-        source: CatalogSource.plex,
-        sourceId: serverId,
-        kind: metadata.type == PlexMetadataType.show
-            ? CatalogKind.show
-            : CatalogKind.movie,
-        id: metadata.ratingKey,
-        title: metadata.title,
-        year: metadata.year,
-        posterUrl: posterUrl(metadata),
-        addedAt: metadata.addedAt,
-        viewCount: metadata.viewCount,
-        viewOffset: _ms(metadata.viewOffsetMs),
-        duration: _ms(metadata.durationMs),
-        lastViewedAt: metadata.lastViewedAt,
-      );
+    source: CatalogSource.plex,
+    sourceId: serverId,
+    kind: metadata.type == PlexMetadataType.show
+        ? CatalogKind.show
+        : CatalogKind.movie,
+    id: metadata.ratingKey,
+    title: metadata.title,
+    year: metadata.year,
+    posterUrl: posterUrl(metadata),
+    addedAt: metadata.addedAt,
+    viewCount: metadata.viewCount,
+    viewOffset: _ms(metadata.viewOffsetMs),
+    duration: _ms(metadata.durationMs),
+    lastViewedAt: metadata.lastViewedAt,
+  );
 
-  static Duration? _ms(int? ms) => ms == null ? null : Duration(milliseconds: ms);
+  static Duration? _ms(int? ms) =>
+      ms == null ? null : Duration(milliseconds: ms);
 
   /// Marks an item watched or unwatched for this account (`/:/scrobble`,
   /// `/:/unscrobble`). On a show or season Plex applies it to every episode
   /// beneath, and unwatched also clears the resume position.
-  Future<void> setWatched(String ratingKey, {required bool watched}) =>
-      watched
-          ? _client.playback.scrobble(ratingKey)
-          : _client.playback.unscrobble(ratingKey);
+  Future<void> setWatched(String ratingKey, {required bool watched}) => watched
+      ? _client.playback.scrobble(ratingKey)
+      : _client.playback.unscrobble(ratingKey);
 
   /// What Plex thinks this account is in the middle of, across [sections].
   ///
@@ -354,9 +356,13 @@ class PlexService {
     List<PlexLibrarySection> sections, {
     int perSection = 12,
   }) async {
-    final pages = await Future.wait(sections.map((s) => _client.hubs
-        .sectionOnDeck(sectionId: s.id, count: perSection)
-        .catchError((_) => const <PlexMetadata>[])));
+    final pages = await Future.wait(
+      sections.map(
+        (s) => _client.hubs
+            .sectionOnDeck(sectionId: s.id, count: perSection)
+            .catchError((_) => const <PlexMetadata>[]),
+      ),
+    );
     return pages.expand((p) => p).toList();
   }
 
@@ -377,6 +383,54 @@ class PlexService {
       for (final m in results)
         if (playable.contains(m.type)) sourced(m),
     ];
+  }
+
+  /// Search restricted to [sections], one library at a time.
+  ///
+  /// Plex's `/search` has no library filter and no section id on its results, so
+  /// a hidden library cannot be dropped afterwards: found 2026-10-08, when the
+  /// first two rows of a search for "man" were course recordings from a library
+  /// hidden in Settings → Sources, which the Movies and Series tabs had always
+  /// respected. `/hubs/search?sectionId=` looks like the fix and is not: this
+  /// server answered every `sectionId` with the same unscoped hubs (identical
+  /// counts for different libraries), so it was ignored. What does scope is a
+  /// library's own listing, `/library/sections/{id}/all`, with a `title`
+  /// filter, which the server reads as "contains". That is looser than the hub
+  /// search's word matching ("man" also finds "Batman"), the price of a search
+  /// that can be limited to the libraries the user kept.
+  ///
+  /// An empty [sections] searches nothing rather than falling back to
+  /// everything, because "the user hid every library" must not mean "search all
+  /// of them".
+  Future<List<SourcedItem>> searchIn(
+    List<PlexLibrarySection> sections,
+    String query, {
+    int perSection = 20,
+  }) async {
+    final needle = query.trim();
+    if (needle.isEmpty || sections.isEmpty) return const [];
+    final perLibrary = await Future.wait(
+      sections.map((s) async {
+        try {
+          final page = await _client.library.allByType(
+            sectionId: s.id,
+            type: s.type == PlexLibraryType.show
+                ? PlexMetadataType.show
+                : PlexMetadataType.movie,
+            size: perSection,
+            sort: 'titleSort',
+            filters: [
+              PlexFilter(field: 'title', values: [needle]),
+            ],
+          );
+          return page.items;
+        } catch (_) {
+          // One library failing should cost its own matches, not the others'.
+          return const <PlexMetadata>[];
+        }
+      }),
+    );
+    return [for (final m in perLibrary.expand((items) => items)) sourced(m)];
   }
 
   Future<PlexMetadata?> item(String ratingKey) =>

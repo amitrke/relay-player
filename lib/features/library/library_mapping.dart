@@ -13,10 +13,10 @@ enum LibraryPlacement {
   final String label;
 
   LibraryTab? get tab => switch (this) {
-        movies => LibraryTab.movies,
-        series => LibraryTab.series,
-        hidden => null,
-      };
+    movies => LibraryTab.movies,
+    series => LibraryTab.series,
+    hidden => null,
+  };
 
   static LibraryPlacement? fromName(String? name) {
     for (final p in values) {
@@ -54,8 +54,9 @@ class LibraryMapping {
   static String keyFor(String serverId, PlexLibrarySection section) =>
       '$serverId:${section.id}';
 
-  Map<String, String> toStorage() =>
-      {for (final e in _overrides.entries) e.key: e.value.name};
+  Map<String, String> toStorage() => {
+    for (final e in _overrides.entries) e.key: e.value.name,
+  };
 
   static LibraryMapping fromStorage(Map<String, String> raw) {
     return LibraryMapping({
@@ -66,8 +67,8 @@ class LibraryMapping {
 
   static LibraryPlacement defaultFor(PlexLibrarySection section) =>
       section.type == PlexLibraryType.show
-          ? LibraryPlacement.series
-          : LibraryPlacement.movies;
+      ? LibraryPlacement.series
+      : LibraryPlacement.movies;
 
   LibraryPlacement placementOf(String serverId, PlexLibrarySection section) =>
       _overrides[keyFor(serverId, section)] ?? defaultFor(section);
@@ -80,8 +81,17 @@ class LibraryMapping {
     LibraryTab tab,
     String serverId,
     List<PlexLibrarySection> all,
-  ) =>
-      all.where((s) => placementOf(serverId, s).tab == tab).toList();
+  ) => all.where((s) => placementOf(serverId, s).tab == tab).toList();
+
+  /// Every section of [serverId] the user has not hidden, whichever tab it
+  /// feeds. What search covers: a library hidden in Settings → Sources is
+  /// hidden everywhere, not only from the Movies and Series tabs.
+  List<PlexLibrarySection> visibleSections(
+    String serverId,
+    List<PlexLibrarySection> all,
+  ) => all
+      .where((s) => placementOf(serverId, s) != LibraryPlacement.hidden)
+      .toList();
 
   LibraryMapping withPlacement(
     String serverId,
