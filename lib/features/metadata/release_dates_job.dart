@@ -60,8 +60,12 @@ final releaseDatesJobProvider = Provider<void>((ref) {
   final hasKey = ref.watch(tmdbKeyProvider.select((k) => k.value != null));
 
   // The agreement was to look titles up *with that key*. A removed key takes it
-  // with it, so adding another later asks again.
-  if (!hasKey && enabled) {
+  // with it, so adding another later asks again. "Removed" means the key has
+  // finished loading from secure storage and is empty: while it is still
+  // loading at launch `value` is null too, and treating that as removal wiped
+  // the saved agreement on every start.
+  final keyLoaded = ref.watch(tmdbKeyProvider.select((k) => k.hasValue));
+  if (keyLoaded && !hasKey && enabled) {
     unawaited(Future.microtask(() {
       if (ref.exists(releaseDatesEnabledProvider)) {
         ref.read(releaseDatesEnabledProvider.notifier).disable();
