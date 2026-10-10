@@ -185,7 +185,8 @@ class ShelvesView extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: RelayLayout.pagePadding(f).copyWith(top: 14, bottom: 10),
+                padding: RelayLayout.pagePadding(f)
+                    .copyWith(top: 14, bottom: 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
@@ -217,10 +218,8 @@ class ShelvesView extends ConsumerWidget {
                 height: height,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding: RelayLayout.pagePadding(f).copyWith(
-                    top: 0,
-                    bottom: 0,
-                  ),
+                  padding: RelayLayout.pagePadding(f)
+                      .copyWith(top: 0, bottom: 0),
                   itemCount: count,
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) {
@@ -284,6 +283,9 @@ class _SeeAllTile extends StatelessWidget {
     final tv = f == RelayFormFactor.tv;
     final size = tv ? 18.0 : 12.5;
 
+    // The card fills the whole tile, caption space included, so the focus ring
+    // hugs the card instead of boxing a card and a gap beneath it (seen on the
+    // Google TV emulator, 2026-10-10).
     return RelayTappable(
       borderRadius: 10,
       onTap: () => context.push(shelfLocation(tab, shelf)),
@@ -322,9 +324,6 @@ class _SeeAllTile extends StatelessWidget {
               ),
             ),
           ),
-          // Keeps the poster the same height as its neighbours, whose captions
-          // sit in this space.
-          SizedBox(height: 8 + size * 1.3 * 2 + (tv ? 15 : 11) * 1.4),
         ],
       ),
     );
