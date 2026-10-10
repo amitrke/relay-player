@@ -12,6 +12,7 @@ import '../accounts/plex_session.dart';
 import '../advanced_sources/xtream_controller.dart';
 import '../ai/ai_controller.dart';
 import '../metadata/tmdb_controller.dart';
+import '../library/library_dedupe.dart';
 import '../library/library_screen.dart' show plexSectionsProvider;
 import '../library/poster_grid.dart';
 import '../settings/settings_controller.dart';
@@ -125,10 +126,20 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
           ),
         ),
   );
-  return rankByTitleMatch([
-    ...perServer.expand((items) => items),
-    ...(await panels).expand((items) => items),
-  ], query);
+  // The same title on two servers is one result, as in the library tabs.
+  return rankByTitleMatch(
+    dedupeLibrary(
+      [
+        ...perServer.expand((items) => items),
+        ...(await panels).expand((items) => items),
+      ],
+      localPlexServers: {
+        for (final s in servers)
+          if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+      },
+    ),
+    query,
+  );
 });
 
 /// The results with TMDB metadata folded in, when there is a key.

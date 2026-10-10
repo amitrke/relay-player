@@ -22,6 +22,7 @@ import '../metadata/release_dates.dart';
 import '../metadata/tmdb_controller.dart';
 import '../local_network/local_network_tab.dart';
 import 'library_cache_provider.dart';
+import 'library_dedupe.dart';
 import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
@@ -149,8 +150,18 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
           ),
     ];
 
+    // Deduplicated here, so every reader of a tab (the grid, its count, the
+    // AI index, release dates) sees one copy of a title; see dedupeLibrary.
+    final localPlex = {
+      for (final s in servers)
+        if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+    };
     final events = StreamIterator(
-      loadLibrary(sources, cache: cache, timeout: _perServerTimeout),
+      loadLibrary(
+        sources,
+        cache: cache,
+        timeout: _perServerTimeout,
+      ).map((items) => dedupeLibrary(items, localPlexServers: localPlex)),
     );
     if (!await events.moveNext()) return const [];
     final first = events.current;
