@@ -120,9 +120,9 @@ void main() {
       expect(sorted, hasLength(2));
     });
 
-    test('is remembered by name, and an unknown name falls back to title', () {
+    test('is remembered by name, and an unknown name falls back to recently added', () {
       expect(LibrarySort.fromName('releaseDate'), LibrarySort.releaseDate);
-      expect(LibrarySort.fromName('nonsense'), LibrarySort.title);
+      expect(LibrarySort.fromName('nonsense'), LibrarySort.recentlyAdded);
     });
   });
 
@@ -151,9 +151,13 @@ void main() {
           ['alpha', 'delta', 'charlie', 'bravo']);
     });
 
-    test('an unknown stored value falls back to title', () {
-      expect(LibrarySort.fromName('somethingRemoved'), LibrarySort.title);
-      expect(LibrarySort.fromName(null), LibrarySort.title);
+    test('an unknown or missing stored value falls back to recently added', () {
+      expect(
+        LibrarySort.fromName('somethingRemoved'),
+        LibrarySort.recentlyAdded,
+      );
+      expect(LibrarySort.fromName(null), LibrarySort.recentlyAdded);
+      expect(LibrarySort.fromName('title'), LibrarySort.title);
     });
   });
 

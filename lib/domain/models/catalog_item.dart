@@ -33,6 +33,7 @@ class CatalogItem {
     this.genres = const [],
     this.rating,
     this.originalLanguage,
+    this.shelf,
   });
 
   final CatalogSource source;
@@ -94,6 +95,14 @@ class CatalogItem {
   /// English has `originalLanguage` Korean and `language` English.
   final String? originalLanguage;
 
+  /// The row this title sits in on Movies and Series: a Plex library's name
+  /// (prefixed with the server's when more than one is connected) or a panel
+  /// category's. Set by the source that fetched it, because that is the only
+  /// place the section or category is still known once the sources are merged.
+  /// Null for anything kept before the field existed, and the grouping then
+  /// falls back to the source's own name until the next refresh fills it in.
+  final String? shelf;
+
   /// Stable across rebuilds, unique across sources. [id] alone is not: a Plex
   /// `ratingKey` and a panel `stream_id` collide freely.
   String get key => '${source.name}|$sourceId|$id';
@@ -117,6 +126,7 @@ class CatalogItem {
         genres: genres,
         rating: rating,
         originalLanguage: originalLanguage,
+        shelf: shelf,
       );
 
   CatalogItem withMetadata({
@@ -142,6 +152,7 @@ class CatalogItem {
         genres: genres,
         rating: rating,
         originalLanguage: originalLanguage,
+        shelf: shelf,
       );
 
   /// Where tapping this item leads.

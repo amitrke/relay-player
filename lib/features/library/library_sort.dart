@@ -26,11 +26,13 @@ enum LibrarySort {
 
   final String label;
 
+  /// Recently added when nothing was ever chosen: each row opens on what is
+  /// new in it, which is what a row is for. Someone who picked Title keeps it.
   static LibrarySort fromName(String? name) {
     for (final s in values) {
       if (s.name == name) return s;
     }
-    return title;
+    return recentlyAdded;
   }
 
   /// Sorted copy of [items].

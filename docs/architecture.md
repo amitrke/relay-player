@@ -857,6 +857,27 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > Deck lists the same item, in which case they take its type. Pinned by the
    > `episode or film` group in `test/watch_state_test.dart`.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
+   > **Movies and Series are rows, 2026-10-10.** One poster grid for the whole
+   > merged library meant scrolling past hundreds of Plex posters to reach a
+   > panel. Each tab is now a stack of horizontal rows, Netflix style: one per
+   > Plex library (named with the server too when more than one is connected,
+   > since two servers can each have a "Movies"), then one per panel category
+   > the user chose (§4.1), each ending in a *See all* tile that opens that row
+   > as the old grid (`/shelf`, `ShelfScreen`). A row shows its first 30 titles;
+   > a panel category can hold thousands. The section or category is stamped on
+   > each `CatalogItem.shelf` by the source that fetched it, because it is not
+   > recoverable once the sources are merged; it is kept in the library cache,
+   > and an item kept before the field existed falls under "Plex" or "IPTV"
+   > until the next refresh. **Sort and Unwatched only apply inside rows**, and
+   > a row that ends up empty is dropped. **The default sort is now Recently
+   > added** (was Title) so each row opens on what is new; someone who had
+   > picked a sort keeps it. **Tradeoffs:** rows are ordered by name (Plex first,
+   > then panels), not the order categories were chosen in, which is gone after
+   > the merge; dedupe (`dedupeLibrary`) still keeps one copy of a title across
+   > sources, so a film held by Plex and a panel appears only in its Plex row;
+   > a panel with no `added` field has its titles sorted last in a Recently
+   > added row. No toggle back to the single grid was built (decided not
+   > wanted, 2026-10-10). Pinned by `test/library_shelves_test.dart`.
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only

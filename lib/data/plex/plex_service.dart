@@ -366,7 +366,10 @@ class PlexService {
   ///
   /// Artwork is resolved here because a Plex thumb needs the server's token on
   /// the query string — the widget that renders it has no way to rebuild that.
-  CatalogItem toCatalogItem(PlexMetadata metadata) => CatalogItem(
+  ///
+  /// [shelf] names the row the title belongs to on Movies and Series; see
+  /// [CatalogItem.shelf].
+  CatalogItem toCatalogItem(PlexMetadata metadata, {String? shelf}) => CatalogItem(
     source: CatalogSource.plex,
     sourceId: serverId,
     kind: metadata.type == PlexMetadataType.show
@@ -382,6 +385,7 @@ class PlexService {
     viewOffset: _ms(metadata.viewOffsetMs),
     duration: _ms(metadata.durationMs),
     lastViewedAt: metadata.lastViewedAt,
+    shelf: shelf,
   );
 
   static Duration? _ms(int? ms) =>

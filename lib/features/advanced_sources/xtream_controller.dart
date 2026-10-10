@@ -194,6 +194,7 @@ final xtreamCatalogProvider =
                     posterUrl: v.posterUrl,
                     addedAt: v.addedAt,
                     language: language,
+                    shelf: names[id],
                   ),
               ],
               XtreamCatalogue.series => [
@@ -208,6 +209,7 @@ final xtreamCatalogProvider =
                     posterUrl: s.posterUrl,
                     addedAt: s.addedAt,
                     language: language,
+                    shelf: names[id],
                   ),
               ],
               XtreamCatalogue.live => const <CatalogItem>[],

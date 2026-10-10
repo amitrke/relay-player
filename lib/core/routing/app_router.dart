@@ -16,6 +16,8 @@ import '../../features/accounts/plex_session.dart';
 import '../../features/downloads/downloads_screen.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
+import '../../features/library/library_shelves.dart';
+import '../../features/library/library_tab.dart';
 import '../../features/onboarding/onboarding_route.dart';
 import '../../features/settings/settings_controller.dart';
 import '../../features/local_network/local_network_tab.dart';
@@ -233,6 +235,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/localplay/:assetId',
         builder: (_, state) =>
             PlayerScreen.device(assetId: state.pathParameters['assetId']!),
+      ),
+      GoRoute(
+        path: '/shelf',
+        builder: (_, state) => ShelfScreen(
+          tab: state.uri.queryParameters['tab'] == 'series'
+              ? LibraryTab.series
+              : LibraryTab.movies,
+          shelfKey: state.uri.queryParameters['shelf'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/show/:serverId/:ratingKey',

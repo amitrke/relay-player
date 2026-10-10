@@ -15,14 +15,12 @@ import '../advanced_sources/xtream_controller.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
-import '../favorites_history/history_controller.dart';
-import '../favorites_history/watch_actions.dart';
 import '../live_tv/live_tv_tab.dart';
-import '../metadata/release_dates.dart';
 import '../metadata/tmdb_controller.dart';
 import '../local_network/local_network_tab.dart';
 import 'library_cache_provider.dart';
 import 'library_dedupe.dart';
+import 'library_shelves.dart';
 import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
@@ -126,9 +124,24 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
               plexSectionsProvider(server.id).future,
             );
             final wanted = mapping.sectionsFor(tab, server.id, sections);
-            final items = await server.service.itemsFrom(wanted);
+            // Section by section, and not through `itemsFrom`, which merges
+            // them: the section a title came from is what names its row, and
+            // is not recoverable after the merge. With more than one server the
+            // row carries the server's name too, since two of them can each have
+            // a library called "Movies".
+            final pages = await Future.wait([
+              for (final s in wanted)
+                server.service.allItems(s).then((page) => (s, page)),
+            ]);
             return LibraryFetch([
-              for (final i in items) server.service.toCatalogItem(i.metadata),
+              for (final (section, page) in pages)
+                for (final m in page)
+                  server.service.toCatalogItem(
+                    m,
+                    shelf: servers.length > 1
+                        ? '${server.name} · ${section.title}'
+                        : section.title,
+                  ),
             ], wanted.map((s) => s.id).join(','));
           },
         ),
@@ -429,26 +442,11 @@ class _TabBody extends ConsumerWidget {
         onRetry: () => ref.invalidate(_libraryProvider(tab)),
       ),
       data: (unsorted) {
-        final sorted = ref
-            .watch(librarySortProvider)
-            .apply(
-              unsorted,
-              // Only read for the one sort that uses it, so a date arriving in
-              // the background does not rebuild a list sorted by title.
-              releaseDates:
-                  ref.watch(librarySortProvider) == LibrarySort.releaseDate
-                  ? ref.watch(releaseDatesProvider.select((s) => s.dates))
-                  : const {},
-            );
+        final arranged = arrangeLibrary(ref, tab, unsorted);
+        final sorted = arranged.sorted;
+        final list = arranged.list;
         final filtering =
             tab == LibraryTab.movies && ref.watch(libraryUnwatchedOnlyProvider);
-        final list = filtering
-            ? unwatchedOnly(
-                sorted,
-                history: {for (final h in ref.watch(historyProvider)) h.key: h},
-                overrides: ref.watch(watchOverridesProvider),
-              )
-            : sorted;
         // Filtered down to nothing is not "no sources": say what happened and
         // offer the way back, rather than suggesting they add a source.
         if (filtering && list.isEmpty && sorted.isNotEmpty) {
@@ -483,7 +481,11 @@ class _TabBody extends ConsumerWidget {
                     ),
                   ),
                   Expanded(
-                    child: PosterGrid(items: list, onRowFocused: onRowFocused),
+                    child: ShelvesView(
+                      tab: tab,
+                      shelves: groupIntoShelves(list),
+                      onRowFocused: onRowFocused,
+                    ),
                   ),
                 ],
               )
