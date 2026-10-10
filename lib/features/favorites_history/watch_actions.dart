@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/download_record.dart';
+import '../../data/local/favorites_store.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
 import '../downloads/downloads_controller.dart';
+import 'favorites_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
 
@@ -84,19 +86,43 @@ class WatchTarget {
 }
 
 /// What was picked in the sheet.
-enum _Choice { watched, unwatched, download, removeDownload }
+enum _Choice {
+  watched,
+  unwatched,
+  download,
+  removeDownload,
+  favorite,
+  dismissResume,
+}
 
-/// The long-press sheet for a Plex title: mark it watched or unwatched, and
-/// save it on this device or take the saved copy off.
+/// The long-press sheet for a title: mark it watched or unwatched, save it on
+/// this device or take the saved copy off, star it, or take it out of Continue
+/// watching.
 ///
 /// A sheet of [RelayTappable] rows, as with the library sort, so a remote can
 /// reach it with a visible ring. On a TV it opens from a held centre button.
+///
+/// [target] is the Plex part and is null for a panel title, which has no
+/// watched state and nothing to download; [title] names the sheet then.
+/// [favorite] and [resume] add the star and the Continue watching dismissal.
+/// Until 2026-10-10 those two were only small icon buttons on the poster, and
+/// on a TV that made each tile two or three focus stops instead of one: the
+/// star has no focus ring (the theme sets no `focusColor`, §11), so Down from
+/// one row landed invisibly on the star at the top of the tile below and
+/// looked like a press that did nothing, and Right from that small rect, sitting
+/// in the band of the Continue watching row, jumped up into it. Those buttons
+/// now stay out of focus on a TV and the actions live here instead.
 Future<void> showWatchActions(
   BuildContext context,
   WidgetRef ref,
-  WatchTarget target,
-) async {
-  final existing = target.downloadable
+  WatchTarget? target, {
+  String? title,
+  FavoriteItem? favorite,
+  ResumeEntry? resume,
+}) async {
+  assert(target != null || title != null, 'The sheet needs a title.');
+  final heading = target?.title ?? title ?? '';
+  final existing = target != null && target.downloadable
       ? ref
             .read(downloadsProvider.notifier)
             .find(target.serverId, target.ratingKey)
@@ -105,10 +131,15 @@ Future<void> showWatchActions(
   final choice = await showModalBottomSheet<_Choice>(
     context: context,
     backgroundColor: RelayTheme.of(context).surface,
+    // A sheet is capped at 9/16 of the screen unless it is scroll controlled,
+    // and a 540 dp TV fits only three rows in that: a Plex film in Continue
+    // watching has four, and overflowed by a couple of pixels (2026-10-10).
+    // Sized to its rows now, and scrolling if a larger text scale needs it.
+    isScrollControlled: true,
     builder: (context) {
       final t = RelayTheme.of(context);
       final f = RelayLayout.of(context);
-      final scope = target.isShow ? ' (every episode)' : '';
+      final scope = target?.isShow ?? false ? ' (every episode)' : '';
 
       Widget option(String label, IconData icon, _Choice value, bool first) =>
           RelayTappable(
@@ -135,16 +166,23 @@ Future<void> showWatchActions(
             ),
           );
 
-      final offerWatched = target.watched != true;
-      final offerUnwatched = target.watched != false;
+      final offerWatched = target != null && target.watched != true;
+      final offerUnwatched = target != null && target.watched != false;
       // Download follows the state of any copy already there: nothing yet or a
       // failed one offers to fetch, a finished one offers to delete, and one in
       // progress offers to cancel.
       final offerDownload =
+          target != null &&
           target.downloadable &&
           (existing == null || existing.state == DownloadState.failed);
       final offerRemove =
-          target.downloadable && existing != null && !offerDownload;
+          target != null &&
+          target.downloadable &&
+          existing != null &&
+          !offerDownload;
+      final isFavorite =
+          favorite != null &&
+          ref.read(favoritesProvider).contains(favorite.key);
       var first = true;
       bool takeFirst() {
         final v = first;
@@ -153,54 +191,70 @@ Future<void> showWatchActions(
       }
 
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                child: Text(
-                  target.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: t.inkDim,
-                    fontSize: RelayLayout.bodySize(f),
-                    fontWeight: FontWeight.w600,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Text(
+                    heading,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: t.inkDim,
+                      fontSize: RelayLayout.bodySize(f),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              if (offerWatched)
-                option(
-                  'Mark as watched$scope',
-                  Icons.check_circle_outline,
-                  _Choice.watched,
-                  takeFirst(),
-                ),
-              if (offerUnwatched)
-                option(
-                  'Mark as unwatched$scope',
-                  Icons.radio_button_unchecked,
-                  _Choice.unwatched,
-                  takeFirst(),
-                ),
-              if (offerDownload)
-                option(
-                  'Download to this device',
-                  Icons.download_outlined,
-                  _Choice.download,
-                  takeFirst(),
-                ),
-              if (offerRemove)
-                option(
-                  existing.isComplete ? 'Delete download' : 'Cancel download',
-                  Icons.delete_outline,
-                  _Choice.removeDownload,
-                  takeFirst(),
-                ),
-            ],
+                if (offerWatched)
+                  option(
+                    'Mark as watched$scope',
+                    Icons.check_circle_outline,
+                    _Choice.watched,
+                    takeFirst(),
+                  ),
+                if (offerUnwatched)
+                  option(
+                    'Mark as unwatched$scope',
+                    Icons.radio_button_unchecked,
+                    _Choice.unwatched,
+                    takeFirst(),
+                  ),
+                if (offerDownload)
+                  option(
+                    'Download to this device',
+                    Icons.download_outlined,
+                    _Choice.download,
+                    takeFirst(),
+                  ),
+                if (offerRemove)
+                  option(
+                    existing.isComplete ? 'Delete download' : 'Cancel download',
+                    Icons.delete_outline,
+                    _Choice.removeDownload,
+                    takeFirst(),
+                  ),
+                if (favorite != null)
+                  option(
+                    isFavorite ? 'Remove from favourites' : 'Add to favourites',
+                    isFavorite ? Icons.star : Icons.star_border,
+                    _Choice.favorite,
+                    takeFirst(),
+                  ),
+                if (resume != null)
+                  option(
+                    'Remove from Continue watching',
+                    Icons.close,
+                    _Choice.dismissResume,
+                    takeFirst(),
+                  ),
+              ],
+            ),
           ),
         ),
       );
@@ -210,20 +264,31 @@ Future<void> showWatchActions(
 
   final messenger = ScaffoldMessenger.maybeOf(context);
 
+  if (choice == _Choice.favorite) {
+    await ref.read(favoritesProvider.notifier).toggle(favorite!);
+    return;
+  }
+  if (choice == _Choice.dismissResume) {
+    await ref.read(resumeDismissalsProvider.notifier).dismiss(resume!);
+    return;
+  }
+  // Every other choice is one of the Plex ones, offered only with a target.
+  final plex = target!;
+
   if (choice == _Choice.download || choice == _Choice.removeDownload) {
     final downloads = ref.read(downloadsProvider.notifier);
     if (choice == _Choice.download) {
       await downloads.enqueue(
-        serverId: target.serverId,
-        ratingKey: target.ratingKey,
-        title: target.title,
-        isEpisode: target.isEpisode,
+        serverId: plex.serverId,
+        ratingKey: plex.ratingKey,
+        title: plex.title,
+        isEpisode: plex.isEpisode,
       );
       messenger?.showSnackBar(
         const SnackBar(content: Text('Downloading. See the Downloads tab.')),
       );
     } else {
-      await downloads.remove(target.serverId, target.ratingKey);
+      await downloads.remove(plex.serverId, plex.ratingKey);
     }
     return;
   }
@@ -232,8 +297,8 @@ Future<void> showWatchActions(
     await ref
         .read(watchOverridesProvider.notifier)
         .mark(
-          serverId: target.serverId,
-          ratingKey: target.ratingKey,
+          serverId: plex.serverId,
+          ratingKey: plex.ratingKey,
           watched: choice == _Choice.watched,
         );
   } catch (_) {

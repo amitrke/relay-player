@@ -140,6 +140,7 @@ class _ResumeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final poster = _poster(ref);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
 
     return SizedBox(
       width: width,
@@ -152,19 +153,24 @@ class _ResumeTile extends ConsumerWidget {
         // is, which makes it the likeliest place to want a copy for later: until
         // 2026-10-09 it took a tap and nothing else, so a title in progress could
         // not be downloaded without finding it again in the library.
-        onLongPress: item.kind == PlaybackKind.plex
-            ? () => showWatchActions(
-                context,
-                ref,
-                WatchTarget(
+        //
+        // Every entry gets it since 2026-10-10, for *Remove from Continue
+        // watching*: on a TV the close button below is not a focus stop.
+        onLongPress: () => showWatchActions(
+          context,
+          ref,
+          item.kind == PlaybackKind.plex
+              ? WatchTarget(
                   serverId: item.sourceId,
                   ratingKey: item.itemId,
                   title: item.title,
                   downloadable: true,
                   isEpisode: item.episode,
-                ),
-              )
-            : null,
+                )
+              : null,
+          title: item.title,
+          resume: item,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -214,25 +220,29 @@ class _ResumeTile extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: -6,
-                    right: -6,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: t.stage.withValues(alpha: 0.55),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        visualDensity: VisualDensity.compact,
-                        iconSize: 16,
-                        tooltip: 'Remove from continue watching',
-                        icon: Icon(Icons.close, color: t.inkDim),
-                        onPressed: () => ref
-                            .read(resumeDismissalsProvider.notifier)
-                            .dismiss(item),
+                  // Not drawn on a TV, where a remote could never reach it: as
+                  // a focus stop it had no ring and turned one press per tile
+                  // into two. The long-press sheet removes the entry there.
+                  if (!tv)
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: t.stage.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 16,
+                          tooltip: 'Remove from continue watching',
+                          icon: Icon(Icons.close, color: t.inkDim),
+                          onPressed: () => ref
+                              .read(resumeDismissalsProvider.notifier)
+                              .dismiss(item),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

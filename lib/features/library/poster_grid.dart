@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -9,7 +10,17 @@ import '../../data/local/favorites_store.dart';
 import 'poster_tile.dart';
 
 /// The responsive poster grid shared by Library and Search.
-class PosterGrid extends ConsumerWidget {
+///
+/// Left and Right step to the neighbouring tile by index, not by geometry.
+/// Flutter's directional traversal picks the nearest node whose rect overlaps
+/// the focused one's vertical band, and a grid row scrolled partly up under
+/// the Continue watching row above it overlaps that row's band: Right from the
+/// third poster went to the third resume tile, which is nearer by x than the
+/// fourth poster (seen on the Google TV emulator, 2026-10-10). The resume row
+/// does not have the problem the other way round because traversal already
+/// prefers nodes in the same horizontal scrollable, and a grid is vertical.
+/// Up and Down are left to geometry, which is what reaches that row at all.
+class PosterGrid extends ConsumerStatefulWidget {
   const PosterGrid({
     super.key,
     required this.items,
@@ -27,7 +38,47 @@ class PosterGrid extends ConsumerWidget {
   final ValueChanged<int>? onRowFocused;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PosterGrid> createState() => _PosterGridState();
+}
+
+class _PosterGridState extends ConsumerState<PosterGrid> {
+  /// One per slot, made when the slot is first built. Per index rather than per
+  /// item: the slot is what a key press moves between, whatever is in it.
+  final _nodes = <int, FocusNode>{};
+
+  FocusNode _nodeAt(int i) => _nodes.putIfAbsent(i, FocusNode.new);
+
+  @override
+  void dispose() {
+    for (final node in _nodes.values) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Left at the first column is ignored, so it carries on up to
+  /// [RelayFocusBoundary] and reaches the rail. Right at the end of a row is
+  /// swallowed: nothing is to the right, and letting geometry answer is the bug
+  /// this replaces.
+  KeyEventResult _onKey(KeyEvent event, int i, int columns, int count) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight) {
+      final last = i % columns == columns - 1 || i == count - 1;
+      if (!last) _nodeAt(i + 1).requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft && i % columns != 0) {
+      _nodeAt(i - 1).requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final showKind = widget.showKind;
     final f = RelayLayout.of(context);
     final ordered = favouritesFirst(
       items,
@@ -68,19 +119,22 @@ class PosterGrid extends ConsumerWidget {
           item: ordered[i],
           showSource: mixed,
           showKind: showKind,
+          focusNode: _nodeAt(i),
           autofocus: i == 0 && RelayLayout.of(context) == RelayFormFactor.tv,
         );
-        final onRowFocused = this.onRowFocused;
-        if (onRowFocused == null) return tile;
+        final onRowFocused = widget.onRowFocused;
         // A passive node above the tile: it never takes focus or joins
         // traversal itself, but `onFocusChange` fires when focus arrives
-        // anywhere beneath it.
+        // anywhere beneath it, and arrow keys the tile ignores reach it.
         return Focus(
           canRequestFocus: false,
           skipTraversal: true,
-          onFocusChange: (focused) {
-            if (focused) onRowFocused(i ~/ columns);
-          },
+          onFocusChange: onRowFocused == null
+              ? null
+              : (focused) {
+                  if (focused) onRowFocused(i ~/ columns);
+                },
+          onKeyEvent: (_, event) => _onKey(event, i, columns, ordered.length),
           child: tile,
         );
       },

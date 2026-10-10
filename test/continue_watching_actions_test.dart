@@ -34,6 +34,16 @@ class _Fake extends DownloadsController {
       calls.add('remove $serverId/$ratingKey');
 }
 
+/// Dismissals held in memory, so the sheet's choice needs no settings store.
+class _Dismissals extends ResumeDismissals {
+  @override
+  Map<String, String> build() => const {};
+
+  @override
+  Future<void> dismiss(ResumeEntry entry) async =>
+      state = {...state, entry.key: entry.signature};
+}
+
 ResumeEntry _entry(
   PlaybackKind kind, {
   String title = 'Half Watched',
@@ -70,6 +80,7 @@ void main() {
         overrides: [
           resumeEntriesProvider.overrideWithValue(entries),
           downloadsProvider.overrideWith(() => fake),
+          resumeDismissalsProvider.overrideWith(_Dismissals.new),
         ],
         child: MaterialApp.router(
           // In `builder`, as the app installs it: the sheet is built under the
@@ -155,9 +166,12 @@ void main() {
     expect(fake.calls, ['remove srv/42']);
   });
 
-  testWidgets('a panel title gets no sheet: nothing to mark or download', (
+  testWidgets('a panel title gets a sheet with only the dismissal', (
     tester,
   ) async {
+    // Until 2026-10-10 a panel title had no sheet, and holding it opened it.
+    // It has one now because the close button is not a focus stop on a TV,
+    // so this sheet is the only way a remote can take an entry out of the row.
     await pump(tester, [_entry(PlaybackKind.xtreamVod, title: 'Panel Film')]);
 
     await tester.longPress(find.text('Panel Film'));
@@ -165,8 +179,21 @@ void main() {
 
     expect(find.text('Download to this device'), findsNothing);
     expect(find.textContaining('Mark as'), findsNothing);
+    expect(find.text('Remove from Continue watching'), findsOneWidget);
+    expect(find.text('PLAYER'), findsNothing);
+
+    await tester.tap(find.text('Remove from Continue watching'));
+    await tester.pumpAndSettle();
+    // The row's entries are a fixed override here, so the tile cannot vanish;
+    // the dismissal it would be filtered by is what to check.
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ContinueWatchingRow)),
+    );
+    expect(
+      container.read(resumeDismissalsProvider),
+      contains('${PlaybackKind.xtreamVod.wire}:srv:42'),
+    );
+    expect(find.text('Remove from Continue watching'), findsNothing);
     expect(fake.calls, isEmpty);
-    // Holding it just opens it, as it always did.
-    expect(find.text('PLAYER'), findsOneWidget);
   });
 }

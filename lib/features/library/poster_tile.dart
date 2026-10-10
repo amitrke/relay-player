@@ -19,6 +19,7 @@ class PosterTile extends ConsumerWidget {
     this.autofocus = false,
     this.showSource = false,
     this.showKind = false,
+    this.focusNode,
   });
 
   final CatalogItem item;
@@ -37,32 +38,46 @@ class PosterTile extends ConsumerWidget {
   /// rather than nowhere.
   final bool autofocus;
 
+  /// Lets [PosterGrid] move focus to a neighbour by index.
+  final FocusNode? focusNode;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final poster = item.posterUrl;
     final watch = _watchStateOf(item, ref);
+    final favorite = FavoriteItem(
+      kind: item.kind == CatalogKind.show
+          ? FavoriteKind.show
+          : FavoriteKind.movie,
+      sourceId: item.sourceId,
+      itemId: item.id,
+    );
 
     return RelayTappable(
       autofocus: autofocus,
+      focusNode: focusNode,
       borderRadius: 10,
       onTap: () => context.push(item.route),
-      // Plex only: a panel has no watched state to set.
-      onLongPress: item.source == CatalogSource.plex
-          ? () => showWatchActions(
-              context,
-              ref,
-              WatchTarget(
+      // Every title gets the sheet, for the star; only Plex adds the watched
+      // and download actions, since a panel has no watched state to set.
+      onLongPress: () => showWatchActions(
+        context,
+        ref,
+        item.source == CatalogSource.plex
+            ? WatchTarget(
                 serverId: item.sourceId,
                 ratingKey: item.id,
                 title: item.title,
                 isShow: item.kind == CatalogKind.show,
                 downloadable: item.kind != CatalogKind.show,
                 watched: item.kind == CatalogKind.show ? null : watch.watched,
-              ),
-            )
-          : null,
+              )
+            : null,
+        title: item.title,
+        favorite: favorite,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -111,15 +126,17 @@ class PosterTile extends ConsumerWidget {
                       color: t.stage.withValues(alpha: 0.55),
                       shape: BoxShape.circle,
                     ),
-                    child: FavoriteButton(
-                      dense: true,
-                      size: 18,
-                      item: FavoriteItem(
-                        kind: item.kind == CatalogKind.show
-                            ? FavoriteKind.show
-                            : FavoriteKind.movie,
-                        sourceId: item.sourceId,
-                        itemId: item.id,
+                    // Out of focus on a TV, where it is still drawn as the
+                    // favourite state but set from the long-press sheet. As a
+                    // focus stop of its own it had no ring and sat in the band
+                    // of the row above, so it ate D-pad presses (see
+                    // showWatchActions). Touch and mouse keep the button.
+                    child: ExcludeFocus(
+                      excluding: f == RelayFormFactor.tv,
+                      child: FavoriteButton(
+                        dense: true,
+                        size: 18,
+                        item: favorite,
                       ),
                     ),
                   ),
