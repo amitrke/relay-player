@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -24,6 +25,7 @@ import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
 import 'player_errors.dart';
+import 'video_output.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -233,8 +235,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// channel that drops once an hour never exhausts its budget.
   static const _stableAfter = Duration(seconds: 30);
 
+  /// Player routes that had to fall back to compatible output this session, so
+  /// opening the same title again goes straight there instead of failing over
+  /// a second time. Memory only: a TV update can bring the decoder it lacked.
+  static final _compatibleRoutes = <String>{};
+
   late final Player _player = Player();
-  late final VideoController _controller = VideoController(_player);
+
+  /// Decided on first build, when the route is known; see [VideoOutput].
+  late final VideoOutput _output = _compatibleRoutes.contains(_route)
+      ? VideoOutput.compatible
+      : defaultVideoOutput();
+  late final VideoController _controller = VideoController(
+    _player,
+    configuration: videoConfigurationFor(_output),
+  );
+
+  /// Every player is a route (app_router.dart), and the location is what is
+  /// pushed again to reopen it.
+  String get _route => GoRouterState.of(context).uri.toString();
+  bool _fellBack = false;
   late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
@@ -671,6 +691,58 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _freezeWatch = Timer.periodic(const Duration(seconds: 2), (_) => _watch());
     }
     if (mounted) setState(() => _started = true);
+    if (_output == VideoOutput.direct) unawaited(_checkVideoOutput());
+  }
+
+  /// Once playing on the direct path, asks mpv which decoder it ended up with.
+  /// Software means a black picture under direct output (see [VideoOutput]), so
+  /// the title is reopened on the compatible path.
+  Future<void> _checkVideoOutput() async {
+    // The decoder is settled by the first position tick; the pause is margin
+    // for mpv's own fallback, which happens on the first frames it cannot take.
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (!mounted || _fellBack) return;
+    final String hwdec;
+    try {
+      hwdec = await (_player.platform as NativePlayer).getProperty(
+        'hwdec-current',
+      );
+    } catch (_) {
+      return;
+    }
+    final hasVideo =
+        _player.state.track.video.id != 'no' &&
+        _player.state.tracks.video.any((t) => t.id != 'auto' && t.id != 'no');
+    debugPrint('Player: direct output, hwdec-current=$hwdec video=$hasVideo');
+    if (needsCompatibleOutput(
+      output: _output,
+      hasVideo: hasVideo,
+      hwdecCurrent: hwdec,
+    )) {
+      await _reopenCompatible('hardware decoder declined (hwdec=$hwdec)');
+    }
+  }
+
+  /// Opens this title again on a fresh player with compatible output.
+  ///
+  /// A new route rather than reconfiguring this player: media_kit re-applies
+  /// its configured `vo` whenever the Android surface is recreated (coming
+  /// back from the background), which would silently put the direct output
+  /// back under a software decoder. This player is stopped first, because the
+  /// new one opens while this route is still animating out and §4's
+  /// `max_connections: 1` allows only one of them a connection.
+  Future<void> _reopenCompatible(String why) async {
+    if (_fellBack || !mounted) return;
+    _fellBack = true;
+    debugPrint('Player: reopening on compatible output: $why');
+    final route = _route;
+    final router = GoRouter.of(context);
+    _compatibleRoutes.add(route);
+    _stallTimer?.cancel();
+    _recordProgress(state: 'stopped');
+    await _player.stop();
+    if (!mounted) return;
+    router.pushReplacement(route);
   }
 
   /// Catches a live channel that froze *after* it started, which neither the
@@ -745,6 +817,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // same reconnect as a freeze rather than an immediate error screen.
       if (_live && !_released && (_started || _reconnects > 0)) {
         _reconnect(message);
+        return;
+      }
+      // On the direct path, failing before the first frame gets one retry on
+      // the compatible one: a decoder or output that would not start there is
+      // exactly what the direct path adds. A source that is really broken fails
+      // the same way again and shows its error then.
+      if (_output == VideoOutput.direct && !_started) {
+        unawaited(_reopenCompatible(message));
         return;
       }
       _fail(message);
