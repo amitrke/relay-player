@@ -7,6 +7,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
 import 'resume_entries.dart';
+import 'watch_actions.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
 // around them. Shared because the row must reserve exactly the height the tile
@@ -27,6 +28,15 @@ const double _gapBetweenLines = 2;
 /// cannot be.
 const double _lineFactor = 1.25;
 
+/// Poster height over width. Portrait, like the grid below it.
+///
+/// These were landscape tiles until 2026-10-08, which was wrong for the only
+/// artwork a resume entry keeps: a portrait poster. Fitted whole into a wide
+/// tile it left a column of empty surface either side of it, and cropped to
+/// fill it, it sliced the artwork through the middle. A tile the shape of the
+/// poster has neither problem, and shows several more entries in the same row.
+const double _posterAspect = 1.5;
+
 /// Height of one resume tile: poster, then the title and remaining-time lines.
 ///
 /// The text block was a flat `54` until 2026-09-22, which silently assumed a
@@ -37,33 +47,43 @@ const double _lineFactor = 1.25;
 /// Reserving against the live [TextScaler] is what makes it follow the user.
 double _tileHeight(BuildContext context, double tileWidth) {
   final scaler = MediaQuery.textScalerOf(context);
-  final text = _gapAbovePoster +
+  final text =
+      _gapAbovePoster +
       scaler.scale(_titleSize) * _lineFactor +
       _gapBetweenLines +
       scaler.scale(_metaSize) * _lineFactor;
-  return tileWidth * 0.62 + text.ceilToDouble();
+  return tileWidth * _posterAspect + text.ceilToDouble();
 }
 
-/// The continue-watching row from the Home artboard.
+/// The continue-watching row from the Home artboard, one per tab.
 ///
-/// Mixed on purpose: a film, a panel episode and a Plex episode belong in one
-/// row because "what was I in the middle of" does not sort by source. Since
-/// 2026-09-22 it also carries Plex's On Deck, so what was watched in other
-/// Plex apps shows up here too ([mergeResume] says how the two combine). It
-/// hides itself entirely when nothing is resumable, rather than leaving an
-/// empty heading above the grid.
+/// Mixed by source on purpose: a Plex film and a panel film sit side by side,
+/// because "what was I in the middle of" does not sort by where it came from.
+/// Split by *kind* since 2026-09-28: films above Movies, episodes above Series.
+/// Until then it was one row above Movies only, so a show half-way through
+/// appeared under Movies, which read as a bug on a real device (architecture.md
+/// §12). Since 2026-09-22 it also carries Plex's On Deck, so what was watched
+/// in other Plex apps shows up here too ([mergeResume] says how the two
+/// combine). It hides itself entirely when nothing is resumable, rather than
+/// leaving an empty heading above the grid.
 class ContinueWatchingRow extends ConsumerWidget {
-  const ContinueWatchingRow({super.key});
+  const ContinueWatchingRow({super.key, required this.episodes});
+
+  /// True above Series, false above Movies.
+  final bool episodes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
 
-    final items = ref.watch(resumeEntriesProvider);
+    final items = [
+      for (final e in ref.watch(resumeEntriesProvider))
+        if (e.episode == episodes) e,
+    ];
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final tileWidth = f == RelayFormFactor.phone ? 168.0 : 252.0;
+    final tileWidth = f == RelayFormFactor.phone ? 104.0 : 128.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,10 +106,8 @@ class ContinueWatchingRow extends ConsumerWidget {
             padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
             itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => _ResumeTile(
-              item: items[i],
-              width: tileWidth,
-            ),
+            itemBuilder: (context, i) =>
+                _ResumeTile(item: items[i], width: tileWidth),
           ),
         ),
       ],
@@ -122,12 +140,37 @@ class _ResumeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final poster = _poster(ref);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
 
     return SizedBox(
       width: width,
       child: RelayTappable(
         borderRadius: 10,
         onTap: () => context.push(item.route),
+        // The same sheet as a poster in the grid, for Plex entries only: a panel
+        // title has no watched state to set and nothing here to download
+        // (architecture.md section 18.1). This row is where a half-watched title
+        // is, which makes it the likeliest place to want a copy for later: until
+        // 2026-10-09 it took a tap and nothing else, so a title in progress could
+        // not be downloaded without finding it again in the library.
+        //
+        // Every entry gets it since 2026-10-10, for *Remove from Continue
+        // watching*: on a TV the close button below is not a focus stop.
+        onLongPress: () => showWatchActions(
+          context,
+          ref,
+          item.kind == PlaybackKind.plex
+              ? WatchTarget(
+                  serverId: item.sourceId,
+                  ratingKey: item.itemId,
+                  title: item.title,
+                  downloadable: true,
+                  isEpisode: item.episode,
+                )
+              : null,
+          title: item.title,
+          resume: item,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -151,10 +194,9 @@ class _ResumeTile extends ConsumerWidget {
                           ? Icon(Icons.play_circle_outline, color: t.inkDim)
                           : Image.network(
                               poster,
-                              // Contain, not cover: sources give us portrait
-                              // posters and this tile is landscape, so cropping
-                              // slices the artwork through the middle.
-                              fit: BoxFit.contain,
+                              // Cover is safe now that the tile is portrait
+                              // too; see [_posterAspect].
+                              fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => Icon(
                                 Icons.play_circle_outline,
                                 color: t.inkDim,
@@ -178,25 +220,29 @@ class _ResumeTile extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: -6,
-                    right: -6,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: t.stage.withValues(alpha: 0.55),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        visualDensity: VisualDensity.compact,
-                        iconSize: 16,
-                        tooltip: 'Remove from continue watching',
-                        icon: Icon(Icons.close, color: t.inkDim),
-                        onPressed: () => ref
-                            .read(resumeDismissalsProvider.notifier)
-                            .dismiss(item),
+                  // Not drawn on a TV, where a remote could never reach it: as
+                  // a focus stop it had no ring and turned one press per tile
+                  // into two. The long-press sheet removes the entry there.
+                  if (!tv)
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: t.stage.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 16,
+                          tooltip: 'Remove from continue watching',
+                          icon: Icon(Icons.close, color: t.inkDim),
+                          onPressed: () => ref
+                              .read(resumeDismissalsProvider.notifier)
+                              .dismiss(item),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

@@ -29,6 +29,7 @@ class ResumeEntry {
     this.progress,
     this.posterPath,
     this.signature = '',
+    this.episode = false,
   });
 
   final PlaybackKind kind;
@@ -51,6 +52,22 @@ class ResumeEntry {
   /// What a dismissal is tied to (see [ResumeDismissals]).
   final String signature;
 
+  /// Whether this tile belongs above Series rather than Movies.
+  final bool episode;
+
+  ResumeEntry _asEpisode(bool value) => ResumeEntry(
+        kind: kind,
+        sourceId: sourceId,
+        itemId: itemId,
+        title: title,
+        detail: detail,
+        lastActivity: lastActivity,
+        progress: progress,
+        posterPath: posterPath,
+        signature: signature,
+        episode: value,
+      );
+
   String get key => '${kind.wire}:$sourceId:$itemId';
 
   String get route => switch (kind) {
@@ -69,6 +86,7 @@ class ResumeEntry {
         posterPath: item.poster,
         lastActivity: item.lastWatchedAt,
         signature: 'local:${item.position.inSeconds}',
+        episode: item.isEpisode,
       );
 
   /// Null for anything that is not a film or an episode.
@@ -100,6 +118,7 @@ class ResumeEntry {
       posterPath: m.thumb,
       lastActivity: m.lastViewedAt,
       signature: 'plex:$offset:${m.lastViewedAt?.millisecondsSinceEpoch}',
+      episode: episode,
     );
   }
 
@@ -136,6 +155,10 @@ List<ResumeEntry> mergeResume({
       final theirs = entry.lastActivity;
       if (theirs != null && mine != null && theirs.isAfter(mine)) {
         out[i] = entry;
+      } else if (localByKey[entry.key]?.episode == null) {
+        // A Plex record from before history knew episodes from films: Plex
+        // does know, so the local entry keeps its position and takes the type.
+        out[i] = out[i]._asEpisode(entry.episode);
       }
       continue;
     }

@@ -25,7 +25,10 @@ class AboutPane extends StatelessWidget {
     final t = RelayTheme.of(context);
     final body = TextStyle(color: t.inkDim, fontSize: 13, height: 1.6);
     final label = TextStyle(
-        color: t.ink, fontSize: 14, fontWeight: FontWeight.w600);
+      color: t.ink,
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+    );
 
     // A Column, not a ListView: both Settings layouts already scroll.
     return Column(
@@ -64,8 +67,7 @@ class AboutPane extends StatelessWidget {
         // to hand a URL to, and pulling in url_launcher for the phone case
         // alone would add a dependency to render a link some users cannot
         // follow. Selectable so it can be copied on a phone.
-        SelectableText(privacyPolicyUrl,
-            style: body.copyWith(color: t.accent)),
+        SelectableText(privacyPolicyUrl, style: body.copyWith(color: t.accent)),
         const SizedBox(height: 22),
         // Flutter's own licence page, which collects the LICENSE of every
         // Dart package in the build. The native libmpv/FFmpeg binaries

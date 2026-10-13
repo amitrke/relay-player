@@ -26,10 +26,11 @@ class SettingsController extends Notifier<SettingsState> {
   @override
   SettingsState build() {
     return SettingsState(
-      advancedSourcesEnabled:
-          _store.getBool(_kAdvancedSources, fallback: false),
-      crashReportingEnabled:
-          _store.getBool(_kCrashReporting, fallback: false),
+      advancedSourcesEnabled: _store.getBool(
+        _kAdvancedSources,
+        fallback: false,
+      ),
+      crashReportingEnabled: _store.getBool(_kCrashReporting, fallback: false),
     );
   }
 
@@ -55,15 +56,15 @@ class SettingsController extends Notifier<SettingsState> {
 /// framing, and screen 2 makes Plex and Local & Network both optional — an app
 /// that re-demands setup on every launch until you connect something has turned
 /// one source into a gate.
-final onboardingSeenProvider =
-    NotifierProvider<OnboardingSeenController, bool>(
+final onboardingSeenProvider = NotifierProvider<OnboardingSeenController, bool>(
   OnboardingSeenController.new,
 );
 
 class OnboardingSeenController extends Notifier<bool> {
   @override
-  bool build() =>
-      ref.read(appSettingsStoreProvider).getBool(_kOnboardingSeen, fallback: false);
+  bool build() => ref
+      .read(appSettingsStoreProvider)
+      .getBool(_kOnboardingSeen, fallback: false);
 
   Future<void> markSeen() async {
     state = true;
@@ -74,17 +75,16 @@ class OnboardingSeenController extends Notifier<bool> {
 /// §8.2's gate, as the rest of the app sees it.
 ///
 /// Read this rather than `settingsProvider.advancedSourcesEnabled` directly, so
-/// the remote kill switch (§16.1) has one place to AND itself in later: it can
-/// force the feature off globally, but must never force it *on* for a user who
-/// has not opted in.
+/// anything that later needs to gate the feature has one place to do it. (A
+/// remote kill switch was meant to be that, and was dropped 2026-10-06, §16.1.)
 final advancedSourcesEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider.select((s) => s.advancedSourcesEnabled));
 });
 
 final libraryMappingProvider =
     NotifierProvider<LibraryMappingController, LibraryMapping>(
-  LibraryMappingController.new,
-);
+      LibraryMappingController.new,
+    );
 
 class LibraryMappingController extends Notifier<LibraryMapping> {
   AppSettingsStore get _store => ref.read(appSettingsStoreProvider);

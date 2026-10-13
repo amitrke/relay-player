@@ -44,7 +44,7 @@ on:
   # - a v* tag is the release: it must match pubspec.yaml, and marks which of
   #   those builds is the one that shipped.
   # main still releases nothing on its own. Most merges there are not worth a
-  # tester's update prompt, and iOS builds cost ~15 minutes of macOS time.
+  # tester's update prompt.
   push:
     branches: [develop]
     tags: ['v*']
@@ -292,9 +292,9 @@ jobs:
     # The same switches as the Android job: RELEASE_IOS 'false' skips
     # TestFlight, e.g. while signing is being fixed, without holding Play back.
     if: vars.RELEASE_IOS != 'false' && (inputs.platforms || 'both') != 'android'
-    # macOS runners are free for a public repository. This job is still the
-    # slow one (~15 min, most of it the archive), so it runs beside the Android
-    # job rather than after it, and a failure here does not hold Android back.
+    # macOS runners are free for a public repository. Run 7 took 7.5 minutes,
+    # about the same as the Android job. It runs beside that job rather than
+    # after it, so a failure here does not hold Android back.
     runs-on: macos-latest
     timeout-minutes: 45
     env:
@@ -357,16 +357,18 @@ jobs:
       # flutter build ipa cannot pass an API key to xcodebuild, and without one
       # a CI machine has no Apple account to sign with. So Flutter only
       # generates the Xcode configuration (--config-only), and xcodebuild does
-      # the archive and export itself, with -allowProvisioningUpdates and the
-      # key: that is what lets Apple's cloud-managed signing supply the
-      # certificates and profiles, so no .p12 or profile has to live in
-      # secrets. Cloud signing needs the key to have the Admin role.
+      # the archive and export itself.
       #
-      # UNVERIFIED until the first tagged run. The same export path worked from
-      # Organizer on 2026-09-23, but Organizer signed with the Xcode account on
-      # a Mac, not with an API key on a clean runner. If signing fails here,
-      # the fallback is the Android pattern: a distribution certificate and
-      # profile in secrets (docs/RELEASING.md, failure modes).
+      # The archive is deliberately UNSIGNED (CODE_SIGNING_ALLOWED=NO). All the
+      # signing happens at export, where the API key and Apple's cloud-managed
+      # distribution certificate re-sign everything anyway. Run 7
+      # (2026-09-23, the first CI upload) archived *signed*, and to do that
+      # Xcode minted a brand-new "Apple Development: Created via API"
+      # certificate through the key. Its private key lived only on the runner,
+      # which is discarded, so every run would have minted another, until
+      # Apple's cap on development certificates broke the job. Unsigned
+      # archive then signed export was checked locally the same day: the IPA
+      # came out signed "Apple Distribution" for team BTSKP77HML.
       - name: Archive
         if: env.HAS_ASC_KEY == 'true'
         run: |
@@ -379,10 +381,7 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CODE_SIGNING_ALLOWED=NO \
             | tail -n 40
           # tail hides xcodebuild's exit status; the archive's presence is the
           # check that matters.
@@ -393,6 +392,15 @@ jobs:
       # ios/ExportOptions.plist sets destination=upload, so this step both
       # signs for distribution and sends the build. Its exit status is the
       # result: do not replace it with anything that reads the upload log.
+      # -allowProvisioningUpdates with the key is what lets cloud-managed
+      # signing supply the distribution certificate and App Store profile, so
+      # no .p12 or profile lives in secrets. Cloud signing needs the key to have
+      # the Admin role. Verified by run 7 (2026-09-23).
+      #
+      # Expect a stream of "Upload Symbols Failed ... did not include a dSYM"
+      # warnings for the media_kit frameworks (Avcodec, Mpv, ...). They ship
+      # prebuilt without symbols; it only means their crashes will not
+      # symbolicate, the same as Play's native-symbols warning.
       - name: Export and upload to TestFlight
         if: env.HAS_ASC_KEY == 'true'
         run: |

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -7,6 +9,8 @@ import 'core/platform/device_kind.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/theme_controller.dart';
 import 'data/local/app_settings_store.dart';
+import 'features/ai/ai_recommendations_controller.dart';
+import 'features/metadata/release_dates_job.dart';
 import 'features/settings/settings_controller.dart';
 
 Future<void> main() async {
@@ -27,6 +31,11 @@ Future<void> main() async {
   // launch.
   final settings = await AppSettingsStore.open();
 
+  // Hive appends rather than overwrites, so rewritten values (the AI picks, the
+  // library mapping) linger in the file until a compaction. Not awaited: the
+  // first frame should not wait on tidying.
+  unawaited(settings.compact());
+
   runApp(
     ProviderScope(
       overrides: [appSettingsStoreProvider.overrideWithValue(settings)],
@@ -40,6 +49,12 @@ class RelayPlayerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Gets AI recommendations ready in the background, if they are allowed.
+    // Does nothing without a provider and the user's consent.
+    ref.watch(aiRecommendationsPrefetchProvider);
+    // Looks release dates up in the background, if the person has agreed to it.
+    // Does nothing without a TMDB key and that agreement.
+    ref.watch(releaseDatesJobProvider);
     return RelayApp(
       controller: ref.watch(themeControllerProvider),
       routerConfig: ref.watch(routerProvider),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/plex/plex_service.dart';
 import '../../data/plex/plex_session_store.dart';
+import '../library/library_cache_provider.dart';
 
 /// Where the user is in the link flow.
 enum PlexStage {
@@ -63,9 +64,7 @@ class PlexState {
   /// Servers discovered but not yet connected — the candidates for "Add".
   List<PlexResource> get connectable {
     final ids = servers.map((s) => s.id).toSet();
-    return available
-        .where((r) => !ids.contains(r.clientIdentifier))
-        .toList();
+    return available.where((r) => !ids.contains(r.clientIdentifier)).toList();
   }
 
   PlexState copyWith({
@@ -88,8 +87,9 @@ class PlexState {
   }
 }
 
-final plexSessionStoreProvider =
-    Provider<PlexSessionStore>((ref) => PlexSessionStore());
+final plexSessionStoreProvider = Provider<PlexSessionStore>(
+  (ref) => PlexSessionStore(),
+);
 
 /// Every connected server, in connection order.
 final connectedServersProvider = Provider<List<ConnectedServer>>((ref) {
@@ -300,6 +300,8 @@ class PlexSessionController extends Notifier<PlexState> {
   Future<void> disconnect(String serverId) async {
     final servers = state.servers.where((s) => s.id != serverId).toList();
     await _store.setServers([for (final s in servers) s.stored]);
+    // Its kept library goes with it, not onto disk to wait for the age limit.
+    await forgetSourceCache(ref, 'plex|$serverId|');
     state = state.copyWith(
       servers: servers,
       stage: servers.isEmpty ? PlexStage.signedOut : PlexStage.ready,
@@ -310,6 +312,7 @@ class PlexSessionController extends Notifier<PlexState> {
   Future<void> signOut() async {
     _poll?.cancel();
     await _store.clear();
+    await forgetSourceCache(ref, 'plex|');
     _account = null;
     state = const PlexState(stage: PlexStage.signedOut);
   }

@@ -1,0 +1,13 @@
+Subnext Player is a media player for content the user already has. It hosts no content, has no catalogue, and has no backend or account system of its own.
+
+HOW TO REVIEW WITHOUT ANY ACCOUNT
+- Library > Local & Network > Allow video access: plays videos from the device's photo library. Add any video to the review device's Photos first; with none, the list is empty by design.
+- Local & Network > Add a network share: connects to an SMB share on the local network (a NAS or a PC), if one is available.
+- Plex: Add a source > Plex server links the user's own Plex account through Plex's standard browser sign-in.
+
+ADVANCED SOURCES (DISCLOSED, OFF BY DEFAULT)
+Settings > Advanced sources contains a single toggle, off on every new install. Turning it on shows a disclaimer that must be acknowledged, and only then adds options to connect an IPTV provider or M3U playlist using credentials or a URL the user supplies. The app does not provide, recommend, list or link to any provider or playlist, and nothing about this feature appears in the App Store listing or screenshots.
+The app has no sign-in of its own and ships no demo account: like its users, a reviewer tests it with their own media. If you need to exercise Advanced sources and have no provider of your own, reply to this submission and we will provide test access.
+
+DATA
+No data is collected by the developer. Credentials the user enters are stored in the iOS Keychain on the device and are sent only to the service the user connected (Plex, their own NAS, or a provider they configure).

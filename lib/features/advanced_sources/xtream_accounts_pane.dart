@@ -31,45 +31,65 @@ class XtreamAccountsPane extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: t.line),
             ),
-            child: Row(
+            // Two lines, not one Row. Until 2026-09-28 the name shared a Row
+            // with the three category buttons and the remove button, all at
+            // their natural width. On a phone they left the name's Expanded
+            // about one glyph wide, so a name that defaulted to the server
+            // address wrapped one character per line down the whole screen.
+            // The buttons now get their own line, in a Wrap so a large text
+            // scale pushes one down rather than overflowing, and the name
+            // keeps the full width, cut to one line.
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        account.name,
-                        style: TextStyle(
-                          color: t.ink,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            account.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: t.ink,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            [
+                              for (final c in XtreamCatalogue.values)
+                                '${c.label} ${account.categoriesFor(c).length}',
+                            ].join(' · '),
+                            style: TextStyle(color: t.inkDim, fontSize: 12),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        [
-                          for (final c in XtreamCatalogue.values)
-                            '${c.label} ${account.categoriesFor(c).length}',
-                        ].join(' · '),
-                        style: TextStyle(color: t.inkDim, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                for (final c in XtreamCatalogue.values)
-                  TextButton(
-                    onPressed: () => context.push(
-                      '/advanced/xtream/${account.id}/categories/${c.name}',
                     ),
-                    child: Text(c.label,
-                        style: TextStyle(color: t.accent, fontSize: 13)),
-                  ),
-                IconButton(
-                  tooltip: 'Remove',
-                  icon: Icon(Icons.delete_outline, color: t.inkDim, size: 20),
-                  onPressed: () => ref
-                      .read(xtreamAccountsProvider.notifier)
-                      .remove(account.id),
+                    IconButton(
+                      tooltip: 'Remove',
+                      icon: Icon(Icons.delete_outline,
+                          color: t.inkDim, size: 20),
+                      onPressed: () => ref
+                          .read(xtreamAccountsProvider.notifier)
+                          .remove(account.id),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  children: [
+                    for (final c in XtreamCatalogue.values)
+                      TextButton(
+                        onPressed: () => context.push(
+                          '/advanced/xtream/${account.id}/categories/${c.name}',
+                        ),
+                        child: Text(c.label,
+                            style: TextStyle(color: t.accent, fontSize: 13)),
+                      ),
+                  ],
                 ),
               ],
             ),

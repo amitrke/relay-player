@@ -9,11 +9,15 @@ import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
 import '../../features/advanced_sources/add_xtream_screen.dart';
 import '../../features/advanced_sources/category_picker_screen.dart';
+import '../../features/advanced_sources/channel_picker_screen.dart';
 import '../../features/advanced_sources/xtream_series_screen.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../features/accounts/plex_session.dart';
+import '../../features/downloads/downloads_screen.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/library/library_screen.dart';
+import '../../features/library/library_shelves.dart';
+import '../../features/library/library_tab.dart';
 import '../../features/onboarding/onboarding_route.dart';
 import '../../features/settings/settings_controller.dart';
 import '../../features/local_network/local_network_tab.dart';
@@ -23,6 +27,8 @@ import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
 import '../../features/settings/settings_route.dart';
+import '../../features/transfer/receive_screen.dart';
+import '../../features/transfer/send_screen.dart';
 import '../theme/theme_controller.dart';
 
 /// Routes, with sign-in state as the only gate for now.
@@ -70,22 +76,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (_, _) => const _Splash(),
-      ),
-      GoRoute(
-        path: '/onboarding',
-        builder: (_, _) => const OnboardingRoute(),
-      ),
-      GoRoute(
-        path: '/add-source',
-        builder: (_, _) => const AddSourceRoute(),
-      ),
-      GoRoute(
-        path: '/link',
-        builder: (_, _) => const PlexLinkScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (_, _) => const _Splash()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingRoute()),
+      GoRoute(path: '/add-source', builder: (_, _) => const AddSourceRoute()),
+      GoRoute(path: '/link', builder: (_, _) => const PlexLinkScreen()),
       StatefulShellRoute(
         builder: (_, _, shell) => HomeShell(navigationShell: shell),
         // Not `.indexedStack` — its container keeps every branch's Focus
@@ -96,24 +90,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         // below is otherwise identical to the default.
         navigatorContainerBuilder: _tvSafeIndexedStack,
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/library',
-              builder: (_, _) => const LibraryScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/search',
-              builder: (_, _) => const SearchScreen(),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/settings',
-              builder: (_, _) => const SettingsRoute(),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/library',
+                builder: (_, _) => const LibraryScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/downloads',
+                builder: (_, _) => const DownloadsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (_, _) => const SettingsRoute(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -128,6 +133,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             (c) => c.name == state.pathParameters['catalogue'],
             orElse: () => XtreamCatalogue.live,
           ),
+        ),
+      ),
+      GoRoute(
+        // Channels inside one live category. Its result (the stream ids to keep)
+        // comes back through pop, and the category screen holds it until Save.
+        path: '/advanced/xtream/:accountId/channels/:categoryId',
+        builder: (_, state) => ChannelPickerScreen(
+          accountId: state.pathParameters['accountId']!,
+          categoryId: state.pathParameters['categoryId']!,
+          args:
+              state.extra as ChannelPickerArgs? ??
+              const ChannelPickerArgs(name: 'Channels', picked: []),
         ),
       ),
       GoRoute(
@@ -162,14 +179,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/local/:folderId',
-        builder: (_, state) => LocalFolderScreen(
-          folderId: state.pathParameters['folderId']!,
-        ),
+        builder: (_, state) =>
+            LocalFolderScreen(folderId: state.pathParameters['folderId']!),
       ),
+      // Pushed from Settings and from Add a source (§17). The second is where a
+      // fresh TV lands, which is exactly when copying a phone's setup beats
+      // typing one; onboarding is already marked seen by then, so the redirect
+      // above lets it through.
       GoRoute(
-        path: '/smb/new',
-        builder: (_, _) => const AddSmbScreen(),
+        path: '/transfer/receive',
+        builder: (_, _) => const ReceiveScreen(),
       ),
+      GoRoute(path: '/transfer/send', builder: (_, _) => const SendScreen()),
+      GoRoute(path: '/smb/new', builder: (_, _) => const AddSmbScreen()),
       GoRoute(
         // Path travels as a query parameter rather than a path segment: an SMB
         // path contains slashes, and encoding them into a segment is the same
@@ -211,8 +233,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/localplay/:assetId',
-        builder: (_, state) => PlayerScreen.device(
-          assetId: state.pathParameters['assetId']!,
+        builder: (_, state) =>
+            PlayerScreen.device(assetId: state.pathParameters['assetId']!),
+      ),
+      GoRoute(
+        path: '/shelf',
+        builder: (_, state) => ShelfScreen(
+          tab: state.uri.queryParameters['tab'] == 'series'
+              ? LibraryTab.series
+              : LibraryTab.movies,
+          shelfKey: state.uri.queryParameters['shelf'] ?? '',
         ),
       ),
       GoRoute(
@@ -233,19 +263,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // even by typing the route. `kDebugMode` is a compile-time constant, so
       // the branch and its widgets are tree-shaken out of the release binary.
       if (kDebugMode) ...[
-        GoRoute(
-          path: '/debug',
-          builder: (_, _) => const DebugMenuScreen(),
-        ),
-        GoRoute(
-          path: '/debug/spike',
-          builder: (_, _) => const SpikeHome(),
-        ),
+        GoRoute(path: '/debug', builder: (_, _) => const DebugMenuScreen()),
+        GoRoute(path: '/debug/spike', builder: (_, _) => const SpikeHome()),
         GoRoute(
           path: '/debug/gallery',
-          builder: (_, _) => DesignGallery(
-            controller: ref.read(themeControllerProvider),
-          ),
+          builder: (_, _) =>
+              DesignGallery(controller: ref.read(themeControllerProvider)),
         ),
       ],
     ],
@@ -307,8 +330,6 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

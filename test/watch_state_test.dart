@@ -8,9 +8,16 @@ import 'package:relay_player/features/favorites_history/watch_state.dart';
 ///
 /// Pins the rules, not Plex: that a real server's On Deck and view counts look
 /// like these fixtures is a check against a real account (MANUAL_TESTING.md).
-HistoryItem _local(String id, {required int positionMin, required DateTime at}) =>
+HistoryItem _local(
+  String id, {
+  required int positionMin,
+  required DateTime at,
+  PlaybackKind kind = PlaybackKind.plex,
+  bool? episode,
+}) =>
     HistoryItem(
-      kind: PlaybackKind.plex,
+      kind: kind,
+      episode: episode,
       sourceId: 'server',
       itemId: id,
       title: 'local $id',
@@ -155,6 +162,67 @@ void main() {
         ],
       );
       expect(merged.map((e) => e.itemId), ['recent', 'local', 'next1', 'next2']);
+    });
+  });
+
+  // Films resume above Movies and episodes above Series. Until 2026-09-28 the
+  // row was one list above Movies, and a show in progress appeared there.
+  group('episode or film', () {
+    test('Plex On Deck says which from the metadata type', () {
+      expect(_entry(_deck('a', offsetMin: 10, viewed: later)).episode, isFalse);
+      expect(
+          _entry(_deck('b', type: PlexMetadataType.episode)).episode, isTrue);
+    });
+
+    test('a panel record says which from its kind alone', () {
+      final film = _local('f',
+          positionMin: 10, at: later, kind: PlaybackKind.xtreamVod);
+      final ep = _local('e',
+          positionMin: 10, at: later, kind: PlaybackKind.xtreamEpisode);
+      expect(ResumeEntry.fromHistory(film).episode, isFalse);
+      expect(ResumeEntry.fromHistory(ep).episode, isTrue);
+    });
+
+    test('a Plex record carries what the player recorded, through storage',
+        () {
+      final ep = _local('e', positionMin: 10, at: later, episode: true);
+      final stored = HistoryItem.fromJson(ep.toJson())!;
+      expect(stored.isEpisode, isTrue);
+      expect(ResumeEntry.fromHistory(stored).episode, isTrue);
+    });
+
+    test('an old Plex record with no type counts as a film on its own', () {
+      final old = _local('o', positionMin: 10, at: later);
+      final json = old.toJson();
+      // Records written before the field existed have no key at all, not a
+      // null value; the test would pass for free if toJson wrote one.
+      expect(json.containsKey('episode'), isFalse);
+      expect(HistoryItem.fromJson(json)!.isEpisode, isFalse);
+    });
+
+    test('an old Plex record takes the type from On Deck and keeps its place',
+        () {
+      final merged = mergeResume(
+        history: [_local('a', positionMin: 30, at: later)],
+        plexDeck: [
+          _entry(_deck('a',
+              type: PlexMetadataType.episode, offsetMin: 10, viewed: earlier)),
+        ],
+      );
+      expect(merged.single.episode, isTrue);
+      expect(merged.single.progress, closeTo(0.3, 0.001),
+          reason: 'local is newer, so its position still wins');
+    });
+
+    test('a recorded type is not overridden by On Deck', () {
+      final merged = mergeResume(
+        history: [_local('a', positionMin: 30, at: later, episode: false)],
+        plexDeck: [
+          _entry(_deck('a',
+              type: PlexMetadataType.episode, offsetMin: 10, viewed: earlier)),
+        ],
+      );
+      expect(merged.single.episode, isFalse);
     });
   });
 }

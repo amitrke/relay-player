@@ -39,6 +39,7 @@ class HistoryItem {
     required this.duration,
     required this.lastWatchedAt,
     this.poster,
+    this.episode,
   });
 
   final PlaybackKind kind;
@@ -65,6 +66,23 @@ class HistoryItem {
   final Duration position;
   final Duration duration;
   final DateTime lastWatchedAt;
+
+  /// Whether a Plex item is an episode, which decides whether its
+  /// continue-watching tile sits above Movies or Series.
+  ///
+  /// Only Plex needs it stored: a panel item's [kind] already says. Null means
+  /// unknown, which is every Plex record written before 2026-09-28, when the
+  /// row was one mixed list above Movies and nothing needed the distinction.
+  /// Such a record is corrected by the next progress tick if it is played
+  /// again, or by Plex's On Deck entry for the same item (see `mergeResume`);
+  /// until then it is treated as a film. Read [isEpisode], not this.
+  final bool? episode;
+
+  bool get isEpisode => switch (kind) {
+        PlaybackKind.xtreamEpisode => true,
+        PlaybackKind.xtreamVod => false,
+        PlaybackKind.plex => episode ?? false,
+      };
 
   String get key => '${kind.wire}:$sourceId:$itemId';
 
@@ -93,6 +111,7 @@ class HistoryItem {
         itemId: itemId,
         title: title,
         poster: poster,
+        episode: episode,
         position: position ?? this.position,
         duration: duration,
         lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
@@ -104,6 +123,7 @@ class HistoryItem {
         'id': itemId,
         'title': title,
         'poster': _withoutSecrets(poster),
+        if (episode != null) 'episode': episode,
         'position': position.inSeconds,
         'duration': duration.inSeconds,
         'at': lastWatchedAt.millisecondsSinceEpoch,
@@ -134,6 +154,7 @@ class HistoryItem {
       poster: _withoutSecrets(
         raw['poster'] is String ? raw['poster'] as String : null,
       ),
+      episode: raw['episode'] is bool ? raw['episode'] as bool : null,
       position: Duration(seconds: (raw['position'] as num?)?.toInt() ?? 0),
       duration: Duration(seconds: (raw['duration'] as num?)?.toInt() ?? 0),
       lastWatchedAt: DateTime.fromMillisecondsSinceEpoch(

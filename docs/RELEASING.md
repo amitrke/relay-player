@@ -220,12 +220,31 @@ does not hold the other back.
    whose `destination: upload` makes the export also send the build to Apple.
    The step's exit status is the result.
 
-**Unverified: signing with the API key on a clean runner.** The export path is
-the one that worked from Organizer on 2026-09-23, and the exact
-`xcodebuild archive` / `-exportArchive` commands were rehearsed locally that
-day. That rehearsal signed with the Xcode account on this Mac, not with the API
-key, so it proves the commands and the export options, not cloud signing.
-Update this paragraph after the first tagged run.
+**Verified 2026-09-23, run 7** (the first push to `develop`): `1.0.4 (7)`
+reached both Play internal testing and TestFlight, the iOS job in 7.5
+minutes. Cloud signing with the Admin key worked on a clean runner with no
+certificates in secrets, and the export's own exit status reported the upload.
+
+Three things the run showed:
+
+- **It created a development certificate, and would have kept doing so.** Run 7
+  archived *signed*, and Xcode minted an "Apple Development: Created via API"
+  certificate through the key to do it (listed under Certificates, expiring
+  2027-09-23). Its private key existed only on the discarded runner, so every
+  run would have created another, until Apple's cap on development
+  certificates broke the job. The archive is now unsigned
+  (`CODE_SIGNING_ALLOWED=NO`) and all signing happens at export with the
+  cloud-managed distribution certificate. That was checked locally the same
+  day (the IPA came out signed "Apple Distribution"), then **confirmed by run
+  8** (2026-09-23, `1.0.4 (8)`): archive unsigned, upload succeeded, and the
+  Certificates page afterwards listed no new development certificate. The
+  orphaned one from run 7 had been revoked by then.
+- **The runner's newest Xcode was 26.6**, not the 27.0 used locally. Apple
+  accepted it. When Apple raises its minimum SDK, the image has to catch up
+  first, and the upload will fail until it does.
+- **"Upload Symbols Failed" for every media_kit framework** (Avcodec, Mpv,
+  Dav1d, ...). They ship prebuilt without dSYMs. It is a warning; their
+  crashes will not symbolicate, the same as Play's native-symbols warning.
 
 ### One-time setup
 
@@ -396,13 +415,13 @@ the reasons the ladder is ordered this way rather than by §13's phase numbers:
 
   The argument is strongest for iOS, where review is stricter and slower.
   **Revisit before the Phase 5 submission, or the first time a complaint
-  arrives**, whichever comes first. The design in §16.1 and #16 stands; only
-  its place on the schedule changed.
+  arrives**, whichever comes first. **Superseded 2026-10-06:** the kill switch was dropped
+  altogether (§16.1, #16 closed), so there is nothing left to schedule.
 
 This ladder puts AI (§13 Phase 3.5) *after* Phase 4 and the Phase 6
 prerequisites, which is a deliberate reordering: it is the largest remaining
 block of work and nothing about a store submission depends on it, whereas
-§12.1's About section does. (It also said §16's kill switch did, until that
+§12.1's About section does. (It also said §16's kill switch, since dropped, did, until that
 gate was withdrawn above.)
 
 ## Failure modes to expect
@@ -435,8 +454,9 @@ gate was withdrawn above.)
   version."** The iOS twin of the versionCode rule, with the same cause (a
   re-run reuses its run number) and the same fix. Remember build 1 of 1.0.0 was
   uploaded by hand.
-- **iOS: signing fails in the Archive step** (expected, if anything is, on the
-  first tagged run). Check the key's role first: cloud signing needs Admin. If
+- **iOS: signing fails in the export step.** The archive is unsigned, so signing
+  problems surface at export. Check the key's role first: cloud signing needs
+  Admin (it worked with an Admin key in run 7). If
   the role is right and it still fails, fall back to the Android pattern: an
   Apple Distribution certificate as a base64 `.p12` plus an App Store
   provisioning profile in secrets, imported into a temporary keychain, with

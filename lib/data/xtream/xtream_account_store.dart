@@ -25,6 +25,8 @@ class XtreamAccount {
     this.liveCategoryIds = const [],
     this.vodCategoryIds = const [],
     this.seriesCategoryIds = const [],
+    this.liveCategoryNames = const {},
+    this.liveChannelPicks = const {},
   });
 
   final String id;
@@ -44,38 +46,91 @@ class XtreamAccount {
   final List<String> vodCategoryIds;
   final List<String> seriesCategoryIds;
 
-  List<String> categoriesFor(XtreamCatalogue catalogue) => switch (catalogue) {
-        XtreamCatalogue.live => liveCategoryIds,
-        XtreamCatalogue.vod => vodCategoryIds,
-        XtreamCatalogue.series => seriesCategoryIds,
-      };
+  /// Names of the chosen live categories, by id, so the Live TV tab can group
+  /// its channels under headings without asking the panel again.
+  ///
+  /// Saved by the category picker, which already has them, since 2026-09-28.
+  /// A line saved before then has none until its picker is next saved; the tab
+  /// fetches the category list once to fill the gap rather than showing bare
+  /// ids. Live only, because only Live TV groups by category: Movies and
+  /// Series merge into the shared poster grids, where a panel's category is
+  /// not the unit anyone browses by.
+  final Map<String, String> liveCategoryNames;
 
+  /// For a chosen live category, the channels to keep from it, by stream id.
+  ///
+  /// A category with no entry is kept whole. An entry narrows it to those
+  /// channels, which is how "USA: News" can be on the list with only the three
+  /// channels anyone wants from it. Live only for now: a live category holds a
+  /// modest number of channels, whereas a movie category can hold thousands and
+  /// needs a different screen. Entries exist only for chosen categories, and
+  /// [withCategories] drops the rest.
+  final Map<String, List<String>> liveChannelPicks;
+
+  List<String> categoriesFor(XtreamCatalogue catalogue) => switch (catalogue) {
+    XtreamCatalogue.live => liveCategoryIds,
+    XtreamCatalogue.vod => vodCategoryIds,
+    XtreamCatalogue.series => seriesCategoryIds,
+  };
+
+  /// [names] is kept only for [XtreamCatalogue.live] (see [liveCategoryNames]),
+  /// and only for the ids being saved, so deselected categories do not linger.
   XtreamAccount withCategories(
     XtreamCatalogue catalogue,
-    List<String> ids,
-  ) =>
+    List<String> ids, {
+    Map<String, String> names = const {},
+  }) => XtreamAccount(
+    id: id,
+    name: name,
+    host: host,
+    username: username,
+    liveCategoryIds: catalogue == XtreamCatalogue.live ? ids : liveCategoryIds,
+    vodCategoryIds: catalogue == XtreamCatalogue.vod ? ids : vodCategoryIds,
+    seriesCategoryIds: catalogue == XtreamCatalogue.series
+        ? ids
+        : seriesCategoryIds,
+    liveCategoryNames: catalogue == XtreamCatalogue.live
+        ? {for (final id in ids) id: ?(names[id] ?? liveCategoryNames[id])}
+        : liveCategoryNames,
+    // A category that is no longer chosen has nothing to narrow.
+    liveChannelPicks: catalogue == XtreamCatalogue.live
+        ? {
+            for (final id in ids)
+              if (liveChannelPicks[id] != null) id: liveChannelPicks[id]!,
+          }
+        : liveChannelPicks,
+  );
+
+  /// This line with its live channel picks replaced. An empty list for a
+  /// category means "keep it whole" and is not stored.
+  XtreamAccount withChannelPicks(Map<String, List<String>> picks) =>
       XtreamAccount(
         id: id,
         name: name,
         host: host,
         username: username,
-        liveCategoryIds:
-            catalogue == XtreamCatalogue.live ? ids : liveCategoryIds,
-        vodCategoryIds:
-            catalogue == XtreamCatalogue.vod ? ids : vodCategoryIds,
-        seriesCategoryIds:
-            catalogue == XtreamCatalogue.series ? ids : seriesCategoryIds,
+        liveCategoryIds: liveCategoryIds,
+        vodCategoryIds: vodCategoryIds,
+        seriesCategoryIds: seriesCategoryIds,
+        liveCategoryNames: liveCategoryNames,
+        liveChannelPicks: {
+          for (final e in picks.entries)
+            if (e.value.isNotEmpty && liveCategoryIds.contains(e.key))
+              e.key: e.value,
+        },
       );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'host': host,
-        'username': username,
-        'live': liveCategoryIds,
-        'vod': vodCategoryIds,
-        'series': seriesCategoryIds,
-      };
+    'id': id,
+    'name': name,
+    'host': host,
+    'username': username,
+    'live': liveCategoryIds,
+    'vod': vodCategoryIds,
+    'series': seriesCategoryIds,
+    'liveNames': liveCategoryNames,
+    if (liveChannelPicks.isNotEmpty) 'livePicks': liveChannelPicks,
+  };
 
   static XtreamAccount? fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -98,6 +153,17 @@ class XtreamAccount {
       seriesCategoryIds: [
         for (final c in raw['series'] as List? ?? const []) '$c',
       ],
+      liveCategoryNames: {
+        if (raw['liveNames'] case final Map names)
+          for (final MapEntry(:key, :value) in names.entries)
+            if (value is String) '$key': value,
+      },
+      liveChannelPicks: {
+        if (raw['livePicks'] case final Map picks)
+          for (final MapEntry(:key, :value) in picks.entries)
+            if (value is List && value.isNotEmpty)
+              '$key': [for (final v in value) '$v'],
+      },
     );
   }
 }
@@ -113,12 +179,11 @@ class XtreamAccountStore {
   XtreamAccountStore({
     required AppSettingsStore settings,
     FlutterSecureStorage? secrets,
-  })  :
-        // A named parameter cannot be private, so this cannot be an
-        // initializing formal while the field stays private.
-        // ignore: prefer_initializing_formals
-        _settings = settings,
-        _secrets = secrets ?? const FlutterSecureStorage();
+  }) : // A named parameter cannot be private, so this cannot be an
+       // initializing formal while the field stays private.
+       // ignore: prefer_initializing_formals
+       _settings = settings,
+       _secrets = secrets ?? const FlutterSecureStorage();
 
   final AppSettingsStore _settings;
   final FlutterSecureStorage _secrets;
@@ -138,8 +203,7 @@ class XtreamAccountStore {
     }
   }
 
-  Future<String?> password(String id) =>
-      _secrets.read(key: _passwordKey(id));
+  Future<String?> password(String id) => _secrets.read(key: _passwordKey(id));
 
   Future<void> save(XtreamAccount account, {String? password}) async {
     final existing = accounts().where((a) => a.id != account.id);

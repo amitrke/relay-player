@@ -77,9 +77,8 @@ class _ServerBlock extends ConsumerWidget {
               ),
             ),
             TextButton(
-              onPressed: () => ref
-                  .read(plexSessionProvider.notifier)
-                  .disconnect(server.id),
+              onPressed: () =>
+                  ref.read(plexSessionProvider.notifier).disconnect(server.id),
               child: Text('Remove', style: TextStyle(color: t.inkDim)),
             ),
           ],
@@ -142,10 +141,7 @@ class _AddServer extends ConsumerWidget {
         onPressed: () =>
             ref.read(plexSessionProvider.notifier).refreshAvailable(),
         icon: Icon(Icons.refresh, size: 18, color: t.inkDim),
-        label: Text(
-          'Look for more servers',
-          style: TextStyle(color: t.inkDim),
-        ),
+        label: Text('Look for more servers', style: TextStyle(color: t.inkDim)),
       );
     }
 
@@ -213,7 +209,8 @@ class _LibraryRow extends ConsumerWidget {
     // Text scale matters as much as form factor here: a tablet at 1.3x hits the
     // same wall, so this keys off both rather than assuming phones are the only
     // narrow case.
-    final stacked = RelayLayout.of(context) == RelayFormFactor.phone ||
+    final stacked =
+        RelayLayout.of(context) == RelayFormFactor.phone ||
         MediaQuery.textScalerOf(context).scale(14) > 16;
 
     final name = Column(
@@ -291,8 +288,7 @@ class _PlacementChips extends StatelessWidget {
             borderRadius: 999,
             onTap: () => onSelect(placement),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: placement == selected ? t.accent : t.bg,
                 borderRadius: BorderRadius.circular(999),

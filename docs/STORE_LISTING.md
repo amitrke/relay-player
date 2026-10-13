@@ -77,7 +77,7 @@ correction, so none of them should be submitted on someone else's reading.
 | Form | Draft answer |
 |---|---|
 | Set privacy policy | `https://amitrke.github.io/relay-player/privacy.html`. Served from `site/` by `.github/workflows/pages.yml`. Live once this reaches `main` (#9) |
-| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. *Superseded draft:* this row used to call for a Plex demo account for the reviewer. That is still the fallback if review comes back unable to exercise the Plex path, which the listing leads with, and a reviewer device with no video on it will show an empty library. Keep any such credentials out of this public repo |
+| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. Reviewers test with their own media, as users do; no demo account is supplied on either store (architecture.md §8.4) |
 | Ads | No ads. The app contains no advertising and no ad SDK |
 | Content rating | **Submitted 2026-09-22**, reasoning in the note below. Result: ESRB Everyone, PEGI 3, ClassInd all ages |
 | Target audience | **Submitted 2026-09-22: 18 and over**, not directed at children. The app has no child-appropriate content of its own and no content filtering, so a lower band would pull it into the Families policy programme for no benefit |
@@ -137,6 +137,137 @@ question would have claimed a catalog that does not exist, and the resulting
 adult rating would have been a misrepresentation in the other direction.
 Advanced Sources does not change this: it is still user-supplied content, and
 §1.2 keeps it out of everything the app itself presents.
+
+## App Store (iOS)
+
+Drafted 2026-09-23, after the first TestFlight builds. The copy is in
+`fastlane/metadata/ios/en-US/`, in fastlane `deliver`'s layout, for the same
+reason Android's is in `supply`'s: it is diffable, and adopting the tool later
+needs no migration. **fastlane is not set up**, so these are pasted into App
+Store Connect by hand. The same four constraints above apply unchanged.
+
+### Where the iOS copy differs from Play's, and why
+
+Not a straight copy, because three of the Play sentences are not true of the
+iOS build (see MANUAL_TESTING.md §6a):
+
+- **"Folders you choose" is gone.** Folder picking is SAF, which is
+  Android-only, and the button is hidden on iOS until the §7.1 document-picker
+  source exists.
+- **"Files on your device" became "Videos on this device"**, the photo
+  library. iOS asks for the Photos library, with the user choosing all or
+  selected items, not a scoped media permission.
+- **"encrypted storage" became "the iOS Keychain"**, which is what
+  `flutter_secure_storage` uses there.
+
+Keywords carry no trademarks (Guideline 2.3.7 bars other apps' names) and no
+IPTV terms (constraint 2). Plex is named in the description as a source the
+user connects, which is nominative, as on Play.
+
+The App Review notes are in `fastlane/metadata/ios/review_information/notes.txt`
+and disclose Advanced Sources as §1.3 and §8.4 require. They were checked
+against the code: the toggle and its separate acknowledgement
+("I understand — turn on") are in `settings_screen.dart`. No demo account
+is provided (architecture.md §8.4): the notes say reviewers test with their
+own media, as users do, and offer test access for Advanced Sources on
+request.
+
+### Version page fields
+
+| Field | Value |
+|---|---|
+| Version | `1.0.4`, not the default `1.0`: it must match a build's `CFBundleShortVersionString`, and `develop` builds are 1.0.4 |
+| Promotional text, description, keywords | the files above |
+| Support URL | GitHub issues, the same place the site's "Report an issue" points |
+| Marketing URL | the site, `https://amitrke.github.io/relay-player/` |
+| Copyright | `2026 Amit Kumar` |
+| Sign-in required | Off, the same reasoning as Play's "no part of the app is restricted" row. The exception is Advanced Sources, covered by the notes |
+
+### Binding declarations: drafts only
+
+Like Play's, these are declarations to Apple, and a wrong one is a rejection or
+a removal rather than a correction. The account owner submits them.
+
+| Form | Draft answer |
+|---|---|
+| App Privacy | **Data Not Collected.** The same judgement as Play's Data safety row: credentials go only to services the user connected, and there is no backend, analytics or SDK that phones home. Revisit with #6 (crash reports) and §9 (AI) |
+| Privacy Policy URL | `https://amitrke.github.io/relay-player/privacy.html` |
+| Category | Primary **Photo & Video**, Apple's home for players; secondary Entertainment |
+| Age rating | The same reading as the IARC answer above: no content of its own and nothing featured or promoted, so every content question is None. One new question, **"Unrestricted Web Access": No**. The app plays media URLs and opens a browser only for Plex sign-in; it is not a browser. Settle it deliberately, as with IARC |
+| Content Rights | "Does your app contain, show, or access third-party content?" **Yes, it accesses third-party content, and the user supplies the rights**: it plays whatever the user connects. Answering No would be untrue of a Plex client. Worth rereading at submission time |
+| Pricing | Free |
+
+### Blocking the first "Add for Review", as of 2026-09-23
+
+TestFlight needs none of these; App Review needs all of them.
+
+- [x] **Screenshots**, captured 2026-09-23, see "The iOS screenshots" below.
+      Not yet uploaded to App Store Connect
+- [x] **Plex verified on iOS** (simulators and a real iPhone, 2026-09-23).
+      **SMB: shipped unverified, by decision.** The account owner chose on
+      2026-09-23 to submit without checking SMB against a real share. Note
+      that this is not an iOS-only gap: MANUAL_TESTING.md §5 has SMB never
+      seen against a real share on any platform, and both listings advertise
+      it. Verify it before promoting it in marketing, and treat an early SMB
+      bug report as the expected failure mode
+- [ ] **Export compliance: `ITSAppUsesNonExemptEncryption = NO` needs a
+      second look.** It was set on 2026-09-23 on the reading "network traffic
+      is standard TLS". The same day's framework listing of the iOS build
+      showed that TLS is not only Apple's: ffmpeg brings mbedTLS
+      (`Mbedtls`, `Mbedcrypto`, `Mbedx509` frameworks), and Flutter's
+      `dart:io` uses its own BoringSSL. App Store Connect's own wording asks
+      for documentation when an app uses "standard encryption algorithms
+      instead of, or in addition to" the OS's. Many Flutter apps still
+      declare NO on the basis that HTTPS-only use is exempt; the stricter
+      reading is YES with "standard algorithms", which on current US rules
+      means a year-end self-classification report rather than a licence, plus
+      France's declaration if distributed there. A declaration, so the
+      account owner's call. Not legal advice
+- [x] **The iOS ATS decision**: none needed, tested with a control on
+      2026-09-23 (architecture.md §11). No `NSAllowsArbitraryLoads`, so nothing
+      to justify in review
+- [x] **The iOS libmpv/ffmpeg licence check**, done 2026-09-23: LGPL-clean,
+      no GPL components, and the iOS licence page now lists all eleven
+      libraries (architecture.md, ffmpeg item under Open items). The
+      TestFlight builds before this showed none of them
+- [ ] **The macOS and tvOS platform entries.** The App Store Connect record
+      has "1.0 Prepare for Submission" versions for both, though neither has a
+      build. They are harmless while empty. Deleting them is the account
+      owner's call
+
+### The iOS screenshots
+
+Captured 2026-09-23 from simulators, into `fastlane/screenshots/en-US/`
+(deliver's layout), using sizes App Store Connect asks for exactly, so no
+scaling or cropping:
+
+| Set | Simulator | Size | Files |
+|---|---|---|---|
+| iPhone 6.5" | iPhone 14 Plus, iOS 18.6 | 1284 × 2778 | library, player, search, playback settings |
+| iPad 13" | iPad Pro 13-inch (M5), iOS 27 | 2064 × 2752 | library, player, search |
+
+Dark appearance to match the Play set, the status bar overridden to 9:41 with
+full signal and battery (`xcrun simctl status_bar`), captured with
+`xcrun simctl io … screenshot`. Content is the Plex server "Main" and its
+three open-licensed films, the same as the Play set. A debug build was used,
+since Flutter cannot make a release build for the simulator; the app already
+turns the debug banner off, and it was built with `--build-name=1.0.4` so no
+screen would show `0.0.0`.
+
+What could not be used, for the reasons the Play section above gives:
+
+- **Settings → Appearance.** Directly beneath it, Sources lists a second
+  server by its real machine name, which §1 and #7 bar. On iPhone the Playback
+  and Subtitles sections were shot instead, scrolled so that server name and
+  the Advanced Sources card below are both out of frame; what remains of the
+  server card reads only "Yours · via relay". On iPad the whole page fits in
+  one screen, as on the Android tablet, so there is no iPad settings shot.
+- **Onboarding and Add a source**, which carry the §8.2 disclosure.
+
+Two things worth knowing before re-shooting. The player frame is soft on the
+iPad because the film on "Main" is a low-resolution copy; a 1080p copy of any of
+the three would fix it. And iPadOS 27 draws the app name in the status bar and
+a window-resize mark in the bottom-right corner; both are system chrome.
 
 ## The published site
 

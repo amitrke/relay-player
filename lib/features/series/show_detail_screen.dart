@@ -322,6 +322,8 @@ class _EpisodeRow extends ConsumerWidget {
             ratingKey: episode.ratingKey,
             title: episode.title,
             watched: watch.watched,
+            downloadable: true,
+            isEpisode: true,
           ),
         ),
         child: Row(
