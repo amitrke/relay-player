@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import 'xtream_controller.dart';
 
@@ -69,37 +70,48 @@ class XtreamAccountsPane extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Remove',
-                      icon: Icon(Icons.delete_outline,
-                          color: t.inkDim, size: 20),
-                      onPressed: () => ref
-                          .read(xtreamAccountsProvider.notifier)
-                          .remove(account.id),
+                    // The halos on this pane's Material buttons are their focus rings on a TV;
+                    // without them focus was invisible here (D-pad audit, test/dpad, 2026-09-28).
+                    RelayFocusHalo(
+                      borderRadius: BorderRadius.circular(10),
+                      child: IconButton(
+                        tooltip: 'Remove',
+                        icon: Icon(Icons.delete_outline,
+                            color: t.inkDim, size: 20),
+                        onPressed: () => ref
+                            .read(xtreamAccountsProvider.notifier)
+                            .remove(account.id),
+                      ),
                     ),
                   ],
                 ),
                 Wrap(
                   children: [
                     for (final c in XtreamCatalogue.values)
-                      TextButton(
-                        onPressed: () => context.push(
-                          '/advanced/xtream/${account.id}/categories/${c.name}',
+                      RelayFocusHalo(
+                        borderRadius: BorderRadius.circular(10),
+                        child: TextButton(
+                          onPressed: () => context.push(
+                            '/advanced/xtream/${account.id}/categories/${c.name}',
+                          ),
+                          child: Text(c.label,
+                              style: TextStyle(color: t.accent, fontSize: 13)),
                         ),
-                        child: Text(c.label,
-                            style: TextStyle(color: t.accent, fontSize: 13)),
                       ),
                   ],
                 ),
               ],
             ),
           ),
-        TextButton.icon(
-          onPressed: () => context.push('/advanced/xtream/new'),
-          icon: Icon(Icons.add, size: 18, color: t.accent),
-          label: Text(
-            'Add a playlist or panel',
-            style: TextStyle(color: t.accent),
+        RelayFocusHalo(
+          borderRadius: BorderRadius.circular(10),
+          child: TextButton.icon(
+            onPressed: () => context.push('/advanced/xtream/new'),
+            icon: Icon(Icons.add, size: 18, color: t.accent),
+            label: Text(
+              'Add a playlist or panel',
+              style: TextStyle(color: t.accent),
+            ),
           ),
         ),
       ],
