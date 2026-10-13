@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
@@ -78,9 +77,24 @@ class AddSourceScreen extends StatelessWidget {
 /// ladder, together with their screens.
 enum SourceKind {
   plex('Plex server', 'Link with code', Icons.dns_outlined, false),
-  localFiles('Video on this device', 'Scan your media library, or pick a single folder to keep access to.', Icons.smartphone_outlined, false),
-  smb('Network share (SMB)', 'A NAS or Windows share on your home network.', Icons.lan_outlined, false),
-  xtream('Xtream Codes login', 'Host, username and password from your provider.', Icons.vpn_key_outlined, true);
+  localFiles(
+    'Video on this device',
+    'Scan your media library, or pick a single folder to keep access to.',
+    Icons.smartphone_outlined,
+    false,
+  ),
+  smb(
+    'Network share (SMB)',
+    'A NAS or Windows share on your home network.',
+    Icons.lan_outlined,
+    false,
+  ),
+  xtream(
+    'Xtream Codes login',
+    'Host, username and password from your provider.',
+    Icons.vpn_key_outlined,
+    true,
+  );
 
   const SourceKind(this.title, this._subtitle, this.icon, this.isAdvanced);
 
@@ -117,7 +131,7 @@ class _SourceTile extends StatelessWidget {
   static const Map<SourceKind, String> _expanded = {
     SourceKind.plex:
         'Approve this device in your browser. Your own server plus anything '
-            'shared with you.',
+        'shared with you.',
   };
 
   @override
@@ -147,9 +161,10 @@ class _SourceTile extends StatelessWidget {
                 Text(
                   _expanded[kind] ?? kind.subtitle,
                   style: TextStyle(
-                      color: t.inkDim,
-                      fontSize: RelayLayout.bodySize(form) - 1,
-                      height: 1.45),
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(form) - 1,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -251,8 +266,7 @@ class _CompactAddSource extends StatelessWidget {
         ),
         Expanded(
           child: ListView(
-            padding:
-                RelayLayout.pagePadding(form).copyWith(bottom: 32),
+            padding: RelayLayout.pagePadding(form).copyWith(bottom: 32),
             children: [
               Text(
                 'Add a source',
@@ -266,9 +280,10 @@ class _CompactAddSource extends StatelessWidget {
               Text(
                 AddSourceScreen.privacyNote,
                 style: TextStyle(
-                    color: t.inkDim,
-                    fontSize: RelayLayout.bodySize(form),
-                    height: 1.55),
+                  color: t.inkDim,
+                  fontSize: RelayLayout.bodySize(form),
+                  height: 1.55,
+                ),
               ),
               const SizedBox(height: 22),
               for (final kind in SourceKind.flagship) ...[
@@ -351,18 +366,21 @@ class _AdvancedOffHintState extends State<_AdvancedOffHint> {
     final t = RelayTheme.of(context);
     final form = RelayLayout.of(context);
     final style = TextStyle(
-        color: t.inkDim, fontSize: RelayLayout.bodySize(form) - 1, height: 1.5);
+      color: t.inkDim,
+      fontSize: RelayLayout.bodySize(form) - 1,
+      height: 1.5,
+    );
 
     return Text.rich(
       TextSpan(
         style: style,
         children: [
           const TextSpan(
-              text: 'Looking for an IPTV provider or playlist? Turn on '),
+            text: 'Looking for an IPTV provider or playlist? Turn on ',
+          ),
           TextSpan(
             text: 'Advanced sources',
-            style:
-                style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
+            style: style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
             recognizer: widget.onOpenSettings == null ? null : _tap,
           ),
           const TextSpan(text: ' in Settings.'),
@@ -403,63 +421,74 @@ class _DesktopAddSource extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SectionLabel(text: 'Source type'),
-                const SizedBox(height: 14),
-                _RailItem(
-                  title: 'Plex server',
-                  subtitle: 'Link with a code',
-                  icon: Icons.dns_outlined,
-                  selected: false,
-                  onTap: () => onPickSource(SourceKind.plex),
-                ),
-                _RailItem(
-                  title: 'Files on this PC',
-                  subtitle: 'Choose a folder',
-                  icon: Icons.folder_outlined,
-                  selected: false,
-                  onTap: () => onPickSource(SourceKind.localFiles),
-                ),
-                _RailItem(
-                  title: 'Network share (SMB)',
-                  subtitle: 'NAS or Windows share',
-                  icon: Icons.lan_outlined,
-                  selected: false,
-                  onTap: () => onPickSource(SourceKind.smb),
-                ),
-                if (advancedEnabled) ...[
-                  const SizedBox(height: 14),
-                  _SectionLabel(text: 'Advanced sources'),
-                  const SizedBox(height: 10),
-                  for (final kind in SourceKind.advanced)
-                    _RailItem(
-                      title: kind.title,
-                      subtitle: kind.subtitle,
-                      icon: kind.icon,
-                      selected: false,
-                      onTap: () => onPickSource(kind),
-                    ),
-                ],
-                if (onReceiveFromDevice != null) ...[
-                  const SizedBox(height: 14),
-                  _SectionLabel(text: 'Or'),
-                  const SizedBox(height: 10),
-                  _RailItem(
-                    title: 'Copy from another device',
-                    subtitle: 'Send it from your phone',
-                    icon: Icons.devices_outlined,
-                    selected: false,
-                    onTap: onReceiveFromDevice!,
+                // Scrolls, where it used to be a fixed Column with a Spacer.
+                // A TV is 540 logical pixels tall, and with Advanced sources on
+                // the rows filled it; RelayTappable's focus ring (2026-09-28)
+                // adds 6 px a row, which tipped it into overflow. A list also
+                // scrolls a focused row into view on its own.
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _SectionLabel(text: 'Source type'),
+                      const SizedBox(height: 14),
+                      _RailItem(
+                        title: 'Plex server',
+                        subtitle: 'Link with a code',
+                        icon: Icons.dns_outlined,
+                        selected: false,
+                        onTap: () => onPickSource(SourceKind.plex),
+                      ),
+                      _RailItem(
+                        title: 'Files on this PC',
+                        subtitle: 'Choose a folder',
+                        icon: Icons.folder_outlined,
+                        selected: false,
+                        onTap: () => onPickSource(SourceKind.localFiles),
+                      ),
+                      _RailItem(
+                        title: 'Network share (SMB)',
+                        subtitle: 'NAS or Windows share',
+                        icon: Icons.lan_outlined,
+                        selected: false,
+                        onTap: () => onPickSource(SourceKind.smb),
+                      ),
+                      if (advancedEnabled) ...[
+                        const SizedBox(height: 14),
+                        _SectionLabel(text: 'Advanced sources'),
+                        const SizedBox(height: 10),
+                        for (final kind in SourceKind.advanced)
+                          _RailItem(
+                            title: kind.title,
+                            subtitle: kind.subtitle,
+                            icon: kind.icon,
+                            selected: false,
+                            onTap: () => onPickSource(kind),
+                          ),
+                      ],
+                      if (onReceiveFromDevice != null) ...[
+                        const SizedBox(height: 14),
+                        _SectionLabel(text: 'Or'),
+                        const SizedBox(height: 10),
+                        _RailItem(
+                          title: 'Copy from another device',
+                          subtitle: 'Send it from your phone',
+                          icon: Icons.devices_outlined,
+                          selected: false,
+                          onTap: onReceiveFromDevice!,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-                const Spacer(),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   // The artboard said "Windows Credential Manager", which is
                   // wrong on every other platform this ships to. §3's rule is
                   // what actually matters and it is platform-neutral.
                   'Credentials are stored in your device keystore, never in '
                   'the app database.',
-                  style:
-                      TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
+                  style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
                 ),
               ],
             ),
@@ -520,47 +549,51 @@ class _RailItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
+    // RelayTappable rather than a bare InkWell: the InkWell took D-pad focus
+    // but drew nothing for it (§11), so on a TV the viewer could not see which
+    // source type they were on. Seen on the Google TV emulator and caught by
+    // the D-pad audit (test/dpad), 2026-09-28.
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? t.surface : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: selected ? t.accent : Colors.transparent),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: selected ? t.accent : t.inkDim),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: TextStyle(
-                              color: t.ink,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      Text(subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: t.inkDim, fontSize: 12)),
-                    ],
-                  ),
+      child: RelayTappable(
+        borderRadius: 10,
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? t.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: selected ? t.accent : Colors.transparent),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: selected ? t.accent : t.inkDim),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: t.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: t.inkDim, fontSize: 12),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 }
-

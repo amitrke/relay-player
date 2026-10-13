@@ -153,7 +153,7 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
     });
 
     final host = _normaliseHost(_host.text);
-    final client = XtreamClient(
+    final client = ref.read(xtreamClientFactoryProvider)(
       host: host,
       username: _username.text.trim(),
       password: _password.text,

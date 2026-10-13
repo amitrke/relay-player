@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/theme/relay_widgets.dart';
 import '../../data/local/favorites_store.dart';
 import '../settings/settings_controller.dart';
 
@@ -75,15 +76,21 @@ class FavoriteButton extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final isFavorite = ref.watch(favoritesProvider).contains(item.key);
 
-    return IconButton(
-      visualDensity: dense ? VisualDensity.compact : null,
-      iconSize: size,
-      tooltip: isFavorite ? 'Remove from favourites' : 'Add to favourites',
-      icon: Icon(
-        isFavorite ? Icons.star : Icons.star_border,
-        color: isFavorite ? t.accent : t.inkDim,
+    // The halo is the star's focus ring on a remote: IconButton's own focus
+    // overlay draws nothing with this theme (§11), which the D-pad audit
+    // (test/dpad) caught on 2026-09-28.
+    return RelayFocusHalo(
+      borderRadius: BorderRadius.circular(999),
+      child: IconButton(
+        visualDensity: dense ? VisualDensity.compact : null,
+        iconSize: size,
+        tooltip: isFavorite ? 'Remove from favourites' : 'Add to favourites',
+        icon: Icon(
+          isFavorite ? Icons.star : Icons.star_border,
+          color: isFavorite ? t.accent : t.inkDim,
+        ),
+        onPressed: () => ref.read(favoritesProvider.notifier).toggle(item),
       ),
-      onPressed: () => ref.read(favoritesProvider.notifier).toggle(item),
     );
   }
 }
