@@ -454,6 +454,17 @@ gate was withdrawn above.)
   version."** The iOS twin of the versionCode rule, with the same cause (a
   re-run reuses its run number) and the same fix. Remember build 1 of 1.0.0 was
   uploaded by hand.
+- **iOS: "The train version '1.0.4' is closed for new build submissions."**
+  Seen 2026-10-13 on the `v1.0.4` tag run. Apple had already approved 1.0.4
+  (the TestFlight build was submitted and released by hand), so the tag's own
+  upload was refused with "must contain a higher version than that of the
+  previously approved version". The Android job in the same run succeeded, the
+  live app was untouched, and nothing needs fixing. It is the iOS twin of "test
+  builds stop after the tag": once App Store Connect has approved a version,
+  every later build of it is rejected. So the order for a release is to
+  promote the tested TestFlight build to the App Store first, and tag after;
+  a tag pushed on a version Apple has already approved will show this red job
+  for iOS and should be read as expected. Bump `pubspec.yaml` straight away.
 - **iOS: signing fails in the export step.** The archive is unsigned, so signing
   problems surface at export. Check the key's role first: cloud signing needs
   Admin (it worked with an Admin key in run 7). If
