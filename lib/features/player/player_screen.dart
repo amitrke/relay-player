@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -17,12 +18,14 @@ import '../../data/filesystem/loopback_bridge.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
+import '../downloads/downloads_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
 import 'player_errors.dart';
+import 'video_output.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -218,12 +221,50 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// yields a frame must *release* the connection or it burns the only slot.
   static const _stallTimeout = Duration(seconds: 15);
 
+  /// How long a live picture may sit still before it is treated as frozen. The
+  /// position clock is the signal for the same reason it is at startup: a frozen
+  /// frame still has a playing mpv behind it, so no error ever arrives.
+  static const _freezeTimeout = Duration(seconds: 10);
+
+  /// Consecutive reconnects before giving up and showing the error. Each waits
+  /// longer than the last (2s, 4s, 6s), so a panel that is briefly overloaded
+  /// gets room without a dead channel spinning forever.
+  static const _maxReconnects = 3;
+
+  /// Playing this long after a reconnect counts it as having worked, so a
+  /// channel that drops once an hour never exhausts its budget.
+  static const _stableAfter = Duration(seconds: 30);
+
+  /// Player routes that had to fall back to compatible output this session, so
+  /// opening the same title again goes straight there instead of failing over
+  /// a second time. Memory only: a TV update can bring the decoder it lacked.
+  static final _compatibleRoutes = <String>{};
+
   late final Player _player = Player();
-  late final VideoController _controller = VideoController(_player);
+
+  /// Decided on first build, when the route is known; see [VideoOutput].
+  late final VideoOutput _output = _compatibleRoutes.contains(_route)
+      ? VideoOutput.compatible
+      : defaultVideoOutput();
+  late final VideoController _controller = VideoController(
+    _player,
+    configuration: videoConfigurationFor(_output),
+  );
+
+  /// Every player is a route (app_router.dart), and the location is what is
+  /// pushed again to reopen it.
+  String get _route => GoRouterState.of(context).uri.toString();
+  bool _fellBack = false;
   late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
   Timer? _stallTimer;
+  Timer? _freezeWatch;
+  Timer? _reconnectTimer;
+  DateTime _lastAdvance = DateTime.now();
+  DateTime _playingSince = DateTime.now();
+  Duration _lastPosition = Duration.zero;
+  int _reconnects = 0;
 
   String? _title;
   String? _error;
@@ -320,6 +361,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_released || !mounted) return;
     _stallTimer?.cancel();
     _progressTimer?.cancel();
+    _freezeWatch?.cancel();
+    _reconnectTimer?.cancel();
     unawaited(_player.stop());
     setState(() {
       _released = true;
@@ -328,6 +371,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _rejoin() {
+    _reconnects = 0;
     setState(() {
       _released = false;
       _error = null;
@@ -340,6 +384,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _lifecycle?.dispose();
     unawaited(_audioFocus?.dispose());
     _stallTimer?.cancel();
+    _freezeWatch?.cancel();
+    _reconnectTimer?.cancel();
     _progressTimer?.cancel();
     // Record where they actually got to before tearing down. Without this the
     // last up-to-ten-seconds is lost on every exit, which is exactly the moment
@@ -473,6 +519,40 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
     }
 
+    // A saved copy is played in preference to the server's, online or not
+    // (§18.4): it needs no bandwidth, starts at once, and is the only thing
+    // that works with no network. Everything about the title except the file
+    // comes from the record, because the server may not be reachable to ask.
+    final saved = await ref
+        .read(downloadsProvider.notifier)
+        .fileFor(widget.serverId!, widget.ratingKey!);
+    if (saved != null) {
+      final record = ref
+          .read(downloadsProvider.notifier)
+          .find(widget.serverId!, widget.ratingKey!)!;
+      Duration? resumeFrom;
+      try {
+        // Where Plex last saw this title, if it can be asked quickly. Another
+        // device may have watched on since. Offline this just fails, and the
+        // position kept on this device is used instead.
+        resumeFrom = (await plexServiceFor(
+          ref,
+          widget.serverId!,
+        ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3)))
+            .resumeFrom;
+      } catch (_) {}
+      return _Playable(
+        url: saved.path,
+        title: record.title,
+        live: false,
+        posterRef: record.posterPath,
+        historyKind: PlaybackKind.plex,
+        historyId: widget.ratingKey,
+        resumeFrom: resumeFrom,
+        episode: record.isEpisode,
+      );
+    }
+
     final playable = await plexServiceFor(ref, widget.serverId!)
         .directPlay(widget.ratingKey!);
     return _Playable(
@@ -494,7 +574,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (!mounted) return;
       _history = ref.read(historyProvider.notifier);
       if (widget.serverId != null) {
-        _plexService = plexServiceFor(ref, widget.serverId!);
+        // A saved copy outlives the server it came from (§18.4): with the
+        // server removed there is nobody to report progress to, and that must
+        // not stop the film playing.
+        try {
+          _plexService = plexServiceFor(ref, widget.serverId!);
+        } on StateError {
+          _plexService = null;
+        }
         _container = ProviderScope.containerOf(context, listen: false);
       }
       setState(() {
@@ -521,6 +608,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _player.stream.duration.firstWhere((d) => d > Duration.zero);
         await _player.seek(resume);
       }
+      _progressTimer?.cancel();
       _progressTimer =
           Timer.periodic(_progressInterval, (_) => _recordProgress());
     } catch (e) {
@@ -591,13 +679,125 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// The only trustworthy "it is playing" signal.
   void _onPosition(Duration position) {
+    if (position != _lastPosition) {
+      _lastPosition = position;
+      _lastAdvance = DateTime.now();
+    }
     if (_started || position <= Duration.zero) return;
     _stallTimer?.cancel();
+    _playingSince = DateTime.now();
+    if (_live) {
+      _freezeWatch?.cancel();
+      _freezeWatch = Timer.periodic(const Duration(seconds: 2), (_) => _watch());
+    }
     if (mounted) setState(() => _started = true);
+    if (_output == VideoOutput.direct) unawaited(_checkVideoOutput());
+  }
+
+  /// Once playing on the direct path, asks mpv which decoder it ended up with.
+  /// Software means a black picture under direct output (see [VideoOutput]), so
+  /// the title is reopened on the compatible path.
+  Future<void> _checkVideoOutput() async {
+    // The decoder is settled by the first position tick; the pause is margin
+    // for mpv's own fallback, which happens on the first frames it cannot take.
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (!mounted || _fellBack) return;
+    final String hwdec;
+    try {
+      hwdec = await (_player.platform as NativePlayer).getProperty(
+        'hwdec-current',
+      );
+    } catch (_) {
+      return;
+    }
+    final hasVideo =
+        _player.state.track.video.id != 'no' &&
+        _player.state.tracks.video.any((t) => t.id != 'auto' && t.id != 'no');
+    debugPrint('Player: direct output, hwdec-current=$hwdec video=$hasVideo');
+    if (needsCompatibleOutput(
+      output: _output,
+      hasVideo: hasVideo,
+      hwdecCurrent: hwdec,
+    )) {
+      await _reopenCompatible('hardware decoder declined (hwdec=$hwdec)');
+    }
+  }
+
+  /// Opens this title again on a fresh player with compatible output.
+  ///
+  /// A new route rather than reconfiguring this player: media_kit re-applies
+  /// its configured `vo` whenever the Android surface is recreated (coming
+  /// back from the background), which would silently put the direct output
+  /// back under a software decoder. This player is stopped first, because the
+  /// new one opens while this route is still animating out and §4's
+  /// `max_connections: 1` allows only one of them a connection.
+  Future<void> _reopenCompatible(String why) async {
+    if (_fellBack || !mounted) return;
+    _fellBack = true;
+    debugPrint('Player: reopening on compatible output: $why');
+    final route = _route;
+    final router = GoRouter.of(context);
+    _compatibleRoutes.add(route);
+    _stallTimer?.cancel();
+    _recordProgress(state: 'stopped');
+    await _player.stop();
+    if (!mounted) return;
+    router.pushReplacement(route);
+  }
+
+  /// Catches a live channel that froze *after* it started, which neither the
+  /// startup guard nor mpv's error stream sees. A viewer-paused stream is left
+  /// alone: its clock is meant to stand still.
+  void _watch() {
+    if (!_live || !_started || _released || _error != null) return;
+    final now = DateTime.now();
+    if (_reconnects > 0 && now.difference(_playingSince) >= _stableAfter) {
+      _reconnects = 0;
+    }
+    if (!_player.state.playing) return;
+    if (now.difference(_lastAdvance) >= _freezeTimeout) {
+      _reconnect('This channel stopped and did not come back.');
+    }
+  }
+
+  /// Stop, wait, reopen: never a second connection beside the first. §4's
+  /// `max_connections: 1` means the old one has to be released before the new
+  /// one is asked for, and the wait gives the panel time to notice it is gone.
+  ///
+  /// Returns false when the budget is spent, after showing [giveUp].
+  bool _reconnect(String giveUp) {
+    if (_reconnectTimer?.isActive ?? false) return true;
+    if (_reconnects >= _maxReconnects) {
+      _freezeWatch?.cancel();
+      unawaited(_player.stop());
+      _fail(giveUp);
+      return false;
+    }
+    _reconnects++;
+    debugPrint('Player: live stream stalled, reconnect $_reconnects of '
+        '$_maxReconnects');
+    _freezeWatch?.cancel();
+    _stallTimer?.cancel();
+    _progressTimer?.cancel();
+    unawaited(_player.stop());
+    _lastPosition = Duration.zero;
+    if (mounted) setState(() => _started = false);
+    _reconnectTimer = Timer(Duration(seconds: 2 * _reconnects), () {
+      if (mounted && !_released && _error == null) unawaited(_load());
+    });
+    return true;
   }
 
   void _onStalled() {
     if (_started) return;
+    // A reconnect that itself yields nothing tries again rather than giving up
+    // on the first miss. A first-ever open still fails straight away: a dead
+    // listing should say so in 15s, not after three more attempts.
+    if (_live && _reconnects > 0) {
+      _reconnect('This channel is not responding. Listings often outrun '
+          'reality on a panel - try another, or the same one again.');
+      return;
+    }
     // Release the connection rather than leaving it held. On a one-connection
     // line a dead channel would otherwise cost the user their only slot until
     // the panel times it out server-side.
@@ -613,6 +813,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _onPlayerError(String message) {
     if (isFatalPlayerError(message)) {
+      // A live stream that dies mid-watch is the common drop, so it gets the
+      // same reconnect as a freeze rather than an immediate error screen.
+      if (_live && !_released && (_started || _reconnects > 0)) {
+        _reconnect(message);
+        return;
+      }
+      // On the direct path, failing before the first frame gets one retry on
+      // the compatible one: a decoder or output that would not start there is
+      // exactly what the direct path adds. A source that is really broken fails
+      // the same way again and shows its error then.
+      if (_output == VideoOutput.direct && !_started) {
+        unawaited(_reopenCompatible(message));
+        return;
+      }
       _fail(message);
     } else {
       debugPrint('Player: continuing past non-fatal mpv error: $message');

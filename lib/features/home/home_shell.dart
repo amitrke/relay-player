@@ -1,13 +1,20 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 
-/// The three top-level destinations from the Home artboard's bottom bar.
+/// The top-level destinations from the Home artboard's bottom bar, plus
+/// Downloads (§18), which is a destination of its own and not a corner of
+/// Settings because it is the one screen that has to be reachable with no
+/// network: a person opening the app on a plane goes straight there.
 enum ShellTab {
   library('Library', Icons.video_library_outlined, Icons.video_library),
   search('Search', Icons.search_outlined, Icons.search),
+  downloads('Downloads', Icons.download_outlined, Icons.download),
   settings('Settings', Icons.settings_outlined, Icons.settings);
 
   const ShellTab(this.label, this.icon, this.selectedIcon);
@@ -38,26 +45,144 @@ class _HomeShellState extends State<HomeShell> {
   /// that, the rail is unreachable by remote: traversal stops at the edge of
   /// the route's scope, and the rail is outside it (§11).
   final FocusScopeNode _railScope = FocusScopeNode(debugLabel: 'shell rail');
-  final FocusScopeNode _contentScope =
-      FocusScopeNode(debugLabel: 'shell content');
+  final FocusScopeNode _contentScope = FocusScopeNode(
+    debugLabel: 'shell content',
+  );
+
+  /// Whether the remote is on the rail. Drives the TV rail's expansion.
+  bool _railFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _railScope.addListener(_onRailFocus);
+  }
+
+  void _onRailFocus() {
+    if (_railScope.hasFocus != _railFocused) {
+      setState(() => _railFocused = _railScope.hasFocus);
+    }
+  }
 
   @override
   void dispose() {
+    _railScope.removeListener(_onRailFocus);
     _railScope.dispose();
     _contentScope.dispose();
     super.dispose();
   }
 
   void _go(int index) => widget.navigationShell.goBranch(
-        index,
-        initialLocation: index == widget.navigationShell.currentIndex,
-      );
+    index,
+    initialLocation: index == widget.navigationShell.currentIndex,
+  );
+
+  /// Back with nothing left to go back to would close the app. Ask first.
+  ///
+  /// Reported on a TV: a few Backs too many out of a title or a folder and the
+  /// app was gone, with a cold start to get back to where you were. The shell is
+  /// the bottom of the stack, so this is only reached once every pushed page and
+  /// every branch-local page has already been popped. *Stay* takes focus, and a
+  /// further Back dismisses the dialog, so leaving takes a deliberate choice
+  /// rather than one press too many. Android only: it is the one platform here
+  /// where Back exits the app.
+  Future<void> _confirmExit() async {
+    final t = RelayTheme.of(context);
+    final exit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(
+          'Exit Subnext Player?',
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: t.inkDim),
+            child: const Text('Exit'),
+          ),
+          FilledButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            style: FilledButton.styleFrom(
+              backgroundColor: t.accent,
+              foregroundColor: t.accentInk,
+            ),
+            child: const Text('Stay'),
+          ),
+        ],
+      ),
+    );
+    if (exit == true) await SystemNavigator.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: defaultTargetPlatform != TargetPlatform.android,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmExit();
+      },
+      child: _shell(context),
+    );
+  }
+
+  Widget _shell(BuildContext context) {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final wide = f == RelayFormFactor.desktop || f == RelayFormFactor.tv;
+
+    if (f == RelayFormFactor.tv) {
+      // The rail shrinks to an icon strip while the viewer is in the content
+      // and opens over it, rather than beside it, when the remote reaches it.
+      // Beside it would resize the grid on every visit to the rail. The
+      // content is given the strip's width permanently, so nothing reflows.
+      return Scaffold(
+        backgroundColor: t.bg,
+        body: RelayFocusBoundary(
+          leading: _railScope,
+          main: _contentScope,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                left: _Rail.collapsedWidth + 1,
+                child: FocusScope(
+                  node: _contentScope,
+                  child: widget.navigationShell,
+                ),
+              ),
+              // Under the rail, not over it: drawn last it ran through the
+              // labels whenever the rail opened across it.
+              Positioned(
+                left: _Rail.collapsedWidth,
+                top: 0,
+                bottom: 0,
+                child: VerticalDivider(width: 1, color: t.line),
+              ),
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: FocusScope(
+                  node: _railScope,
+                  child: _Rail(
+                    selected: widget.navigationShell.currentIndex,
+                    onSelect: _go,
+                    expanded: _railFocused,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (wide) {
       return Scaffold(
@@ -121,10 +246,21 @@ class _HomeShellState extends State<HomeShell> {
 /// out of the same widget as everything else means focus looks the same here as
 /// it does on a poster (§11).
 class _Rail extends StatelessWidget {
-  const _Rail({required this.selected, required this.onSelect});
+  const _Rail({
+    required this.selected,
+    required this.onSelect,
+    this.expanded = true,
+  });
+
+  /// Width of the TV rail while it is just icons.
+  static const double collapsedWidth = 64;
 
   final int selected;
   final ValueChanged<int> onSelect;
+
+  /// Always true off-TV. On TV, false while the viewer is in the content: icons
+  /// only, no labels.
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
@@ -132,57 +268,68 @@ class _Rail extends StatelessWidget {
     final f = RelayLayout.of(context);
     final tv = f == RelayFormFactor.tv;
 
-    return Container(
-      width: tv ? 104 : 88,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      width: !expanded ? collapsedWidth : (tv ? 104 : 88),
       color: t.surface,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        children: [
-          for (final (index, tab) in ShellTab.values.indexed)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: RelayTappable(
-                borderRadius: 14,
-                onTap: () => onSelect(index),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    children: [
-                      // The pill marks the selected destination, which is a
-                      // different question from where focus is.
-                      Container(
-                        width: 56,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: index == selected
-                              ? t.accent.withValues(alpha: 0.18)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
+      child: ClipRect(
+        child: Column(
+          children: [
+            for (final (index, tab) in ShellTab.values.indexed)
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: expanded ? 8 : 4,
+                  vertical: 6,
+                ),
+                child: RelayTappable(
+                  borderRadius: 14,
+                  onTap: () => onSelect(index),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      children: [
+                        // The pill marks the selected destination, which is a
+                        // different question from where focus is.
+                        Container(
+                          width: expanded ? 56 : 40,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: index == selected
+                                ? t.accent.withValues(alpha: 0.18)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            index == selected ? tab.selectedIcon : tab.icon,
+                            color: index == selected ? t.accent : t.inkDim,
+                            size: tv ? 26 : 24,
+                          ),
                         ),
-                        child: Icon(
-                          index == selected ? tab.selectedIcon : tab.icon,
-                          color: index == selected ? t.accent : t.inkDim,
-                          size: tv ? 26 : 24,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tab.label,
-                        style: TextStyle(
-                          color: index == selected ? t.ink : t.inkDim,
-                          fontSize: tv ? 14 : 12,
-                          fontWeight: index == selected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                        if (expanded) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            tab.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              color: index == selected ? t.ink : t.inkDim,
+                              fontSize: tv ? 14 : 12,
+                              fontWeight: index == selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

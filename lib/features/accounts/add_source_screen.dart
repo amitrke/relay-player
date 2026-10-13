@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
@@ -23,6 +22,7 @@ class AddSourceScreen extends StatelessWidget {
     required this.onBack,
     required this.onPickSource,
     this.onOpenSettings,
+    this.onReceiveFromDevice,
   });
 
   /// Mirrors the Advanced sources toggle (§8.2).
@@ -30,6 +30,10 @@ class AddSourceScreen extends StatelessWidget {
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
   final VoidCallback? onOpenSettings;
+
+  /// Copy the setup from another device on the network (§17). Null hides it,
+  /// which is how the design gallery shows this screen.
+  final VoidCallback? onReceiveFromDevice;
 
   /// The privacy line the canvas leads with. It is the no-backend decision
   /// (§16) stated where it is most reassuring — at the moment credentials are
@@ -50,12 +54,14 @@ class AddSourceScreen extends StatelessWidget {
             ? _DesktopAddSource(
                 advancedEnabled: advancedEnabled,
                 onPickSource: onPickSource,
+                onReceiveFromDevice: onReceiveFromDevice,
               )
             : _CompactAddSource(
                 advancedEnabled: advancedEnabled,
                 onBack: onBack,
                 onPickSource: onPickSource,
                 onOpenSettings: onOpenSettings,
+                onReceiveFromDevice: onReceiveFromDevice,
               ),
       ),
     );
@@ -71,9 +77,24 @@ class AddSourceScreen extends StatelessWidget {
 /// ladder, together with their screens.
 enum SourceKind {
   plex('Plex server', 'Link with code', Icons.dns_outlined, false),
-  localFiles('Video on this device', 'Scan your media library, or pick a single folder to keep access to.', Icons.smartphone_outlined, false),
-  smb('Network share (SMB)', 'A NAS or Windows share on your home network.', Icons.lan_outlined, false),
-  xtream('Xtream Codes login', 'Host, username and password from your provider.', Icons.vpn_key_outlined, true);
+  localFiles(
+    'Video on this device',
+    'Scan your media library, or pick a single folder to keep access to.',
+    Icons.smartphone_outlined,
+    false,
+  ),
+  smb(
+    'Network share (SMB)',
+    'A NAS or Windows share on your home network.',
+    Icons.lan_outlined,
+    false,
+  ),
+  xtream(
+    'Xtream Codes login',
+    'Host, username and password from your provider.',
+    Icons.vpn_key_outlined,
+    true,
+  );
 
   const SourceKind(this.title, this._subtitle, this.icon, this.isAdvanced);
 
@@ -110,7 +131,7 @@ class _SourceTile extends StatelessWidget {
   static const Map<SourceKind, String> _expanded = {
     SourceKind.plex:
         'Approve this device in your browser. Your own server plus anything '
-            'shared with you.',
+        'shared with you.',
   };
 
   @override
@@ -140,9 +161,63 @@ class _SourceTile extends StatelessWidget {
                 Text(
                   _expanded[kind] ?? kind.subtitle,
                   style: TextStyle(
-                      color: t.inkDim,
-                      fontSize: RelayLayout.bodySize(form) - 1,
-                      height: 1.45),
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(form) - 1,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 20, color: t.inkDim),
+        ],
+      ),
+    );
+  }
+}
+
+/// Copy the setup from a phone or another device already configured (§17).
+///
+/// Not a [SourceKind]: it adds no source of its own, it brings the others
+/// across, and the Advanced sources gate (§8.2) is the receiving device's to
+/// open, so nothing here depends on it.
+class _ReceiveTile extends StatelessWidget {
+  const _ReceiveTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final form = RelayLayout.of(context);
+    return RelaySurface(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.devices_outlined, size: 22, color: t.accent),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Copy from another device',
+                  style: TextStyle(
+                    color: t.ink,
+                    fontSize: RelayLayout.bodySize(form) + 1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Already set up on your phone? Send it here instead of '
+                  'typing it again.',
+                  style: TextStyle(
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(form) - 1,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -160,12 +235,14 @@ class _CompactAddSource extends StatelessWidget {
     required this.onBack,
     required this.onPickSource,
     this.onOpenSettings,
+    this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onReceiveFromDevice;
 
   @override
   Widget build(BuildContext context) {
@@ -189,8 +266,7 @@ class _CompactAddSource extends StatelessWidget {
         ),
         Expanded(
           child: ListView(
-            padding:
-                RelayLayout.pagePadding(form).copyWith(bottom: 32),
+            padding: RelayLayout.pagePadding(form).copyWith(bottom: 32),
             children: [
               Text(
                 'Add a source',
@@ -204,9 +280,10 @@ class _CompactAddSource extends StatelessWidget {
               Text(
                 AddSourceScreen.privacyNote,
                 style: TextStyle(
-                    color: t.inkDim,
-                    fontSize: RelayLayout.bodySize(form),
-                    height: 1.55),
+                  color: t.inkDim,
+                  fontSize: RelayLayout.bodySize(form),
+                  height: 1.55,
+                ),
               ),
               const SizedBox(height: 22),
               for (final kind in SourceKind.flagship) ...[
@@ -224,6 +301,12 @@ class _CompactAddSource extends StatelessWidget {
               ] else ...[
                 const SizedBox(height: 18),
                 _AdvancedOffHint(onOpenSettings: onOpenSettings),
+              ],
+              if (onReceiveFromDevice != null) ...[
+                const SizedBox(height: 22),
+                _SectionLabel(text: 'Or'),
+                const SizedBox(height: 10),
+                _ReceiveTile(onTap: onReceiveFromDevice!),
               ],
             ],
           ),
@@ -283,18 +366,21 @@ class _AdvancedOffHintState extends State<_AdvancedOffHint> {
     final t = RelayTheme.of(context);
     final form = RelayLayout.of(context);
     final style = TextStyle(
-        color: t.inkDim, fontSize: RelayLayout.bodySize(form) - 1, height: 1.5);
+      color: t.inkDim,
+      fontSize: RelayLayout.bodySize(form) - 1,
+      height: 1.5,
+    );
 
     return Text.rich(
       TextSpan(
         style: style,
         children: [
           const TextSpan(
-              text: 'Looking for an IPTV provider or playlist? Turn on '),
+            text: 'Looking for an IPTV provider or playlist? Turn on ',
+          ),
           TextSpan(
             text: 'Advanced sources',
-            style:
-                style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
+            style: style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
             recognizer: widget.onOpenSettings == null ? null : _tap,
           ),
           const TextSpan(text: ' in Settings.'),
@@ -311,10 +397,12 @@ class _DesktopAddSource extends StatelessWidget {
   const _DesktopAddSource({
     required this.advancedEnabled,
     required this.onPickSource,
+    this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final ValueChanged<SourceKind> onPickSource;
+  final VoidCallback? onReceiveFromDevice;
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +466,18 @@ class _DesktopAddSource extends StatelessWidget {
                             onTap: () => onPickSource(kind),
                           ),
                       ],
+                      if (onReceiveFromDevice != null) ...[
+                        const SizedBox(height: 14),
+                        _SectionLabel(text: 'Or'),
+                        const SizedBox(height: 10),
+                        _RailItem(
+                          title: 'Copy from another device',
+                          subtitle: 'Send it from your phone',
+                          icon: Icons.devices_outlined,
+                          selected: false,
+                          onTap: onReceiveFromDevice!,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -388,8 +488,7 @@ class _DesktopAddSource extends StatelessWidget {
                   // what actually matters and it is platform-neutral.
                   'Credentials are stored in your device keystore, never in '
                   'the app database.',
-                  style:
-                      TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
+                  style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
                 ),
               ],
             ),
@@ -464,8 +563,7 @@ class _RailItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? t.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: selected ? t.accent : Colors.transparent),
+            border: Border.all(color: selected ? t.accent : Colors.transparent),
           ),
           child: Row(
             children: [
@@ -475,15 +573,20 @@ class _RailItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: TextStyle(
-                            color: t.ink,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: t.inkDim, fontSize: 12)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: t.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: t.inkDim, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -494,4 +597,3 @@ class _RailItem extends StatelessWidget {
     );
   }
 }
-

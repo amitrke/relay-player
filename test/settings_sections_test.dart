@@ -7,15 +7,24 @@ import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/core/theme/theme_controller.dart';
 import 'package:relay_player/features/accounts/plex_session.dart';
+import 'package:relay_player/features/ai/ai_controller.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
 
-/// Guards the release-build Settings against unbuilt sections.
+/// Guards the release-build Settings against sections that look finished and are
+/// not.
 ///
-/// Until 2026-09-21 the TV/desktop layout opened on AI features, whose pane is
-/// the design canvas's demo data — a "saved" OpenAI key and consent rows
+/// Until 2026-09-21 the TV/desktop layout opened on AI features, whose pane was
+/// the design canvas's demo data: a "saved" OpenAI key and consent rows
 /// "granted" on dates nobody chose. It looked finished, so nothing about the
 /// code reading correctly would have caught it coming back; this does.
+///
+/// AI features (and Metadata) were built for real on 2026-10-09, and Privacy and
+/// data the same day, around clearing cached data. Every section is built now, so
+/// the "unbuilt sections stay out" rule has nothing to stand on in these tests,
+/// but the `SettingsSection.built` flag and the code that honours it remain: the
+/// tests below pin that the panes are real controls and never the old demo rows
+/// or the crash-report switch that stored a preference nothing read.
 void main() {
   setUp(() {
     DeviceKind.debugSetTelevision(true);
@@ -40,125 +49,175 @@ void main() {
     addTearDown(tester.view.reset);
 
     var current = state;
-    await tester.pumpWidget(MaterialApp(
-      home: RelayTheme(
-        tokens: RelayPalettes.midnight,
-        palette: RelayPalette.midnight,
-        child: StatefulBuilder(
-          builder: (context, setState) => SettingsScreen(
-            theme: ThemeController(),
-            state: current,
-            onStateChanged: (s) => setState(() => current = s),
-            showUnbuiltSections: showUnbuiltSections,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RelayTheme(
+          tokens: RelayPalettes.midnight,
+          palette: RelayPalette.midnight,
+          child: StatefulBuilder(
+            builder: (context, setState) => SettingsScreen(
+              theme: ThemeController(),
+              state: current,
+              onStateChanged: (s) => setState(() => current = s),
+              showUnbuiltSections: showUnbuiltSections,
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the TV layout lists only built sections, and opens on one',
-      (tester) async {
+  testWidgets('the TV layout lists every section, and opens on Appearance', (
+    tester,
+  ) async {
     await pump(tester);
 
     for (final label in [
+      'Sources',
+      'Appearance',
+      'Playback',
+      'Subtitles',
+      'Metadata',
       'AI features',
-      // Hidden 2026-09-22: its one switch sent nothing anywhere.
+      'Advanced sources',
+      'Move to another device',
       'Privacy and data',
+      'About',
     ]) {
-      expect(find.text(label), findsNothing, reason: label);
+      expect(find.text(label), findsOneWidget, reason: label);
     }
-    expect(find.textContaining('OpenAI'), findsNothing);
+    // None of the old demo rows or stubs.
+    expect(find.textContaining('Granted'), findsNothing);
     expect(find.textContaining('Not implemented'), findsNothing);
-    // Built 2026-09-23, so listed now.
-    expect(find.text('Playback'), findsOneWidget);
-    expect(find.text('Subtitles'), findsOneWidget);
     // Opens on Appearance, not on whatever the enum lists first.
     expect(find.text('Theme'), findsOneWidget);
-    expect(find.text('About'), findsOneWidget);
   });
 
-  testWidgets('a state pointing at an unbuilt section still renders a built one',
-      (tester) async {
-    await pump(
-        tester, state: const SettingsState(section: SettingsSection.aiFeatures));
+  testWidgets(
+    'Privacy and data has the clear-cache control and no crash switch',
+    (tester) async {
+      await pump(
+        tester,
+        state: const SettingsState(section: SettingsSection.privacy),
+      );
 
-    expect(find.textContaining('OpenAI'), findsNothing);
-    expect(find.textContaining('Not implemented'), findsNothing);
-  });
+      expect(find.text('Clear cached data'), findsOneWidget);
+      expect(
+        find.textContaining('no backend and no analytics'),
+        findsOneWidget,
+      );
+      // A switch for a data flow that does not exist.
+      expect(find.text('Send crash reports'), findsNothing);
+    },
+  );
 
-  // The control. Without it the two tests above would pass just as happily if
-  // the finders were looking in the wrong place.
-  testWidgets('the gallery still reaches the unbuilt sections', (tester) async {
-    await pump(tester,
-        state: const SettingsState(section: SettingsSection.aiFeatures),
-        showUnbuiltSections: true);
+  testWidgets('AI features is real controls, never the old demo rows', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
 
-    expect(find.text('AI features'), findsWidgets);
-    expect(find.textContaining('OpenAI'), findsWidgets);
-    expect(find.text('Playback'), findsOneWidget);
-    expect(find.text('Privacy and data'), findsOneWidget);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [aiSetupProvider.overrideWith(_NoAi.new)],
+        child: MaterialApp(
+          home: RelayTheme(
+            tokens: RelayPalettes.midnight,
+            palette: RelayPalette.midnight,
+            child: SettingsScreen(
+              theme: ThemeController(),
+              state: const SettingsState(section: SettingsSection.aiFeatures),
+              onStateChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // What a person with no provider sees: a form to set one up.
+    expect(find.text('Test and save'), findsOneWidget);
+    expect(find.text('OpenRouter'), findsOneWidget);
+    // And none of the demo data that used to stand in for it.
+    expect(find.textContaining('Granted'), findsNothing);
+    expect(find.textContaining('Key saved'), findsNothing);
+    expect(find.textContaining('192.168.1.24'), findsNothing);
   });
 
   testWidgets('the phone layout has no crash-report switch', (tester) async {
     DeviceKind.debugSetTelevision(false);
-    tester.view.physicalSize = const Size(390, 2400);
+    // Tall enough for the whole list: it builds lazily, and Privacy and data is
+    // near the bottom, below Metadata and AI features.
+    tester.view.physicalSize = const Size(390, 12000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(ProviderScope(
-      // The phone layout renders Sources inline, and the real controller
-      // would reach for secure storage.
-      overrides: [
-        plexSessionProvider.overrideWith(_SignedOut.new),
-        playbackPrefsProvider.overrideWith(_Prefs.new),
-      ],
-      child: MaterialApp(
-        home: RelayTheme(
-          tokens: RelayPalettes.midnight,
-          palette: RelayPalette.midnight,
-          child: SettingsScreen(
-            theme: ThemeController(),
-            state: const SettingsState(),
-            onStateChanged: (_) {},
+    await tester.pumpWidget(
+      ProviderScope(
+        // The phone layout renders Sources inline, and the real controller
+        // would reach for secure storage.
+        overrides: [
+          plexSessionProvider.overrideWith(_SignedOut.new),
+          playbackPrefsProvider.overrideWith(_Prefs.new),
+        ],
+        child: MaterialApp(
+          home: RelayTheme(
+            tokens: RelayPalettes.midnight,
+            palette: RelayPalette.midnight,
+            child: SettingsScreen(
+              theme: ThemeController(),
+              state: const SettingsState(),
+              onStateChanged: (_) {},
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // Control: the finder is looking at a rendered phone Settings.
     expect(find.text('No Plex servers connected.'), findsOneWidget);
     expect(find.text('Send crash reports'), findsNothing);
-    expect(find.text('Privacy and data'), findsNothing);
+    // The section is there, with its real control and not the old switch. The
+    // phone layout upper-cases section titles, so the old check that this title
+    // was absent could not have failed whatever the layout contained.
+    expect(find.text('PRIVACY AND DATA'), findsOneWidget);
+    expect(find.text('Clear cached data'), findsOneWidget);
   });
 
-  testWidgets('Playback and Subtitles change what the player will read',
-      (tester) async {
+  testWidgets('Playback and Subtitles change what the player will read', (
+    tester,
+  ) async {
     DeviceKind.debugSetTelevision(false);
     tester.view.physicalSize = const Size(390, 3200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final container = ProviderContainer(overrides: [
-      plexSessionProvider.overrideWith(_SignedOut.new),
-      playbackPrefsProvider.overrideWith(_Prefs.new),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        plexSessionProvider.overrideWith(_SignedOut.new),
+        playbackPrefsProvider.overrideWith(_Prefs.new),
+      ],
+    );
     addTearDown(container.dispose);
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        home: RelayTheme(
-          tokens: RelayPalettes.midnight,
-          palette: RelayPalette.midnight,
-          child: SettingsScreen(
-            theme: ThemeController(),
-            state: const SettingsState(),
-            onStateChanged: (_) {},
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: RelayTheme(
+            tokens: RelayPalettes.midnight,
+            palette: RelayPalette.midnight,
+            child: SettingsScreen(
+              theme: ThemeController(),
+              state: const SettingsState(),
+              onStateChanged: (_) {},
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('30 s'));
@@ -172,8 +231,9 @@ void main() {
     expect(prefs.subtitleSize, SubtitleSize.large);
   });
 
-  testWidgets('About shows the running version and the licences entry',
-      (tester) async {
+  testWidgets('About shows the running version and the licences entry', (
+    tester,
+  ) async {
     await pump(tester);
     await tester.tap(find.text('About'));
     await tester.pumpAndSettle();
@@ -196,4 +256,10 @@ class _Prefs extends PlaybackPrefsController {
 
   @override
   Future<void> update(PlaybackPrefs next) async => state = next;
+}
+
+/// No provider configured, without reaching for the settings box.
+class _NoAi extends AiSetupController {
+  @override
+  Future<AiSetup?> build() async => null;
 }

@@ -21,6 +21,10 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 class AppSettingsStore {
   AppSettingsStore._(this._box);
 
+  /// Over an already open [box], for tests that cannot reach the platform
+  /// storage path [open] uses. The app itself always goes through [open].
+  AppSettingsStore.withBox(Box<dynamic> box) : _box = box;
+
   static const _boxName = 'settings';
 
   final Box<dynamic> _box;
@@ -29,6 +33,11 @@ class AppSettingsStore {
     await Hive.initFlutter();
     return AppSettingsStore._(await Hive.openBox<dynamic>(_boxName));
   }
+
+  /// Whether [key] was ever written. The typed getters answer with a fallback
+  /// for a missing key, which is right for reading a setting and wrong for
+  /// moving one to another device: a default nobody chose should not travel.
+  bool has(String key) => _box.containsKey(key);
 
   bool getBool(String key, {required bool fallback}) {
     final value = _box.get(key);

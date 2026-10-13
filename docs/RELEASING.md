@@ -415,13 +415,13 @@ the reasons the ladder is ordered this way rather than by §13's phase numbers:
 
   The argument is strongest for iOS, where review is stricter and slower.
   **Revisit before the Phase 5 submission, or the first time a complaint
-  arrives**, whichever comes first. The design in §16.1 and #16 stands; only
-  its place on the schedule changed.
+  arrives**, whichever comes first. **Superseded 2026-10-06:** the kill switch was dropped
+  altogether (§16.1, #16 closed), so there is nothing left to schedule.
 
 This ladder puts AI (§13 Phase 3.5) *after* Phase 4 and the Phase 6
 prerequisites, which is a deliberate reordering: it is the largest remaining
 block of work and nothing about a store submission depends on it, whereas
-§12.1's About section does. (It also said §16's kill switch did, until that
+§12.1's About section does. (It also said §16's kill switch, since dropped, did, until that
 gate was withdrawn above.)
 
 ## Failure modes to expect
@@ -454,6 +454,17 @@ gate was withdrawn above.)
   version."** The iOS twin of the versionCode rule, with the same cause (a
   re-run reuses its run number) and the same fix. Remember build 1 of 1.0.0 was
   uploaded by hand.
+- **iOS: "The train version '1.0.4' is closed for new build submissions."**
+  Seen 2026-10-13 on the `v1.0.4` tag run. Apple had already approved 1.0.4
+  (the TestFlight build was submitted and released by hand), so the tag's own
+  upload was refused with "must contain a higher version than that of the
+  previously approved version". The Android job in the same run succeeded, the
+  live app was untouched, and nothing needs fixing. It is the iOS twin of "test
+  builds stop after the tag": once App Store Connect has approved a version,
+  every later build of it is rejected. So the order for a release is to
+  promote the tested TestFlight build to the App Store first, and tag after;
+  a tag pushed on a version Apple has already approved will show this red job
+  for iOS and should be read as expected. Bump `pubspec.yaml` straight away.
 - **iOS: signing fails in the export step.** The archive is unsigned, so signing
   problems surface at export. Check the key's role first: cloud signing needs
   Admin (it worked with an Admin key in run 7). If

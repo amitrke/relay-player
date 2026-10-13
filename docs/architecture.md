@@ -31,7 +31,7 @@ None of this blocks building the app — it just means "publish to app stores" n
 
 ## 2. High-level architecture
 
-**Foundational decision: this app has no backend.** Every source is user-supplied, every credential is device-local, every AI call goes directly from the device to the user's own provider. There is no server of ours in any data path. This is a deliberate architectural commitment, not a gap to be filled in later, and it pays for itself several times over: no server costs, no data-controller obligations under GDPR, nothing to subpoena or seize when a rights-holder complaint arrives (§1.5), and a genuine privacy story that reinforces the neutral-tool framing the whole store-policy strategy rests on. §16 covers the one narrow, deliberately-bounded exception (crash reporting and a remote kill switch) and lists what must never be added.
+**Foundational decision: this app has no backend.** Every source is user-supplied, every credential is device-local, every AI call goes directly from the device to the user's own provider. There is no server of ours in any data path. This is a deliberate architectural commitment, not a gap to be filled in later, and it pays for itself several times over: no server costs, no data-controller obligations under GDPR, nothing to subpoena or seize when a rights-holder complaint arrives (§1.5), and a genuine privacy story that reinforces the neutral-tool framing the whole store-policy strategy rests on. §16 covers the one narrow, deliberately-bounded exception (crash reporting) and lists what must never be added.
 
 Layered, feature-first structure — standard for a Flutter app this size:
 
@@ -360,6 +360,45 @@ that, and both are this caution applied:
 
 This is the VLC-style feature: playing whatever's already on the device or on a home NAS/Windows share, no account/login model at all beyond (for SMB) server credentials. Also flagship, always-visible functionality — not gated. Scoped to **local storage + SMB** for this phase; FTP, WebDAV, and UPnP/DLNA discovery follow the same patterns below and can be added later as separate `FileSystemRepository` implementations if there's demand.
 
+**Choosing categories, as built (2026-10-09).** A flat list of 466 categories was
+unusable on a TV (about three visible rows and a keyboard to get anywhere), so the
+picker now opens on **groups** found from the names (`groupCategories`). Nothing
+is configured and no scheme is assumed, because the real panel used all of these
+at once: a bare country, "Country ➾ Genre", "PREFIX | NAME", year buckets
+("BOLLYWOOD (2016-2018)", "(2024) HOLLYWOOD"), a "24/7" prefix, and one-offs. The
+leading part of each name, with years and quality tags removed, is its key;
+categories sharing a key form a group; a longer name joins the group it extends;
+singletons that open with the same word cluster; the rest go to "Everything
+else", so every category is somewhere and none is dropped. On that panel Movies
+went from 156 categories to about 15 groups (Hollywood 61, Bollywood 17, ...).
+Separators are matched by arrow *ranges*, not one glyph: the panel used U+27BE and
+a list of the arrows seen would miss the next panel's. A *Chosen* switch shows
+only what is selected, and search and the regex pattern still work across
+everything. **Channels inside a category:** for Live TV only, each category has a
+*Channels* button to keep a few of its channels ("USA ➾ News" holds 555 and
+nobody wants them all). Picks are stored per category on the account
+(`liveChannelPicks`), apply wherever channels are fetched (`pickChannels`), drop
+with their category, and "keep the whole category" is the default and the empty
+state, so picking every channel is stored as whole and a channel the panel adds
+later is not silently left out. **Series do not group:** they are named by streaming
+service or network, one category each, so 68 of 83 on the real panel land in
+"Everything else". A group over 20 categories is therefore browsed by letter
+(`alphabetiseAbove`): sorted A to Z by what is shown, with a chip per letter that
+jumps to it (rows have a fixed height so a jump is arithmetic, since a lazy list has
+not built the rows below the screen). **Hidden words (2026-10-09).** A list of words and phrases the user never wants to
+see ("Pakistan", "Germany", "south indian"), edited from a *Hide words* chip in
+the picker. One list for every panel, kept in the settings box, because it records
+a taste and not a property of a line. Matching is by **whole word**, case ignored
+(`HiddenWords`): "UK" hides "UK ➾ News" and leaves "Ukraine" and "Luke Cage" alone,
+and a phrase must match as a phrase, in order. It applies to category names in the
+picker (groups, search, *Select all* and the pattern tool never see a hidden
+category) and to channel names in Live TV and the channel picker (`withoutHidden`).
+It does **not** apply to movie or series titles: hiding by title is a much bigger
+decision. Nothing disappears silently: the picker says how many are hidden and has
+a *Show them* switch, and adding a word un-ticks anything already chosen that it
+matches and says so, saving nothing until Save like every other change here.
+Movies and series get no item-level picking yet:
+a movie category can hold thousands of titles and needs a different screen.
 ### 7.1 Local device storage — compliant approach
 
 Per §1.7, this must avoid `MANAGE_EXTERNAL_STORAGE`. Two complementary pieces, both standard for compliant media players:
@@ -454,6 +493,12 @@ Same ethos as the rest of the app: no built-in paid AI service, users connect th
 ### 9.2 Feature designs
 
 - **Natural-language search**: the user's query plus a compact index of library metadata (titles, years, genres, short plot text — not full file paths or anything beyond what's already shown in the UI) goes to the configured text-generation provider, which returns ranked matches the app resolves back to real library items.
+
+  > **Chunked, streaming, checked search, 2026-10-09.** The first version sent the library cut at its first few hundred titles, so on a 3,000-title library most of it was never searched, silently ("James bond Movies" found nothing because the films were past the cut). It is now sent in parts of 600 titles (at most 8, so 4,800 titles; past that the screen says "Searched the first N of M titles"), two requests at a time, and the grid fills in as each part answers; picks keep arrival order so nothing on screen moves. Findings that shaped it:
+  >
+  > - *Bare index numbers are unverifiable.* A model that answers `[631, 632, ...]` is indistinguishable from one that is right, and weak free models do exactly that. The prompt now asks for `number. title` and a pick is kept only if the number and the title agree (`parseCheckedPicks`); anything else is dropped. This does not make the model smart: a weak model still picks wrong-but-real titles (seen on the emulator: Dr. Strangelove and Diary of the Dead beside the Bond films). It only stops invented ones.
+  > - *Riverpod retries a failing provider up to 10 times with backoff.* Left on, one failing search became a burst of requests against a rate-limited free tier (a test control showed 3 become 6). Retry is disabled on `aiSearchProvider`; the one retry that exists is per part (`aiSearchRetries = 1`), with a "Search again" button when parts still fail. The recommendations provider has not been audited for the same hazard.
+  > - One part failing does not fail the search; only all parts failing does. A short answer says how many parts were not searched.
 - **Recommendations**: same client, prompted with a summarized view of library contents plus recent `HistoryItem` entries, explicitly scoped to "recommend from what's already in your connected sources" rather than suggesting content to acquire — keeps this clearly a library-navigation aid, not something that reads as sourcing content.
 - **Auto-generated subtitles**: extract the audio track from a local/SMB/VOD file, send to a transcription-capable provider, cache the result as a standard `.srt`/`.vtt` alongside the played item (or in local storage keyed by file, since write access back to the source isn't guaranteed). This is a long-running job with progress UI, not an instant round trip — plan the player screen's "generate subtitles" entry point accordingly. **Two hard constraints shape this feature and neither is optional:**
 
@@ -522,6 +567,28 @@ The only trustworthy evidence that playback is happening is
 **`player.state.position` advancing**. Any "is it playing", buffering
 indicator, dead-channel timeout (§4) or error state in the app must be built on
 that, not on the two signals above.
+
+**Live reconnect after a freeze (decided 2026-10-06).** Until now the stall
+guard covered startup only, so a channel that froze mid-watch sat on a still
+frame: mpv is still "playing", no error arrives, and nothing noticed. Built on
+the same position-clock rule as above:
+
+- While a live stream is started and not paused, if the position has not moved
+  for 10s, the player stops, waits, and reopens the same channel. The same
+  path handles a fatal mpv error after start.
+- Up to 3 consecutive attempts, waiting 2s, 4s and 6s. Playing 30s after a
+  reconnect resets the budget, so an occasional drop never uses it up. When it
+  is spent, the existing error screen appears.
+- **Stop before reopen, never open beside.** Same reason as §4: on a
+  `max_connections: 1` line the old connection must be released first, and the
+  wait gives the panel time to notice it is gone.
+- A first open that yields nothing still fails after 15s with no retries. A
+  dead listing should say so promptly, not after three more attempts. Only a
+  stream that has already played, or a reconnect that is itself retrying, gets
+  the extra tries.
+- **Not verified on a device.** The 10s threshold and the backoff are
+  untested guesses, and nobody has yet reproduced a mid-stream freeze to watch
+  it recover. Add it to `MANUAL_TESTING.md` once exercised.
 
 **Audio focus and going to the background (#17, decided 2026-09-22).** Before
 this there was no audio focus handling and no lifecycle observer: another app's
@@ -777,7 +844,7 @@ Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U l
 
 **Fire TV specifically — treat it as its own target, not a synonym for Android TV.** Three differences matter architecturally:
 
-- **No Google Play Services.** Fire OS ships without GMS, so any dependency that requires it silently does nothing on your Fire TV users' devices. This directly constrains §16: Crashlytics and Remote Config work without Play Services and are therefore safe, while Firebase Cloud Messaging requires it and Firebase Analytics degrades without it. Verify this on real hardware rather than assuming — a crash reporter that reports nothing is worse than no crash reporter, because it makes you believe the build is stable.
+- **No Google Play Services.** Fire OS ships without GMS, so any dependency that requires it silently does nothing on your Fire TV users' devices. This directly constrains §16: Crashlytics works without Play Services and is therefore safe, while Firebase Cloud Messaging requires it and Firebase Analytics degrades without it. Verify this on real hardware rather than assuming — a crash reporter that reports nothing is worse than no crash reporter, because it makes you believe the build is stable.
 - **It is the weakest hardware in the matrix.** A Fire TV stick has substantially less CPU and RAM than the phones you'll develop on. This is the device that makes the XMLTV isolate requirement (§5) non-negotiable, that will expose any main-isolate JSON parsing of large Xtream category responses, and where libmpv's software-decode fallback paths will hurt most. Profile here, not on a flagship phone.
 - **Separate store, separate submission.** The Amazon Appstore is its own listing, its own review process, and its own policy surface — distinct from the Play Console work in §13 Phase 6. It is also, usefully, a third distribution channel that is not affected by a Play or App Store takedown, which is worth something given §1.5.
 
@@ -834,10 +901,209 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > Deck lists the same item, in which case they take its type. Pinned by the
    > `episode or film` group in `test/watch_state_test.dart`.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
+   > **Movies and Series are rows, 2026-10-10.** One poster grid for the whole
+   > merged library meant scrolling past hundreds of Plex posters to reach a
+   > panel. Each tab is now a stack of horizontal rows, Netflix style: one per
+   > Plex library (named with the server too when more than one is connected,
+   > since two servers can each have a "Movies"), then one per panel category
+   > the user chose (§4.1), each ending in a *See all* tile that opens that row
+   > as the old grid (`/shelf`, `ShelfScreen`). A row shows its first 30 titles;
+   > a panel category can hold thousands. The section or category is stamped on
+   > each `CatalogItem.shelf` by the source that fetched it, because it is not
+   > recoverable once the sources are merged; it is kept in the library cache,
+   > and an item kept before the field existed falls under "Plex" or "IPTV"
+   > until the next refresh. **Sort and Unwatched only apply inside rows**, and
+   > a row that ends up empty is dropped. **The default sort is now Recently
+   > added** (was Title) so each row opens on what is new; someone who had
+   > picked a sort keeps it. **Tradeoffs:** rows are ordered by name (Plex first,
+   > then panels), not the order categories were chosen in, which is gone after
+   > the merge; dedupe (`dedupeLibrary`) still keeps one copy of a title across
+   > sources, so a film held by Plex and a panel appears only in its Plex row;
+   > a panel with no `added` field has its titles sorted last in a Recently
+   > added row. No toggle back to the single grid was built (decided not
+   > wanted, 2026-10-10). Pinned by `test/library_shelves_test.dart`.
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)
+   > **Search as built, 2026-10-08.** It queries every connected Plex server and
+   > every panel catalogue the user has chosen categories for (§4.1: a panel is
+   > matched locally on title, never fetched whole to be searched). Each result
+   > says "Movie" or "Series" beside its year, and Type, Source, Year (by decade)
+   > and Language chips narrow the grid. A chip is offered only when it could
+   > change the result, so Source appears once more than one source answers.
+   > **Language is a guess.** Neither `dart_plex` 0.1.2 nor a panel gives a
+   > language, so it is read from the panel *category name* ("EN | Movies",
+   > "Hindi Dubbed"; `category_language.dart`). Plex titles and unmarked
+   > categories have none and fall out of a language filter rather than being
+   > counted as any language. If `dart_plex` ever parses a Plex audio language,
+   > that is the better source and this should defer to it. Open question: whether
+   > panel category naming is consistent enough across providers for the guess to
+   > be worth keeping; only tested here against made-up names.
+   >
+   > **Hidden libraries and search, 2026-10-08.** Search used Plex's `/search`,
+   > which covers every library and says nothing about which one a hit came from,
+   > so a library set to *Hidden* in Settings → Sources still leaked into results
+   > (the Movies and Series tabs had always respected it). The obvious fix,
+   > `/hubs/search?sectionId=`, **does not work on the server tested**: different
+   > `sectionId`s returned identical, unscoped hubs. A library's own listing
+   > (`/library/sections/{id}/all`) with a `title` filter does scope, so search now
+   > asks each non-hidden library in turn (`PlexService.searchIn`). The cost is
+   > looser matching, since Plex reads that filter as "contains" ("man" finds
+   > "Mansion"), so results are ranked exact title, whole word, word start, then
+   > the rest (`rankByTitleMatch`). Plex's own per-library `hidden` flag was
+   > checked and is 0 for every library on the test server, so it is not what
+   > "hidden" means here.
+   >
+   > **TMDB enrichment, 2026-10-08.** Settings → Metadata takes the user's own TMDB
+   > key (secure storage only, §3; verified against TMDB before it is saved). With
+   > one, the first 120 search results are looked up on TMDB (title cleaned and
+   > matched by year, `title_match.dart`), adding Genre, Rating and *Original*
+   > language chips. The cache is its own Hive box and remembers misses for 14
+   > days. Matching prefers returning nothing to a wrong match: with a year, a hit
+   > must be within a year of it; without one, the title must match exactly.
+   > Original language is deliberately a separate chip from the guessed Language,
+   > because a dubbed copy has one and not the other. Lookups are for what is on
+   > screen, never a whole catalogue (a panel can hold ~70k titles, two requests
+   > each). The titles looked up leave the device for TMDB, which the pane says
+   > in plain words, and TMDB's attribution line is shown there as its terms ask.
+   > **Release dates in the background, 2026-10-09.** *Revises the "never a whole
+   > catalogue" rule above for one opt-in case.* With a TMDB key saved, Settings →
+   > Metadata offers **Release dates for your library**: a background job that
+   > looks up the release date of every title the person has *chosen to keep* (a
+   > chosen category on a panel, not the panel's 70k), and a **Release date** sort
+   > that uses it. What it does and does not do:
+   > - **Consent, not a preference.** Off until the person turns it on from a
+   >   dialog saying that it sends the title (and year) of *every* film and series
+   >   in the library to TMDB, not only the ones searched for, and that it also
+   >   fills in genre and rating. The moment is stored beside the switch
+   >   (`metadata.releaseDatesAt`). Removing the key withdraws it, so a new key
+   >   asks again. It is never copied to another device (§17.3).
+   > - **Bounded and polite.** Starts 4 s after the library loads, 3 workers
+   >   pausing 200 ms between requests (about 15 a second at most), at most 600
+   >   titles a run so a big library fills over several launches, and a streak of 6
+   >   failures (a rate limit, no network) ends the run and tells the person. Titles
+   >   with no year go first, since a date helps them most. One lookup per distinct
+   >   title, so the same film on Plex and on a panel is asked once.
+   > - **Kept, not re-asked.** The date lives in the TMDB cache with the rest of the
+   >   lookup (90 days). A record saved before dates existed has no date because
+   >   none was saved, which `TmdbInfo.releaseChecked` tells apart from "TMDB has
+   >   none"; it costs one request (details by the id already known), not two.
+   >   "TMDB has nothing for this title" is remembered 14 days, as for search.
+   > - **The sort.** Release date uses the exact date where there is one, else the
+   >   start of the title's year, so with nothing looked up it equals Year, and a
+   >   title with neither goes last. The sort sheet offers it only when a key is
+   >   saved. Dates reach the sort in batches of 40 so the list does not reorder
+   >   under someone browsing after every lookup; it can still move while a run is
+   >   in progress, which is the cost of not waiting for the whole library.
+   > - **Found on the Google TV emulator:** a fourth sort option made the sheet
+   >   overflow a 540 dp TV by 83 px, which in a release build silently clips the
+   >   *Unwatched only* row. The sheet is now scroll-controlled and scrolls.
+   > **"Because you watched", 2026-10-09.** The empty Search screen shows up to
+   > four rows, one per recently watched film, of titles TMDB recommends *that the
+   > user already has* (`matchRecommendations`): TMDB proposes and anything not in
+   > a connected source is dropped, so this stays a library-navigation aid and not
+   > a way to find things to acquire (§9.2). Seeds come from Plex's own watch
+   > state (any Plex app, present from first launch) and this device's history
+   > together. Episodes are not seeds, because history stores an episode's own
+   > title and not its show's; a series-aware seed needs the show title recorded.
+   > Already-watched titles are excluded, the same film on two sources shows once
+   > (Plex first), and with no TMDB key, no seeds or no match the plain search
+   > prompt shows instead.
+   >
+   > **AI provider layer and natural-language search, 2026-10-09.** One
+   > OpenAI-compatible client (`OpenAiCompatibleClient`) serves OpenRouter, OpenAI,
+   > Ollama and any other service speaking the Chat Completions format, per §9.1.
+   > Anthropic and Gemini need their own clients and are not built. One provider
+   > at a time. Settings → AI features tries the provider with a one-word request
+   > before saving it, keeps the key in secure storage only (§3), and records
+   > consent per feature and provider (`aiConsentProvider`, §9.3): the dialog names
+   > the provider and the data, and is skipped for a local address (private range,
+   > loopback or `.local`, decided from the address and not the preset). With a
+   > provider set, Search offers *Ask AI*: the query plus a numbered list of library
+   > titles and years (no ids, paths or source names) goes to the model, which
+   > answers with a JSON array of list numbers. The reply is read back only as
+   > numbers that exist on the list, so a title or a reply carrying instructions
+   > can at worst reorder picks. The list is capped at 700 titles (about 24 KB
+   > measured on an 800-title library), so a larger library is truncated, not
+   > ranked; that is the main limit to revisit. Genres are not in the list yet
+   > even when TMDB has them.
+   >
+   > **AI recommendations, 2026-10-09.** The empty Search screen, when a provider
+   > is set up, leads with *What should I watch?*. The model is shown the user's
+   > few most recently watched films and a numbered list of what they have **not**
+   > watched, and can only answer with numbers from that list, so it has nothing
+   > outside the library to recommend (§9.2). Watched titles are taken out of the
+   > list before it is sent, by Plex's play count and this device's history. It is
+   > a separate consent from natural-language search (§9.3). Watch signals are
+   > shared with the TMDB rows (`watch_signals.dart`) so both agree on what counts
+   > as watched; episodes still do not count.
+   >
+   > **Kept ready in the background, 2026-10-09.** It first ran when a button was
+   > pressed and took as long as the model did, which read as slow. Once allowed,
+   > picks are now prepared in advance: the last picks are stored (only item keys
+   > and a signature, under `ai.recs`) and shown the instant Search opens, and a
+   > newer set is fetched shortly after launch. That is background sending, so the
+   > consent dialog says so in its own words. What bounds it: nothing happens
+   > until recommendations are allowed for that provider; a refresh happens only
+   > when the recent films or the model changed, or the picks are over 24 hours
+   > old (`recommendationsStale`), so relaunching with nothing new sends nothing;
+   > and a failed attempt is not retried until the next launch, so a rejected key
+   > or a rate limit cannot become a loop. *Again* leaves the current picks out of
+   > the list so the answer actually differs. The cache is cleared with the
+   > provider. Pinned by `ai_recommendations_controller_test.dart`.
+   >
+   > **Two findings from running it against a real provider, 2026-10-09.**
+   > (1) *Reasoning models can return no answer.* An OpenRouter free model came
+   > back with `finish_reason: length`, `content: null` and a `reasoning` field: it
+   > spent its whole reply budget thinking. This was the earlier unexplained
+   > "nothing picked". The client now says so in words, the reply cap is 1500
+   > tokens (providers bill for tokens generated, not for the limit), and
+   > OpenRouter alone is sent `reasoning: {enabled: false}` (OpenAI's API rejects
+   > unknown fields). It is a request: a model that cannot run without reasoning
+   > ignores it, and the `openrouter/free` router picks a different model each
+   > time, so a fixed non-reasoning model is more dependable. (2) *The library
+   > loads differently from one launch to the next.* Each source has a 10 s
+   > timeout and a slow one is simply missing, so the same install produced
+   > libraries of 982 and 1124 items, the first with no watched films in it. A
+   > partial list is kept for the session with no retry, which starves anything
+   > built on it (here: the picks and the "because you watched" rows). The library
+   > was not cached across launches. **Resolved 2026-10-09:** see the library cache
+   > note below. Not done:
+   > subtitles and translation, Anthropic and Gemini, several providers at once.
+   >
+   > **Library cache, 2026-10-09.** Each tab's library is kept between launches,
+   > per source (`plex|<server>|<tab>`, `xtream|<account>|<catalogue>`) in its own
+   > Hive box (`library_cache`). Opening the app shows the kept library at once and
+   > the sources refresh it in the background (stale while revalidate,
+   > `loadLibrary`). A source that fails or times out keeps its kept answer in the
+   > merge instead of dropping out for the session, which was the 982-or-1124
+   > problem; a source's fetch therefore throws on failure and no longer returns an
+   > empty list, so "did not answer" and "has nothing" can be told apart. An
+   > answer made for other choices (a panel's categories) is not used as a stand-in.
+   > The timeout is 25 s when something is kept to show meanwhile and 10 s when
+   > nothing is. **§3:** a Plex poster is stored only as its unsigned server path
+   > (`CatalogItem.posterPath`) and signed again on read, because the signed image
+   > URL carries `X-Plex-Token`; `catalogItemToJson` drops any URL containing one,
+   > and the file on a device was checked and held no token and no transcode URL.
+   > **Kept bounded, 2026-10-09.** None of this may grow without limit, so: an
+   > entry older than 30 days is neither shown nor used as a stand-in, and is
+   > deleted when the box opens (`libraryCacheMaxAge`); TMDB records are pruned at
+   > 90 days (`tmdbCacheMaxAge`); each box is compacted once a launch, because Hive
+   > appends and a rewritten entry would otherwise linger, and so is the settings
+   > box, which the AI picks are rewritten into; removing a server or a panel (or
+   > signing out of Plex) deletes its entry at once (`forgetSourceCache`), and
+   > anything that slips past ages out; and Settings → Privacy and data has *Clear
+   > cached data*, which empties the library, TMDB and AI-pick caches and leaves
+   > sources, keys, settings and watch history alone. Limits: watch state is as old
+   > as the last refresh (so recently watched can lag until the background refresh
+   > lands); TMDB metadata is not part of the library cache (it has its own cache).
+   > `LibraryController` is an `AsyncNotifier`, not a `StreamProvider`: consumers
+   > read `.future` without listening, which never completes for a stream provider
+   > in this Riverpod version, and the fresh answer arrives after `build` has
+   > returned, so it can only `read`, never `watch`. Android's
+   > cleartext rules do not apply to this app's Dart sockets, so an `http://`
+   > LAN address for Ollama needs no manifest change.
 9. Settings — see §12.1 for the section breakdown
 
 ### 12.1 Settings sections
@@ -930,7 +1196,7 @@ version number describes contents while the **Play track** carries readiness,
 so the public launch is a track promotion rather than a version bump; and the
 ladder deliberately puts **Phase 3.5 (AI) last**, after Phase 4 and the Phase 6
 prerequisites, because nothing about a store submission depends on it whereas
-§12.1's About section does (§16's kill switch was on that list until
+§12.1's About section does (§16's kill switch, since dropped, was on that list until
 2026-09-21, when RELEASING.md withdrew it as a gate). The phase numbers below are
 still the map; the tag ladder is the schedule.
 
@@ -1015,7 +1281,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 | AI text generation | Custom dio-based clients per provider (Anthropic Messages API, OpenAI Chat Completions, Gemini `generateContent`); one shared client for generic-OpenAI-compatible + local endpoints |
 | AI transcription | OpenAI Whisper-style endpoint initially, **chunked under its 25 MB request cap** (§9.2). Audio extraction needs an ffmpeg binding — **`ffmpeg_kit_flutter` is discontinued and upstream `arthenica/ffmpeg-kit` is archived**; the community successor is `ffmpeg_kit_flutter_new`, but the post-retirement fork landscape is fragmented with no consensus winner, so pin a specific fork, vendor it if necessary, and have a platform-channel fallback in mind (§13 Phase 0) |
 | ffmpeg licensing | **Decided in Phase 0, not Phase 3.5** — media_kit bundles libmpv/ffmpeg, so the choice is made at engine selection (§10). Target an LGPL build, dynamically linked, with GPL-only encoders (x264/x265) excluded — this app decodes, it never encodes |
-| Crash reporting / kill switch | Firebase Crashlytics + Remote Config only — both work without Google Play Services, which Fire TV lacks (§11, §16). No Analytics, no FCM, no Auth, no Firestore |
+| Crash reporting | Firebase Crashlytics only — it works without Google Play Services, which Fire TV lacks (§11, §16). No Remote Config, no Analytics, no FCM, no Auth, no Firestore |
 | CI/build | GitHub Actions. Android goes to Play internal testing through `release.yml` with the `r0adkll/upload-google-play` action pinned to a commit, not fastlane, which it did not need for a single track ([RELEASING.md](RELEASING.md), 2026-09-13). iOS joined the same workflow on 2026-09-23 as a second job to TestFlight: `xcodebuild` with an App Store Connect API key and cloud-managed signing, not Xcode Cloud, so one tag and one run number drive both stores and the macOS minutes are free for a public repo (RELEASING.md, iOS: TestFlight). Verified by run 7 on 2026-09-23, which reached both stores. The Amazon Appstore (§11) is still undecided, and fastlane may yet earn its place there |
 
 ## 15. Testing plan
@@ -1032,7 +1298,6 @@ regardless of how finished it looks.
 - Manual device matrix: 1 real Android TV box, 1 Fire TV stick, 2 Android phones (different Android versions), 1–2 iOS devices, against at least 2 different real Xtream panels, one M3U source, one real Plex server (direct-play and forced-transcode content), one real SMB share (NAS or Windows PC), and each of the AI provider configurations (Anthropic, OpenAI, Gemini, a generic-compatible endpoint pointed at a real self-hosted server, and local Ollama) — behavior varies enough across all of these that "works on the emulator" tells you very little
 - Specifically verify SAF persisted folder permissions survive an app restart and a device reboot, not just the current session
 - Store-submission dry run: full App Store review-notes writeup (including the Advanced Sources disclosure, §8.4, and AI data-sharing disclosure per §9.3) and Play Console data-safety form filled out before the real submission, not during
-- **Kill-switch drill (§16)**: verify that flipping the remote Advanced Sources flag actually removes the Live TV tab, EPG screen, and Xtream/M3U account entries on a running install, and that the app behaves correctly when Remote Config is unreachable (fails to the last cached value, and to *enabled* on a fresh install that has never fetched — never trapping a paying user in a broken state because of a network blip)
 - **Transcription chunking (§9.2)**: verify chunk-boundary word handling and timestamp re-stitching against a file long enough to require many chunks, and that an interrupted job resumes from its checkpoint rather than restarting
 - **Credential storage (§3)**: assert by inspection that no secret material appears in the Hive/Isar files on disk
 
@@ -1042,16 +1307,16 @@ regardless of how finished it looks.
 
 §2 states the foundational decision: **this app has no backend.** That is a feature. It should be defended actively, because "just add a small server for X" is the kind of suggestion that arrives reasonably and compounds badly.
 
-### 16.1 The only two exceptions, and why they earn it
+### 16.1 The only exception, and why it earns it
 
-Two managed services are worth adopting. Both are free at this app's scale, both are Firebase, and both — critically — [work without Google Play Services](https://firebase.google.com/docs/android/android-play-services), which Fire TV lacks (§11).
+One managed service is worth adopting. It is free at this app's scale, it is Firebase, and — critically — it [works without Google Play Services](https://firebase.google.com/docs/android/android-play-services), which Fire TV lacks (§11).
 
-**Remote Config — a server-side kill switch for Advanced Sources.** This is the strongest backend argument in the entire document and the reason this section exists. §1.2 claims the IPTV feature "could be disabled via an update without touching the core app," but an App Store update is a multi-day review cycle. If a rights-holder complaint or a review threat arrives (§1.5 says to expect this as an operational reality, not a one-time gate), days is the wrong unit of response time. A remote flag gating an already-shipped feature flips in minutes.
-
-Implementation notes that matter:
-- The remote flag **ANDs with** the user's local toggle (§8.2) — it can force the feature off globally, but it never forces it *on* for a user who hasn't opted in.
-- Fail safe and fail *quiet*: cache the last fetched value, and on a fresh install that has never reached the network, default to the user's local setting. A network blip must not silently disable a working app.
-- **This does not touch Guideline 2.5.2.** That rule bars downloading and executing *code*; this is a boolean toggling a feature already present and disclosed in the reviewed binary. Remote configuration of shipped features is ordinary and universal. Worth stating explicitly since §1.4 draws a hard line on the code-download question and the distinction should not blur.
+**Remote Config kill switch: dropped, 2026-10-06.** This section used to adopt a
+Firebase Remote Config flag that could switch Advanced Sources off in minutes,
+ANDed with the user's local toggle (§8.2). It is no longer planned (#16 closed).
+§1.2's "disabled via an update" is the mechanism, and RELEASING.md records
+why a store update is fast enough on Play. Reopen it only if a complaint
+arrives that an update cannot answer in time, and argue it against §16.3.
 
 **Crashlytics — field crash reporting.** The app ships libmpv across phone, tablet, Android TV, Fire TV, and iOS, pointed at deliberately malformed streams from cheap panels. Field crashes here will not reproduce locally. Make it **opt-in** at first run to stay consistent with the privacy posture below, and declare it in Play Data Safety and Apple's privacy labels either way. The toggle lives in Settings → **Privacy and data** (§12.1), alongside the statement that the app has no backend — one screen where a user can see everything that does and does not leave the device.
 
@@ -1068,7 +1333,144 @@ Each of these looks locally reasonable and each would spend something the no-bac
 - **Analytics.** §13 Phase 6 commits to "no analytics/tracking that could be read as fingerprinting without disclosure." Adding it contradicts a stated goal and expands both stores' privacy declarations. Crashlytics is the bounded exception; general product analytics is not.
 - **Hosting content, catalogs, or provider directories of any kind.** See §8.3 — this is the line that protects the primary-purpose argument the entire §1 strategy depends on.
 
-The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does.
+The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does. **Moving settings between the user's own devices (§17) passes that test: it goes device to device on the local network, and we run nothing.** It is not the cross-device sync this section rules out, because it is a one-off copy the user starts on both screens, with nothing kept anywhere afterwards.
+
+---
+
+## 17. Moving settings to another device
+
+Added 2026-10-09. Setting up a TV by typing on it is the worst part of using this app there: a panel host, a username, a password and two API keys, entered with a D-pad (§11 records how hard even one text field was on the Chromecast). The way round it is to do the setup once, on a phone, and copy it.
+
+### 17.1 Shape
+
+Settings → **Move to another device** has two ends. The same pair is offered on Add a source ("Copy from another device"), because that is where a fresh TV lands.
+
+- **Receive** (usually the TV). Starts a short-lived HTTP listener on the LAN and shows a QR code, plus the address and a 16-character code for a device that cannot scan. Nothing is written until the person here has seen *what* arrived (by kind and count, never a host, username or key) and ticked what to keep.
+- **Send** (usually the phone). Lists what this device has, lets the person untick kinds, then scans the QR (or takes the address and code typed) and posts the bundle. The sender's call does not return until the receiver has **saved** it, so "Sent" on the phone means it is on the TV, and a failed save reaches the phone as a refusal.
+- **Either end can show the code instead** (§17.7), so a device with no camera is never made to scan or, by default, to type: a TV can send to a phone by showing the code and being scanned. Whoever shows the code, the data flows the same way and the receiver reviews it the same way.
+
+`lib/data/transfer/` is the protocol and format (no widgets; it still cannot run as plain Dart, because the bundle carries the stores' record types and those pull in the secure-storage package); `lib/features/transfer/` is the screens and `TransferService`, which reads and writes through the same stores and controllers the rest of the app uses, so a transferred account is stored exactly as a typed one is (§3).
+
+### 17.2 Security model
+
+The pairing secret is **never sent over the network**. It is shown on one screen and read by a camera or a person, and everything the sender transmits is AES-256-GCM sealed under a key derived from it (HKDF-SHA256). GCM is both confidentiality and authentication, so anyone else on the Wi-Fi who finds the port can neither read a message nor push one of their own: a message that does not open is refused with no hint why.
+
+- 80 bits of secret. Long enough that capturing one sealed message and guessing offline is not a plan, short enough to type.
+- The listener takes **one** bundle, lives at most 5 minutes (3 more for the person to answer), closes after 5 wrong tries, and exists only while the Receive screen does. Bodies over 2 MB are refused as they stream in.
+- The QR and the typed form accept a dotted-quad IPv4 address only. A name would let a crafted code point the sender, and the credentials with it, at any host.
+- **No key exchange on top.** A Diffie-Hellman round would protect nothing the secret does not already, since an attacker who can read the screen has the secret anyway.
+
+Not defended against: someone who can see the receiving screen (the code is on it) and is on the same network before the person scans. That is the same trust a Plex PIN asks for, and the five-try limit and single use bound it.
+
+### 17.3 What moves, and what deliberately does not
+
+| Moves | Left behind, and why |
+|---|---|
+| Playback and subtitle preferences, hidden words, the Plex library placement map | **The Advanced sources switch** and **onboarding state**. §8.2's acknowledgement is the person's, at the device that will use it; copying a "yes" would skip it. Accounts therefore arrive saved but hidden, and the receiver says so |
+| Xtream accounts with passwords, and the categories and channel picks chosen | **AI consent** (§9.3). It is per feature, per provider, per device. The provider and key arrive; the first feature to use them asks |
+| SMB shares with passwords | **Plex.** A Plex token is bound to the client identifier that requested it (`PlexSessionStore`), so a copied token cannot be assumed to work, and sharing one identifier across devices would make them one device to Plex. Linking Plex on a TV is already a code on the screen and nothing to type. **Not tested against a real server**, so this is a decision from the stored design rather than a measured failure |
+| The user's TMDB key | **Theme** (not persisted yet, so there is nothing to copy), **caches**, **watch history and favourites** (§16.3) |
+| The AI provider and key, unless it points at `localhost` | An AI provider at `localhost` or `127.x`: on a TV that would be the TV. Left out, and the sender says so |
+
+Same-id items are **replaced**, everything else on the receiver is **kept** (the Plex placement map is merged entry by entry, so a server only the receiver is linked to keeps its choices; a first version replaced the whole map, found and fixed the same day): copying a phone to a TV that already has one line does not delete the line. There is no "make the receiver identical" mode, because it would delete what the person cannot see being deleted.
+
+A preference crosses only if it is on `TransferPreferences`'s allowlist and has the right type, checked when the bundle is read and again when it is written. `test/transfer_service_test.dart` writes through the real controllers on a sending device and reads back on a receiving one, so a renamed storage key fails there rather than silently dropping out of transfers.
+
+### 17.4 Alternatives rejected
+
+- **mDNS discovery, no code.** Convenient, but it would let anything on the network offer to receive a TV's credentials, or push to it. It could still be added to *find* the receiver, with the code required either way.
+- **Export to a file, or to cloud storage.** A file is awkward to put on a TV, and anything cloud-hosted puts credentials on a server (§16.3).
+- **Typing a short code only.** Fine as the fallback, and it is: address plus 16 characters. A 4-6 character code would have to be rate-limited at the receiver and could not also be the encryption key.
+- **A PAKE** (so a short code could be strong). Right in principle, a dependency and a protocol to get wrong in practice, for a one-off copy between two devices in one room.
+- ~~**TV as the sender.** A TV has no camera, and the one thing it cannot do is type; the phone is the device with both.~~ **Superseded 2026-10-09 (§17.7).** The reasoning was sound for the first design, where the sender had to scan, and wrong as a ceiling: the fix was not to forbid a TV sending but to let the sender *show* the code and be scanned. A TV can now send with nothing typed, at the cost of an approval step on the sender.
+
+### 17.5 Platform notes
+
+- **Android camera.** The scanner (`mobile_scanner`, ML Kit bundled so it does not need Google Play Services, which Fire TV lacks) needs the `CAMERA` permission. `android.hardware.camera` and `.autofocus` are declared `required="false"` in the manifest: without that, the permission alone makes Play treat a camera as required and filter the app off every TV. Frames are read for a QR code and dropped; the Data safety form is unaffected because nothing is collected.
+- **iOS.** `NSCameraUsageDescription` added; `NSLocalNetworkUsageDescription` widened to cover this. The scanner and the listener are both prompt-gated on a real device.
+- **Windows and desktop** have no camera path in the sender; they type the code. Receiving works anywhere the app does.
+
+### 17.6 Open
+
+- **Never run between two real devices.** Everything above is exercised on loopback in tests (`transfer_protocol_test.dart` over a real socket, `transfer_screens_test.dart` driving both screens) and nothing else. See MANUAL_TESTING.md §6.
+- **Android's local-network permission.** Android is moving LAN access behind a runtime permission for apps that target a new enough SDK. This was not checked against this app's `targetSdk` or against the Pixel (Android 17) and Chromecast, and neither the listener nor the sender asks for such a permission. If it applies, the symptom is "could not reach" with both screens showing the right address. SMB (§7.2) reaches the LAN the same way and has the same exposure.
+- **Fire TV and Google TV listening.** Whether a TV accepts an inbound connection from a phone on the same Wi-Fi depends on the router (client isolation) as much as the app; the error text names the address so that can be told apart.
+- **The privacy policy** says the app has no backend and sends nothing to us. That stays true, but it does not yet mention device-to-device copying; add a sentence before the next policy revision.
+- **Plex on the receiving device** could be offered as part of a transfer if copying the account token plus client identifier proves safe. Measure first (link a token from one client identifier, use it from another).
+
+### 17.7 Either end can show the code
+
+Added 2026-10-09, after the first version, which had the **receiver always show the code and the sender always scan it**. That works for a TV receiving from a phone, and for nothing else a camera-less device might do: a TV *sending* to a phone could only type. Which device shows the code and which way the data flows are separate questions, so both are now a choice, and a device with no camera never has to scan.
+
+| Data flows | Code is shown by | Camera needed on |
+|---|---|---|
+| phone to TV | the TV (receiver), as before | the phone |
+| TV to phone | the TV (sender), new | the phone |
+| phone to phone | either | the one that scans |
+| either, no camera anywhere | either, typed | none |
+
+Each screen offers the other two ways: **Scan its code instead**, **Show a code instead** (or *Show my code*), and **Type the code instead**. The default is to scan on a device with a camera and to **show a code on a device without one**, so typing is the last resort and not the fallback it was.
+
+**How it works when the sender shows the code.** Nothing new is sent in the clear and the bundle still travels by the same sealed push. The sender runs a small listener (`TransferOfferServer`) that answers one question, `POST /callback`: "I scanned your code and am listening on port N, may I have your settings?". The receiver listens under the **scanned secret** (`TransferServer.start(secret:)`), so the one code seals the request and the bundle both, tells the sender its port, and the sender, if its person agrees, pushes to the address the request **came from** (never one the request named). The receiver then reviews exactly as it always did.
+
+**What this adds to the threat model, and the control for it.** When the receiver shows the code, a stranger who photographs it can only *push* at a screen that reviews and can decline: they learn nothing. When the **sender** shows it, the same stranger could be *given* the credentials, because scanning is asking. So:
+
+- **Every request waits for a person at the sender**, who sees the requester's address and the kinds of data (counts, never contents), and must press Send. "Not now" holds focus, so a stray select on a remote refuses. A refusal makes a fresh code, since the old one has answered once.
+- The receiver still reviews and can decline: two separate yeses.
+- The push goes to the connecting address, so a code cannot be used to make the sender push credentials to a third host.
+- The offer listener takes one request, lives at most 5 minutes (3 more to decide), and closes after 5 wrong tries, as the receiving one does.
+
+This is a real weakening against the original design: a person in the room who can see the screen and is quick enough to scan and be on the same Wi-Fi can *ask*, and it is the person at the sender who must notice that the address is not theirs. The dialog says "Only agree if you just asked for this on that device." It is the reason the approval exists and the reason it cannot be skipped.
+
+**Not seen on two real devices.** The protocol (`transfer_protocol_test.dart`, "the sender shows the code", including an end-to-end run through request, approval, push, review and save) and both screens (`transfer_screens_test.dart`, with a fake listener for the dialog and a real socket for the receiver joining) are tested on loopback. The camera is not.
+
+---
+
+## 18. Downloads: watching Plex titles with no network
+
+Added 2026-10-09. A film or episode from the user's own Plex server can be saved on the device and played with no network: a flight, a holiday, a TV in a house with bad Wi-Fi.
+
+### 18.1 Scope, and what is deliberately out
+
+**Plex only.** The reasoning, so nobody has to re-derive it:
+
+- **IPTV panels (Xtream) are excluded.** §1 and §8.3 rest on the app being a player that does not curate, host or copy a provider's catalogue. A "download from my provider" action is the thing a reviewer reads as piracy tooling, however it is meant. A panel's `max_connections` (§4) would also make a second fetch fail in a way that looks like a flaky provider. A *record what you are watching* feature for live channels was discussed (mpv can write the stream it is already playing, using no second connection) and set aside; if it comes back, it needs its own section, the §8.2 acknowledgement widened to cover recording, and a test that `stream-record` produces a playable file from the extensions a real panel serves.
+- **SMB and device files are excluded** for now: the file is already on a NAS or the phone, and copying a NAS file to a phone for a trip is a smaller, separate feature.
+- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list.
+
+### 18.2 How
+
+The original file, not a transcode. `PlexService.downloadSource` resolves the same Part key direct play streams (`/library/parts/{id}/{ts}/file.mkv`), so the server does no work beyond serving a file with byte ranges, and nothing in the existing direct-play findings (§6, §10) changes. A press-and-hold on a film or episode, in the library, a season list or the **Continue watching** row (added 2026-10-09: a title part-way through is the likeliest one to want a copy of, and those tiles took a tap and nothing else), offers **Download to this device**, or **Delete download** / **Cancel download** if one exists. The **Downloads** tab lists everything, with progress, size and runtime, and plays a finished one.
+
+Files live in the app's private support directory (not documents, which iOS exposes to the Files app and backs up). They are not exported or shareable out of the app.
+
+**Credentials (§3).** The URL that fetches a file carries the server's token, so it is built fresh from the live connection each time a download starts or resumes and is never stored. A `DownloadRecord` holds ids, the title, the unsigned artwork path (as history does), sizes and a state, and `downloads_test.dart` asserts the stored JSON contains no token and no URL.
+
+**Resuming.** The fetch continues a partial `.part` file with `Range: bytes=N-`. Three server behaviours are handled and tested against a real socket: a server that ignores `Range` and sends the whole file (start over, never append: appending would make a file twice as long), `416` at exactly the file's length (already complete), and `416` past it (the file changed: remove the partial and say so). A body that ends before the promised length is a dropped connection, not a finished file. On completion the size is compared with what Plex reported, and a mismatch deletes the file and fails, rather than keeping something that will stop part-way through.
+
+### 18.3 Foreground only, one at a time
+
+There is **no background service**. Downloads run while the app is open; closing it stops them, and what was running comes back **paused** with the partial file kept. The Downloads screen says so while anything is unfinished. One download runs at a time: several at once would split the server's upstream and the Wi-Fi between files none of which is watchable yet.
+
+This is the smaller first version on purpose. Real background transfer is a project of its own, and the platform halves are not alike:
+
+- **Android** needs a foreground service (a manifest permission, a notification, and a Play declaration of the service type).
+- **iOS** needs background `URLSession` transfers, which is the same decision §9.2 already lists as open for transcription. If that gets decided for transcription, downloads should reuse it.
+
+### 18.4 Playing a saved copy
+
+The player prefers a finished copy over the server's, online or not: no bandwidth, an instant start, and the only thing that works with no network. Everything about the title except the file comes from the record, because the server may not be reachable to ask. The resume point is taken from Plex if it answers within 3 seconds (another device may have watched on), otherwise from this device's own history. Progress is reported to Plex best-effort, as it already is, so watching offline simply does not reach the server.
+
+A saved copy outlives the connection to its server: removing the Plex server does not delete its downloads, and playing one with no connected server works, with no progress reported.
+
+### 18.5 Open
+
+- **Not run against a real Plex server or on a device.** Everything is tested against a local file server that behaves like Plex's part endpoint; whether a *shared* server (one the owner has not allowed downloads on) refuses `/library/parts` for download but serves it for streaming is not known. The engine reports a 401 or 403 as "the server would not let this device download that".
+- **Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does. A small offline queue is the obvious next piece.
+- **iOS backup.** The downloads directory is in Application Support, which iCloud backup includes unless excluded. Excluding it needs a native `isExcludedFromBackup` call that is not written.
+- **Storage limits.** There is no cap and no "remove after watching" yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space".
+- **Artwork** is not saved, so the Downloads list shows no posters offline.
+- **Library when offline.** Cached lists still show (§12, the library cache); tapping a title that is not downloaded fails with the player's usual error. A badge on downloaded titles, and an offline-only filter, are not built.
 
 ---
 
@@ -1160,19 +1562,15 @@ The test for any future proposal: *does this put our server in the path of user 
 
 ### Open — decide before the relevant phase
 
-- **§16 backend exceptions** — adopt Firebase Remote Config as the Advanced
-  Sources kill switch (recommended: the difference between a minutes-long and a
-  multi-day response to a takedown threat), and whether Crashlytics ships
-  opt-in. **Deferred out of the MVP, 2026-09-21:** neither ships in the first
-  Play release, so the MVP contains no Firebase at all. The kill switch stays
-  recommended and designed (§16.1, #16), but it is no longer a gate on
-  promotion; the reasoning, and when to revisit it (before Phase 5, or on the
-  first complaint), is in RELEASING.md under the ladder's second gate.
-  Everything else backend-shaped stays out; §16.3 is the standing
-  answer. **Tested once already, 2026-09-13:** issue #6 asked for Firebase
-  Analytics alongside Crashlytics, and Analytics was dropped rather than
-  §16.3 revised. #6 is now Crashlytics only. A future case for analytics has
-  to be argued against §16.3 here first, not in an issue.
+- **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
+  out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
+  the MVP contains no Firebase at all. **The Remote Config kill switch was
+  dropped, 2026-10-06** (§16.1, #16 closed). Everything else backend-shaped
+  stays out; §16.3 is the standing answer. **Tested once already,
+  2026-09-13:** issue #6 asked for Firebase Analytics alongside Crashlytics,
+  and Analytics was dropped rather than §16.3 revised. #6 is now Crashlytics
+  only. A future case for analytics has to be argued against §16.3 here first,
+  not in an issue.
 - ~~**iOS ATS position (§11)**~~ **Resolved 2026-09-23:** none of the three
   options is needed. ATS does not govern `dart:io` or libmpv's sockets, shown
   with a `URLSession` control that ATS did block (§11). Reopen only if
