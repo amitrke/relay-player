@@ -1245,6 +1245,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 - **The TV manifest and banner are already done**, ahead of this phase: `LEANBACK_LAUNCHER`, `android:banner`, and `leanback`/`touchscreen` as `required="false"`, with banners from `tool/tv_banner.py`. They were briefly held back on the theory that a TV-launchable app without D-pad focus traversal invited a Play review problem; that was wrong, because TV distribution is a separate per-form-factor opt-in in Play Console, whereas omitting leanback makes the app impossible to launch on a TV *at all* — there is no way to sideload and test on real hardware without it, which this phase depends on. What remains here is the UI: the leanback tree and D-pad focus.
 
 **Phase 5 — iOS port (1 week dev + review buffer)**
+- **Status, 2026-10-13:** the App Store listing is live (id6815342410, iPhone and iPad, iOS 15+), so the port and the first submission are done. How many review cycles it took was not recorded.
 - Background audio/PiP entitlements, App Store submission with careful review notes including the Advanced Sources disclosure (§8.4); budget for at least one rejection-and-resubmit cycle
 
 **Phase 6 — Store compliance hardening**

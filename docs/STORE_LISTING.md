@@ -19,6 +19,13 @@ into the console by hand. See #8 for when that should change.
 
 Progress against these forms is tracked in issue #11.
 
+**Status, 2026-10-13: both listings are live** (Play `com.subnext.relay`, App
+Store id6815342410). Sections below written before that, which speak of
+forms to submit or a review still to come, are the drafted answers as they
+stood then; the Play page currently shows the copy in
+`fastlane/metadata/android/en-US/` and "Data not collected" on both stores.
+The review outcomes themselves were not recorded here, which is a gap.
+
 ## The constraints that shape the copy
 
 1. **No provider names, and no IPTV framing** (`CLAUDE.md` §1, §8.3). Describe

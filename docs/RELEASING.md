@@ -13,6 +13,14 @@ That happens at closed, open and production testing, which is §13 Phase 6, and
 this pipeline is only the transport for it. Nothing here should be read as
 evidence that a build would pass review.
 
+**Status, 2026-10-13:** the app is no longer internal-only. Both public store
+listings load (Play `com.subnext.relay`, App Store id6815342410), so the
+paragraph above describes what the *internal* track is, not where the app
+stands. The dates of promotion and review outcomes were not recorded when they
+happened; the sections below still describe the pipeline as written, and
+anything in them that says "not yet published" or "nothing has been through
+review" was true when written and is not now.
+
 Written 2026-09-13. Steps marked **unverified** have not been run yet; update
 them with what actually happened, including the failures, when they are.
 
