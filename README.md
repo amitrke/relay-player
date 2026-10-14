@@ -4,15 +4,19 @@ A general-purpose media player that relays a stream from whatever source you
 point it at — a Plex server, a NAS or local files, or an optional IPTV
 provider — across Android phone/tablet, iOS, and Android TV/Fire TV.
 
-**Status: Android, in Play internal testing, not published.** Phase 0 closed
-on 2026-09-11. The app plays from Plex, device storage, folders you pick and
-SMB shares, with Advanced sources present but off by default. Builds go to
-Play's internal track, which reaches named testers only and is not reviewed.
-Nothing has been through store review, and iOS has never been built.
+[![Download on the App Store](https://img.shields.io/badge/App_Store-Download-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/app/id6815342410)
+[![Get it on Google Play](https://img.shields.io/badge/Google_Play-Get_it-000000?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.subnext.relay)
 
-Video has not yet been confirmed on a real Android device, and much else is
-built but unverified. [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) is the
-honest list. What each release contains, and what gates a wider audience, is
+**Status: published on Google Play and the App Store**, checked 2026-10-13.
+Both public listings load: Play at `com.subnext.relay`, and the App Store at
+id6815342410 (iPhone and iPad, iOS 15 or later). Phase 0 closed on 2026-09-11.
+The app plays from Plex, device storage, folders you pick and SMB shares, with
+Advanced sources present but off by default.
+
+Being on a store is not the same as being verified. Much of the app is built
+but has not been confirmed on real hardware, and
+[docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) is the honest list. What each
+release contains, and how a build moves from a test track to the public, is
 the ladder in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Documentation
@@ -27,7 +31,7 @@ the rest.
 - [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) - what has and has not been
   verified on real hardware
 - [docs/RELEASING.md](docs/RELEASING.md) - versioning, the release ladder, and
-  the Play internal-testing pipeline
+  the Play and TestFlight pipeline
 - [docs/STORE_LISTING.md](docs/STORE_LISTING.md) - listing copy and drafted
   answers for the Play Console forms
 
