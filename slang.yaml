@@ -1,0 +1,20 @@
+# Localisation (architecture.md §12.3). English is the base and the only
+# reviewed language; the others are drafts, see lib/i18n/README.md.
+#
+# Regenerate after editing any lib/i18n/*.i18n.json:
+#   dart run slang
+# test/i18n_test.dart fails if the generated code is stale or a draft has
+# drifted from the base.
+base_locale: en
+fallback_strategy: base_locale
+input_directory: lib/i18n
+input_file_pattern: .i18n.json
+output_directory: lib/i18n
+output_file_name: strings.g.dart
+string_interpolation: braces
+timestamp: false
+statistics: false
+# Not the default `t`: build methods here already use `t` for the theme
+# tokens (`final t = RelayTheme.of(context)`), and shadowing one with the
+# other would be a bug that compiles.
+translate_var: tr

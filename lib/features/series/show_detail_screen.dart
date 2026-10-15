@@ -14,6 +14,7 @@ import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
 import '../library/poster_grid.dart';
 import '../library/poster_tile.dart';
+import '../../i18n/strings.g.dart';
 
 /// (serverId, ratingKey). A ratingKey alone is ambiguous once more than one
 /// server is connected.
@@ -88,9 +89,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         ),
         data: (list) {
           if (list.isEmpty) {
-            return const LibraryEmptyState(
+            return LibraryEmptyState(
               icon: Icons.tv_outlined,
-              message: 'This show has no episodes on the server.',
+              message: tr.show.noEpisodes,
             );
           }
 
@@ -309,8 +310,10 @@ class _EpisodeRow extends ConsumerWidget {
     );
     final minutes = (total?.inMinutes ?? 0);
     final meta = switch (watch.progress) {
-      final p? when minutes > 0 => '${(minutes * (1 - p)).ceil()} min left',
-      _ when minutes > 0 => '$minutes min',
+      final p? when minutes > 0 => tr.units.minutesLeft(
+        m: (minutes * (1 - p)).ceil(),
+      ),
+      _ when minutes > 0 => tr.units.minutes(m: minutes),
       _ => null,
     };
 

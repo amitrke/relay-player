@@ -6,20 +6,26 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// The top-level destinations from the Home artboard's bottom bar, plus
 /// Downloads (§18), which is a destination of its own and not a corner of
 /// Settings because it is the one screen that has to be reachable with no
 /// network: a person opening the app on a plane goes straight there.
 enum ShellTab {
-  library('Library', Icons.video_library_outlined, Icons.video_library),
-  search('Search', Icons.search_outlined, Icons.search),
-  downloads('Downloads', Icons.download_outlined, Icons.download),
-  settings('Settings', Icons.settings_outlined, Icons.settings);
+  library(Icons.video_library_outlined, Icons.video_library),
+  search(Icons.search_outlined, Icons.search),
+  downloads(Icons.download_outlined, Icons.download),
+  settings(Icons.settings_outlined, Icons.settings);
 
-  const ShellTab(this.label, this.icon, this.selectedIcon);
+  const ShellTab(this.icon, this.selectedIcon);
 
-  final String label;
+  String get label => switch (this) {
+    library => tr.shell.library,
+    search => tr.shell.search,
+    downloads => tr.shell.downloads,
+    settings => tr.shell.settings,
+  };
   final IconData icon;
   final IconData selectedIcon;
 }
@@ -94,7 +100,7 @@ class _HomeShellState extends State<HomeShell> {
         backgroundColor: t.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(
-          'Exit Subnext Player?',
+          tr.shell.exitTitle,
           style: TextStyle(
             color: t.ink,
             fontSize: 18,
@@ -105,7 +111,7 @@ class _HomeShellState extends State<HomeShell> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: t.inkDim),
-            child: const Text('Exit'),
+            child: Text(tr.shell.exit),
           ),
           FilledButton(
             autofocus: true,
@@ -114,7 +120,7 @@ class _HomeShellState extends State<HomeShell> {
               backgroundColor: t.accent,
               foregroundColor: t.accentInk,
             ),
-            child: const Text('Stay'),
+            child: Text(tr.shell.stay),
           ),
         ],
       ),

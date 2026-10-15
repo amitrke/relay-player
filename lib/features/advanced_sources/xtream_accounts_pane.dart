@@ -6,6 +6,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import 'xtream_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// The configured lines, shown under Settings → Advanced sources.
 ///
@@ -75,9 +76,12 @@ class XtreamAccountsPane extends ConsumerWidget {
                     RelayFocusHalo(
                       borderRadius: BorderRadius.circular(10),
                       child: IconButton(
-                        tooltip: 'Remove',
-                        icon: Icon(Icons.delete_outline,
-                            color: t.inkDim, size: 20),
+                        tooltip: tr.xtream.remove,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: t.inkDim,
+                          size: 20,
+                        ),
                         onPressed: () => ref
                             .read(xtreamAccountsProvider.notifier)
                             .remove(account.id),
@@ -94,8 +98,10 @@ class XtreamAccountsPane extends ConsumerWidget {
                           onPressed: () => context.push(
                             '/advanced/xtream/${account.id}/categories/${c.name}',
                           ),
-                          child: Text(c.label,
-                              style: TextStyle(color: t.accent, fontSize: 13)),
+                          child: Text(
+                            c.label,
+                            style: TextStyle(color: t.accent, fontSize: 13),
+                          ),
                         ),
                       ),
                   ],
@@ -108,10 +114,7 @@ class XtreamAccountsPane extends ConsumerWidget {
           child: TextButton.icon(
             onPressed: () => context.push('/advanced/xtream/new'),
             icon: Icon(Icons.add, size: 18, color: t.accent),
-            label: Text(
-              'Add a playlist or panel',
-              style: TextStyle(color: t.accent),
-            ),
+            label: Text(tr.xtream.add, style: TextStyle(color: t.accent)),
           ),
         ),
       ],

@@ -4,6 +4,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../domain/models/catalog_item.dart';
 import '../library/poster_tile.dart';
 import 'suggestions_provider.dart';
+import '../../i18n/strings.g.dart';
 
 /// The empty Search screen: an optional [leading] section (the AI one, when a
 /// provider is set up), then the "Because you watched" rows.
@@ -24,7 +25,7 @@ class SuggestionsView extends StatelessWidget {
         ?leading,
         for (final row in rows) ...[
           RowHeading(
-            lead: 'Because you watched ',
+            lead: tr.search.becauseYouWatched,
             title: row.seedTitle,
             color: t.ink,
             dim: t.inkDim,

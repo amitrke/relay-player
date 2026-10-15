@@ -6,6 +6,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../library/poster_grid.dart';
 import 'local_network_tab.dart';
+import '../../i18n/strings.g.dart';
 
 /// What is inside one SAF folder: subfolders first, then videos.
 class SafFolderContents {
@@ -45,7 +46,7 @@ class SafFolderScreen extends ConsumerWidget {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: Text(title ?? 'Folder'),
+        title: Text(title ?? tr.local.folder),
       ),
       body: contents.when(
         loading: () => Center(child: CircularProgressIndicator(color: t.accent)),
@@ -53,15 +54,14 @@ class SafFolderScreen extends ConsumerWidget {
           icon: Icons.folder_off_outlined,
           // A SAF failure is usually a lost grant rather than a missing folder,
           // and saying so points at the fix instead of at the file system.
-          message: 'This folder is no longer readable. Android may have '
-              'dropped the permission — remove it and pick it again.\n\n$e',
+          message: tr.local.safUnreadable(error: '$e'),
           onRetry: () => ref.invalidate(safContentsProvider(uri)),
         ),
         data: (data) {
           if (data.isEmpty) {
-            return const LibraryEmptyState(
+            return LibraryEmptyState(
               icon: Icons.folder_outlined,
-              message: 'No videos or subfolders here.',
+              message: tr.local.safEmpty,
             );
           }
           return ListView(

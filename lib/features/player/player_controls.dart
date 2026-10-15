@@ -7,6 +7,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import 'engine/playback_engine.dart';
 import 'playback_prefs.dart';
+import '../../i18n/strings.g.dart';
 
 export 'engine/playback_engine.dart' show PlayerTransport;
 
@@ -401,7 +402,7 @@ class _TitleBar extends StatelessWidget {
         children: [
           _ChromeButton(
             icon: Icons.arrow_back,
-            tooltip: 'Back',
+            tooltip: tr.common.back,
             focusNode: backFocus,
             onPressed: onBack,
           ),
@@ -425,7 +426,7 @@ class _TitleBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                'LIVE',
+                tr.player.live,
                 style: TextStyle(
                   color: t.accentInk,
                   fontSize: 11,
@@ -475,7 +476,7 @@ class _TransportRow extends StatelessWidget {
             if (seekable)
               _ChromeButton(
                 icon: back,
-                tooltip: 'Back ${skip.inSeconds} seconds',
+                tooltip: tr.player.skipBack(seconds: skip.inSeconds),
                 onPressed: () => onSkip(-skip),
               ),
             const SizedBox(width: 16),
@@ -488,7 +489,7 @@ class _TransportRow extends StatelessWidget {
                   icon: playing
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_filled,
-                  tooltip: playing ? 'Pause' : 'Play',
+                  tooltip: playing ? tr.player.pause : tr.player.play,
                   size: 48,
                   focusNode: playFocus,
                   onPressed: transport.playOrPause,
@@ -499,7 +500,7 @@ class _TransportRow extends StatelessWidget {
             if (seekable)
               _ChromeButton(
                 icon: forward,
-                tooltip: 'Forward ${skip.inSeconds} seconds',
+                tooltip: tr.player.skipForward(seconds: skip.inSeconds),
                 onPressed: () => onSkip(skip),
               ),
           ],
@@ -518,7 +519,7 @@ class _TransportRow extends StatelessWidget {
               }
               return _ChromeButton(
                 icon: Icons.subtitles_outlined,
-                tooltip: 'Audio and subtitles',
+                tooltip: tr.player.tracks,
                 onPressed: onTracks,
               );
             },
@@ -612,7 +613,7 @@ class TrackSheet extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               children: [
                 if (audioFirst) ...[
-                  header('Audio'),
+                  header(tr.player.audio),
                   for (final (i, a) in audio.indexed)
                     row(
                       describeTrack(a.title, a.language, i),
@@ -622,9 +623,9 @@ class TrackSheet extends StatelessWidget {
                     ),
                 ],
                 if (subs.isNotEmpty) ...[
-                  header('Subtitles'),
+                  header(tr.player.subtitles),
                   row(
-                    'Off',
+                    tr.player.off,
                     subsOff,
                     () => transport.setSubtitleTrack(null),
                     autofocus: !audioFirst && subsOff,

@@ -30,6 +30,7 @@ import '../../features/settings/settings_route.dart';
 import '../../features/transfer/receive_screen.dart';
 import '../../features/transfer/send_screen.dart';
 import '../theme/theme_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Routes, with sign-in state as the only gate for now.
 ///
@@ -144,7 +145,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           categoryId: state.pathParameters['categoryId']!,
           args:
               state.extra as ChannelPickerArgs? ??
-              const ChannelPickerArgs(name: 'Channels', picked: []),
+              ChannelPickerArgs(
+                name: tr.xtream.picker.channels,
+                picked: const [],
+              ),
         ),
       ),
       GoRoute(

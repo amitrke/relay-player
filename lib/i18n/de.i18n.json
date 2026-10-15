@@ -1,0 +1,769 @@
+{
+  "common": {
+    "back": "Zurück",
+    "tryAgain": "Erneut versuchen",
+    "cancel": "Abbrechen",
+    "noDrm": "Kein DRM. Geschützte kommerzielle Kataloge wie Netflix oder Disney+ können nicht abgespielt werden."
+  },
+  "player": {
+    "shareGone": "Diese Freigabe ist nicht mehr eingerichtet.",
+    "shareFileGone": "Diese Datei liegt nicht mehr auf der Freigabe.",
+    "deviceFileGone": "Diese Datei ist nicht mehr auf diesem Gerät.",
+    "lineGone": "Dieser Zugang ist nicht mehr eingerichtet.",
+    "untitledVideo": "Video",
+    "untitledEpisode": "Folge",
+    "untitledFilm": "Film",
+    "untitledLive": "Live",
+    "channelFroze": "Dieser Sender ist stehen geblieben und nicht zurückgekommen.",
+    "channelNotResponding": "Dieser Sender antwortet nicht. Die Listen eines Panels sind der Wirklichkeit oft voraus, also versuch einen anderen oder denselben noch einmal.",
+    "didNotStart": "Die Wiedergabe ist nicht gestartet. Der Server ist vielleicht ausgelastet, oder die Datei muss transkodiert werden, was noch nicht unterstützt wird.",
+    "released": "Angehalten, während die App im Hintergrund war, damit die Verbindung für andere Geräte frei ist.",
+    "rejoin": "Wieder einsteigen",
+    "live": "LIVE",
+    "skipBack": "{seconds} Sekunden zurück",
+    "skipForward": "{seconds} Sekunden vor",
+    "pause": "Pause",
+    "play": "Abspielen",
+    "tracks": "Audio und Untertitel",
+    "audio": "Audio",
+    "subtitles": "Untertitel",
+    "off": "Aus",
+    "trackNumber": "Spur {n}"
+  },
+  "languages(map)": {
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "it": "Italienisch",
+    "pt": "Portugiesisch",
+    "nl": "Niederländisch",
+    "sv": "Schwedisch",
+    "no": "Norwegisch",
+    "da": "Dänisch",
+    "fi": "Finnisch",
+    "pl": "Polnisch",
+    "cs": "Tschechisch",
+    "hu": "Ungarisch",
+    "ro": "Rumänisch",
+    "el": "Griechisch",
+    "ru": "Russisch",
+    "uk": "Ukrainisch",
+    "tr": "Türkisch",
+    "ar": "Arabisch",
+    "he": "Hebräisch",
+    "hi": "Hindi",
+    "bn": "Bengalisch",
+    "pa": "Panjabi",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "ur": "Urdu",
+    "th": "Thailändisch",
+    "vi": "Vietnamesisch",
+    "id": "Indonesisch",
+    "zh": "Chinesisch",
+    "ja": "Japanisch",
+    "ko": "Koreanisch"
+  },
+  "subtitleSize": {
+    "small": "Klein",
+    "medium": "Mittel",
+    "large": "Groß"
+  },
+  "units": {
+    "minutes": "{m} Min.",
+    "hours": "{h} Std.",
+    "hoursMinutes": "{h} Std. {m} Min.",
+    "minutesLeft": "Noch {m} Min.",
+    "seconds": "{s} s"
+  },
+  "downloads": {
+    "empty": "Noch nichts heruntergeladen. Halte einen Film oder eine Folge aus deiner Plex-Mediathek gedrückt und wähle Herunterladen, dann schau es hier ohne Netz.",
+    "title": "Downloads",
+    "summary": {
+      "one": "{n} Eintrag · {size} auf diesem Gerät",
+      "other": "{n} Einträge · {size} auf diesem Gerät"
+    },
+    "pendingWatches": {
+      "one": "1 Wiedergabe von hier wartet darauf, an Plex gesendet zu werden.",
+      "other": "{n} Wiedergaben von hier warten darauf, an Plex gesendet zu werden."
+    },
+    "foregroundOnly": "Downloads laufen weiter, solange die App geöffnet ist. Beim Schließen werden sie pausiert, und nichts bereits Gespeichertes geht verloren.",
+    "downloadingBytes": "Wird heruntergeladen, {received}",
+    "downloadingPercent": "Wird heruntergeladen: {percent} % · {received} von {total}",
+    "queued": "Wartet, bis es an der Reihe ist",
+    "paused": "Pausiert",
+    "pausedAt": "Bei {percent} % pausiert · zum Fortsetzen auswählen",
+    "failed": "{error} Zum erneuten Versuchen auswählen.",
+    "failedUnknown": "Es wurde nicht fertig.",
+    "deleteTitle": "Diesen Download löschen?",
+    "cancelTitle": "Diesen Download abbrechen?",
+    "removeBody": "„{title}“ wird von diesem Gerät entfernt. Auf deinem Plex-Server bleibt es erhalten.",
+    "removeBodyFreeing": "„{title}“ wird von diesem Gerät entfernt, dadurch werden {size} frei. Auf deinem Plex-Server bleibt es erhalten.",
+    "keepIt": "Behalten",
+    "delete": "Löschen",
+    "errors": {
+      "serverNotConnected": "Dieser Server ist nicht verbunden. Verbinde ihn in den Einstellungen neu und setze dann fort.",
+      "sizeMismatch": "Die Datei hat nicht die Größe, die der Server gemeldet hat. Versuch es erneut.",
+      "cannotWrite": "Die Datei konnte nicht geschrieben werden. Vielleicht ist der Speicher des Geräts voll.",
+      "changedOnServer": "Die Datei hat sich auf dem Server geändert. Starte den Download neu.",
+      "refused": "Der Server erlaubt diesem Gerät nicht, das herunterzuladen.",
+      "status": "Der Server hat mit {code} geantwortet.",
+      "dropped": "Die Verbindung ist zwischendurch abgebrochen. Zum Weitermachen fortsetzen.",
+      "unreachable": "Der Server war nicht erreichbar. Prüfe die Verbindung und setze fort.",
+      "timeout": "Der Server hat zu lange nicht geantwortet."
+    },
+    "rule": {
+      "off": "Folgen heruntergeladen halten",
+      "keeping": {
+        "one": "Die nächste Folge bleibt heruntergeladen",
+        "other": "Die nächsten {n} Folgen bleiben heruntergeladen"
+      },
+      "explain": "Lädt die nächsten ungesehenen Folgen herunter und füllt sie beim Anschauen nach, solange die App geöffnet ist. Gesehene Folgen, die es heruntergeladen hat, werden entfernt.",
+      "choiceOff": "Aus",
+      "choice": {
+        "one": "Nächste Folge",
+        "other": "Nächste {n} Folgen"
+      }
+    }
+  },
+  "watchActions": {
+    "everyEpisode": " (alle Folgen)",
+    "markWatched": "Als gesehen markieren{scope}",
+    "markUnwatched": "Als ungesehen markieren{scope}",
+    "download": "Auf dieses Gerät herunterladen",
+    "deleteDownload": "Download löschen",
+    "cancelDownload": "Download abbrechen",
+    "removeFavourite": "Aus Favoriten entfernen",
+    "addFavourite": "Zu Favoriten hinzufügen",
+    "removeResume": "Aus Weiterschauen entfernen",
+    "downloading": "Wird heruntergeladen. Siehe Tab Downloads.",
+    "markedOffline": "Hier als gesehen markiert. Plex erfährt es, sobald es erreichbar ist.",
+    "plexRefused": "Plex hat das nicht angenommen. Der Server ist vielleicht offline."
+  },
+  "show": {
+    "noEpisodes": "Diese Serie hat keine Folgen auf dem Server."
+  },
+  "shell": {
+    "library": "Mediathek",
+    "search": "Suche",
+    "downloads": "Downloads",
+    "settings": "Einstellungen",
+    "exitTitle": "Subnext Player beenden?",
+    "exit": "Beenden",
+    "stay": "Bleiben"
+  },
+  "resume": {
+    "upNext": "Als Nächstes",
+    "title": "Weiterschauen",
+    "remove": "Aus Weiterschauen entfernen"
+  },
+  "library": {
+    "placement": {
+      "movies": "Filme",
+      "series": "Serien",
+      "hidden": "Ausgeblendet"
+    },
+    "tab": {
+      "movies": "Filme",
+      "series": "Serien",
+      "localNetwork": "Lokal & Netzwerk",
+      "liveTv": "Live-TV",
+      "emptyMovies": "Keine Filme auf diesem Server.",
+      "emptySeries": "Keine Serien auf diesem Server.",
+      "emptyLocalNetwork": "Noch keine Ordner oder Netzwerkfreigaben.\nGerätespeicher und SMB-Freigaben lassen sich in dieser Version nicht verbinden.",
+      "emptyLiveTv": "Keine Playlist und kein Panel eingerichtet.\nFüge eines in den Einstellungen hinzu, sobald Erweiterte Quellen aktiviert ist.",
+      "countMovies": {
+        "one": "{n} Film",
+        "other": "{n} Filme"
+      },
+      "countSeries": {
+        "one": "{n} Serie",
+        "other": "{n} Serien"
+      },
+      "countItems": {
+        "one": "{n} Eintrag",
+        "other": "{n} Einträge"
+      },
+      "countChannels": {
+        "one": "{n} Sender",
+        "other": "{n} Sender"
+      }
+    },
+    "serverTimeout": "{server} hat nicht innerhalb von {seconds} Sekunden geantwortet. Er ist vielleicht im Ruhezustand oder nicht im Netzwerk.",
+    "allWatched": "In Filme ist alles gesehen.",
+    "showAll": "Alle anzeigen",
+    "noSources": "Noch keine Quellen verbunden.",
+    "nothingIn": "Noch nichts in {tab}.",
+    "addSource": "Quelle hinzufügen",
+    "sortFiltered": "{sort} · Ungesehen",
+    "sortBy": "Sortieren nach",
+    "unwatchedOnly": "Nur ungesehene",
+    "shelf": {
+      "seeAll": "Alle ansehen",
+      "titles": {
+        "one": "{n} Titel",
+        "other": "{n} Titel"
+      },
+      "gone": "Hier ist nichts mehr."
+    },
+    "sort": {
+      "title": "Titel",
+      "recentlyAdded": "Zuletzt hinzugefügt",
+      "year": "Jahr",
+      "releaseDate": "Erscheinungsdatum"
+    },
+    "tile": {
+      "series": "Serie",
+      "movie": "Film",
+      "watched": "Gesehen",
+      "percentWatched": "{percent} % gesehen"
+    }
+  },
+  "liveTv": {
+    "group": {
+      "favourites": "Favoriten",
+      "numbered": "Kategorie {n}",
+      "other": "Sonstige"
+    },
+    "noPanel": "Keine Playlist und kein Panel eingerichtet.",
+    "addOne": "Hinzufügen",
+    "noCategories": "Noch keine Kategorien ausgewählt.\nPanels haben Zehntausende Sender, deshalb lädt Subnext Player nur die, die du auswählst.",
+    "chooseCategories": "Kategorien auswählen",
+    "noChannels": "Diese Kategorien haben keine Sender geliefert.",
+    "noMatch": "Kein Sender passt zu „{query}“.",
+    "searchHint": {
+      "one": "{n} Sender durchsuchen",
+      "other": "{n} Sender durchsuchen"
+    },
+    "all": "Alle"
+  },
+  "ai": {
+    "picks": {
+      "yourProvider": "deinen Anbieter",
+      "ask": "Was soll ich schauen?",
+      "askExplain": "Lass {provider} aus deiner eigenen Mediathek auswählen.",
+      "pickedBy": "Für dich ausgewählt von ",
+      "updating": "Wird aktualisiert",
+      "again": "Noch mal",
+      "preparing": "Deine Vorschläge werden vorbereitet..."
+    },
+    "search": {
+      "asking": "{provider} wird gefragt...",
+      "searching": "Deine Mediathek wird durchsucht... {searched} von {covered} Titeln",
+      "emptyLibrary": "In deiner Mediathek gibt es noch nichts zu durchsuchen.",
+      "notFound": "Das Modell hat unter {total} Titeln nichts Passendes gefunden. Beschreib es mal anders.",
+      "notFoundFirst": "Das Modell hat unter den ersten {covered} von {total} Titeln nichts Passendes gefunden. Beschreib es mal anders.",
+      "stillSearching": "Suche läuft noch: {searched} von {covered} Titeln",
+      "searchedFirst": "Die ersten {covered} von {total} Titeln wurden durchsucht",
+      "pickedFor": "Von {provider} ausgewählt für „{query}“",
+      "searchAgain": "Erneut suchen",
+      "partsFailed": "{failed} von {parts} Teilen konnten nicht durchsucht werden, daher wurde ein Teil deiner Mediathek nicht angesehen. Der Anbieter begrenzt vielleicht die Anfragen"
+    },
+    "presetOther": "Andere",
+    "hintOpenRouter": "Modell-IDs stehen unter openrouter.ai/models. Kostenlose enden auf \":free\".",
+    "hintOllama": "Verwende die Adresse deines Computers in diesem Netzwerk, zum Beispiel http://192.168.1.20:11434/v1. Nichts verlässt dein Netzwerk.",
+    "hintCustom": "Jeder Dienst, der das Chat-Format von OpenAI spricht.",
+    "feature": {
+      "naturalSearch": "Suche in natürlicher Sprache",
+      "naturalSearchSends": "Dein Suchtext sowie die Titel und Jahre in deiner Mediathek.",
+      "naturalSearchTiming": "Eine große Mediathek wird in mehreren Anfragen mit je einigen hundert Titeln gesendet, eine Suche stellt also mehr als eine.",
+      "recommendations": "Empfehlungen",
+      "recommendationsSends": "Die Filme, die du zuletzt gesehen hast, sowie Titel und Jahre dessen, was du in deiner Mediathek noch nicht gesehen hast.",
+      "recommendationsTiming": "Vorschläge werden kurz nach dem Öffnen der App im Hintergrund vorbereitet, aber nur, wenn sich geändert hat, was du gesehen hast, oder sie älter als einen Tag sind, also nicht bei jedem Start."
+    },
+    "errors": {
+      "ranOutThinking": "Dem Modell ist beim Nachdenken der Platz für die Antwort ausgegangen, und es hat nie geantwortet. Ein Modell, das nicht erst „nachdenkt“, funktioniert besser.",
+      "empty": "Das Modell hat eine leere Antwort geschickt.",
+      "rejectedKey": "Der Anbieter hat diesen Schlüssel abgelehnt{suffix}.",
+      "noCredit": "Der Anbieter meldet, dass dieses Konto kein Guthaben mehr hat{suffix}.",
+      "unknownModel": "Der Anbieter kennt dieses Modell oder diese Adresse nicht{suffix}.",
+      "rateLimited": "Der Anbieter drosselt diesen Schlüssel. Versuch es gleich noch einmal{suffix}.",
+      "serverError": "Beim Anbieter ist ein Problem aufgetreten (HTTP {status}){suffix}.",
+      "timeout": "Der Anbieter hat zu lange nicht geantwortet.",
+      "unreachable": "Der Anbieter war nicht erreichbar. Prüfe die Adresse.",
+      "failed": "Die Anfrage ist fehlgeschlagen{suffix}.",
+      "failedStatus": "Die Anfrage ist fehlgeschlagen (HTTP {status}){suffix}.",
+      "fillIn": "Gib die Adresse und das Modell an.",
+      "needsKey": "Dieser Anbieter braucht einen API-Schlüssel.",
+      "notSetUp": "Es ist kein KI-Anbieter eingerichtet.",
+      "searchOff": "Die Suche in natürlicher Sprache ist für diesen Anbieter ausgeschaltet.",
+      "searchFailed": "Die Suche ist fehlgeschlagen.",
+      "noSignal": "Schau zuerst einen Film, damit es etwas gibt, worauf Vorschläge aufbauen können.",
+      "noPicks": "Das Modell hat diesmal nichts ausgewählt."
+    },
+    "consentTitle": "Daten an {provider} senden?",
+    "consentBody": "{feature} sendet Folgendes an {provider}: {sends}",
+    "consentTail": "Es geht direkt von diesem Gerät dorthin, nie über uns. Du kannst das in Einstellungen, KI-Funktionen wieder ausschalten.",
+    "notNow": "Nicht jetzt",
+    "allow": "Erlauben"
+  },
+  "search": {
+    "filters": {
+      "decadeOldest": "{decade}er und früher",
+      "decade": "{decade}er",
+      "type": "Art",
+      "movies": "Filme",
+      "series": "Serien",
+      "source": "Quelle",
+      "unknownSource": "Unbekannte Quelle",
+      "year": "Jahr",
+      "language": "Sprache",
+      "languageNote": "Aus IPTV-Kategorienamen erraten. Plex-Titel haben hier keine Sprache.",
+      "genre": "Genre",
+      "rating": "Bewertung",
+      "ratingNote": "TMDB-Nutzerbewertung von 10. Titel ohne TMDB-Bewertung werden ausgelassen.",
+      "originalLanguage": "Originalsprache",
+      "originalLanguageNote": "Die Sprache, in der der Titel gedreht wurde, laut TMDB. Eine synchronisierte Fassung behält hier ihre Originalsprache.",
+      "clear": "Zurücksetzen",
+      "noMatches": "Nichts passt zu diesen Filtern.",
+      "clearAll": "Filter zurücksetzen",
+      "chip": "{label}: {value}",
+      "any": "Beliebig"
+    },
+    "hint": "Deine Quellen durchsuchen",
+    "prompt": "Durchsuche Filme und Serien auf deinem Server.",
+    "keepTyping": "Weiter tippen…",
+    "noMatch": "Nichts passt zu „{query}“.",
+    "backToResults": "Zurück zu den Ergebnissen",
+    "askAi": "KI fragen",
+    "becauseYouWatched": "Weil du gesehen hast: "
+  },
+  "settings": {
+    "about": {
+      "versionLoading": "Version …",
+      "version": "Version {version} ({build})",
+      "privacyPolicy": "Datenschutzerklärung",
+      "privacySummary": "Kein Konto, kein eigener Server und keine Analyse. Die vollständige Erklärung steht unter:",
+      "licences": "Open-Source-Lizenzen"
+    },
+    "privacy": {
+      "summary": "Subnext Player hat keinen eigenen Server und keine Analyse. Was es speichert, bleibt auf diesem Gerät, und Daten gehen nur an die Quellen, an TMDB und an den KI-Anbieter, die du selbst verbindest.",
+      "cachedData": "Zwischengespeicherte Daten",
+      "cachedExplain": "Deine Mediathekslisten, TMDB-Abfragen und KI-Vorschläge werden gespeichert, damit die App schnell öffnet. Alte Einträge löschen sich selbst, nach 30 Tagen bei einer Mediathek und nach 90 bei einer Abfrage, und die Daten einer Quelle verschwinden, wenn du sie entfernst. Jetzt zu leeren lässt deine Quellen, Schlüssel, Einstellungen und deinen Verlauf unberührt, und alles wird bei Bedarf neu geladen.",
+      "clearing": "Wird geleert...",
+      "clear": "Zwischenspeicher leeren",
+      "cleared": "Geleert. Deine Mediathek wird neu geladen."
+    },
+    "playback": {
+      "skip": "Zurück- und vorspringen",
+      "skipExplain": "Die Sprungtasten, die Vor- und Rückspultasten einer Fernbedienung und der erste Schritt beim Bewegen auf der Zeitleiste.",
+      "audioLanguage": "Bevorzugte Audiosprache",
+      "audioLanguageExplain": "Wird verwendet, wenn eine Datei mehr als eine Audiospur hat. Sonst läuft die Standardspur der Datei.",
+      "fileDefault": "Standard der Datei",
+      "showSubtitles": "Untertitel anzeigen",
+      "showSubtitlesExplain": "Einschalten, wenn eine Datei welche hat. Im Player kannst du jederzeit wechseln.",
+      "subtitleLanguage": "Bevorzugte Untertitelsprache",
+      "subtitleLanguageExplain": "Hat eine Datei keine Untertitel in dieser Sprache, werden keine angezeigt.",
+      "any": "Beliebig",
+      "size": "Größe",
+      "sizeExplain": "Für Textuntertitel wie SRT und ASS."
+    },
+    "metadata": {
+      "consent": "Dabei wird bei TMDB das Erscheinungsdatum jedes Films und jeder Serie in deiner Mediathek abgefragt, im Hintergrund und immer nur ein paar auf einmal. Dazu wird von jedem der Titel (und das Jahr, falls vorhanden) von diesem Gerät an TMDB gesendet, und an niemanden sonst, nicht nur die, nach denen du suchst. Außerdem werden Genre und Bewertung für die Filter ergänzt. Die Ergebnisse bleiben 90 Tage auf diesem Gerät, und bereits abgefragte Titel werden nicht noch einmal abgefragt.\n\nDu kannst das jederzeit ausschalten. Wenn du deinen TMDB-Schlüssel entfernst, wird es ebenfalls ausgeschaltet.",
+      "consentTitle": "Titel deiner Mediathek an TMDB senden?",
+      "notNow": "Nicht jetzt",
+      "lookThemUp": "Abfragen",
+      "waiting": "Warte, bis deine Mediathek geladen ist.",
+      "stopped": "Pausiert: TMDB antwortet nicht mehr. Es geht beim nächsten Öffnen der App weiter, und was gefunden wurde, bleibt erhalten.",
+      "running": "{settled} von {total} Titeln abgefragt.",
+      "partial": "{settled} von {total} Titeln abgefragt. Der Rest folgt beim nächsten Öffnen der App.",
+      "done": "Fertig: {found} Erscheinungsdaten für {total} Titel gefunden.",
+      "releaseDates": "Erscheinungsdaten für deine Mediathek",
+      "releaseDatesExplain": "Ergänzt im Hintergrund genaue Erscheinungsdaten, damit Sortieren nach Erscheinungsdatum deine Mediathek richtig ordnen kann, auch Titel ohne Jahr. Sendet jeden Titel deiner Mediathek an TMDB.",
+      "intro": "Verbinde deinen eigenen TMDB-Schlüssel, um Suchergebnisse um Genre, Bewertung und Originalsprache zu ergänzen und Vorschläge auf Basis dessen zu erhalten, was du gesehen hast. Das ist optional, und nichts ändert sich, bis du einen hinzufügst.",
+      "keyExplain": "Die abgefragten Titel werden von diesem Gerät an TMDB gesendet, und an niemanden sonst. Erstelle einen kostenlosen Schlüssel in deinem TMDB-Konto unter Einstellungen, API. Der kurze Schlüssel und das lange Lesezugriffstoken funktionieren beide. Auf einem Fernseher ist es einfacher, ihn zuerst auf einem Handy oder Computer einzufügen oder einzutippen.",
+      "keySaved": "TMDB-Schlüssel gespeichert",
+      "removeKey": "Schlüssel entfernen",
+      "keyLabel": "TMDB-API-Schlüssel",
+      "checking": "Wird geprüft...",
+      "verify": "Prüfen und speichern",
+      "errors": {
+        "rejected": "TMDB hat diesen Schlüssel abgelehnt.",
+        "rateLimited": "TMDB drosselt die Anfragen dieses Geräts.",
+        "unreachable": "TMDB war nicht erreichbar ({type})."
+      }
+    },
+    "ai": {
+      "intro": "Verbinde deinen eigenen Anbieter und deinen eigenen Schlüssel. Anfragen gehen direkt von diesem Gerät an den gewählten Anbieter, nie über uns, denn dazwischen gibt es keinen Server von uns. Es wird nichts gesendet, bevor du unten eine Funktion erlaubst.",
+      "address": "Adresse",
+      "model": "Modell",
+      "keyOptional": "API-Schlüssel (optional bei einem lokalen Server)",
+      "key": "API-Schlüssel",
+      "trying": "Wird ausprobiert...",
+      "testAndSave": "Testen und speichern",
+      "onNetwork": "In deinem Netzwerk",
+      "keySaved": "Schlüssel gespeichert",
+      "remove": "Anbieter entfernen",
+      "maySend": "Was gesendet werden darf",
+      "localNoConsent": "Dieser Anbieter ist in deinem eigenen Netzwerk, also erreicht nichts Dritte, und es ist keine Einwilligung nötig.",
+      "sendsTo": "Sendet an {provider}: {sends}",
+      "allowedOn": "Erlaubt am {date}",
+      "notAllowed": "Noch nicht erlaubt. Du wirst beim ersten Mal gefragt.",
+      "switchOff": "Ausschalten",
+      "allow": "Erlauben"
+    },
+    "appearance": {
+      "palette": {
+        "system": "System",
+        "midnight": "Mitternacht",
+        "slate": "Schiefer",
+        "daylight": "Tageslicht",
+        "amber": "Bernstein"
+      },
+      "theme": "Design",
+      "accent": "Akzentfarbe"
+    },
+    "section": {
+      "sources": "Quellen",
+      "appearance": "Darstellung",
+      "playback": "Wiedergabe",
+      "subtitles": "Untertitel",
+      "metadata": "Metadaten",
+      "aiFeatures": "KI-Funktionen",
+      "advancedSources": "Erweiterte Quellen",
+      "transfer": "Auf ein anderes Gerät übertragen",
+      "privacy": "Datenschutz und Daten",
+      "about": "Über"
+    },
+    "advanced": {
+      "dialogTitle": "Erweiterte Quellen einschalten",
+      "dialogLead": "Du bist dabei, einen Drittanbieter mit deinen eigenen Zugangsdaten zu verbinden.",
+      "dialogNoContent": "Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.",
+      "dialogRights": "Du bist dafür verantwortlich, die Rechte an allem zu haben, womit du dich verbindest.",
+      "dialogConfirm": "Verstanden, einschalten",
+      "toggle": "IPTV-Anbieter oder Playlist",
+      "toggleExplain": "Fügt Live-TV und Xtream-Codes-Anmeldungen hinzu.",
+      "offKeeps": "Später ausschalten blendet Live-TV aus, behält aber hinzugefügte Konten."
+    },
+    "sources": {
+      "noServers": "Keine Plex-Server verbunden.",
+      "remove": "Entfernen",
+      "loadFailed": "Mediatheken dieses Servers konnten nicht geladen werden.\n\n{error}",
+      "lookForMore": "Nach weiteren Servern suchen",
+      "addAnother": "Weiteren Server hinzufügen",
+      "yours": "Deiner",
+      "shared": "Mit dir geteilt",
+      "viaRelay": "über Relay",
+      "plexType": "Plex-Typ: {type}",
+      "changedByYou": "von dir geändert"
+    }
+  },
+  "onboarding": {
+    "tagline": "Spiel ab, was deine verbundenen Quellen bieten.",
+    "blurb": "Subnext Player spielt aus Quellen ab, die du selbst verbindest: einem Plex-Server, einem NAS zu Hause oder lokalen Dateien, oder optional einem IPTV-Anbieter oder einer Playlist. Wir hosten keine Inhalte.",
+    "localDesktop": "Dateien auf diesem PC oder ein Ordner auf einem NAS zu Hause oder einer SMB-Freigabe.",
+    "localTv": "Ein Ordner auf einem NAS zu Hause oder einer SMB-Freigabe.",
+    "local": "Videos auf diesem Gerät oder ein Ordner auf einem NAS zu Hause oder einer SMB-Freigabe.",
+    "plexTv": "Melde dich auf diesem Fernseher mit deinem eigenen Konto an.",
+    "plex": "Deine persönliche Mediathek, mit deinem eigenen Konto.",
+    "advancedTv": "Standardmäßig aus. In den Einstellungen einschalten.",
+    "advanced": "Standardmäßig aus. In den Einstellungen einschalten, um einen IPTV-Anbieter oder eine Playlist zu nutzen.",
+    "localTitle": "Lokal & Netzwerk",
+    "advancedTitle": "Erweiterte Quellen",
+    "addFirst": "Erste Quelle hinzufügen",
+    "notNow": "Nicht jetzt",
+    "connect": "Quelle verbinden",
+    "addSource": "Quelle hinzufügen",
+    "okKey": "OK",
+    "toSelect": "zum Auswählen"
+  },
+  "addSource": {
+    "privacy": "Zugangsdaten bleiben auf diesem Gerät. Nichts wird an uns gesendet: Es gibt kein Konto und keinen Server dazwischen.",
+    "kind": {
+      "plex": "Plex-Server",
+      "plexShort": "Mit Code verknüpfen",
+      "plexLong": "Gib dieses Gerät in deinem Browser frei. Dein eigener Server und alles, was mit dir geteilt wird.",
+      "localFiles": "Videos auf diesem Gerät",
+      "localFilesSub": "Durchsuche deine Medienbibliothek oder wähle einen einzelnen Ordner, auf den der Zugriff bleiben soll.",
+      "localFilesIos": "Spiel die Videos aus deiner Fotomediathek ab.",
+      "smb": "Netzwerkfreigabe (SMB)",
+      "smbSub": "Ein NAS oder eine Windows-Freigabe in deinem Heimnetz.",
+      "xtream": "Xtream-Codes-Anmeldung",
+      "xtreamSub": "Host, Benutzername und Passwort von deinem Anbieter."
+    },
+    "copyFromDevice": "Von einem anderen Gerät kopieren",
+    "copyFromDeviceSub": "Schon auf deinem Handy eingerichtet? Schick es hierher, statt alles neu einzutippen.",
+    "title": "Quelle hinzufügen",
+    "advanced": "Erweiterte Quellen",
+    "or": "Oder",
+    "advancedHintLead": "Suchst du einen IPTV-Anbieter oder eine Playlist? Schalte ",
+    "advancedHintTail": " in den Einstellungen ein.",
+    "sourceType": "Art der Quelle",
+    "plexRail": "Mit einem Code verknüpfen",
+    "pcFiles": "Dateien auf diesem PC",
+    "pcFilesSub": "Ordner auswählen",
+    "smbRail": "NAS oder Windows-Freigabe",
+    "copyRail": "Vom Handy aus senden",
+    "keystore": "Zugangsdaten werden im Schlüsselspeicher des Geräts abgelegt, nie in der Datenbank der App.",
+    "pick": "Wähle zum Start eine Art von Quelle."
+  },
+  "plex": {
+    "connected": "Plex verbunden.",
+    "connectedTo": "Mit {name} verbunden.",
+    "opening": "Verbunden. Deine Mediathek wird geöffnet…",
+    "connect": "Mit Plex verbinden",
+    "explain": "Subnext Player spielt ab, was dein eigener Plex-Server bereits hat. Es wird nichts hochgeladen, und deine Kontodaten erreichen niemanden außer Plex.",
+    "contacting": "Plex wird kontaktiert…",
+    "enterCode": "Öffne auf einem beliebigen Gerät plex.tv/link und gib ein:",
+    "waiting": "Warte auf Freigabe…",
+    "copyCode": "Code kopieren",
+    "chooseServer": "Server auswählen",
+    "allConnected": "Alle Server dieses Kontos sind bereits verbunden.",
+    "yourServers": "Deine Server",
+    "sharedWithYou": "Mit dir geteilt",
+    "connecting": "Wird verbunden… das kann ein paar Sekunden dauern",
+    "offline": "Offline",
+    "relayOnly": "Nur über Plex Relay, die Wiedergabe kann eingeschränkt sein",
+    "codeExpired": "Dieser Code ist abgelaufen. Versuch es erneut.",
+    "noServers": "Dieses Konto hat keine Plex-Server.",
+    "errors": {
+      "noAnswer": "„{server}“ hat unter keiner seiner {count} angegebenen Adressen geantwortet.",
+      "itemGone": "Dieser Eintrag ist nicht mehr auf dem Server.",
+      "noFile": "Keine abspielbare Datei für diesen Eintrag. Quellen, die nur transkodiert abspielbar sind, werden noch nicht unterstützt.",
+      "notConnected": "Nicht mit einem Plex-Server verbunden."
+    }
+  },
+  "local": {
+    "noAccess": "Subnext Player kann deine Videos ohne Medienzugriff nicht sehen. Du kannst ihn in {where} erteilen.",
+    "settingsIos": "der App Einstellungen",
+    "settingsAndroid": "den Android-Einstellungen",
+    "intro": "Spiel Videos ab, die auf diesem Gerät gespeichert sind.\nSubnext Player fragt nur nach Zugriff auf Videos, nie auf alle Dateien.",
+    "allowAccess": "Zugriff auf Videos erlauben",
+    "pickFolderInstead": "Oder stattdessen einen Ordner wählen",
+    "addShare": "Netzwerkfreigabe hinzufügen",
+    "shares": "Netzwerkfreigaben",
+    "pickedFolders": "Ausgewählte Ordner",
+    "onDevice": "Auf diesem Gerät",
+    "noVideos": "Keine Videos auf diesem Gerät gefunden.",
+    "addFolderShort": "Ordner hinzufügen",
+    "addShareShort": "Freigabe hinzufügen",
+    "scanDevice": "Dieses Gerät durchsuchen",
+    "forgetFolder": "Diesen Ordner vergessen",
+    "folder": "Ordner",
+    "safUnreadable": "Dieser Ordner ist nicht mehr lesbar. Vielleicht hat Android die Berechtigung entzogen, also entferne ihn und wähle ihn erneut.\n\n{error}",
+    "safEmpty": "Hier sind keine Videos oder Unterordner."
+  },
+  "smb": {
+    "connectFailed": "Verbindung fehlgeschlagen: {error}",
+    "title": "Netzwerkfreigabe hinzufügen",
+    "explain": "Ein NAS oder ein freigegebener Ordner auf einem anderen Computer in deinem Netzwerk.",
+    "host": "Serveradresse",
+    "hostHint": "z. B. nas",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "domain": "Domäne (optional)",
+    "name": "Name (optional)",
+    "connectAndAdd": "Verbinden und hinzufügen",
+    "gone": "Diese Freigabe ist nicht mehr eingerichtet.",
+    "unreachable": "Diese Freigabe war nicht erreichbar. Der Server ist vielleicht im Ruhezustand oder nicht im Netzwerk.\n\n{error}",
+    "empty": "Hier sind keine Videos oder Ordner."
+  },
+  "xtream": {
+    "lineGone": "Dieser Zugang ist nicht mehr eingerichtet.",
+    "catalogue": {
+      "live": "Live-TV",
+      "vod": "Filme",
+      "series": "Serien"
+    },
+    "errors": {
+      "status": "Das Panel hat {code} geliefert. Versuch es später noch einmal.",
+      "timeout": "Das Panel hat nicht rechtzeitig geantwortet.",
+      "unreachable": "Diese Adresse war nicht erreichbar. Prüfe Host und Port.",
+      "other": "Keine Verbindung zum Panel möglich ({type}).",
+      "notXtream": "Diese Adresse hat nicht wie ein Xtream-Panel geantwortet.",
+      "rejected": "Das Panel hat diese Zugangsdaten abgelehnt.",
+      "wrongLogin": "Falscher Benutzername oder falsches Passwort.",
+      "unnamed": "Ohne Namen",
+      "episode": "Folge",
+      "noPassword": "Für diesen Zugang ist kein Passwort gespeichert. Entferne ihn und füge ihn erneut hinzu."
+    },
+    "everythingElse": "Alles andere",
+    "series": {
+      "title": "Serie",
+      "noEpisodes": "Das Panel hat für diese Serie keine Folgen geliefert.",
+      "season": "Staffel {n}"
+    },
+    "remove": "Entfernen",
+    "add": "Playlist oder Panel hinzufügen",
+    "addLine": {
+      "discardTitle": "Diesen Zugang verwerfen?",
+      "discardBody": "Was du hier eingegeben hast, wurde nicht gespeichert.",
+      "discard": "Verwerfen",
+      "keepEditing": "Weiter bearbeiten",
+      "inactive": "Laut Panel ist dieser Zugang „{status}“.",
+      "noContent": "Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.",
+      "host": "Serveradresse",
+      "name": "Name (optional)",
+      "nameHint": "Wie du diesen Zugang nennen möchtest",
+      "checking": "Wird geprüft…",
+      "verify": "Prüfen und hinzufügen",
+      "connected": {
+        "one": "Verbunden. {n} gleichzeitiger Stream erlaubt.",
+        "other": "Verbunden. {n} gleichzeitige Streams erlaubt."
+      }
+    },
+    "picker": {
+      "patternNone": "Dieses Muster hat nichts gefunden.",
+      "title": "Kategorien: {catalogue}",
+      "save": "Speichern",
+      "noMatch": "Nichts passt zu „{query}“.",
+      "noneChosen": "Noch nichts ausgewählt.",
+      "search": "Alle Kategorien durchsuchen",
+      "chosen": "Ausgewählt {n}",
+      "hideWords": "Wörter ausblenden",
+      "hideCount": "Ausgeblendet {n}",
+      "pattern": "Muster",
+      "untickedOne": "„{name}“ wurde abgewählt, weil „{word}“ es ausblendet. Speichern, um das zu behalten.",
+      "untickedMany": "{n} ausgewählte Kategorien, die „{word}“ ausblendet, wurden abgewählt. Speichern, um das zu behalten.",
+      "showingHidden": "Angezeigt werden die Kategorien, die deine ausgeblendeten Wörter auslassen.",
+      "hiddenCount": "{n} durch deine Wörter ausgeblendet.",
+      "hideAgain": "Wieder ausblenden",
+      "showThem": "Anzeigen",
+      "patternHint": "Alle Kategorien auswählen oder abwählen, die zu einem Wort oder Muster passen",
+      "selectMatching": "Treffer auswählen",
+      "deselectMatching": "Treffer abwählen",
+      "groups": "Gruppen",
+      "clearAll": "Alle abwählen",
+      "selectAll": "Alle auswählen",
+      "channelsPicked": {
+        "one": "{n} Sender",
+        "other": "{n} Sender"
+      },
+      "pickedChosen": "{n} ausgewählt",
+      "categories": {
+        "one": "{n} Kategorie",
+        "other": "{n} Kategorien"
+      },
+      "channels": "Sender"
+    },
+    "channels": {
+      "done": "Fertig",
+      "search": "Diese Kategorie durchsuchen",
+      "pickedOf": "{picked} von {total}",
+      "whole": "Ganze Kategorie",
+      "selectShown": "Angezeigte auswählen",
+      "clear": "Abwählen",
+      "clearShown": "Angezeigte abwählen",
+      "none": "Das Panel listet in dieser Kategorie keine Sender."
+    },
+    "hidden": {
+      "title": "Wörter ausblenden",
+      "explain": "Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.",
+      "hint": "Ein Land, eine Sprache, ein Wort",
+      "add": "Hinzufügen",
+      "none": "Noch nichts ausgeblendet.",
+      "tapToRemove": "Wähle ein Wort aus, um es nicht mehr auszublenden."
+    }
+  },
+  "transfer": {
+    "noNetwork": "Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.",
+    "cannotListen": "Empfang konnte nicht gestartet werden: {error}",
+    "expired": "Dieser Code ist abgelaufen. Starte neu, um einen neuen zu bekommen.",
+    "wentWrong": "Etwas ist schiefgelaufen: {error}",
+    "wentWrongPlain": "Etwas ist schiefgelaufen.",
+    "gettingReady": "Wird vorbereitet…",
+    "waitingOther": "Warte auf das andere Gerät…",
+    "copyCode": "Code kopieren",
+    "scanInstead": "Stattdessen seinen Code scannen",
+    "typeInstead": "Stattdessen seinen Code eingeben",
+    "done": "Fertig",
+    "close": "Schließen",
+    "receive": {
+      "cannotSave": "Die Einstellungen konnten nicht gespeichert werden: {error}",
+      "title": "Einstellungen empfangen",
+      "asking": "Das andere Gerät wird gefragt…",
+      "awaitingPush": "Warte, bis das andere Gerät sendet. Stimm dort zu, wenn es fragt.",
+      "saving": "Wird gespeichert…",
+      "waitingInstructions": "Öffne auf dem Gerät mit deinen Einstellungen Einstellungen, Auf ein anderes Gerät übertragen, und wähle Senden. Scanne dann diesen Code.",
+      "scanInstructions": "Öffne auf dem Gerät mit deinen Einstellungen Einstellungen, Auf ein anderes Gerät übertragen, und wähle Senden und dann Code anzeigen. Richte die Kamera darauf.",
+      "showMine": "Stattdessen meinen Code anzeigen",
+      "typeInstructions": "Öffne auf dem Gerät mit deinen Einstellungen Einstellungen, Auf ein anderes Gerät übertragen, und wähle Senden und dann Code anzeigen. Gib dann ein, was es anzeigt.",
+      "connect": "Verbinden",
+      "review": "Ein anderes Gerät möchte dir das hier senden. Was hier schon unter demselben Namen existiert, wird ersetzt; sonst wird nichts entfernt.",
+      "saveThese": "Speichern",
+      "decline": "Ablehnen",
+      "saved": "Fertig. Deine Einstellungen sind auf diesem Gerät."
+    },
+    "pairing": {
+      "noCamera": "Keine Kamera? Wähle dort Code eingeben und gib ein:",
+      "qrLabel": "Code zum Scannen vom anderen Gerät",
+      "cameraOff": "Die Kamera ist für diese App ausgeschaltet. Gib stattdessen den Code ein oder erlaube die Kamera in den Einstellungen deines Handys.",
+      "cameraFailed": "Die Kamera konnte nicht starten. Gib stattdessen den Code ein.",
+      "foreign": "Das ist kein Code aus dieser App.",
+      "checkEntry": "Prüfe die Adresse (etwa 192.168.1.20:41234) und den 16-stelligen Code.",
+      "address": "Adresse",
+      "code": "Code"
+    },
+    "pane": {
+      "explain": "Kopiere deine Quellen, Schlüssel und Einstellungen auf ein anderes Gerät im selben WLAN, damit du sie nicht noch einmal eintippen musst. Es geht direkt von einem Gerät zum anderen, verschlüsselt mit einem Code, den nur die beiden Bildschirme kennen, und das empfangende Gerät fragt, bevor es etwas speichert.",
+      "notCopied": "Nicht kopiert: Plex (verknüpfe es auf dem anderen Gerät mit dessen eigenem Code), Verlauf, Favoriten und die Einwilligung für Erweiterte Quellen und KI-Funktionen, die jedes Gerät selbst einholt.",
+      "receive": "Von einem anderen Gerät empfangen",
+      "send": "An ein anderes Gerät senden"
+    },
+    "notes": {
+      "aiLocal": "Dein KI-Anbieter läuft auf diesem Gerät, deshalb wird er nicht gesendet. Richte ihn dort mit der Adresse dieses Geräts in deinem Netzwerk neu ein.",
+      "xtreamHidden": "Die IPTV-Konten sind gespeichert, aber ausgeblendet. Schalte Erweiterte Quellen in den Einstellungen ein, um sie zu nutzen.",
+      "aiAsks": "KI-Funktionen fragen, bevor sie etwas an den Anbieter senden.",
+      "partial": "Nicht gespeichert: {failed}. Der Rest wurde gespeichert."
+    },
+    "send": {
+      "cannotRead": "Die Einstellungen dieses Geräts konnten nicht gelesen werden: {error}",
+      "askTitle": "An {host} senden?",
+      "askBody": "Ein Gerät in deinem Netzwerk hat diesen Code gescannt und fragt nach:\n\n{summary}\n\nStimm nur zu, wenn du das gerade auf diesem Gerät angefordert hast.",
+      "notNow": "Nicht jetzt",
+      "send": "Senden",
+      "title": "Einstellungen senden",
+      "reading": "Deine Einstellungen werden gelesen…",
+      "sending": "Wird gesendet. Das andere Gerät fragt, bevor es etwas speichert.",
+      "explain": "Kopiert das hier auf ein anderes Gerät im selben WLAN, damit du es nicht noch einmal eintippen musst. Es geht direkt dorthin und ist verschlüsselt; nichts läuft über uns.",
+      "nothing": "Auf diesem Gerät ist noch nichts eingerichtet, das gesendet werden könnte.",
+      "proceed": "Weiter",
+      "showInstead": "Stattdessen einen Code anzeigen",
+      "typeInstead": "Stattdessen den Code eingeben",
+      "scanInstructions": "Öffne auf dem anderen Gerät Einstellungen, Auf ein anderes Gerät übertragen, und wähle Empfangen. Richte die Kamera auf den Code, den es anzeigt.",
+      "showInstructions": "Öffne auf dem anderen Gerät Einstellungen, Auf ein anderes Gerät übertragen, und wähle Empfangen und dann Seinen Code scannen, und richte seine Kamera hierher. Du wirst gefragt, bevor etwas gesendet wird.",
+      "typeInstructions": "Öffne auf dem anderen Gerät Einstellungen, Auf ein anderes Gerät übertragen, und wähle Empfangen. Gib dann ein, was es anzeigt.",
+      "sent": "Gesendet. Das andere Gerät hat deine Einstellungen gespeichert."
+    },
+    "item": {
+      "preferences": "Einstellungen",
+      "preferencesSub": "Wiedergabe- und Untertitelwahl, ausgeblendete Wörter und Platzierung in der Mediathek.",
+      "xtream": "IPTV-Konten",
+      "xtreamSub": "Anmeldungen und die gewählten Kategorien und Sender.",
+      "smb": "Netzwerkfreigaben",
+      "smbSub": "SMB-Freigaben und ihre Passwörter.",
+      "tmdb": "TMDB-Schlüssel",
+      "tmdbSub": "Dein eigener Schlüssel für die Filter nach Genre, Bewertung und Sprache.",
+      "ai": "KI-Anbieter",
+      "aiSub": "Der Anbieter, sein Modell und dein Schlüssel.",
+      "settings": {
+        "one": "{n} Einstellung",
+        "other": "{n} Einstellungen"
+      },
+      "accounts": {
+        "one": "{n} Konto",
+        "other": "{n} Konten"
+      },
+      "shares": {
+        "one": "{n} Freigabe",
+        "other": "{n} Freigaben"
+      },
+      "notBundle": "Das war kein Einstellungspaket.",
+      "newer": "Dieses Paket stammt aus einer neueren Version der App. Aktualisiere dieses Gerät und versuch es erneut."
+    },
+    "client": {
+      "declined": "Das andere Gerät hat die Einstellungen nicht angenommen.",
+      "wrongCode": "Der Code war nicht richtig. Vergleich ihn mit dem anderen Bildschirm.",
+      "used": "Das andere Gerät hat schon etwas empfangen. Öffne dort Empfangen erneut, um einen neuen Code zu bekommen.",
+      "tooBig": "Das war zu viel zum Senden.",
+      "unreadable": "Das andere Gerät konnte das nicht lesen.",
+      "unexpected": "Das andere Gerät hat unerwartet geantwortet ({status}).",
+      "refusedToSend": "Das andere Gerät hat dem Senden seiner Einstellungen nicht zugestimmt.",
+      "busy": "Das andere Gerät antwortet bereits jemand anderem. Bitte es um einen neuen Code.",
+      "unreachable": "{address} war nicht erreichbar. Beide Geräte müssen im selben WLAN sein, und das andere muss seinen Code noch anzeigen.",
+      "dropped": "Die Verbindung ist zwischendurch abgebrochen.",
+      "noAnswer": "Keine Antwort von {address}. Prüfe den anderen Bildschirm."
+    }
+  }
+}

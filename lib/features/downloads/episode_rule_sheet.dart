@@ -5,12 +5,12 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/episode_rules.dart';
 import 'offline_sync.dart';
+import '../../i18n/strings.g.dart';
 
 /// One line saying what a rule does, for the show page and Downloads.
 String describeRule(EpisodeRule? rule) => switch (rule?.keep) {
-  null => 'Keep episodes downloaded',
-  1 => 'Keeping the next episode downloaded',
-  final n => 'Keeping the next $n episodes downloaded',
+  null => tr.downloads.rule.off,
+  final n => tr.downloads.rule.keeping(n: n),
 };
 
 /// The show page's entry to its rule (§18.7). A row rather than a toggle,
@@ -138,9 +138,7 @@ Future<void> showEpisodeRuleSheet(
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                   child: Text(
-                    'Downloads the next unwatched episodes and replaces them '
-                    'as you watch, while the app is open. Watched ones it '
-                    'downloaded are removed.',
+                    tr.downloads.rule.explain,
                     style: TextStyle(
                       color: t.inkDim,
                       fontSize: RelayLayout.bodySize(f) - 1,
@@ -148,9 +146,9 @@ Future<void> showEpisodeRuleSheet(
                     ),
                   ),
                 ),
-                row('Off', 0),
+                row(tr.downloads.rule.choiceOff, 0),
                 for (final n in ruleSizes)
-                  row(n == 1 ? 'Next episode' : 'Next $n episodes', n),
+                  row(tr.downloads.rule.choice(n: n), n),
               ],
             ),
           ),

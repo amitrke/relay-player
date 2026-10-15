@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../i18n/strings.g.dart';
 
 class AiException implements Exception {
   const AiException(this.message);
@@ -100,13 +101,10 @@ class OpenAiCompatibleClient implements TextGenerationClient {
             ? choices.first
             : null;
         if (first is Map && first['finish_reason'] == 'length') {
-          throw const AiException(
-            'The model ran out of reply space while thinking and never gave '
-            'an answer. A model that does not "think" first will work better.',
-          );
+          throw AiException(tr.ai.errors.ranOutThinking);
         }
 
-        throw const AiException('The model sent back an empty answer.');
+        throw AiException(tr.ai.errors.empty);
       }
       return content;
     } on DioException catch (e) {
@@ -119,20 +117,20 @@ class OpenAiCompatibleClient implements TextGenerationClient {
     final detail = _detail(e.response?.data);
     final suffix = detail == null ? '' : ' ($detail)';
     return switch (status) {
-      401 || 403 => 'The provider rejected that key$suffix.',
-      402 => 'The provider says this account is out of credit$suffix.',
-      404 => 'The provider does not know that model or address$suffix.',
-      429 =>
-        'The provider is rate limiting this key. Try again shortly$suffix.',
-      final s? when s >= 500 => 'The provider had a problem (HTTP $s)$suffix.',
+      401 || 403 => tr.ai.errors.rejectedKey(suffix: suffix),
+      402 => tr.ai.errors.noCredit(suffix: suffix),
+      404 => tr.ai.errors.unknownModel(suffix: suffix),
+      429 => tr.ai.errors.rateLimited(suffix: suffix),
+      final s? when s >= 500 =>
+        tr.ai.errors.serverError(status: s, suffix: suffix),
       _ => switch (e.type) {
         DioExceptionType.connectionTimeout || DioExceptionType.receiveTimeout =>
-          'The provider took too long to answer.',
-        DioExceptionType.connectionError =>
-          'Could not reach the provider. Check the address.',
+          tr.ai.errors.timeout,
+        DioExceptionType.connectionError => tr.ai.errors.unreachable,
         _ =>
-          'The request failed${status == null ? '' : ' (HTTP $status)'}'
-              '$suffix.',
+          status == null
+              ? tr.ai.errors.failed(suffix: suffix)
+              : tr.ai.errors.failedStatus(status: status, suffix: suffix),
       },
     };
   }

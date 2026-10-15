@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings -> Move to another device (§17).
 ///
@@ -20,18 +21,12 @@ class TransferPane extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Copy your sources, keys and preferences to another device on the '
-          'same Wi-Fi, so you do not have to type them again. It goes straight '
-          'from one device to the other, encrypted with a code that only the '
-          'two screens share, and the receiving device asks before it saves '
-          'anything.',
+          tr.transfer.pane.explain,
           style: style,
         ),
         const SizedBox(height: 14),
         Text(
-          'Not copied: Plex (link it on the other device with its own code), '
-          'watch history, favourites, and the consent you gave for Advanced '
-          'sources and AI features, which each device asks for itself.',
+          tr.transfer.pane.notCopied,
           style: style,
         ),
         const SizedBox(height: 18),
@@ -40,11 +35,11 @@ class TransferPane extends StatelessWidget {
           runSpacing: 10,
           children: [
             RelayButton(
-              label: 'Receive from another device',
+              label: tr.transfer.pane.receive,
               onPressed: () => context.push('/transfer/receive'),
             ),
             RelayButton(
-              label: 'Send to another device',
+              label: tr.transfer.pane.send,
               onPressed: () => context.push('/transfer/send'),
             ),
           ],

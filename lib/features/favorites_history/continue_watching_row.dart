@@ -8,6 +8,7 @@ import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
 import 'resume_entries.dart';
 import 'watch_actions.dart';
+import '../../i18n/strings.g.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
 // around them. Shared because the row must reserve exactly the height the tile
@@ -91,7 +92,7 @@ class ContinueWatchingRow extends ConsumerWidget {
         Padding(
           padding: RelayLayout.pagePadding(f).copyWith(top: 14, bottom: 10),
           child: Text(
-            'Continue watching',
+            tr.resume.title,
             style: TextStyle(
               color: t.ink,
               fontSize: RelayLayout.bodySize(f) + 2,
@@ -235,7 +236,7 @@ class _ResumeTile extends ConsumerWidget {
                         child: IconButton(
                           visualDensity: VisualDensity.compact,
                           iconSize: 16,
-                          tooltip: 'Remove from continue watching',
+                          tooltip: tr.resume.remove,
                           icon: Icon(Icons.close, color: t.inkDim),
                           onPressed: () => ref
                               .read(resumeDismissalsProvider.notifier)

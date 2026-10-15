@@ -10,6 +10,7 @@ import '../local_network/smb_controller.dart';
 import '../metadata/tmdb_controller.dart';
 import '../player/playback_prefs.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// What [TransferService.collect] found, and anything it left out on purpose.
 class CollectedSettings {
@@ -102,8 +103,7 @@ class TransferService {
       // localhost would point the TV at itself.
       if (_isThisDevice(setup.config.host)) {
         notes.add(
-          'Your AI provider runs on this device, so it is not sent. Set it up '
-          'again there with this device\'s address on your network.',
+          tr.transfer.notes.aiLocal,
         );
       } else {
         ai = TransferredAi(setup.config.toJson(), setup.apiKey);
@@ -159,8 +159,7 @@ class TransferService {
         // §8.2's acknowledgement is the person's, at this device, so the
         // switch is not copied with the accounts.
         notes.add(
-          'The IPTV accounts are saved but hidden. Turn on Advanced sources '
-          'in Settings to use them.',
+          tr.transfer.notes.xtreamHidden,
         );
       }
     }
@@ -192,14 +191,14 @@ class TransferService {
       });
       if (failed.isEmpty) {
         notes.add(
-          'AI features will ask before they send anything to the provider.',
+          tr.transfer.notes.aiAsks,
         );
       }
     }
 
     if (failed.isNotEmpty) {
       throw TransferApplyException(
-        'Could not save: ${failed.join(', ')}. The rest was saved.',
+        tr.transfer.notes.partial(failed: failed.join(', ')),
       );
     }
     return ApplyResult(notes);

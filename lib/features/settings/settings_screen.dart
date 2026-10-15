@@ -13,6 +13,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../core/theme/theme_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Screen 09 — Settings.
 ///
@@ -123,33 +124,45 @@ class SettingsState {
 /// real state. AI features was the cautionary case: it was a finished-looking
 /// pane of demo data until 2026-10-09.
 enum SettingsSection {
-  sources('Sources', built: true),
-  appearance('Appearance', built: true),
+  sources(built: true),
+  appearance(built: true),
   // Built 2026-09-23: skip length and preferred audio language, and
   // subtitles on/off, language and size, all read by the player.
-  playback('Playback', built: true),
-  subtitles('Subtitles', built: true),
+  playback(built: true),
+  subtitles(built: true),
   // Built 2026-10-08: the user's own TMDB key, which unlocks genre, rating and
   // original-language filters in Search.
-  metadata('Metadata', built: true),
+  metadata(built: true),
   // Built 2026-10-09: one OpenAI-compatible provider (OpenRouter, OpenAI,
   // Ollama or any other), a key in secure storage, and a real consent record.
-  aiFeatures('AI features', built: true),
-  advancedSources('Advanced sources', built: true),
+  aiFeatures(built: true),
+  advancedSources(built: true),
   // Built 2026-10-09: copies sources, keys and preferences to another device on
   // the same network (section 17), so a TV is not set up by typing on it.
-  transfer('Move to another device', built: true),
+  transfer(built: true),
   // Unbuilt from 2026-09-22 to 2026-10-09: its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
   // says no crash reports are sent. Built again around clearing cached data,
   // which does something. The crash switch stays out until crash reporting
   // (#6) exists.
-  privacy('Privacy and data', built: true),
-  about('About', built: true);
+  privacy(built: true),
+  about(built: true);
 
-  const SettingsSection(this.label, {this.built = false});
-  final String label;
+  const SettingsSection({this.built = false});
   final bool built;
+
+  String get label => switch (this) {
+    sources => tr.settings.section.sources,
+    appearance => tr.settings.section.appearance,
+    playback => tr.settings.section.playback,
+    subtitles => tr.settings.section.subtitles,
+    metadata => tr.settings.section.metadata,
+    aiFeatures => tr.settings.section.aiFeatures,
+    advancedSources => tr.settings.section.advancedSources,
+    transfer => tr.settings.section.transfer,
+    privacy => tr.settings.section.privacy,
+    about => tr.settings.section.about,
+  };
 }
 
 // --- Phone ------------------------------------------------------------
@@ -174,7 +187,7 @@ class _PhoneSettings extends StatelessWidget {
       padding: RelayLayout.pagePadding(form).copyWith(top: 20, bottom: 40),
       children: [
         Text(
-          'Settings',
+          tr.shell.settings,
           style: TextStyle(
             color: t.ink,
             fontSize: RelayLayout.titleSize(form),
@@ -186,28 +199,43 @@ class _PhoneSettings extends StatelessWidget {
         // Appearance first: it is the section users actually visit, and theme
         // is a real runtime setting (§12.2).
         _Section(
-          title: 'Appearance',
+          title: SettingsSection.appearance.label,
           child: _AppearanceControls(theme: theme),
         ),
         const SizedBox(height: 22),
 
-        const _Section(title: 'Sources', child: SourcesPane()),
-        const SizedBox(height: 22),
-
-        const _Section(title: 'Playback', child: PlaybackPane()),
-        const SizedBox(height: 22),
-
-        const _Section(title: 'Subtitles', child: SubtitlesPane()),
-        const SizedBox(height: 22),
-
-        const _Section(title: 'Metadata', child: MetadataPane()),
-        const SizedBox(height: 22),
-
-        const _Section(title: 'AI features', child: AiPane()),
+        _Section(
+          title: SettingsSection.sources.label,
+          child: const SourcesPane(),
+        ),
         const SizedBox(height: 22),
 
         _Section(
-          title: 'Advanced sources',
+          title: SettingsSection.playback.label,
+          child: const PlaybackPane(),
+        ),
+        const SizedBox(height: 22),
+
+        _Section(
+          title: SettingsSection.subtitles.label,
+          child: const SubtitlesPane(),
+        ),
+        const SizedBox(height: 22),
+
+        _Section(
+          title: SettingsSection.metadata.label,
+          child: const MetadataPane(),
+        ),
+        const SizedBox(height: 22),
+
+        _Section(
+          title: SettingsSection.aiFeatures.label,
+          child: const AiPane(),
+        ),
+        const SizedBox(height: 22),
+
+        _Section(
+          title: SettingsSection.advancedSources.label,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -226,21 +254,27 @@ class _PhoneSettings extends StatelessWidget {
         const SizedBox(height: 22),
 
         if (SettingsSection.transfer.built) ...[
-          const _Section(
-            title: 'Move to another device',
-            child: TransferPane(),
+          _Section(
+            title: SettingsSection.transfer.label,
+            child: const TransferPane(),
           ),
           const SizedBox(height: 22),
         ],
 
         // Hand-listed here rather than driven by the enum, so it has to ask.
         if (SettingsSection.privacy.built) ...[
-          const _Section(title: 'Privacy and data', child: PrivacyPane()),
+          _Section(
+          title: SettingsSection.privacy.label,
+          child: const PrivacyPane(),
+        ),
           const SizedBox(height: 22),
         ],
 
         // Last, as in §12.1: compliance-shaped, rarely visited, but required.
-        const _Section(title: 'About', child: AboutPane()),
+        _Section(
+          title: SettingsSection.about.label,
+          child: const AboutPane(),
+        ),
       ],
     );
   }
@@ -258,7 +292,7 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
         backgroundColor: t.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(
-          'Turning on advanced sources',
+          tr.settings.advanced.dialogTitle,
           style: TextStyle(
             color: t.ink,
             fontSize: 18,
@@ -270,21 +304,17 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'You are about to connect a third-party provider using your own '
-              'credentials.',
+              tr.settings.advanced.dialogLead,
               style: TextStyle(color: t.ink, fontSize: 14, height: 1.55),
             ),
             const SizedBox(height: 12),
             Text(
-              'Subnext Player does not provide, host, or endorse any content or '
-              'provider. You supply the address and the login, and the app '
-              'plays whatever that address returns.',
+              tr.settings.advanced.dialogNoContent,
               style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
             ),
             const SizedBox(height: 12),
             Text(
-              'You are responsible for holding the rights to whatever you '
-              'connect to.',
+              tr.settings.advanced.dialogRights,
               style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
             ),
           ],
@@ -293,7 +323,7 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(foregroundColor: t.inkDim),
-            child: const Text('Cancel'),
+            child: Text(tr.common.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -301,7 +331,7 @@ Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
               backgroundColor: t.accent,
               foregroundColor: t.accentInk,
             ),
-            child: const Text('I understand — turn on'),
+            child: Text(tr.settings.advanced.dialogConfirm),
           ),
         ],
       );
@@ -325,19 +355,18 @@ class _AdvancedSourcesControl extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ToggleRow(
-          title: 'IPTV provider or playlist',
+          title: tr.settings.advanced.toggle,
           // Names only what this build has. It said "the guide, and Xtream or
           // M3U sources" before either existed (v1.2.0 on the RELEASING.md
           // ladder); widen it again when they land.
-          subtitle: 'Adds Live TV and Xtream Codes logins.',
+          subtitle: tr.settings.advanced.toggleExplain,
           value: enabled,
           onChanged: onChanged,
         ),
         if (enabled) ...[
           const SizedBox(height: 10),
           Text(
-            'Turning this off later hides Live TV but keeps any '
-            'accounts you added.',
+            tr.settings.advanced.offKeeps,
             style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
           ),
         ],
@@ -358,7 +387,7 @@ class _AppearanceControls extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Theme',
+          tr.settings.appearance.theme,
           style: TextStyle(
             color: t.ink,
             fontSize: 14,
@@ -372,7 +401,7 @@ class _AppearanceControls extends StatelessWidget {
           children: [
             for (final p in RelayPalette.values)
               _ThemeChip(
-                label: p.label,
+                label: p.displayName,
                 selected: theme.palette == p,
                 onTap: () => theme.palette = p,
               ),
@@ -380,7 +409,7 @@ class _AppearanceControls extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'Accent',
+          tr.settings.appearance.accent,
           style: TextStyle(
             color: t.ink,
             fontSize: 14,
@@ -626,31 +655,31 @@ class _DesktopSettings extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(40, 32, 40, 32),
             child: switch (section) {
-              SettingsSection.aiFeatures => const _DesktopPane(
-                title: 'AI features',
-                child: AiPane(),
+              SettingsSection.aiFeatures => _DesktopPane(
+                title: SettingsSection.aiFeatures.label,
+                child: const AiPane(),
               ),
               SettingsSection.appearance => SingleChildScrollView(
                 child: _AppearanceControls(theme: theme),
               ),
-              SettingsSection.sources => const _DesktopPane(
-                title: 'Sources',
-                child: SourcesPane(),
+              SettingsSection.sources => _DesktopPane(
+                title: SettingsSection.sources.label,
+                child: const SourcesPane(),
               ),
-              SettingsSection.playback => const _DesktopPane(
-                title: 'Playback',
-                child: PlaybackPane(),
+              SettingsSection.playback => _DesktopPane(
+                title: SettingsSection.playback.label,
+                child: const PlaybackPane(),
               ),
-              SettingsSection.subtitles => const _DesktopPane(
-                title: 'Subtitles',
-                child: SubtitlesPane(),
+              SettingsSection.subtitles => _DesktopPane(
+                title: SettingsSection.subtitles.label,
+                child: const SubtitlesPane(),
               ),
-              SettingsSection.metadata => const _DesktopPane(
-                title: 'Metadata',
-                child: MetadataPane(),
+              SettingsSection.metadata => _DesktopPane(
+                title: SettingsSection.metadata.label,
+                child: const MetadataPane(),
               ),
               SettingsSection.advancedSources => _DesktopPane(
-                title: 'Advanced sources',
+                title: SettingsSection.advancedSources.label,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -666,17 +695,17 @@ class _DesktopSettings extends StatelessWidget {
                   ],
                 ),
               ),
-              SettingsSection.transfer => const _DesktopPane(
-                title: 'Move to another device',
-                child: TransferPane(),
+              SettingsSection.transfer => _DesktopPane(
+                title: SettingsSection.transfer.label,
+                child: const TransferPane(),
               ),
-              SettingsSection.privacy => const _DesktopPane(
-                title: 'Privacy and data',
-                child: PrivacyPane(),
+              SettingsSection.privacy => _DesktopPane(
+                title: SettingsSection.privacy.label,
+                child: const PrivacyPane(),
               ),
-              SettingsSection.about => const _DesktopPane(
-                title: 'About',
-                child: AboutPane(),
+              SettingsSection.about => _DesktopPane(
+                title: SettingsSection.about.label,
+                child: const AboutPane(),
               ),
             },
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../filesystem/smb_source.dart';
 import '../xtream/xtream_account_store.dart';
+import '../../i18n/strings.g.dart';
 
 /// The things that can be moved to another device, as the user sees them.
 ///
@@ -9,19 +10,27 @@ import '../xtream/xtream_account_store.dart';
 /// identifier that requested it, so a copied one cannot be assumed to work, and
 /// linking Plex on a TV is already a code on the screen and nothing to type.
 enum TransferItem {
-  preferences(
-    'Preferences',
-    'Playback and subtitle choices, hidden words and library placement.',
-  ),
-  xtream('IPTV accounts', 'Logins and the categories and channels you chose.'),
-  smb('Network shares', 'SMB shares and their passwords.'),
-  tmdb('TMDB key', 'Your own key for genre, rating and language filters.'),
-  ai('AI provider', 'The provider, its model and your key.');
+  preferences,
+  xtream,
+  smb,
+  tmdb,
+  ai;
 
-  const TransferItem(this.label, this.description);
+  String get label => switch (this) {
+    preferences => tr.transfer.item.preferences,
+    xtream => tr.transfer.item.xtream,
+    smb => tr.transfer.item.smb,
+    tmdb => tr.transfer.item.tmdb,
+    ai => tr.transfer.item.ai,
+  };
 
-  final String label;
-  final String description;
+  String get description => switch (this) {
+    preferences => tr.transfer.item.preferencesSub,
+    xtream => tr.transfer.item.xtreamSub,
+    smb => tr.transfer.item.smbSub,
+    tmdb => tr.transfer.item.tmdbSub,
+    ai => tr.transfer.item.aiSub,
+  };
 }
 
 /// Thrown for a bundle that is not one of ours or is from a newer app.
@@ -105,10 +114,11 @@ class TransferBundle {
   /// A line per item for the confirmation screen. Names and counts, never a
   /// host, username or key: this appears on a TV across a living room.
   String describe(TransferItem item) => switch (item) {
-    TransferItem.preferences =>
-      '${preferences.length} setting${preferences.length == 1 ? '' : 's'}',
-    TransferItem.xtream => _count(xtream.length, 'account'),
-    TransferItem.smb => _count(smb.length, 'share'),
+    TransferItem.preferences => tr.transfer.item.settings(
+      n: preferences.length,
+    ),
+    TransferItem.xtream => tr.transfer.item.accounts(n: xtream.length),
+    TransferItem.smb => tr.transfer.item.shares(n: smb.length),
     // Nothing to count: the label already says it ("TMDB key", "AI provider"),
     // and adding "Key" after it read as a stutter on the confirmation screen.
     TransferItem.tmdb || TransferItem.ai => '',
@@ -120,8 +130,6 @@ class TransferBundle {
     final detail = describe(item);
     return detail.isEmpty ? item.label : '${item.label}$separator$detail';
   }
-
-  static String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
 
   /// This bundle cut down to [keep], for a receiver that declined some of it.
   TransferBundle only(Set<TransferItem> keep) => TransferBundle(
@@ -169,17 +177,14 @@ class TransferBundle {
     try {
       raw = jsonDecode(utf8.decode(bytes));
     } on FormatException {
-      throw const TransferFormatException('That was not a settings bundle.');
+      throw TransferFormatException(tr.transfer.item.notBundle);
     }
     if (raw is! Map || raw['format'] != format) {
-      throw const TransferFormatException('That was not a settings bundle.');
+      throw TransferFormatException(tr.transfer.item.notBundle);
     }
     final v = raw['version'];
     if (v is! int || v > version) {
-      throw const TransferFormatException(
-        'That bundle is from a newer version of the app. Update this device '
-        'and try again.',
-      );
+      throw TransferFormatException(tr.transfer.item.newer);
     }
 
     return TransferBundle(

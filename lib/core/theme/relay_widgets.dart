@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'relay_theme.dart';
 import 'relay_tokens.dart';
+import '../../i18n/strings.g.dart';
 
 /// A raised card on [RelayTokens.surface] with a hairline border.
 class RelaySurface extends StatelessWidget {
@@ -480,9 +481,7 @@ class RelayMark extends StatelessWidget {
 class RelayDrmNotice extends StatelessWidget {
   const RelayDrmNotice({super.key});
 
-  static const String text =
-      'No DRM. Protected commercial catalogues such as Netflix or Disney+ '
-      'cannot be played.';
+  static String get text => tr.common.noDrm;
 
   @override
   Widget build(BuildContext context) {

@@ -13,6 +13,7 @@ import '../downloads/offline_sync.dart';
 import 'favorites_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
+import '../../i18n/strings.g.dart';
 
 /// Watched / unwatched marks made in this session, by history key
 /// (`plex:<server>:<ratingKey>`).
@@ -168,7 +169,9 @@ Future<void> showWatchActions(
     builder: (context) {
       final t = RelayTheme.of(context);
       final f = RelayLayout.of(context);
-      final scope = target?.isShow ?? false ? ' (every episode)' : '';
+      final scope = target?.isShow ?? false
+          ? tr.watchActions.everyEpisode
+          : '';
 
       Widget option(String label, IconData icon, _Choice value, bool first) =>
           RelayTappable(
@@ -242,42 +245,46 @@ Future<void> showWatchActions(
                 ),
                 if (offerWatched)
                   option(
-                    'Mark as watched$scope',
+                    tr.watchActions.markWatched(scope: scope),
                     Icons.check_circle_outline,
                     _Choice.watched,
                     takeFirst(),
                   ),
                 if (offerUnwatched)
                   option(
-                    'Mark as unwatched$scope',
+                    tr.watchActions.markUnwatched(scope: scope),
                     Icons.radio_button_unchecked,
                     _Choice.unwatched,
                     takeFirst(),
                   ),
                 if (offerDownload)
                   option(
-                    'Download to this device',
+                    tr.watchActions.download,
                     Icons.download_outlined,
                     _Choice.download,
                     takeFirst(),
                   ),
                 if (offerRemove)
                   option(
-                    existing.isComplete ? 'Delete download' : 'Cancel download',
+                    existing.isComplete
+                        ? tr.watchActions.deleteDownload
+                        : tr.watchActions.cancelDownload,
                     Icons.delete_outline,
                     _Choice.removeDownload,
                     takeFirst(),
                   ),
                 if (favorite != null)
                   option(
-                    isFavorite ? 'Remove from favourites' : 'Add to favourites',
+                    isFavorite
+                        ? tr.watchActions.removeFavourite
+                        : tr.watchActions.addFavourite,
                     isFavorite ? Icons.star : Icons.star_border,
                     _Choice.favorite,
                     takeFirst(),
                   ),
                 if (resume != null)
                   option(
-                    'Remove from Continue watching',
+                    tr.watchActions.removeResume,
                     Icons.close,
                     _Choice.dismissResume,
                     takeFirst(),
@@ -314,7 +321,7 @@ Future<void> showWatchActions(
         isEpisode: plex.isEpisode,
       );
       messenger?.showSnackBar(
-        const SnackBar(content: Text('Downloading. See the Downloads tab.')),
+        SnackBar(content: Text(tr.watchActions.downloading)),
       );
     } else {
       await downloads.remove(plex.serverId, plex.ratingKey);
@@ -339,18 +346,12 @@ Future<void> showWatchActions(
             ratingKey: plex.ratingKey,
           );
       messenger?.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Marked as watched here. Plex will be told when it can be reached.',
-          ),
-        ),
+        SnackBar(content: Text(tr.watchActions.markedOffline)),
       );
       return;
     }
     messenger?.showSnackBar(
-      const SnackBar(
-        content: Text("Plex didn't accept that. The server may be offline."),
-      ),
+      SnackBar(content: Text(tr.watchActions.plexRefused)),
     );
   }
 }

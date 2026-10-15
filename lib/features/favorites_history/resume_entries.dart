@@ -10,6 +10,7 @@ import '../library/library_screen.dart' show plexSectionsProvider;
 import '../library/library_tab.dart';
 import '../settings/settings_controller.dart';
 import 'history_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// One tile in the continue-watching row, from either place it can come from.
 ///
@@ -112,8 +113,11 @@ class ResumeEntry {
       // things; the show's name is what people look for.
       title: episode ? (m.grandparentTitle ?? m.title) : m.title,
       detail: episode
-          ? [if (numbering.isNotEmpty) numbering, left ?? 'Up next'].join(' · ')
-          : (left ?? 'Up next'),
+          ? [
+              if (numbering.isNotEmpty) numbering,
+              left ?? tr.resume.upNext,
+            ].join(' · ')
+          : (left ?? tr.resume.upNext),
       progress: started ? offset / total : null,
       posterPath: m.thumb,
       lastActivity: m.lastViewedAt,
@@ -123,7 +127,7 @@ class ResumeEntry {
   }
 
   static String _minutesLeft(Duration d) =>
-      '${d.inMinutes < 1 ? 1 : d.inMinutes} min left';
+      tr.units.minutesLeft(m: d.inMinutes < 1 ? 1 : d.inMinutes);
 }
 
 /// This device's history and Plex's On Deck, as one row.

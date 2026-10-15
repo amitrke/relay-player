@@ -9,6 +9,7 @@ import '../../data/downloads/download_record.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Where downloaded files live: the app's private storage, so they cannot be
 /// browsed, shared or picked up by a gallery. Overridden in tests.
@@ -36,9 +37,7 @@ final downloadSourceResolverProvider = Provider<DownloadSourceResolver>((ref) {
         .where((s) => s.id == serverId)
         .firstOrNull;
     if (server == null) {
-      throw const DownloadException(
-        'That server is not connected. Reconnect it in Settings, then resume.',
-      );
+      throw DownloadException(tr.downloads.errors.serverNotConnected);
     }
     return server.service.downloadSource(ratingKey);
   };
@@ -342,9 +341,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         // Longer or shorter than Plex said: not a file to trust. Dropped so the
         // retry starts clean rather than resuming into the same fault.
         await _deleteQuietly(part);
-        throw const DownloadException(
-          'The file did not match the size the server reported. Try again.',
-        );
+        throw DownloadException(tr.downloads.errors.sizeMismatch);
       }
 
       final finished = File(part.path.substring(0, part.path.length - 5));
@@ -377,7 +374,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         key,
         (r) => r.copyWith(
           state: DownloadState.failed,
-          error: 'Could not write the file. The device may be out of space.',
+          error: tr.downloads.errors.cannotWrite,
         ),
       );
     } catch (e) {

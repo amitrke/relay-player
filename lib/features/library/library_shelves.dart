@@ -16,6 +16,7 @@ import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 import 'poster_tile.dart';
+import '../../i18n/strings.g.dart';
 
 /// One titled row of Movies or Series: a Plex library, or a panel category.
 class Shelf {
@@ -308,7 +309,7 @@ class _SeeAllTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'See all',
+                    tr.library.shelf.seeAll,
                     style: TextStyle(
                       color: t.ink,
                       fontSize: size,
@@ -317,7 +318,7 @@ class _SeeAllTile extends StatelessWidget {
                   ),
                   if (more)
                     Text(
-                      '${shelf.items.length} titles',
+                      tr.library.shelf.titles(n: shelf.items.length),
                       style: TextStyle(color: t.inkDim, fontSize: size - 2),
                     ),
                 ],
@@ -368,9 +369,9 @@ class ShelfScreen extends ConsumerWidget {
           ? PosterGrid(items: shelf.items)
           : items.isLoading
           ? Center(child: CircularProgressIndicator(color: t.accent))
-          : const LibraryEmptyState(
+          : LibraryEmptyState(
               icon: Icons.movie_outlined,
-              message: 'Nothing here any more.',
+              message: tr.library.shelf.gone,
             ),
     );
   }

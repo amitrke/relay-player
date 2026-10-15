@@ -174,7 +174,7 @@ user connects, which is nominative, as on Play.
 The App Review notes are in `fastlane/metadata/ios/review_information/notes.txt`
 and disclose Advanced Sources as §1.3 and §8.4 require. They were checked
 against the code: the toggle and its separate acknowledgement
-("I understand — turn on") are in `settings_screen.dart`. No demo account
+("I understand, turn on", which read "I understand — turn on" until 2026-10-15; the text is now `settings.advanced.dialogConfirm` in `lib/i18n/en.i18n.json`) are in `settings_screen.dart`. No demo account
 is provided (architecture.md §8.4): the notes say reviewers test with their
 own media, as users do, and offer test access for Advanced Sources on
 request.

@@ -12,6 +12,7 @@ import '../../domain/models/catalog_item.dart';
 import '../library/library_screen.dart' show libraryItemsProvider;
 import '../library/library_tab.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 const _kProvider = 'ai.provider';
 const _kConsent = 'ai.consent';
@@ -57,10 +58,10 @@ class AiSetupController extends AsyncNotifier<AiSetup?> {
   Future<void> save(AiProviderConfig config, String? key) async {
     final trimmedKey = key?.trim();
     if (config.baseUrl.isEmpty || config.model.isEmpty) {
-      throw const AiException('Fill in the address and the model.');
+      throw AiException(tr.ai.errors.fillIn);
     }
     if (!config.isLocal && (trimmedKey == null || trimmedKey.isEmpty)) {
-      throw const AiException('This provider needs an API key.');
+      throw AiException(tr.ai.errors.needsKey);
     }
 
     await OpenAiCompatibleClient(
@@ -194,7 +195,7 @@ Future<bool> ensureAiConsent(
       backgroundColor: t.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Text(
-        'Send data to ${config.displayName}?',
+        tr.ai.consentTitle(provider: config.displayName),
         style: TextStyle(
           color: t.ink,
           fontSize: 18,
@@ -202,19 +203,22 @@ Future<bool> ensureAiConsent(
         ),
       ),
       content: Text(
-        '${feature.label} will send this to ${config.displayName}: '
-        '${feature.dataSent}'
-        '${feature.timing == null ? '' : '\n\n${feature.timing}'}'
-        '\n\nIt goes straight from this device to them, '
-        'never through us. You can switch this off again in Settings, AI '
-        'features.',
+        [
+          tr.ai.consentBody(
+            feature: feature.label,
+            provider: config.displayName,
+            sends: feature.dataSent,
+          ),
+          ?feature.timing,
+          tr.ai.consentTail,
+        ].join('\n\n'),
         style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           style: TextButton.styleFrom(foregroundColor: t.inkDim),
-          child: const Text('Not now'),
+          child: Text(tr.ai.notNow),
         ),
         FilledButton(
           autofocus: true,
@@ -223,7 +227,7 @@ Future<bool> ensureAiConsent(
             backgroundColor: t.accent,
             foregroundColor: t.accentInk,
           ),
-          child: const Text('Allow'),
+          child: Text(tr.ai.allow),
         ),
       ],
     ),
@@ -330,14 +334,12 @@ final aiSearchProvider = StreamProvider.autoDispose
         final setup = ref.watch(aiSetupProvider).value;
         final client = ref.watch(aiClientProvider);
         if (setup == null || client == null) {
-          throw const AiException('No AI provider is set up.');
+          throw AiException(tr.ai.errors.notSetUp);
         }
         if (!ref
             .read(aiConsentProvider.notifier)
             .allows(AiFeature.naturalSearch, setup.config)) {
-          throw const AiException(
-            'Natural-language search is switched off for this provider.',
-          );
+          throw AiException(tr.ai.errors.searchOff);
         }
 
         final retryDelay = ref.read(aiSearchRetryDelayProvider);
@@ -426,7 +428,7 @@ final aiSearchProvider = StreamProvider.autoDispose
               controller.addError(
                 firstError is AiException
                     ? firstError as AiException
-                    : AiException('${firstError ?? 'The search failed.'}'),
+                    : AiException('${firstError ?? tr.ai.errors.searchFailed}'),
               );
             }
           } else {

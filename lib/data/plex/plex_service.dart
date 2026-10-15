@@ -5,6 +5,7 @@ import 'package:dart_plex/dart_plex.dart';
 
 import '../../domain/models/catalog_item.dart';
 import 'paging.dart';
+import '../../i18n/strings.g.dart';
 
 /// A 4-character code the user types at plex.tv/link.
 class PlexLinkCode {
@@ -229,8 +230,10 @@ class PlexService {
       }
     }
     throw PlexUnreachable(
-      '"${server.name}" did not answer on any of its '
-      '${server.connections.length} advertised addresses.',
+      tr.plex.errors.noAnswer(
+        server: server.name,
+        count: server.connections.length,
+      ),
     );
   }
 
@@ -585,7 +588,7 @@ class PlexService {
   Future<(PlexMetadata, PlexPart)> _itemAndPart(String ratingKey) async {
     final item = await _client.library.item(ratingKey);
     if (item == null) {
-      throw const PlexUnreachable('That item is no longer on the server.');
+      throw PlexUnreachable(tr.plex.errors.itemGone);
     }
 
     final part = item.media
@@ -593,10 +596,7 @@ class PlexService {
         .where((p) => (p.key ?? '').isNotEmpty)
         .firstOrNull;
     if (part == null) {
-      throw const PlexUnreachable(
-        'No playable file on this item. Transcode-only sources are not '
-        'supported yet.',
-      );
+      throw PlexUnreachable(tr.plex.errors.noFile);
     }
     return (item, part);
   }
@@ -605,7 +605,7 @@ class PlexService {
     final base = _client.baseUrl;
     final token = _client.token;
     if (base == null || token == null) {
-      throw const PlexUnreachable('Not connected to a Plex server.');
+      throw PlexUnreachable(tr.plex.errors.notConnected);
     }
     return (base, token);
   }

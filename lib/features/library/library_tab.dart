@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../i18n/strings.g.dart';
 
 /// The Home tabs (§12 screen 3).
 ///
@@ -7,15 +8,29 @@ import 'package:flutter/material.dart';
 /// Network and Live TV are different source shapes entirely and draw from Plex
 /// not at all.
 enum LibraryTab {
-  movies('Movies', drawsFromPlex: true),
-  series('Series', drawsFromPlex: true),
-  localNetwork('Local & Network', drawsFromPlex: false),
-  liveTv('Live TV', drawsFromPlex: false);
+  movies(drawsFromPlex: true),
+  series(drawsFromPlex: true),
+  localNetwork(drawsFromPlex: false),
+  liveTv(drawsFromPlex: false);
 
-  const LibraryTab(this.label, {required this.drawsFromPlex});
+  const LibraryTab({required this.drawsFromPlex});
 
-  final String label;
   final bool drawsFromPlex;
+
+  String get label => switch (this) {
+        movies => tr.library.tab.movies,
+        series => tr.library.tab.series,
+        localNetwork => tr.library.tab.localNetwork,
+        liveTv => tr.library.tab.liveTv,
+      };
+
+  /// "12 movies", in the app's language; a plural, so not [label] lowercased.
+  String count(int n) => switch (this) {
+        movies => tr.library.tab.countMovies(n: n),
+        series => tr.library.tab.countSeries(n: n),
+        localNetwork => tr.library.tab.countItems(n: n),
+        liveTv => tr.library.tab.countChannels(n: n),
+      };
 
   /// §8.2: Live TV exists only while Advanced Sources is on. The tab is absent
   /// from the tree rather than disabled, so there is nothing to discover when
@@ -35,13 +50,9 @@ enum LibraryTab {
       };
 
   String get emptyMessage => switch (this) {
-        movies => 'No movies on this server.',
-        series => 'No series on this server.',
-        localNetwork =>
-          'No folders or network shares yet.\nDevice storage and SMB shares '
-              'are not connectable in this build.',
-        liveTv =>
-          'No playlist or panel configured.\nAdd one from Settings once '
-              'Advanced sources is on.',
+        movies => tr.library.tab.emptyMovies,
+        series => tr.library.tab.emptySeries,
+        localNetwork => tr.library.tab.emptyLocalNetwork,
+        liveTv => tr.library.tab.emptyLiveTv,
       };
 }

@@ -1,3 +1,5 @@
+import '../../i18n/strings.g.dart';
+
 /// The kinds of provider the setup screen offers.
 ///
 /// Every one of them speaks the OpenAI Chat Completions wire format, so one
@@ -8,32 +10,37 @@
 /// clients, which are not built yet.
 enum AiPreset {
   openRouter(
-    'OpenRouter',
     'https://openrouter.ai/api/v1',
     // Deliberately empty. OpenRouter's catalogue, and which models are free,
     // changes often, and a model id written down here would go stale and fail
     // with a confusing "not found".
     '',
-    'Model ids are listed at openrouter.ai/models. Free ones end in ":free".',
   ),
-  openAi('OpenAI', 'https://api.openai.com/v1', 'gpt-4o-mini', null),
-  ollama(
-    'Ollama',
-    'http://localhost:11434/v1',
-    'llama3.1',
-    'Use your computer\'s address on this network, for example '
-        'http://192.168.1.20:11434/v1. Nothing leaves your network.',
-  ),
-  custom('Other', '', '', 'Any service that speaks the OpenAI chat format.');
+  openAi('https://api.openai.com/v1', 'gpt-4o-mini'),
+  ollama('http://localhost:11434/v1', 'llama3.1'),
+  custom('', '');
 
-  const AiPreset(this.label, this.baseUrl, this.model, this.hint);
+  const AiPreset(this.baseUrl, this.model);
 
-  final String label;
   final String baseUrl;
   final String model;
 
+  /// Product names stay as they are in every language; only "Other" is a
+  /// word (§12.3).
+  String get label => switch (this) {
+    openRouter => 'OpenRouter',
+    openAi => 'OpenAI',
+    ollama => 'Ollama',
+    custom => tr.ai.presetOther,
+  };
+
   /// Shown under the form for this preset, when there is something to say.
-  final String? hint;
+  String? get hint => switch (this) {
+    openRouter => tr.ai.hintOpenRouter,
+    openAi => null,
+    ollama => tr.ai.hintOllama,
+    custom => tr.ai.hintCustom,
+  };
 
   static AiPreset? fromName(String? name) {
     for (final p in values) {
@@ -130,29 +137,25 @@ bool isPrivateHost(String host) {
 /// (section 9.3). Only features that exist are listed: a consent row for
 /// something the app cannot do would advertise it.
 enum AiFeature {
-  naturalSearch(
-    'Natural-language search',
-    'Your search text, and the titles and years in your library.',
-    timing:
-        'A large library is sent in several requests of a few hundred titles '
-        'each, so a search makes more than one.',
-  ),
-  recommendations(
-    'Recommendations',
-    'The films you watched recently, and the titles and years of what you '
-        'have not watched yet in your library.',
-    timing:
-        'Picks are prepared in the background shortly after the app opens, '
-        'but only when what you watched has changed or they are over a day '
-        'old, so it is not a request on every launch.',
-  );
+  naturalSearch,
+  recommendations;
 
-  const AiFeature(this.label, this.dataSent, {this.timing});
+  String get label => switch (this) {
+    naturalSearch => tr.ai.feature.naturalSearch,
+    recommendations => tr.ai.feature.recommendations,
+  };
 
-  final String label;
-  final String dataSent;
+  /// A translation must name the same data, since this is what is consented
+  /// to (section 9.3, §12.3).
+  String get dataSent => switch (this) {
+    naturalSearch => tr.ai.feature.naturalSearchSends,
+    recommendations => tr.ai.feature.recommendationsSends,
+  };
 
   /// When sending happens, if that is not simply "when you ask". Shown in the
   /// consent dialog, because background sending is part of what is agreed to.
-  final String? timing;
+  String? get timing => switch (this) {
+    naturalSearch => tr.ai.feature.naturalSearchTiming,
+    recommendations => tr.ai.feature.recommendationsTiming,
+  };
 }

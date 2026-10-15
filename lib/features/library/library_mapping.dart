@@ -1,16 +1,19 @@
 import 'package:dart_plex/dart_plex.dart';
 
 import 'library_tab.dart';
+import '../../i18n/strings.g.dart';
 
 /// Where a single Plex library's contents appear.
 enum LibraryPlacement {
-  movies('Movies'),
-  series('Series'),
-  hidden('Hidden');
+  movies,
+  series,
+  hidden;
 
-  const LibraryPlacement(this.label);
-
-  final String label;
+  String get label => switch (this) {
+    movies => tr.library.placement.movies,
+    series => tr.library.placement.series,
+    hidden => tr.library.placement.hidden,
+  };
 
   LibraryTab? get tab => switch (this) {
     movies => LibraryTab.movies,

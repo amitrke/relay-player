@@ -1,4 +1,5 @@
 import 'xtream_client.dart';
+import '../../i18n/strings.g.dart';
 
 /// A set of categories that share a leading name: a country, a language, a
 /// platform, a kind of programme.
@@ -102,7 +103,7 @@ List<CategoryGroup> groupCategories(List<XtreamCategory> categories) {
   if (remainder.isNotEmpty) {
     out.add(
       CategoryGroup(
-        'Everything else',
+        tr.xtream.everythingElse,
         [...remainder]..sort(byPanel),
         isRemainder: true,
       ),

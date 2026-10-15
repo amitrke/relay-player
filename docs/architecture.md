@@ -1291,6 +1291,59 @@ point correctly: **theme is a runtime setting, not a build-time palette.**
   companion build, and Phase 0 found it carries a real toolchain cost) — treat
   the existing desktop artboard as a layout study, not a commitment.
 
+### 12.3 Languages (added 2026-10-15)
+
+Every string the app shows now lives in `lib/i18n/en.i18n.json` (611 of them
+at the time of writing), compiled to typed Dart by
+[slang](https://pub.dev/packages/slang): `tr.downloads.title`,
+`tr.library.tab.countMovies(n: 3)`. Plurals and placeholders are part of the
+string files, so a translation can order its words as its grammar needs
+rather than as an English sentence was concatenated. Regenerate with
+`dart run slang` after editing a string file; the generated code is committed.
+
+- **The variable is `tr`, not slang's default `t`.** Build methods here
+  already use `t` for the theme (`final t = RelayTheme.of(context)`), and a
+  translation call shadowed by the theme, or the reverse, is a bug that
+  compiles.
+- **The app follows the device's language.** There is no in-app language
+  setting yet. Material's own strings (dialog buttons, text selection) follow
+  through `flutter_localizations`.
+- **English is the only reviewed language.** `es`, `fr` and `de` are
+  **drafts**: machine-made on 2026-10-15 to exercise the pipeline end to end,
+  and not read by anyone who speaks them. `reviewedLocales` in
+  `lib/core/i18n/app_locale.dart` decides what a release build may show; a
+  draft appears in debug builds, so it can be reviewed in place, and a release
+  build on a German phone stays in English. Adding a locale to that set is the
+  record that a speaker has read it, and belongs in the same change as a note
+  here saying who and when. Play internal-testing builds are release builds,
+  so testers see English until then.
+- **Consent wording must survive translation intact.** §9.3's AI data
+  categories (`ai.feature.*Sends`, `*Timing`), the TMDB lookup consent
+  (`settings.metadata.consent`) and the Advanced sources acknowledgement
+  (`settings.advanced.*`) are what the person agrees to. A reviewer checks
+  them for meaning, not only fluency.
+- **Not translated, on purpose:** product and service names (Plex, TMDB,
+  OpenRouter, Ollama, Subnext Player); the TMDB attribution line, whose
+  wording TMDB's terms require; the prompts sent to an AI model, which are
+  instructions to the model and not UI; developer errors and log lines; and
+  the names a source gives its own content.
+- **Known gaps.** The language names the IPTV search filter guesses from
+  category names (`category_language.dart`) are still English; TMDB's
+  original-language names now come from the string files where the base
+  names the language. Byte units (KB, MB) are left as they are.
+
+`test/i18n_test.dart` holds this to what can be checked without a speaker:
+every draft has exactly the base keys and the same placeholders, the
+generated code matches the string files, drafts never reach a release build,
+and no widget is handed a literal English string (a scan of `lib/`, with an
+allowlist for the app's name, the logo's letter and the TMDB line). Each
+check was shown to fail on an injected fault before being trusted.
+
+**Copy changed in passing.** A handful of English strings lost an em dash
+while moving (the onboarding blurb, the Add a source privacy line, the SAF
+error, the Advanced sources confirm button now "I understand, turn on"). The
+meaning is unchanged. Store copy that quotes the old wording should be checked.
+
 ## 13. Phased roadmap
 
 **Timeline caveat — read before planning against these numbers.** The per-phase estimates below describe focused engineering time for someone already fluent in Flutter, and they sum to roughly 11–14 weeks. They do **not** include: the rework implied if a Phase 0 spike comes back negative (a hand-rolled Plex client, or the SMB proxy bridge, each add ~1 week); the rejection-and-resubmit cycle Phase 5 itself predicts; Amazon Appstore submission (§11); or the ordinary drag of TV focus-traversal debugging on real hardware. **If this is solo or part-time work, plan for roughly double the stated figures** and treat the phase boundaries — not the day counts — as the useful structure.

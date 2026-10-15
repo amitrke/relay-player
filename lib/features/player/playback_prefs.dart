@@ -3,16 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/local/app_settings_store.dart';
 import '../settings/settings_controller.dart';
 import 'engine/playback_engine.dart';
+import '../../i18n/strings.g.dart';
 
 /// Subtitle text size, as a multiplier on media_kit's own default.
 enum SubtitleSize {
-  small('Small', 0.75),
-  medium('Medium', 1.0),
-  large('Large', 1.35);
+  small(0.75),
+  medium(1.0),
+  large(1.35);
 
-  const SubtitleSize(this.label, this.scale);
-  final String label;
+  const SubtitleSize(this.scale);
   final double scale;
+
+  String get label => switch (this) {
+    small => tr.subtitleSize.small,
+    medium => tr.subtitleSize.medium,
+    large => tr.subtitleSize.large,
+  };
 
   static SubtitleSize fromName(String? name) =>
       values.where((s) => s.name == name).firstOrNull ?? medium;
@@ -116,41 +122,10 @@ class PlaybackPrefsController extends Notifier<PlaybackPrefs> {
 /// A fixed list rather than every language a file might carry: these are the
 /// ones common enough in subtitle and audio tracks to be worth a row, and a
 /// file in anything else can still be switched by hand in the player.
-const playbackLanguages = <String, String>{
-  'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'it': 'Italian',
-  'pt': 'Portuguese',
-  'nl': 'Dutch',
-  'sv': 'Swedish',
-  'no': 'Norwegian',
-  'da': 'Danish',
-  'fi': 'Finnish',
-  'pl': 'Polish',
-  'cs': 'Czech',
-  'hu': 'Hungarian',
-  'ro': 'Romanian',
-  'el': 'Greek',
-  'ru': 'Russian',
-  'uk': 'Ukrainian',
-  'tr': 'Turkish',
-  'ar': 'Arabic',
-  'he': 'Hebrew',
-  'hi': 'Hindi',
-  'bn': 'Bengali',
-  'pa': 'Punjabi',
-  'ta': 'Tamil',
-  'te': 'Telugu',
-  'ur': 'Urdu',
-  'th': 'Thai',
-  'vi': 'Vietnamese',
-  'id': 'Indonesian',
-  'zh': 'Chinese',
-  'ja': 'Japanese',
-  'ko': 'Korean',
-};
+///
+/// Named in the app's language (§12.3), in the order the base file lists
+/// them, which is the order Settings shows.
+Map<String, String> get playbackLanguages => tr.languages;
 
 /// ISO 639-2 codes, both bibliographic and terminological forms, to 639-1.
 /// Matroska and MP4 usually tag tracks with these three-letter forms.
@@ -183,7 +158,9 @@ String describeTrack(String? title, String? language, int index) {
     ?lang,
     if (title != null && title.trim().isNotEmpty && title != language) title,
   ];
-  return parts.isEmpty ? 'Track ${index + 1}' : parts.join(' · ');
+  return parts.isEmpty
+      ? tr.player.trackNumber(n: index + 1)
+      : parts.join(' · ');
 }
 
 /// What to select once a file's tracks are known.

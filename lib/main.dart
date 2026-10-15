@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'core/i18n/app_locale.dart';
 import 'core/native_licenses.dart';
 import 'core/platform/device_kind.dart';
 import 'core/routing/app_router.dart';
@@ -13,6 +14,7 @@ import 'features/ai/ai_recommendations_controller.dart';
 import 'features/downloads/offline_sync.dart';
 import 'features/metadata/release_dates_job.dart';
 import 'features/settings/settings_controller.dart';
+import 'i18n/strings.g.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,10 @@ Future<void> main() async {
   // Cheap: it only registers a callback, and the texts load when the licence
   // page is opened.
   registerNativeLicenses();
+
+  // The device's language, or English for a draft translation in a release
+  // build (§12.3). Before the first frame so nothing draws in the wrong one.
+  applyDeviceLocale();
 
   // Before the first frame, for the same reason the settings are: layout reads
   // this synchronously, so answering late would draw the phone layout on a TV
@@ -40,7 +46,7 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [appSettingsStoreProvider.overrideWithValue(settings)],
-      child: const RelayPlayerApp(),
+      child: TranslationProvider(child: const RelayPlayerApp()),
     ),
   );
 }

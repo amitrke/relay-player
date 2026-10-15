@@ -69,6 +69,10 @@ dependencies:
   cryptography: ^2.9.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.2
+  slang: ^4.19.2
+  slang_flutter: ^4.19.0
+  flutter_localizations:
+    sdk: flutter
 dev_dependencies:
   flutter_test:
     sdk: flutter

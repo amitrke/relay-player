@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings → About (§12.1): version, the general disclaimer (§1), the privacy
 /// policy, and open-source licences.
@@ -47,8 +48,11 @@ class AboutPane extends StatelessWidget {
             final info = snap.data;
             return Text(
               info == null
-                  ? 'Version …'
-                  : 'Version ${info.version} (${info.buildNumber})',
+                  ? tr.settings.about.versionLoading
+                  : tr.settings.about.version(
+                      version: info.version,
+                      build: info.buildNumber,
+                    ),
               style: body,
             );
           },
@@ -56,10 +60,10 @@ class AboutPane extends StatelessWidget {
         const SizedBox(height: 18),
         Text(OnboardingScreen.blurb, style: body),
         const SizedBox(height: 18),
-        Text('Privacy policy', style: label),
+        Text(tr.settings.about.privacyPolicy, style: label),
         const SizedBox(height: 4),
         Text(
-          'No account, no backend and no analytics. The full policy is at:',
+          tr.settings.about.privacySummary,
           style: body,
         ),
         const SizedBox(height: 4),
@@ -74,7 +78,7 @@ class AboutPane extends StatelessWidget {
         // media_kit bundles are not Dart packages, so on Android they are
         // added separately by registerNativeLicenses (core/native_licenses.dart).
         RelayButton(
-          label: 'Open-source licences',
+          label: tr.settings.about.licences,
           onPressed: () async {
             final info = await PackageInfo.fromPlatform();
             if (!context.mounted) return;

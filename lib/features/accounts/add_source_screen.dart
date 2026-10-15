@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// Screen 02 — Add a source.
 ///
@@ -38,9 +39,7 @@ class AddSourceScreen extends StatelessWidget {
   /// The privacy line the canvas leads with. It is the no-backend decision
   /// (§16) stated where it is most reassuring — at the moment credentials are
   /// about to be typed.
-  static const String privacyNote =
-      'Credentials stay on this device. Nothing is sent to us — there is no '
-      'account and no server in the middle.';
+  static String get privacyNote => tr.addSource.privacy;
 
   @override
   Widget build(BuildContext context) {
@@ -76,30 +75,26 @@ class AddSourceScreen extends StatelessWidget {
 /// available in this build"; they come back with v1.2.0 on the RELEASING.md
 /// ladder, together with their screens.
 enum SourceKind {
-  plex('Plex server', 'Link with code', Icons.dns_outlined, false),
-  localFiles(
-    'Video on this device',
-    'Scan your media library, or pick a single folder to keep access to.',
-    Icons.smartphone_outlined,
-    false,
-  ),
-  smb(
-    'Network share (SMB)',
-    'A NAS or Windows share on your home network.',
-    Icons.lan_outlined,
-    false,
-  ),
-  xtream(
-    'Xtream Codes login',
-    'Host, username and password from your provider.',
-    Icons.vpn_key_outlined,
-    true,
-  );
+  plex(Icons.dns_outlined, false),
+  localFiles(Icons.smartphone_outlined, false),
+  smb(Icons.lan_outlined, false),
+  xtream(Icons.vpn_key_outlined, true);
 
-  const SourceKind(this.title, this._subtitle, this.icon, this.isAdvanced);
+  const SourceKind(this.icon, this.isAdvanced);
 
-  final String title;
-  final String _subtitle;
+  String get title => switch (this) {
+    plex => tr.addSource.kind.plex,
+    localFiles => tr.addSource.kind.localFiles,
+    smb => tr.addSource.kind.smb,
+    xtream => tr.addSource.kind.xtream,
+  };
+
+  String get _subtitle => switch (this) {
+    plex => tr.addSource.kind.plexShort,
+    localFiles => tr.addSource.kind.localFilesSub,
+    smb => tr.addSource.kind.smbSub,
+    xtream => tr.addSource.kind.xtreamSub,
+  };
 
   /// The one-line description under [title].
   ///
@@ -109,7 +104,7 @@ enum SourceKind {
   /// first iPad run, 2026-09-23. iOS reaches device video through the photo
   /// library only, until the §7.1 document-picker source exists.
   String get subtitle => this == localFiles && Platform.isIOS
-      ? 'Play the videos in your photo library.'
+      ? tr.addSource.kind.localFilesIos
       : _subtitle;
   final IconData icon;
   final bool isAdvanced;
@@ -128,11 +123,8 @@ class _SourceTile extends StatelessWidget {
   final VoidCallback onTap;
 
   /// Plex's subtitle is longer on this screen than the enum's short form.
-  static const Map<SourceKind, String> _expanded = {
-    SourceKind.plex:
-        'Approve this device in your browser. Your own server plus anything '
-        'shared with you.',
-  };
+  static String? _expanded(SourceKind kind) =>
+      kind == SourceKind.plex ? tr.addSource.kind.plexLong : null;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +151,7 @@ class _SourceTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _expanded[kind] ?? kind.subtitle,
+                  _expanded(kind) ?? kind.subtitle,
                   style: TextStyle(
                     color: t.inkDim,
                     fontSize: RelayLayout.bodySize(form) - 1,
@@ -202,7 +194,7 @@ class _ReceiveTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Copy from another device',
+                  tr.addSource.copyFromDevice,
                   style: TextStyle(
                     color: t.ink,
                     fontSize: RelayLayout.bodySize(form) + 1,
@@ -211,8 +203,7 @@ class _ReceiveTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Already set up on your phone? Send it here instead of '
-                  'typing it again.',
+                  tr.addSource.copyFromDeviceSub,
                   style: TextStyle(
                     color: t.inkDim,
                     fontSize: RelayLayout.bodySize(form) - 1,
@@ -259,7 +250,7 @@ class _CompactAddSource extends StatelessWidget {
               IconButton(
                 onPressed: onBack,
                 icon: Icon(Icons.chevron_left, color: t.ink),
-                tooltip: 'Back',
+                tooltip: tr.common.back,
               ),
             ],
           ),
@@ -269,7 +260,7 @@ class _CompactAddSource extends StatelessWidget {
             padding: RelayLayout.pagePadding(form).copyWith(bottom: 32),
             children: [
               Text(
-                'Add a source',
+                tr.addSource.title,
                 style: TextStyle(
                   color: t.ink,
                   fontSize: RelayLayout.titleSize(form),
@@ -292,7 +283,7 @@ class _CompactAddSource extends StatelessWidget {
               ],
               if (advancedEnabled) ...[
                 const SizedBox(height: 14),
-                _SectionLabel(text: 'Advanced sources'),
+                _SectionLabel(text: tr.addSource.advanced),
                 const SizedBox(height: 10),
                 for (final kind in SourceKind.advanced) ...[
                   _SourceTile(kind: kind, onTap: () => onPickSource(kind)),
@@ -304,7 +295,7 @@ class _CompactAddSource extends StatelessWidget {
               ],
               if (onReceiveFromDevice != null) ...[
                 const SizedBox(height: 22),
-                _SectionLabel(text: 'Or'),
+                _SectionLabel(text: tr.addSource.or),
                 const SizedBox(height: 10),
                 _ReceiveTile(onTap: onReceiveFromDevice!),
               ],
@@ -375,15 +366,13 @@ class _AdvancedOffHintState extends State<_AdvancedOffHint> {
       TextSpan(
         style: style,
         children: [
-          const TextSpan(
-            text: 'Looking for an IPTV provider or playlist? Turn on ',
-          ),
+          TextSpan(text: tr.addSource.advancedHintLead),
           TextSpan(
-            text: 'Advanced sources',
+            text: tr.addSource.advanced,
             style: style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
             recognizer: widget.onOpenSettings == null ? null : _tap,
           ),
-          const TextSpan(text: ' in Settings.'),
+          TextSpan(text: tr.addSource.advancedHintTail),
         ],
       ),
     );
@@ -430,32 +419,32 @@ class _DesktopAddSource extends StatelessWidget {
                   child: ListView(
                     padding: EdgeInsets.zero,
                     children: [
-                      _SectionLabel(text: 'Source type'),
+                      _SectionLabel(text: tr.addSource.sourceType),
                       const SizedBox(height: 14),
                       _RailItem(
-                        title: 'Plex server',
-                        subtitle: 'Link with a code',
+                        title: tr.addSource.kind.plex,
+                        subtitle: tr.addSource.plexRail,
                         icon: Icons.dns_outlined,
                         selected: false,
                         onTap: () => onPickSource(SourceKind.plex),
                       ),
                       _RailItem(
-                        title: 'Files on this PC',
-                        subtitle: 'Choose a folder',
+                        title: tr.addSource.pcFiles,
+                        subtitle: tr.addSource.pcFilesSub,
                         icon: Icons.folder_outlined,
                         selected: false,
                         onTap: () => onPickSource(SourceKind.localFiles),
                       ),
                       _RailItem(
-                        title: 'Network share (SMB)',
-                        subtitle: 'NAS or Windows share',
+                        title: tr.addSource.kind.smb,
+                        subtitle: tr.addSource.smbRail,
                         icon: Icons.lan_outlined,
                         selected: false,
                         onTap: () => onPickSource(SourceKind.smb),
                       ),
                       if (advancedEnabled) ...[
                         const SizedBox(height: 14),
-                        _SectionLabel(text: 'Advanced sources'),
+                        _SectionLabel(text: tr.addSource.advanced),
                         const SizedBox(height: 10),
                         for (final kind in SourceKind.advanced)
                           _RailItem(
@@ -468,11 +457,11 @@ class _DesktopAddSource extends StatelessWidget {
                       ],
                       if (onReceiveFromDevice != null) ...[
                         const SizedBox(height: 14),
-                        _SectionLabel(text: 'Or'),
+                        _SectionLabel(text: tr.addSource.or),
                         const SizedBox(height: 10),
                         _RailItem(
-                          title: 'Copy from another device',
-                          subtitle: 'Send it from your phone',
+                          title: tr.addSource.copyFromDevice,
+                          subtitle: tr.addSource.copyRail,
                           icon: Icons.devices_outlined,
                           selected: false,
                           onTap: onReceiveFromDevice!,
@@ -486,8 +475,7 @@ class _DesktopAddSource extends StatelessWidget {
                   // The artboard said "Windows Credential Manager", which is
                   // wrong on every other platform this ships to. §3's rule is
                   // what actually matters and it is platform-neutral.
-                  'Credentials are stored in your device keystore, never in '
-                  'the app database.',
+                  tr.addSource.keystore,
                   style: TextStyle(color: t.inkDim, fontSize: 12, height: 1.5),
                 ),
               ],
@@ -520,7 +508,7 @@ class _PickAPrompt extends StatelessWidget {
             Icon(Icons.add_link, color: t.inkDim, size: 34),
             const SizedBox(height: 16),
             Text(
-              'Choose a source type to get started.',
+              tr.addSource.pick,
               textAlign: TextAlign.center,
               style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.5),
             ),

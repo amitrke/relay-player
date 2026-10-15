@@ -7,6 +7,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_client.dart';
 import '../library/poster_grid.dart';
 import 'xtream_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Seasons and episodes of a panel series (§12 screen 5).
 class XtreamSeriesScreen extends ConsumerStatefulWidget {
@@ -41,7 +42,7 @@ class _XtreamSeriesScreenState extends ConsumerState<XtreamSeriesScreen> {
       return Scaffold(
         backgroundColor: t.bg,
         appBar: AppBar(backgroundColor: t.bg, foregroundColor: t.ink),
-        body: const Center(child: Text('That line is no longer configured.')),
+        body: Center(child: Text(tr.xtream.lineGone)),
       );
     }
 
@@ -54,7 +55,7 @@ class _XtreamSeriesScreenState extends ConsumerState<XtreamSeriesScreen> {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: const Text('Series'),
+        title: Text(tr.xtream.series.title),
       ),
       body: seasons.when(
         loading: () => Center(child: CircularProgressIndicator(color: t.accent)),
@@ -67,9 +68,9 @@ class _XtreamSeriesScreenState extends ConsumerState<XtreamSeriesScreen> {
         ),
         data: (list) {
           if (list.isEmpty) {
-            return const LibraryEmptyState(
+            return LibraryEmptyState(
               icon: Icons.tv_outlined,
-              message: 'The panel returned no episodes for this series.',
+              message: tr.xtream.series.noEpisodes,
             );
           }
 
@@ -105,7 +106,7 @@ class _XtreamSeriesScreenState extends ConsumerState<XtreamSeriesScreen> {
                           ),
                         ),
                         child: Text(
-                          'Season ${season.number}',
+                          tr.xtream.series.season(n: season.number),
                           style: TextStyle(
                             color: season.number == selected
                                 ? t.accentInk

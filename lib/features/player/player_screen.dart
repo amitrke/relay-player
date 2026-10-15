@@ -25,6 +25,7 @@ import 'engine/playback_engine.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
+import '../../i18n/strings.g.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -426,14 +427,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           .where((s) => s.id == smbShareId)
           .firstOrNull;
       if (share == null) {
-        throw StateError('That share is no longer configured.');
+        throw StateError(tr.player.shareGone);
       }
       final session = await ref.read(smbSessionProvider(share).future);
       final entries = await session.list(_parentOf(widget.smbPath!));
       final entry =
           entries.where((e) => e.path == widget.smbPath).firstOrNull;
       if (entry == null) {
-        throw StateError('That file is no longer on the share.');
+        throw StateError(tr.player.shareFileGone);
       }
 
       final bridge = LoopbackBridge();
@@ -453,7 +454,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final source = await ref.read(safFolderSourceProvider).bridgeSourceFor(
             SafVideo(
               uri: safUri,
-              name: widget.safName ?? 'Video',
+              name: widget.safName ?? tr.player.untitledVideo,
               sizeBytes: widget.safSize,
             ),
           );
@@ -461,7 +462,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _bridge = bridge;
       return _Playable(
         url: await bridge.serve(source),
-        title: widget.safName ?? 'Video',
+        title: widget.safName ?? tr.player.untitledVideo,
         live: false,
       );
     }
@@ -471,12 +472,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final source = ref.read(deviceVideoSourceProvider);
       final path = await source.filePathOf(assetId);
       if (path == null) {
-        throw StateError('That file is no longer on this device.');
+        throw StateError(tr.player.deviceFileGone);
       }
       final video = await source.videoById(assetId);
       return _Playable(
         url: path,
-        title: video?.title ?? 'Video',
+        title: video?.title ?? tr.player.untitledVideo,
         live: false,
       );
     }
@@ -486,7 +487,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final accounts = ref.read(xtreamAccountsProvider);
       final account = accounts.where((a) => a.id == accountId).firstOrNull;
       if (account == null) {
-        throw StateError('That line is no longer configured.');
+        throw StateError(tr.player.lineGone);
       }
       final client = await ref.read(xtreamClientProvider(account).future);
 
@@ -499,7 +500,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         if (widget.kind == XtreamStreamKind.episode) {
           return _Playable(
             url: client.seriesStreamUrl(id, ext),
-            title: 'Episode',
+            title: tr.player.untitledEpisode,
             live: false,
             historyKind: PlaybackKind.xtreamEpisode,
             historyId: raw,
@@ -511,7 +512,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         final match = items.where((i) => i.id == raw).firstOrNull;
         return _Playable(
           url: client.vodStreamUrl(id, ext),
-          title: match?.title ?? 'Film',
+          title: match?.title ?? tr.player.untitledFilm,
           live: false,
           posterRef: match?.posterUrl,
           historyKind: PlaybackKind.xtreamVod,
@@ -524,7 +525,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           channels.where((c) => c.streamId == widget.streamId).firstOrNull;
       return _Playable(
         url: client.liveStreamUrl(widget.streamId!),
-        title: channel?.name ?? 'Live',
+        title: channel?.name ?? tr.player.untitledLive,
         live: true,
       );
     }
@@ -778,7 +779,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
     if (!_engine.playing) return;
     if (now.difference(_lastAdvance) >= _freezeTimeout) {
-      _reconnect('This channel stopped and did not come back.');
+      _reconnect(tr.player.channelFroze);
     }
   }
 
@@ -816,8 +817,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // on the first miss. A first-ever open still fails straight away: a dead
     // listing should say so in 15s, not after three more attempts.
     if (_live && _reconnects > 0) {
-      _reconnect('This channel is not responding. Listings often outrun '
-          'reality on a panel - try another, or the same one again.');
+      _reconnect(tr.player.channelNotResponding);
       return;
     }
     // Release the connection rather than leaving it held. On a one-connection
@@ -825,11 +825,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // the panel times it out server-side.
     unawaited(_engine.stop());
     _fail(
-      _live
-          ? 'This channel is not responding. Listings often outrun reality on '
-              'a panel — try another, or the same one again.'
-          : 'This did not start playing. The server may be busy, or the file '
-              'may need transcoding, which is not supported yet.',
+      _live ? tr.player.channelNotResponding : tr.player.didNotStart,
     );
   }
 
@@ -887,10 +883,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             if (_released)
               _PlaybackError(
                 title: _title,
-                message: 'Stopped while the app was in the background, so the '
-                    'connection is free for other devices.',
+                message: tr.player.released,
                 icon: Icons.pause_circle_outline,
-                action: ('Rejoin', _rejoin),
+                action: (tr.player.rejoin, _rejoin),
               )
             else if (_error != null)
               _PlaybackError(message: _error!, title: _title)
@@ -980,12 +975,12 @@ class _PlaybackErrorState extends State<_PlaybackError> {
               ),
               const SizedBox(height: 8),
               RelayTextButton(
-                label: 'Back',
+                label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
             ] else
               RelayButton(
-                label: 'Back',
+                label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
           ],

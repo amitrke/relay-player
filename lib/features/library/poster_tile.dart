@@ -10,6 +10,7 @@ import '../favorites_history/favorites_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
+import '../../i18n/strings.g.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
@@ -162,7 +163,9 @@ class PosterTile extends ConsumerWidget {
               [
                 if (item.year != null) '${item.year}',
                 if (showKind)
-                  item.kind == CatalogKind.show ? 'Series' : 'Movie',
+                  item.kind == CatalogKind.show
+                      ? tr.library.tile.series
+                      : tr.library.tile.movie,
               ].join(' · '),
               style: TextStyle(
                 color: t.inkDim,
@@ -201,7 +204,7 @@ class WatchedTick extends StatelessWidget {
     final t = RelayTheme.of(context);
     final tv = RelayLayout.of(context) == RelayFormFactor.tv;
     return Semantics(
-      label: 'Watched',
+      label: tr.library.tile.watched,
       child: DecoratedBox(
         decoration: BoxDecoration(color: t.accent, shape: BoxShape.circle),
         child: Padding(
@@ -224,7 +227,9 @@ class WatchProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     return Semantics(
-      label: '${(progress * 100).round()}% watched',
+      label: tr.library.tile.percentWatched(
+        percent: (progress * 100).round(),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(2),
         child: LinearProgressIndicator(

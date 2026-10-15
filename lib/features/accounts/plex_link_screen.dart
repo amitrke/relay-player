@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import 'plex_session.dart';
+import '../../i18n/strings.g.dart';
 
 /// Connects a Plex account (§6) via the plex.tv/link PIN flow.
 class PlexLinkScreen extends ConsumerWidget {
@@ -37,7 +38,9 @@ class PlexLinkScreen extends ConsumerWidget {
       final name = next.servers.isEmpty ? null : next.servers.last.name;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(name == null ? 'Plex connected.' : 'Connected to $name.'),
+          content: Text(
+            name == null ? tr.plex.connected : tr.plex.connectedTo(name: name),
+          ),
         ),
       );
       // `go`, not `pop`: returning to "Add a source" after adding one reads as
@@ -63,7 +66,7 @@ class PlexLinkScreen extends ConsumerWidget {
           // a "Connect to Plex" button for the frame after the connection
           // succeeded.
           PlexStage.ready =>
-            const _Spinner(label: 'Connected. Opening your library…'),
+            _Spinner(label: tr.plex.opening),
           _ => _ConnectButton(busy: state.busy),
         },
       ],
@@ -175,7 +178,7 @@ class _Intro extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Text(
-          'Connect to Plex',
+          tr.plex.connect,
           style: TextStyle(
             color: t.ink,
             fontSize: RelayLayout.titleSize(f),
@@ -185,8 +188,7 @@ class _Intro extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'Subnext Player plays what your own Plex server already holds. '
-          'Nothing is uploaded, and no account details reach anyone but Plex.',
+          tr.plex.explain,
           style: TextStyle(
             color: t.inkDim,
             fontSize: RelayLayout.bodySize(f),
@@ -205,9 +207,9 @@ class _ConnectButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (busy) return const _Spinner(label: 'Contacting Plex…');
+    if (busy) return _Spinner(label: tr.plex.contacting);
     return RelayButton(
-      label: 'Connect to Plex',
+      label: tr.plex.connect,
       autofocus: true,
       onPressed: () => ref.read(plexSessionProvider.notifier).startLink(),
     );
@@ -242,7 +244,7 @@ class _LinkCodePanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'On any device, open plex.tv/link and enter:',
+          tr.plex.enterCode,
           style: TextStyle(
             color: t.inkDim,
             fontSize: RelayLayout.bodySize(f),
@@ -275,7 +277,7 @@ class _LinkCodePanel extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Flexible(
                     child: Text(
-                      'Waiting for approval…',
+                      tr.plex.waiting,
                       style: TextStyle(
                         color: t.ink,
                         fontSize: RelayLayout.bodySize(f),
@@ -295,7 +297,7 @@ class _LinkCodePanel extends ConsumerWidget {
             // is gone once linking starts, and without a new target focus sat
             // on a widget that no longer existed (#5).
             RelayTextButton(
-              label: 'Cancel',
+              label: tr.common.cancel,
               autofocus: true,
               onPressed: () =>
                   ref.read(plexSessionProvider.notifier).cancelLink(),
@@ -303,7 +305,7 @@ class _LinkCodePanel extends ConsumerWidget {
             // A clipboard on a TV goes nowhere useful.
             if (!tv)
               RelayTextButton(
-                label: 'Copy code',
+                label: tr.plex.copyCode,
                 onPressed: () => Clipboard.setData(ClipboardData(text: code)),
               ),
           ],
@@ -388,7 +390,7 @@ class _ServerPickerState extends ConsumerState<_ServerPicker> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Choose a server',
+          tr.plex.chooseServer,
           style: TextStyle(
             color: t.ink,
             fontSize: RelayLayout.bodySize(f) + 3,
@@ -398,16 +400,16 @@ class _ServerPickerState extends ConsumerState<_ServerPicker> {
         const SizedBox(height: 8),
         if (candidates.isEmpty)
           Text(
-            'Every server on this account is already connected.',
+            tr.plex.allConnected,
             style:
                 TextStyle(color: t.inkDim, fontSize: RelayLayout.bodySize(f)),
           ),
         if (own.isNotEmpty) ...[
-          header('Your servers'),
+          header(tr.plex.yourServers),
           for (final s in own) row(s),
         ],
         if (shared.isNotEmpty) ...[
-          header('Shared with you'),
+          header(tr.plex.sharedWithYou),
           for (final s in shared) row(s),
         ],
       ],
@@ -433,13 +435,13 @@ class _ServerRow extends StatelessWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final detail = connecting
-        ? 'Connecting… this can take a few seconds'
+        ? tr.plex.connecting
         : [
             // Still tappable: plex.tv's presence can lag a server that has
             // just woken, and refusing the tap would be the worse mistake.
-            if (!server.presence) 'Offline',
+            if (!server.presence) tr.plex.offline,
             // Plex Relay is bandwidth-capped, which is what matters about it.
-            if (server.relay) 'Plex Relay only, playback may be limited',
+            if (server.relay) tr.plex.relayOnly,
           ].join(' · ');
 
     return Opacity(

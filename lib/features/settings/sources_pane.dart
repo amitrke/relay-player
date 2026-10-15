@@ -10,6 +10,7 @@ import '../accounts/plex_session.dart';
 import '../library/library_mapping.dart';
 import '../library/library_screen.dart';
 import 'settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings → Sources (§12.1): every connected Plex server, and what each of
 /// its libraries feeds.
@@ -39,7 +40,7 @@ class SourcesPane extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
-              'No Plex servers connected.',
+              tr.settings.sources.noServers,
               style: TextStyle(color: t.inkDim, fontSize: 13),
             ),
           ),
@@ -79,7 +80,10 @@ class _ServerBlock extends ConsumerWidget {
             TextButton(
               onPressed: () =>
                   ref.read(plexSessionProvider.notifier).disconnect(server.id),
-              child: Text('Remove', style: TextStyle(color: t.inkDim)),
+              child: Text(
+                tr.settings.sources.remove,
+                style: TextStyle(color: t.inkDim),
+              ),
             ),
           ],
         ),
@@ -98,7 +102,7 @@ class _ServerBlock extends ConsumerWidget {
               Text(
                 e is TimeoutException && e.message != null
                     ? e.message!
-                    : 'Could not load libraries from this server.\n\n$e',
+                    : tr.settings.sources.loadFailed(error: '$e'),
                 style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.45),
               ),
               const SizedBox(height: 6),
@@ -110,7 +114,10 @@ class _ServerBlock extends ConsumerWidget {
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text('Try again', style: TextStyle(color: t.accent)),
+                child: Text(
+                  tr.common.tryAgain,
+                  style: TextStyle(color: t.accent),
+                ),
               ),
             ],
           ),
@@ -141,7 +148,10 @@ class _AddServer extends ConsumerWidget {
         onPressed: () =>
             ref.read(plexSessionProvider.notifier).refreshAvailable(),
         icon: Icon(Icons.refresh, size: 18, color: t.inkDim),
-        label: Text('Look for more servers', style: TextStyle(color: t.inkDim)),
+        label: Text(
+          tr.settings.sources.lookForMore,
+          style: TextStyle(color: t.inkDim),
+        ),
       );
     }
 
@@ -149,7 +159,7 @@ class _AddServer extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Add another server',
+          tr.settings.sources.addAnother,
           style: TextStyle(
             color: t.ink,
             fontSize: 14,
@@ -172,8 +182,11 @@ class _AddServer extends ConsumerWidget {
               ),
               subtitle: Text(
                 [
-                  if (resource.owned) 'Yours' else 'Shared with you',
-                  if (resource.relay) 'via relay',
+                  if (resource.owned)
+                    tr.settings.sources.yours
+                  else
+                    tr.settings.sources.shared,
+                  if (resource.relay) tr.settings.sources.viaRelay,
                 ].join(' · '),
                 style: TextStyle(color: t.inkDim, fontSize: 12),
               ),
@@ -227,8 +240,9 @@ class _LibraryRow extends ConsumerWidget {
         const SizedBox(height: 3),
         Text(
           [
-            'Plex type: ${section.type.name}',
-            if (mapping.isOverridden(serverId, section)) 'changed by you',
+            tr.settings.sources.plexType(type: section.type.name),
+            if (mapping.isOverridden(serverId, section))
+              tr.settings.sources.changedByYou,
           ].join(' · '),
           style: TextStyle(color: t.inkDim, fontSize: 12),
         ),

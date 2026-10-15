@@ -22,6 +22,7 @@ import 'ai_recommendations_view.dart';
 import 'ai_results_view.dart';
 import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
+import '../../i18n/strings.g.dart';
 
 final _queryProvider = NotifierProvider<_QueryController, String>(
   _QueryController.new,
@@ -230,7 +231,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       FocusManager.instance.primaryFocus?.unfocus(),
                   style: TextStyle(color: t.ink),
                   decoration: InputDecoration(
-                    hintText: 'Search your sources',
+                    hintText: tr.search.hint,
                     hintStyle: TextStyle(color: t.inkDim),
                     prefixIcon: Icon(Icons.search, color: t.inkDim, size: 20),
                     suffixIcon: query.isEmpty
@@ -308,15 +309,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           rows: [],
                           leading: AiRecommendationsSection(),
                         ),
-                        _ => const LibraryEmptyState(
+                        _ => LibraryEmptyState(
                           icon: Icons.search,
-                          message:
-                              'Search movies and series across your server.',
+                          message: tr.search.prompt,
                         ),
                       },
-                      1 => const LibraryEmptyState(
+                      1 => LibraryEmptyState(
                         icon: Icons.search,
-                        message: 'Keep typing…',
+                        message: tr.search.keepTyping,
                       ),
                       _ => results.when(
                         loading: () => Center(
@@ -330,7 +330,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         data: (list) => list.isEmpty
                             ? LibraryEmptyState(
                                 icon: Icons.search_off,
-                                message: 'Nothing matching "$query".',
+                                message: tr.search.noMatch(query: query),
                               )
                             : SearchResultsView(
                                 all: enriched ?? list,
@@ -381,7 +381,7 @@ class _AskAiChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              active ? 'Back to results' : 'Ask AI',
+              active ? tr.search.backToResults : tr.search.askAi,
               style: TextStyle(
                 color: active ? t.inkDim : t.ink,
                 fontSize: size,

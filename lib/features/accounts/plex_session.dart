@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/plex/plex_service.dart';
 import '../../data/plex/plex_session_store.dart';
 import '../library/library_cache_provider.dart';
+import '../../i18n/strings.g.dart';
 
 /// Where the user is in the link flow.
 enum PlexStage {
@@ -216,7 +217,7 @@ class PlexSessionController extends Notifier<PlexState> {
         timer.cancel();
         state = state.copyWith(
           stage: PlexStage.signedOut,
-          error: 'That code expired. Try again.',
+          error: tr.plex.codeExpired,
         );
         return;
       }
@@ -243,7 +244,7 @@ class PlexSessionController extends Notifier<PlexState> {
         state = state.copyWith(
           stage: PlexStage.signedOut,
           busy: false,
-          error: 'That account has no Plex servers.',
+          error: tr.plex.noServers,
         );
         return;
       }
