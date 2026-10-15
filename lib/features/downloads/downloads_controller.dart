@@ -252,11 +252,16 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     if (find(record.serverId, record.ratingKey) == null) return;
     final dir = await ref.read(downloadsDirectoryProvider.future);
     final artwork = '$name.poster';
+    final file = File('${dir.path}${Platform.pathSeparator}$artwork');
     try {
-      await File(
-        '${dir.path}${Platform.pathSeparator}$artwork',
-      ).writeAsBytes(bytes, flush: true);
+      await file.writeAsBytes(bytes, flush: true);
     } on FileSystemException {
+      return;
+    }
+    // Deleted while the poster was being written: the delete could not know
+    // about a file that did not exist yet, so this one has to go here.
+    if (find(record.serverId, record.ratingKey) == null) {
+      await _deleteQuietly(file);
       return;
     }
     _update(key, (r) => r.copyWith(artworkFile: artwork));
