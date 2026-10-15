@@ -44,6 +44,48 @@ final downloadSourceResolverProvider = Provider<DownloadSourceResolver>((ref) {
   };
 });
 
+/// Fetches a title's poster for keeping beside its file (§18.8): the stored,
+/// unsigned artwork path in, the image bytes out, or null when there is no
+/// server to ask or it would not say. A seam for tests.
+typedef ArtworkFetcher =
+    Future<List<int>?> Function(String serverId, String posterPath);
+
+/// Posters above this are not kept. A 320x480 transcode is tens of kilobytes;
+/// anything near this size is not the image that was asked for.
+const _maxArtworkBytes = 4 * 1024 * 1024;
+
+final artworkFetcherProvider = Provider<ArtworkFetcher>((ref) {
+  return (serverId, posterPath) async {
+    final server = ref
+        .read(connectedServersProvider)
+        .where((s) => s.id == serverId)
+        .firstOrNull;
+    // Signed fresh and used once: the URL carries the token (§3), so it is
+    // never stored, only the bytes it returns.
+    final url = server?.service.posterUrlForPath(posterPath);
+    if (url == null) return null;
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final response = await (await client.getUrl(Uri.parse(url))).close();
+      if (response.statusCode != HttpStatus.ok) {
+        await response.drain<void>();
+        return null;
+      }
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+        if (bytes.length > _maxArtworkBytes) return null;
+      }
+      return bytes;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  };
+});
+
 final downloadStoreProvider = Provider<DownloadStore>(
   (ref) => DownloadStore(ref.watch(appSettingsStoreProvider)),
 );
@@ -101,6 +143,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     required String ratingKey,
     required String title,
     bool isEpisode = false,
+    String? rule,
   }) async {
     final existing = find(serverId, ratingKey);
     if (existing != null) {
@@ -118,6 +161,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         title: title,
         isEpisode: isEpisode,
         addedAt: DateTime.now(),
+        rule: rule,
       ),
     ];
     await _persist();
@@ -171,6 +215,52 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     final dir = await ref.read(downloadsDirectoryProvider.future);
     final file = File('${dir.path}${Platform.pathSeparator}$name');
     return await file.exists() ? file : null;
+  }
+
+  /// The saved poster for [record], or null if there is none on disk.
+  Future<File?> artworkFor(DownloadRecord record) async {
+    final name = record.artworkFile;
+    if (name == null) return null;
+    final dir = await ref.read(downloadsDirectoryProvider.future);
+    final file = File('${dir.path}${Platform.pathSeparator}$name');
+    return await file.exists() ? file : null;
+  }
+
+  /// Fetches posters for finished downloads that have none: those saved
+  /// before §18.8, and any whose fetch failed because the server went away
+  /// as the file finished. Cheap when there is nothing to do, so it runs on
+  /// every sync.
+  Future<void> saveMissingArtwork() async {
+    for (final r in [...state]) {
+      if (r.isComplete && r.artworkFile == null && r.posterPath != null) {
+        await _saveArtwork(r.key);
+      }
+    }
+  }
+
+  Future<void> _saveArtwork(String key) async {
+    final record = state.where((r) => r.key == key).firstOrNull;
+    final poster = record?.posterPath;
+    final name = record?.fileName;
+    if (record == null || poster == null || name == null) return;
+    final bytes = await ref.read(artworkFetcherProvider)(
+      record.serverId,
+      poster,
+    );
+    if (bytes == null || bytes.isEmpty) return;
+    // Still wanted? It may have been deleted while the poster was fetched.
+    if (find(record.serverId, record.ratingKey) == null) return;
+    final dir = await ref.read(downloadsDirectoryProvider.future);
+    final artwork = '$name.poster';
+    try {
+      await File(
+        '${dir.path}${Platform.pathSeparator}$artwork',
+      ).writeAsBytes(bytes, flush: true);
+    } on FileSystemException {
+      return;
+    }
+    _update(key, (r) => r.copyWith(artworkFile: artwork));
+    await _persist();
   }
 
   // --- Running ---------------------------------------------------------
@@ -262,6 +352,9 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
           receivedBytes: size,
         ),
       );
+      // Best effort and after the fact: a poster that will not come is no
+      // reason to fail a film that did.
+      unawaited(_saveArtwork(key));
     } on DownloadCancelled {
       _update(key, (r) => r.copyWith(state: DownloadState.paused));
     } on DownloadException catch (e) {
@@ -322,6 +415,10 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     await _deleteQuietly(
       File('${dir.path}${Platform.pathSeparator}$name.part'),
     );
+    final artwork = record?.artworkFile;
+    if (artwork != null) {
+      await _deleteQuietly(File('${dir.path}${Platform.pathSeparator}$artwork'));
+    }
   }
 
   static Future<void> _deleteQuietly(File file) async {

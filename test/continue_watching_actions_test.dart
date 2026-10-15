@@ -26,6 +26,7 @@ class _Fake extends DownloadsController {
     required String ratingKey,
     required String title,
     bool isEpisode = false,
+    String? rule,
   }) async =>
       calls.add('enqueue $serverId/$ratingKey $title episode=$isEpisode');
 

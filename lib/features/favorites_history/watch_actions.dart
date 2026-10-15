@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/download_record.dart';
+import '../../data/downloads/offline_watch_queue.dart';
 import '../../data/local/favorites_store.dart';
 import '../../data/local/history_store.dart';
 import '../accounts/plex_session.dart';
 import '../downloads/downloads_controller.dart';
+import '../downloads/offline_sync.dart';
 import 'favorites_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
@@ -44,7 +46,34 @@ class WatchOverrides extends Notifier<Map<String, bool>> {
       throw StateError('No connected Plex server with id "$serverId".');
     }
     await server.service.setWatched(ratingKey, watched: watched);
+    await _applyLocally(serverId, ratingKey, watched);
+  }
 
+  /// "Mark as watched" on a saved copy with no server to tell (§18.6): the
+  /// mark is kept, shown here at once, and delivered to Plex on reconnect.
+  /// Watched only. An unwatched mark is not queued: Plex's replay for it
+  /// would be an unscrobble, and undoing a play count from a stale device is
+  /// the one direction where being wrong loses something.
+  Future<void> markWatchedOffline({
+    required String serverId,
+    required String ratingKey,
+  }) async {
+    await ref.read(offlineWatchProvider.notifier).add(PendingWatch(
+          serverId: serverId,
+          ratingKey: ratingKey,
+          position: Duration.zero,
+          duration: Duration.zero,
+          at: DateTime.now(),
+          watched: true,
+        ));
+    await _applyLocally(serverId, ratingKey, true);
+  }
+
+  Future<void> _applyLocally(
+    String serverId,
+    String ratingKey,
+    bool watched,
+  ) async {
     final key = '${PlaybackKind.plex.wire}:$serverId:$ratingKey';
     state = {...state, key: watched};
     // Either way the local position is now wrong: a watched title has nothing
@@ -302,6 +331,22 @@ Future<void> showWatchActions(
           watched: choice == _Choice.watched,
         );
   } catch (_) {
+    if (choice == _Choice.watched && (existing?.isComplete ?? false)) {
+      await ref
+          .read(watchOverridesProvider.notifier)
+          .markWatchedOffline(
+            serverId: plex.serverId,
+            ratingKey: plex.ratingKey,
+          );
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Marked as watched here. Plex will be told when it can be reached.',
+          ),
+        ),
+      );
+      return;
+    }
     messenger?.showSnackBar(
       const SnackBar(
         content: Text("Plex didn't accept that. The server may be offline."),

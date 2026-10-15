@@ -517,6 +517,12 @@ class PlexService {
   Future<List<PlexMetadata>> children(String ratingKey) =>
       _client.library.children(ratingKey);
 
+  /// Every episode of a show, across seasons, in one request (`allLeaves`).
+  /// What an episode rule (§18.7) plans from: one call per show rather than
+  /// one per season.
+  Future<List<PlexMetadata>> episodesOf(String showRatingKey) =>
+      _client.library.allLeaves(showRatingKey);
+
   String? posterUrl(PlexMetadata item, {int width = 320, int height = 480}) {
     final thumb = posterPathOf(item);
     if (thumb == null) return null;

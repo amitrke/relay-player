@@ -7,6 +7,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/plex/plex_service.dart';
 import '../accounts/plex_session.dart';
+import '../downloads/episode_rule_sheet.dart';
 import '../../data/local/history_store.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
@@ -183,6 +184,12 @@ class _ShowHeader extends ConsumerWidget {
                   ...item.genres.take(3),
                 ].join(' · '),
                 style: TextStyle(color: t.inkDim, fontSize: 13),
+              ),
+              const SizedBox(height: 6),
+              EpisodeRuleButton(
+                serverId: serverId,
+                showRatingKey: item.ratingKey,
+                showTitle: item.title,
               ),
               if ((item.summary ?? '').isNotEmpty) ...[
                 const SizedBox(height: 12),

@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/download_record.dart';
+import '../../data/downloads/episode_rules.dart';
 import '../library/poster_grid.dart' show LibraryEmptyState;
 import 'downloads_controller.dart';
+import 'episode_rule_sheet.dart';
+import 'offline_sync.dart';
 
 /// "1.4 GB", "850 MB", "12 KB". Decimal units, as storage and Plex both quote.
 String formatBytes(int bytes) {
@@ -45,13 +48,15 @@ class DownloadsScreen extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final items = ref.watch(downloadsProvider);
+    final rules = ref.watch(episodeRulesProvider);
+    final pending = ref.watch(offlineWatchProvider).length;
     final used = ref.read(downloadsProvider.notifier).bytesUsed;
     final unfinished = items.any((r) => !r.isComplete);
 
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
-        child: items.isEmpty
+        child: items.isEmpty && rules.isEmpty
             ? const LibraryEmptyState(
                 icon: Icons.download_outlined,
                 message:
@@ -81,6 +86,21 @@ class DownloadsScreen extends ConsumerWidget {
                       fontSize: RelayLayout.bodySize(f),
                     ),
                   ),
+                  if (pending > 0) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      // §18.6: watched offline, told to Plex on reconnect.
+                      pending == 1
+                          ? '1 watch here is waiting to be sent to Plex.'
+                          : '$pending watches here are waiting to be sent to '
+                                'Plex.',
+                      style: TextStyle(
+                        color: t.inkDim,
+                        fontSize: RelayLayout.bodySize(f) - 1,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                   if (unfinished) ...[
                     const SizedBox(height: 6),
                     Text(
@@ -95,6 +115,13 @@ class DownloadsScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  if (rules.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    for (final rule in rules) ...[
+                      _RuleRow(rule: rule),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
                   const SizedBox(height: 18),
                   for (final (i, record) in items.indexed) ...[
                     _DownloadRow(record: record, autofocus: i == 0),
@@ -103,6 +130,90 @@ class DownloadsScreen extends ConsumerWidget {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// A show being kept topped up (§18.7). Selecting it changes or stops it.
+class _RuleRow extends ConsumerWidget {
+  const _RuleRow({required this.rule});
+
+  final EpisodeRule rule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    return RelaySurface(
+      onTap: () => showEpisodeRuleSheet(
+        context,
+        ref,
+        serverId: rule.serverId,
+        showRatingKey: rule.showRatingKey,
+        showTitle: rule.showTitle,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.download_done_outlined, color: t.accent, size: 26),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rule.showTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: t.ink,
+                    fontSize: RelayLayout.bodySize(f) + 1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  describeRule(rule),
+                  style: TextStyle(
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(f) - 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The poster saved with a download (§18.8), or the state icon when there is
+/// none: saved before posters were, or the server would not give one.
+class _Artwork extends ConsumerWidget {
+  const _Artwork({required this.record, required this.fallback});
+
+  final DownloadRecord record;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (record.artworkFile == null) return fallback;
+    return FutureBuilder(
+      future: ref.read(downloadsProvider.notifier).artworkFor(record),
+      builder: (context, snap) {
+        final file = snap.data;
+        if (file == null) return fallback;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.file(
+            file,
+            width: 40,
+            height: 60,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => fallback,
+          ),
+        );
+      },
     );
   }
 }
@@ -171,10 +282,13 @@ class _DownloadRow extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                color: record.isComplete ? t.accent : t.inkDim,
-                size: 26,
+              _Artwork(
+                record: record,
+                fallback: Icon(
+                  icon,
+                  color: record.isComplete ? t.accent : t.inkDim,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

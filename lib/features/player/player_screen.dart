@@ -16,7 +16,9 @@ import '../../data/filesystem/loopback_bridge.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
+import '../../data/downloads/offline_watch_queue.dart';
 import '../downloads/downloads_controller.dart';
+import '../downloads/offline_sync.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
 import 'engine/playback_engine.dart';
@@ -38,6 +40,7 @@ class _Playable {
     this.historyId,
     this.resumeFrom,
     this.episode,
+    this.savedCopy = false,
   });
 
   final String url;
@@ -59,6 +62,10 @@ class _Playable {
 
   /// Plex only; see [HistoryItem.episode].
   final bool? episode;
+
+  /// Playing a file saved on this device (§18.4). Its progress is queued for
+  /// Plex when Plex cannot be told (§18.6).
+  final bool savedCopy;
 }
 
 /// Playback surface (§6, §10).
@@ -288,6 +295,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // last write would be the one that crashes rather than the one that saves.
   HistoryController? _history;
   PlexService? _plexService;
+  OfflineWatchQueue? _offlineQueue;
 
   /// For refreshing Plex's On Deck once playback ends. Captured for the same
   /// reason as [_history]: `ref` is unusable in `dispose`.
@@ -552,6 +560,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         historyId: widget.ratingKey,
         resumeFrom: resumeFrom,
         episode: record.isEpisode,
+        savedCopy: true,
       );
     }
 
@@ -575,6 +584,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final playable = await _resolve();
       if (!mounted) return;
       _history = ref.read(historyProvider.notifier);
+      if (playable.savedCopy) {
+        _offlineQueue = ref.read(offlineWatchProvider.notifier);
+      }
       if (widget.serverId != null) {
         // A saved copy outlives the server it came from (§18.4): with the
         // server removed there is nobody to report progress to, and that must
@@ -664,18 +676,43 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ));
 
     // Best effort: a server that has gone away must not break playback that is
-    // otherwise fine.
+    // otherwise fine. For a saved copy, a report that cannot be made is kept
+    // and delivered when the server is back (§18.6); for a stream there is
+    // nothing to keep, because a stream with no server is not playing.
     if (kind == PlaybackKind.plex) {
-      unawaited(
-        _plexService
-            ?.reportProgress(
-              ratingKey: playable.historyId!,
-              state: state,
-              position: position,
-              duration: duration,
-            )
-            .catchError((_) {}),
-      );
+      void keep(Object? _) {
+        if (!playable.savedCopy) return;
+        unawaited(_offlineQueue?.add(pendingFrom(
+          serverId: widget.serverId!,
+          ratingKey: playable.historyId!,
+          position: position,
+          duration: duration,
+          at: DateTime.now(),
+        )));
+      }
+
+      final service = _plexService;
+      if (service == null) {
+        keep(null);
+      } else {
+        unawaited(
+          service
+              .reportProgress(
+                ratingKey: playable.historyId!,
+                state: state,
+                position: position,
+                duration: duration,
+              )
+              // Delivered after all: anything queued for this title earlier in
+              // a flaky session is older than this, and would only be dropped
+              // on replay anyway.
+              .then((_) => _offlineQueue?.discard(
+                    widget.serverId!,
+                    playable.historyId!,
+                  ))
+              .catchError(keep),
+        );
+      }
     }
   }
 

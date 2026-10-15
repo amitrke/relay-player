@@ -10,6 +10,7 @@ import 'core/routing/app_router.dart';
 import 'core/theme/theme_controller.dart';
 import 'data/local/app_settings_store.dart';
 import 'features/ai/ai_recommendations_controller.dart';
+import 'features/downloads/offline_sync.dart';
 import 'features/metadata/release_dates_job.dart';
 import 'features/settings/settings_controller.dart';
 
@@ -55,6 +56,9 @@ class RelayPlayerApp extends ConsumerWidget {
     // Looks release dates up in the background, if the person has agreed to it.
     // Does nothing without a TMDB key and that agreement.
     ref.watch(releaseDatesJobProvider);
+    // Tells Plex about watches made offline, tops up episode rules and saves
+    // missing posters, whenever a server (re)connects (§18.6-18.8).
+    ref.watch(offlineSyncJobProvider);
     return RelayApp(
       controller: ref.watch(themeControllerProvider),
       routerConfig: ref.watch(routerProvider),

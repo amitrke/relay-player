@@ -1543,7 +1543,7 @@ Added 2026-10-09. A film or episode from the user's own Plex server can be saved
 
 - **IPTV panels (Xtream) are excluded.** §1 and §8.3 rest on the app being a player that does not curate, host or copy a provider's catalogue. A "download from my provider" action is the thing a reviewer reads as piracy tooling, however it is meant. A panel's `max_connections` (§4) would also make a second fetch fail in a way that looks like a flaky provider. A *record what you are watching* feature for live channels was discussed (mpv can write the stream it is already playing, using no second connection) and set aside; if it comes back, it needs its own section, the §8.2 acknowledgement widened to cover recording, and a test that `stream-record` produces a playable file from the extensions a real panel serves.
 - **SMB and device files are excluded** for now: the file is already on a NAS or the phone, and copying a NAS file to a phone for a trip is a smaller, separate feature.
-- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list.
+- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list. The bounded form, *keep the next N*, is §18.7 (2026-10-15).
 
 ### 18.2 How
 
@@ -1573,11 +1573,124 @@ A saved copy outlives the connection to its server: removing the Plex server doe
 ### 18.5 Open
 
 - **Not run against a real Plex server or on a device.** Everything is tested against a local file server that behaves like Plex's part endpoint; whether a *shared* server (one the owner has not allowed downloads on) refuses `/library/parts` for download but serves it for streaming is not known. The engine reports a 401 or 403 as "the server would not let this device download that".
-- **Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does. A small offline queue is the obvious next piece.
+- ~~**Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does.~~ **Built 2026-10-15, §18.6.**
 - **iOS backup.** The downloads directory is in Application Support, which iCloud backup includes unless excluded. Excluding it needs a native `isExcludedFromBackup` call that is not written.
-- **Storage limits.** There is no cap and no "remove after watching" yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space".
-- **Artwork** is not saved, so the Downloads list shows no posters offline.
+- **Storage limits.** There is no cap yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space". "Remove after watching" exists only for episodes an episode rule fetched (§18.7).
+- ~~**Artwork** is not saved, so the Downloads list shows no posters offline.~~ **Built 2026-10-15, §18.8**, for the Downloads list only; the library's own posters still need the server.
 - **Library when offline.** Cached lists still show (§12, the library cache); tapping a title that is not downloaded fails with the player's usual error. A badge on downloaded titles, and an offline-only filter, are not built.
+
+### 18.6 Watching offline, told to Plex later (added 2026-10-15)
+
+Before this, a saved film watched on a flight stayed unwatched on the server:
+§18.4's progress reports simply failed, and nothing remembered them.
+
+- **What is queued.** When the player is on a saved copy (§18.4) and a progress
+  report cannot reach Plex, or there is no connected server to send it to,
+  the report becomes a `PendingWatch` in the settings box
+  (`downloads.pendingWatch`): ids, a position, a duration, the device time,
+  and whether it is a finish. Past 90% of the runtime counts as a finish,
+  which is Plex's default threshold. Streams are not queued: a stream with no
+  server is not playing. **No token and no URL**, as with download records
+  (§3); `offline_sync_test.dart` checks the stored form.
+- **One entry per title, latest wins**, except that a finish is never
+  downgraded by a later position for the same title (the credits after 90%
+  would otherwise undo it). A report that does reach Plex removes the title's
+  entry, so a flaky session does not leave a stale one behind.
+- **"Mark as watched" offline**, on a title with a finished download, queues a
+  finish and shows the tick at once, with a message saying Plex will be told.
+  **Unwatched is not queued**: replaying it is an unscrobble, and a stale
+  device removing a play count is the direction where being wrong loses
+  something. Offline, unwatched still fails with the old message.
+- **Replay.** `offlineSyncJobProvider`, watched from the app root, runs
+  whenever the set of connected servers changes, which includes launch once
+  Plex has reconnected. For each entry whose server is connected it asks the
+  server for the title. Gone: dropped. The server's `lastViewedAt` is later
+  than the entry: dropped, because another client watched on and **newer
+  wins**. Otherwise a finish is sent as a scrobble and a position as a
+  `stopped` timeline report. Anything that fails is kept for the next
+  connect. Clock skew between device and server can tilt "newer" by however
+  far apart they are; accepted, since the cost of a wrong call is one stale
+  position.
+- The Downloads tab says how many watches are waiting.
+
+**Not verified against a real server.** Two assumptions to check: that a late
+`stopped` timeline report sets the resume point the way a live one does, and
+that `lastViewedAt` moves on another client's progress and not only on a
+finish. If the second is wrong, a position from this device could overwrite a
+later partial watch elsewhere. The in-memory watched tick (`WatchOverrides`)
+does not survive a restart, so a title marked watched offline shows unwatched
+again after relaunch until the queue has been delivered.
+
+### 18.7 Keep the next episodes downloaded (added 2026-10-15)
+
+§18.1 refuses to download a whole show on one press. A rule is the bounded
+form of the same wish: on a show's page, *Keep episodes downloaded* offers
+Off, or the next 1, 3, 5 or 10 episodes. The cap at 10 is deliberate; a rule
+must not quietly become "the whole show".
+
+- **The next N are the first N unwatched episodes in season and episode
+  order**, specials (season 0) left out. An episode skipped and never
+  watched is still "next", which matches Plex's On Deck.
+- An episode **already on the device counts towards N**, whoever downloaded
+  it, so nothing is fetched twice. A failed one is retried.
+- **A rule removes only its own downloads**, and only once finished and
+  watched. `DownloadRecord.rule` records which rule fetched a file. A
+  download made by hand is never touched by a rule. An episode in progress is
+  not watched, so it stays.
+- Watched state comes from the server (`allLeaves`, one request per show),
+  plus anything finished offline and still in §18.6's queue, so a finished
+  episode is not fetched again before Plex has heard.
+- **Turning a rule off leaves its downloads.** Deleting files as a side effect
+  of changing a setting would surprise someone about to watch one.
+- It runs when a rule is set, and on the same reconnect trigger as §18.6,
+  after the queue has been delivered. Foreground only, like every download
+  (§18.3): there is no background service, so a rule tops up while the app
+  is open.
+- The Downloads tab lists the rules; selecting one changes or stops it.
+
+**Not seen against a real server.** `offline_sync_test.dart` covers the plan
+and the controller against a fake. Unknowns: how `allLeaves` orders and
+numbers a show with absolute numbering, and whether a long show's `allLeaves`
+is slow enough to need paging.
+
+### 18.8 Posters for saved titles (added 2026-10-15)
+
+When a download completes, its poster is fetched once (a 320x480 transcode,
+signed fresh from the live connection and never stored, §3) and kept beside
+the file as `<file>.poster`; the record holds only that file name. Deleting
+the download deletes it. Downloads saved before this, or whose poster fetch
+failed, are filled in on the next reconnect. Anything over 4 MB is refused,
+since that is not the image that was asked for. The Downloads list shows the
+poster, falling back to the state icon.
+
+### Ideas recorded for later (2026-10-15)
+
+From the same look at other open-source Flutter media clients that led to
+§10.1, §10.2 and §18.6-18.8. Each is plausible and none is planned; each
+would need its own section and a reason before work starts.
+
+- **End-to-end tests against a containerised media server.** Drive the
+  Android app with a UI test runner (Maestro or similar) on an emulator,
+  against a Plex or Jellyfin container started in CI with open-licensed
+  fixture media. It would catch protocol regressions unit tests cannot,
+  without touching a real provider (§1). It cannot test video, which the
+  emulator does not render (CLAUDE.md §6).
+- **Force the TV layout on desktop.** A debug switch that renders the
+  leanback tree (Phase 4) in the Windows build and drives it from the
+  keyboard, so D-pad focus work gets the fastest loop instead of waiting for
+  a TV each time. Real remotes still need hardware (§11).
+- **Jellyfin and Emby as sources.** Personal media servers like Plex, so they
+  fit §1's primary-purpose framing. `lib/data/` already keeps sources apart;
+  the work is a client per server plus the downloads, history and offline
+  handling Plex has.
+- **Watch-history trackers** (Trakt and similar) for scrobbling and ratings.
+  A third party receiving what the user watches, so it needs a consent
+  posture like §9.3's, and an account, which §16.3 is wary of.
+- **Watching together** in sync on several devices. Needs a relay server to
+  coordinate, which §16 rules out today; the case would have to be argued
+  against §16.3 first.
+- **Background downloads** (Android foreground service, iOS background
+  transfer). Still §18.3's open item; weighed and not chosen this round.
 
 ---
 
