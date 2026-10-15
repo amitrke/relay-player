@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
@@ -21,11 +19,10 @@ import '../local_network/smb_controller.dart';
 import '../downloads/downloads_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
+import 'engine/playback_engine.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
-import 'player_errors.dart';
-import 'video_output.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -240,22 +237,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// a second time. Memory only: a TV update can bring the decoder it lacked.
   static final _compatibleRoutes = <String>{};
 
-  late final Player _player = Player();
-
-  /// Decided on first build, when the route is known; see [VideoOutput].
-  late final VideoOutput _output = _compatibleRoutes.contains(_route)
-      ? VideoOutput.compatible
-      : defaultVideoOutput();
-  late final VideoController _controller = VideoController(
-    _player,
-    configuration: videoConfigurationFor(_output),
-  );
+  /// Created once the route is known (see [didChangeDependencies]), because a
+  /// route that already fell back this session starts on the compatible path.
+  /// Everything below the seam is the engine's (§10.2).
+  late final PlaybackEngine _engine;
+  bool _engineReady = false;
 
   /// Every player is a route (app_router.dart), and the location is what is
   /// pushed again to reopen it.
   String get _route => GoRouterState.of(context).uri.toString();
   bool _fellBack = false;
-  late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
   Timer? _stallTimer;
@@ -282,7 +273,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _tracksApplied = false;
 
   late final PlaybackFocusPolicy _focus = PlaybackFocusPolicy(
-    transport: _transport,
+    transport: _engine,
     isLive: () => _live,
     releaseLive: _releaseLive,
   );
@@ -315,14 +306,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    // Not straight to _fail: media_kit forwards mpv *log lines* here, and some
-    // of them mean mpv carried on without something (player_errors.dart).
-    _subs.add(_player.stream.error.listen(_onPlayerError));
-    _subs.add(_player.stream.position.listen(_onPosition));
-    _subs.add(_player.stream.tracks.listen(_onTracks));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_engineReady) return;
+    _engineReady = true;
+    // Not in initState: the route is an inherited lookup, unavailable there.
+    _engine = ref.read(playbackEngineFactoryProvider)(
+      _compatibleRoutes.contains(_route)
+          ? EngineOutput.compatible
+          : EngineOutput.fast,
+    );
+    // The engine says which errors are fatal: media_kit forwards mpv *log
+    // lines*, and some of them mean mpv carried on without something.
+    _subs.add(_engine.errorStream.listen(_onEngineError));
+    _subs.add(_engine.positionStream.listen(_onPosition));
+    _subs.add(_engine.tracksStream.listen(_onTracks));
     // Focus is asked for whenever playback starts, not once: after a permanent
     // loss, pressing play is the viewer taking it back from the other app.
-    _subs.add(_player.stream.playing.listen((playing) {
+    _subs.add(_engine.playingStream.listen((playing) {
       if (playing) unawaited(_audioFocus?.request());
     }));
     // `hidden`, not `inactive`: pulling down the notification shade is
@@ -341,20 +345,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return;
     }
     _audioFocus = binding;
-    if (_player.state.playing) unawaited(binding?.request());
+    if (_engine.playing) unawaited(binding?.request());
   }
 
-  void _onTracks(Tracks tracks) {
+  void _onTracks(TrackList tracks) {
     if (_tracksApplied || !mounted) return;
-    // media_kit lists its "auto" and "no" pseudo-tracks before the file is
-    // parsed; wait for a real one so there is something to choose between.
-    if (!tracks.audio.any((t) => isRealTrack(t.id))) return;
+    // Engines can report an empty list before the file is parsed; wait for a
+    // real audio track so there is something to choose between.
+    if (tracks.audio.isEmpty) return;
     _tracksApplied = true;
     final choice = chooseTracks(tracks, ref.read(playbackPrefsProvider));
-    if (choice.audio case final audio?) unawaited(_player.setAudioTrack(audio));
-    if (choice.subtitle case final sub?) {
-      unawaited(_player.setSubtitleTrack(sub));
-    }
+    if (choice.audio case final audio?) unawaited(_engine.setAudioTrack(audio));
+    unawaited(_engine.setSubtitleTrack(choice.subtitle));
   }
 
   void _releaseLive() {
@@ -363,7 +365,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _progressTimer?.cancel();
     _freezeWatch?.cancel();
     _reconnectTimer?.cancel();
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     setState(() {
       _released = true;
       _started = false;
@@ -402,7 +404,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     for (final s in _subs) {
       unawaited(s.cancel());
     }
-    _player.dispose();
+    unawaited(_engine.dispose());
     unawaited(_bridge?.stop());
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -598,15 +600,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // `max_connections: 1` the natural open-then-stop ordering is the wrong
       // one, and fails in a way that looks like a flaky provider rather than a
       // client bug.
-      await _player.stop();
-      await _player.open(Media(playable.url));
+      await _engine.stop();
+      await _engine.open(playable.url);
 
       final resume = _resumePoint(playable);
       if (resume != null) {
         // Seek after opening: libmpv needs the stream long enough to know it is
         // seekable, and a seek issued before that is silently dropped.
-        await _player.stream.duration.firstWhere((d) => d > Duration.zero);
-        await _player.seek(resume);
+        await _engine.durationStream.firstWhere((d) => d > Duration.zero);
+        await _engine.seek(resume);
       }
       _progressTimer?.cancel();
       _progressTimer =
@@ -643,8 +645,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final kind = playable?.historyKind;
     if (playable == null || kind == null || !_started) return;
 
-    final position = _player.state.position;
-    final duration = _player.state.duration;
+    final position = _engine.position;
+    final duration = _engine.duration;
     if (duration <= Duration.zero) return;
 
     unawaited(_history?.record(
@@ -691,36 +693,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _freezeWatch = Timer.periodic(const Duration(seconds: 2), (_) => _watch());
     }
     if (mounted) setState(() => _started = true);
-    if (_output == VideoOutput.direct) unawaited(_checkVideoOutput());
+    if (_engine.hasCompatibleFallback) unawaited(_checkVideoOutput());
   }
 
-  /// Once playing on the direct path, asks mpv which decoder it ended up with.
-  /// Software means a black picture under direct output (see [VideoOutput]), so
-  /// the title is reopened on the compatible path.
+  /// Once playing on a fast output path, gives the engine a moment and asks
+  /// whether this file can actually be shown there (video_output.dart: the
+  /// direct path plays sound over black when the hardware decoder declines).
   Future<void> _checkVideoOutput() async {
     // The decoder is settled by the first position tick; the pause is margin
     // for mpv's own fallback, which happens on the first frames it cannot take.
     await Future<void>.delayed(const Duration(seconds: 1));
     if (!mounted || _fellBack) return;
-    final String hwdec;
-    try {
-      hwdec = await (_player.platform as NativePlayer).getProperty(
-        'hwdec-current',
-      );
-    } catch (_) {
-      return;
-    }
-    final hasVideo =
-        _player.state.track.video.id != 'no' &&
-        _player.state.tracks.video.any((t) => t.id != 'auto' && t.id != 'no');
-    debugPrint('Player: direct output, hwdec-current=$hwdec video=$hasVideo');
-    if (needsCompatibleOutput(
-      output: _output,
-      hasVideo: hasVideo,
-      hwdecCurrent: hwdec,
-    )) {
-      await _reopenCompatible('hardware decoder declined (hwdec=$hwdec)');
-    }
+    final reason = await _engine.checkOutputAfterStart();
+    if (reason != null) await _reopenCompatible(reason);
   }
 
   /// Opens this title again on a fresh player with compatible output.
@@ -740,7 +725,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _compatibleRoutes.add(route);
     _stallTimer?.cancel();
     _recordProgress(state: 'stopped');
-    await _player.stop();
+    await _engine.stop();
     if (!mounted) return;
     router.pushReplacement(route);
   }
@@ -754,7 +739,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_reconnects > 0 && now.difference(_playingSince) >= _stableAfter) {
       _reconnects = 0;
     }
-    if (!_player.state.playing) return;
+    if (!_engine.playing) return;
     if (now.difference(_lastAdvance) >= _freezeTimeout) {
       _reconnect('This channel stopped and did not come back.');
     }
@@ -769,7 +754,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_reconnectTimer?.isActive ?? false) return true;
     if (_reconnects >= _maxReconnects) {
       _freezeWatch?.cancel();
-      unawaited(_player.stop());
+      unawaited(_engine.stop());
       _fail(giveUp);
       return false;
     }
@@ -779,7 +764,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _freezeWatch?.cancel();
     _stallTimer?.cancel();
     _progressTimer?.cancel();
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     _lastPosition = Duration.zero;
     if (mounted) setState(() => _started = false);
     _reconnectTimer = Timer(Duration(seconds: 2 * _reconnects), () {
@@ -801,7 +786,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Release the connection rather than leaving it held. On a one-connection
     // line a dead channel would otherwise cost the user their only slot until
     // the panel times it out server-side.
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     _fail(
       _live
           ? 'This channel is not responding. Listings often outrun reality on '
@@ -811,8 +796,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  void _onPlayerError(String message) {
-    if (isFatalPlayerError(message)) {
+  void _onEngineError(EngineError error) {
+    final message = error.message;
+    if (error.fatal) {
       // A live stream that dies mid-watch is the common drop, so it gets the
       // same reconnect as a freeze rather than an immediate error screen.
       if (_live && !_released && (_started || _reconnects > 0)) {
@@ -823,13 +809,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // the compatible one: a decoder or output that would not start there is
       // exactly what the direct path adds. A source that is really broken fails
       // the same way again and shows its error then.
-      if (_output == VideoOutput.direct && !_started) {
+      if (_engine.hasCompatibleFallback && !_started) {
         unawaited(_reopenCompatible(message));
         return;
       }
       _fail(message);
     } else {
-      debugPrint('Player: continuing past non-fatal mpv error: $message');
+      debugPrint('Player: continuing past non-fatal ${_engine.name} error: '
+          '$message');
     }
   }
 
@@ -846,7 +833,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Scaffold(
       backgroundColor: t.stage,
       body: PlayerChrome(
-        transport: _transport,
+        transport: _engine,
         title: _title,
         live: _live,
         enabled: _started && _error == null,
@@ -856,12 +843,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           fit: StackFit.expand,
           children: [
             Center(
-              child: Video(
-                controller: _controller,
-                controls: null,
-                subtitleViewConfiguration: SubtitleViewConfiguration(
-                  textScaler: TextScaler.linear(prefs.subtitleSize.scale),
-                ),
+              child: _engine.buildView(
+                subtitleScale: prefs.subtitleSize.scale,
               ),
             ),
             if (_released)

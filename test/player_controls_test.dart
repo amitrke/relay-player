@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
+import 'package:relay_player/features/player/engine/playback_engine.dart';
 import 'package:relay_player/features/player/player_controls.dart';
 
 /// Pins the #10 player-control behaviour on a remote.
@@ -44,19 +44,19 @@ class _FakeTransport implements PlayerTransport {
   Future<void> setVolume(double percent) async {}
 
   @override
-  Tracks tracks = const Tracks();
+  TrackList tracks = const TrackList();
   @override
-  Track track = const Track();
+  TrackSelection selection = const TrackSelection();
   @override
-  Stream<Tracks> get tracksStream => const Stream.empty();
+  Stream<TrackList> get tracksStream => const Stream.empty();
   @override
-  Stream<Track> get trackStream => const Stream.empty();
+  Stream<TrackSelection> get selectionStream => const Stream.empty();
   @override
-  Future<void> setAudioTrack(AudioTrack t) async =>
-      track = track.copyWith(audio: t);
+  Future<void> setAudioTrack(MediaTrack t) async => selection =
+      TrackSelection(audioId: t.id, subtitleId: selection.subtitleId);
   @override
-  Future<void> setSubtitleTrack(SubtitleTrack t) async =>
-      track = track.copyWith(subtitle: t);
+  Future<void> setSubtitleTrack(MediaTrack? t) async =>
+      selection = TrackSelection(audioId: selection.audioId, subtitleId: t?.id);
 
   void _set(bool v) {
     playing = v;

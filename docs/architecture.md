@@ -531,7 +531,7 @@ AI features are independent of Advanced Sources (§8) — they apply across Plex
 - It also handles Plex's two playback modes (direct-play byte-range files in almost any container, and HLS transcode output), arbitrary local files, and the local-proxy HTTP streams from §7 without needing a second engine — one player pipeline for every source type in this plan.
 - media_kit supports desktop too, which costs nothing now and is useful if you ever want a companion desktop build.
 - Trade-off: slightly bigger binary size (bundles libmpv) and you lose iOS/tvOS's native hardware-decode-everywhere guarantees that AVPlayer gives you — worth a short spike (3–5 days, covering Plex and SMB as well as Xtream) against 2–3 real provider streams, a real Plex server, and a real SMB share before committing, since this is the one architectural decision worth validating empirically before building the rest.
-- Fallback plan if media_kit underperforms on a specific source: `better_player` (ExoPlayer-based) as a per-stream fallback engine, selected automatically on playback error.
+- Fallback plan if media_kit underperforms on a specific source: `better_player` (ExoPlayer-based) as a per-stream fallback engine, selected automatically on playback error. **Not built, 2026-10-15:** a second engine was weighed and deferred (§10.2); what exists instead is the seam it would plug into.
 - **The ffmpeg licensing decision belongs here, in Phase 0 — not in Phase 3.5.** §14 flags the LGPL-vs-GPL choice against the transcription pipeline, but that framing is wrong on sequencing: **media_kit bundles libmpv, which bundles ffmpeg**, so you take on the dependency and its license the moment you pick the player engine — before any AI feature exists. Resolve it once, at engine selection, and let the transcription pipeline inherit that decision rather than re-litigating it later. The practical rule: use an **LGPL** build and link it **dynamically**, keeping any GPL-only components (notably `libx264`/`libx265` encoders, which this app has no reason to need — it decodes, it doesn't encode) out of the build entirely. A statically-linked GPL build would impose GPL terms on the whole app, which is incompatible both with a permissively-licensed public repo and with App Store distribution.
 
 **DRM is explicitly out of scope.** No Widevine, no FairPlay, no PlayReady. This bounds what "plays anything" means and should be stated plainly in onboarding copy and the store description: the app plays unencrypted media from sources the user connects. It cannot play protected commercial catalogs (Netflix, Disney+, and similar), and no amount of configuration will change that. Worth saying out loud because it is a recurring support question, and because it is quietly helpful to the §1 primary-purpose argument — an app with no DRM stack is transparently not attempting to be a commercial-catalog substitute.
@@ -670,6 +670,64 @@ built `.app`, since there is no macOS runner in `build.yml`.
 build strings as the ffmpeg item describes, update `native_licenses.dart`,
 then print the new hashes with `python3 tool/native_lock.py --print <apk>` and
 update the lock.
+
+### 10.2 The engine seam, and why there is still one engine (added 2026-10-15)
+
+**Question asked:** should Android get a second engine, ExoPlayer (media3), as
+its main player, for better HDR, Dolby Vision, audio passthrough and hardware
+decode on TV boxes? It was raised after looking at how other open-source
+Flutter media clients are built.
+
+**What was found.** A mature open-source Flutter client for personal media
+servers, which runs on Android TV, does ship an ExoPlayer backend, but *not*
+as the default. mpv is its Android default; ExoPlayer is an opt-in setting
+described in its code as "the escape hatch for devices MPV mishandles", backed
+by roughly 12,500 lines of Kotlin (Dolby Vision conversion, IEC passthrough
+packers, PGS and ASS subtitle handling, stall and decoder-recovery policies),
+and a comment in its audio settings says that backend "is being removed". The
+reading of that project's README that prompted the question had it the wrong
+way round. So the evidence from a project further along this road is that a
+second engine is a large, permanent cost and still did not displace mpv.
+
+**Decision: no second engine now; build the seam instead.** Everything the
+player screen used to do with media_kit directly now goes through
+`lib/features/player/engine/playback_engine.dart`:
+
+- `PlaybackEngine`: open/stop/dispose, the picture (`buildView`), errors
+  with the engine's own fatal-or-not judgement, duration, and
+  `checkOutputAfterStart` for the direct-output trap below. It extends
+  `PlayerTransport`, which the controls and the focus policy use.
+- Engine-neutral tracks: `MediaTrack`, `TrackList` (real tracks only) and
+  `TrackSelection` (null subtitle means off). media_kit's "auto" and "no"
+  pseudo-tracks stop at the engine; `chooseTracks` and the picker no longer
+  know they exist.
+- `MediaKitEngine` holds everything media_kit-shaped: the `Player`, the
+  `VideoController`, mpv log lines classified through `player_errors.dart`,
+  and the Android direct/compatible output choice and its `hwdec-current`
+  check (`video_output.dart`). The screen still owns the policy (reopen the
+  route on the compatible path, once), because that is about routes and
+  history rather than decoding.
+- `playbackEngineFactoryProvider` is the one place an engine is chosen. It
+  is also how `test/player_screen_engine_test.dart` drives the screen with a
+  fake: stop before open, "playing" only on a moving position, the stall
+  failure, and fatal versus non-fatal errors. The screen had no tests before,
+  because it built a `Player` itself.
+
+**The position rule is part of the engine contract** (§10, "only the position
+counts"). Any future engine must report position only while frames are
+presented, or every guard on the screen is fooled.
+
+**Reopen this if** a specific, reproduced failure on real hardware is one
+mpv cannot fix and ExoPlayer would (a Dolby Vision profile a TV needs,
+passthrough a receiver needs), and then add ExoPlayer as an opt-in second
+engine behind the factory, for that device class only, not as a default.
+Before then, the cheaper levers are the ones already in §10: direct output
+(`mediacodec_embed`), and a newer libmpv (§10.1).
+
+**Not verified on a device since the refactor.** The change moves code
+without changing what it calls, and the unit and widget tests pass, but a
+real Plex and a live channel should be played on Windows and on the
+Chromecast before trusting it (MANUAL_TESTING.md).
 
 ## 11. Platform-specific notes
 
@@ -1316,7 +1374,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 | Concern | Choice |
 |---|---|
 | State management | Riverpod |
-| Video playback | media_kit (primary), better_player fallback |
+| Video playback | media_kit, behind the `PlaybackEngine` seam; no second engine (§10.2, 2026-10-15) |
 | Local storage | Isar or Hive (content cache, favorites, history, feature-flag/consent state) — **not encrypted by default, never put secrets here**; flutter_secure_storage for all credentials/tokens/API keys, keyed by entity id (§3) |
 | Networking | dio (interceptors for retry/timeout) |
 | JSON models | freezed + json_serializable |

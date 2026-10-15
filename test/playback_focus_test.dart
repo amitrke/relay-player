@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:relay_player/features/player/engine/playback_engine.dart';
 import 'package:relay_player/features/player/playback_focus.dart';
-import 'package:relay_player/features/player/player_controls.dart';
 
 /// The architecture.md §10 audio-focus table (#17), row by row.
 ///
@@ -42,17 +41,17 @@ class _Transport implements PlayerTransport {
   @override
   Future<void> playOrPause() async => playing ? pause() : play();
   @override
-  Stream<Tracks> get tracksStream => const Stream.empty();
+  Stream<TrackList> get tracksStream => const Stream.empty();
   @override
-  Tracks get tracks => const Tracks();
+  TrackList get tracks => const TrackList();
   @override
-  Stream<Track> get trackStream => const Stream.empty();
+  Stream<TrackSelection> get selectionStream => const Stream.empty();
   @override
-  Track get track => const Track();
+  TrackSelection get selection => const TrackSelection();
   @override
-  Future<void> setAudioTrack(AudioTrack track) async {}
+  Future<void> setAudioTrack(MediaTrack track) async {}
   @override
-  Future<void> setSubtitleTrack(SubtitleTrack track) async {}
+  Future<void> setSubtitleTrack(MediaTrack? track) async {}
 }
 
 void main() {

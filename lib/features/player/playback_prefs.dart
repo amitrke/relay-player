@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:media_kit/media_kit.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../settings/settings_controller.dart';
+import 'engine/playback_engine.dart';
 
 /// Subtitle text size, as a multiplier on media_kit's own default.
 enum SubtitleSize {
@@ -186,42 +186,39 @@ String describeTrack(String? title, String? language, int index) {
   return parts.isEmpty ? 'Track ${index + 1}' : parts.join(' · ');
 }
 
-/// Real tracks only: media_kit also lists "auto" and "no" as pseudo-tracks.
-bool isRealTrack(String id) => id != 'auto' && id != 'no';
-
 /// What to select once a file's tracks are known.
 ///
-/// Null means "leave the player's own choice alone", which for audio is the
-/// file's default track. Applied once per file, when the track list first
-/// arrives, so a choice the viewer then makes by hand is never overridden.
+/// A null [audio] means "leave the engine's own choice alone", which is the
+/// file's default track. A null [subtitle] means off, and is applied: unlike
+/// audio there is always a decision to make. Applied once per file, when the
+/// track list first arrives, so a choice the viewer then makes by hand is
+/// never overridden.
 class TrackChoice {
   const TrackChoice({this.audio, this.subtitle});
-  final AudioTrack? audio;
-  final SubtitleTrack? subtitle;
+  final MediaTrack? audio;
+  final MediaTrack? subtitle;
 }
 
-TrackChoice chooseTracks(Tracks tracks, PlaybackPrefs prefs) {
-  final audio = [for (final t in tracks.audio) if (isRealTrack(t.id)) t];
-  final subs = [for (final t in tracks.subtitle) if (isRealTrack(t.id)) t];
+TrackChoice chooseTracks(TrackList tracks, PlaybackPrefs prefs) {
+  final audio = tracks.audio;
+  final subs = tracks.subtitle;
 
-  AudioTrack? pickedAudio;
+  MediaTrack? pickedAudio;
   if (prefs.audioLanguage case final want?) {
     pickedAudio =
         audio.where((t) => normalizeLanguage(t.language) == want).firstOrNull;
   }
 
-  final SubtitleTrack pickedSub;
+  final MediaTrack? pickedSub;
   if (!prefs.subtitlesOn || subs.isEmpty) {
-    pickedSub = SubtitleTrack.no();
+    pickedSub = null;
   } else if (prefs.subtitleLanguage case final want?) {
     // No match means off, not "some other language": subtitles in a language
     // the viewer did not ask for are noise, and they can pick one by hand.
-    pickedSub = subs
-            .where((t) => normalizeLanguage(t.language) == want)
-            .firstOrNull ??
-        SubtitleTrack.no();
+    pickedSub =
+        subs.where((t) => normalizeLanguage(t.language) == want).firstOrNull;
   } else {
-    pickedSub = subs.where((t) => t.isDefault == true).firstOrNull ?? subs.first;
+    pickedSub = subs.where((t) => t.isDefault).firstOrNull ?? subs.first;
   }
   return TrackChoice(audio: pickedAudio, subtitle: pickedSub);
 }
