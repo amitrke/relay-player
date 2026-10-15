@@ -724,10 +724,12 @@ engine behind the factory, for that device class only, not as a default.
 Before then, the cheaper levers are the ones already in §10: direct output
 (`mediacodec_embed`), and a newer libmpv (§10.1).
 
-**Not verified on a device since the refactor.** The change moves code
-without changing what it calls, and the unit and widget tests pass, but a
-real Plex and a live channel should be played on Windows and on the
-Chromecast before trusting it (MANUAL_TESTING.md).
+**Seen on Windows, 2026-10-15:** a debug build played a live panel channel
+through `MediaKitEngine` (first frame, controls hid, picture and sound), with
+the Live TV list drawn from the new string files. **Not yet seen:** Plex
+direct play, a saved copy, or anything on Android, where the direct-output
+check lives; play a Plex title on the Chromecast before trusting it
+(MANUAL_TESTING.md).
 
 ## 11. Platform-specific notes
 
