@@ -623,6 +623,54 @@ the code, per #17:
 
 Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U live has no seek), audio/subtitle track selection (including AI-generated/translated tracks from §9), aspect ratio toggle, PiP (both platforms support it), background audio continuation, resume-from-history prompt, and the transcode/SMB session keep-alive/stop lifecycle from §6/§7.
 
+### 10.1 Pinning the libmpv we ship (added 2026-10-15)
+
+The ffmpeg item under Open items established what is inside the shipped libmpv
+by reading the binary, and warned that a media_kit upgrade "can change every
+line of this". Until now nothing enforced that warning: the upgrade would have
+gone through, the licence page would have kept describing the old binary, and
+nobody would have noticed.
+
+`native-libs.lock.json` at the repo root now records, per platform, the
+media_kit library package and version, the upstream build it comes from (the
+same URL the licence page gives as corresponding source), the artifact URLs
+the package fetches with the checksum the package itself verifies, and, for
+Android, the **SHA-256 of `libmpv.so` per ABI as it appears in the release
+build**. Two checks hold it to the truth:
+
+- `test/native_lock_test.dart`, in every `flutter test`: pubspec.lock resolves
+  the locked versions, each package's own build file (`build.gradle`, the iOS
+  `Makefile`, the Windows `CMakeLists.txt`, read from the pub cache) still
+  fetches exactly the locked URLs and checksums, and the licence page names the
+  locked build source. A media_kit upgrade therefore fails the tests until the
+  lock and `native_licenses.dart` change in the same commit.
+- `tool/native_lock.py`, after the APK build in `build.yml` and the AAB build in
+  `release.yml`: hashes every `libmpv.so` in the archive against the lock, and
+  fails on a mismatch, on an ABI the lock does not know, or on an archive with
+  no `libmpv.so` (which would mean the check proved nothing).
+
+Why hash the shipped file and not trust the package's checksum: the Android
+package verifies with **md5**, and the check it does proves the download
+matched what the package expected, not that the binary is the one whose
+contents we wrote down. The shipped hashes were taken from release APKs built
+2026-09-11 and 2026-09-22, which agree with each other and with Gradle's
+merged native libraries. Controls run: a lock with one hash altered fails the
+script, and a lock with a changed version and URL fails the test.
+
+**What this does not do.** It does not build libmpv ourselves, which is the
+stronger form of pinning (a build lock naming the source commit of every
+dependency) and would let us move off the 2023-vintage binaries. That is a
+build pipeline to own and keep secure, and it is not justified while the
+prebuilt LGPL binaries are adequate. The Windows binary is development-only
+and gets the version and URL check but no shipped-binary check; iOS gets the
+package's own SHA-256 (its Makefile already uses one) but no check of the
+built `.app`, since there is no macOS runner in `build.yml`.
+
+**Upgrading media_kit**, in order: bump the package, read the new binaries'
+build strings as the ffmpeg item describes, update `native_licenses.dart`,
+then print the new hashes with `python3 tool/native_lock.py --print <apk>` and
+update the lock.
+
 ## 11. Platform-specific notes
 
 **Android phone/tablet** — baseline target: Movies/Series (Plex-merged)/Local & Network as the default flagship experience, with Live TV and EPG appearing only once Advanced Sources is enabled.
@@ -1540,7 +1588,9 @@ A saved copy outlives the connection to its server: removing the Plex server doe
   signing steps that let someone rebuild the app with their own libraries.
   Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
-  2023-09-24, over two years stale.
+  2023-09-24, over two years stale. Since 2026-10-15 an upgrade fails the tests
+  until `native-libs.lock.json` and the licence list are updated with it
+  (§10.1), so it cannot happen by accident, only on purpose.
 - **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted
   permissions across a reboot, `MediaStore` scanning, hardware decode, release
   binary size. Deferred from Phase 0 for lack of hardware; do them as Phase 1

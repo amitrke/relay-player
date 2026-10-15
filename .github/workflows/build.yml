@@ -78,6 +78,12 @@ jobs:
             echo "$apk  $(du -h "$apk" | cut -f1)"
           done
 
+      # The libmpv inside each APK must be the one native-libs.lock.json pins,
+      # since the licence list describes that binary and no other
+      # (architecture.md §10.1).
+      - name: Check the shipped libmpv matches the lock
+        run: python3 tool/native_lock.py build/app/outputs/flutter-apk/*-release.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
