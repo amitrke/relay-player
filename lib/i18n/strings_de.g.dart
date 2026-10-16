@@ -95,6 +95,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$smb$de smb = _Translations$smb$de._(_root);
 	@override late final _Translations$xtream$de xtream = _Translations$xtream$de._(_root);
 	@override late final _Translations$transfer$de transfer = _Translations$transfer$de._(_root);
+	@override late final _Translations$mediaBrowser$de mediaBrowser = _Translations$mediaBrowser$de._(_root);
 }
 
 // Path: common
@@ -540,6 +541,33 @@ class _Translations$transfer$de extends Translations$transfer$en {
 	@override late final _Translations$transfer$client$de client = _Translations$transfer$client$de._(_root);
 }
 
+// Path: mediaBrowser
+class _Translations$mediaBrowser$de extends Translations$mediaBrowser$en {
+	_Translations$mediaBrowser$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$mediaBrowser$errors$de errors = _Translations$mediaBrowser$errors$de._(_root);
+	@override String get title => 'Mit Jellyfin oder Emby verbinden';
+	@override String get explain => 'Subnext Player spielt ab, was dein eigener Server bereits hat. Deine Anmeldung bleibt auf diesem Gerät und erreicht niemanden außer deinem Server.';
+	@override String get address => 'Serveradresse';
+	@override String get addressHint => 'z. B. 192.168.1.20:8096';
+	@override String get find => 'Server suchen';
+	@override String get finding => 'Server wird gesucht…';
+	@override String found({required Object name, required Object kind, required Object version}) => '${name} · ${kind} ${version}';
+	@override String get username => 'Benutzername';
+	@override String get password => 'Passwort';
+	@override String get signIn => 'Anmelden';
+	@override String get signingIn => 'Wird angemeldet…';
+	@override String get useQuickConnect => 'Stattdessen Quick Connect verwenden';
+	@override String get usePassword => 'Stattdessen Benutzername und Passwort verwenden';
+	@override String get quickConnectExplain => 'Öffne auf einem Handy oder Computer, der schon bei Jellyfin angemeldet ist, dein Profil, Quick Connect, und gib ein:';
+	@override String get waiting => 'Warte auf Freigabe…';
+	@override String get otherAddress => 'Andere Adresse verwenden';
+	@override String connected({required Object name}) => 'Mit ${name} verbunden.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$de extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -970,6 +998,8 @@ class _Translations$addSource$kind$de extends Translations$addSource$kind$en {
 	@override String get smbSub => 'Ein NAS oder eine Windows-Freigabe in deinem Heimnetz.';
 	@override String get xtream => 'Xtream-Codes-Anmeldung';
 	@override String get xtreamSub => 'Host, Benutzername und Passwort von deinem Anbieter.';
+	@override String get mediaBrowser => 'Jellyfin- oder Emby-Server';
+	@override String get mediaBrowserSub => 'Dein eigener Server, mit deinem eigenen Konto.';
 }
 
 // Path: plex.errors
@@ -1268,6 +1298,21 @@ class _Translations$transfer$client$de extends Translations$transfer$client$en {
 	@override String unreachable({required Object address}) => '${address} war nicht erreichbar. Beide Geräte müssen im selben WLAN sein, und das andere muss seinen Code noch anzeigen.';
 	@override String get dropped => 'Die Verbindung ist zwischendurch abgebrochen.';
 	@override String noAnswer({required Object address}) => 'Keine Antwort von ${address}. Prüfe den anderen Bildschirm.';
+}
+
+// Path: mediaBrowser.errors
+class _Translations$mediaBrowser$errors$de extends Translations$mediaBrowser$errors$en {
+	_Translations$mediaBrowser$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String signedOut({required Object server}) => '${server} akzeptiert diese Anmeldung nicht mehr. Entferne ihn unter Einstellungen, Quellen und füge ihn erneut hinzu.';
+	@override String status({required Object server, required Object code}) => '${server} hat mit ${code} geantwortet.';
+	@override String unreachable({required Object server}) => '${server} war nicht erreichbar. Er ist vielleicht im Ruhezustand oder nicht im Netzwerk.';
+	@override String get notAServer => 'Unter dieser Adresse hat kein Jellyfin- oder Emby-Server geantwortet. Prüfe sie, auch den Port (meist 8096).';
+	@override String get badAnswer => 'Der Server hat auf eine Weise geantwortet, die diese App nicht versteht.';
+	@override String get wrongLogin => 'Falscher Benutzername oder falsches Passwort.';
 }
 
 // Path: settings.metadata.errors
@@ -1674,6 +1719,8 @@ extension on TranslationsDe {
 			'addSource.kind.smbSub' => 'Ein NAS oder eine Windows-Freigabe in deinem Heimnetz.',
 			'addSource.kind.xtream' => 'Xtream-Codes-Anmeldung',
 			'addSource.kind.xtreamSub' => 'Host, Benutzername und Passwort von deinem Anbieter.',
+			'addSource.kind.mediaBrowser' => 'Jellyfin- oder Emby-Server',
+			'addSource.kind.mediaBrowserSub' => 'Dein eigener Server, mit deinem eigenen Konto.',
 			'addSource.copyFromDevice' => 'Von einem anderen Gerät kopieren',
 			'addSource.copyFromDeviceSub' => 'Schon auf deinem Handy eingerichtet? Schick es hierher, statt alles neu einzutippen.',
 			'addSource.title' => 'Quelle hinzufügen',
@@ -1814,10 +1861,10 @@ extension on TranslationsDe {
 			'xtream.hidden.add' => 'Hinzufügen',
 			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',
 			'xtream.hidden.tapToRemove' => 'Wähle ein Wort aus, um es nicht mehr auszublenden.',
-			'transfer.noNetwork' => 'Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.',
-			'transfer.cannotListen' => ({required Object error}) => 'Empfang konnte nicht gestartet werden: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'transfer.noNetwork' => 'Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.',
+			'transfer.cannotListen' => ({required Object error}) => 'Empfang konnte nicht gestartet werden: ${error}',
 			'transfer.expired' => 'Dieser Code ist abgelaufen. Starte neu, um einen neuen zu bekommen.',
 			'transfer.wentWrong' => ({required Object error}) => 'Etwas ist schiefgelaufen: ${error}',
 			'transfer.wentWrongPlain' => 'Etwas ist schiefgelaufen.',
@@ -1901,6 +1948,29 @@ extension on TranslationsDe {
 			'transfer.client.unreachable' => ({required Object address}) => '${address} war nicht erreichbar. Beide Geräte müssen im selben WLAN sein, und das andere muss seinen Code noch anzeigen.',
 			'transfer.client.dropped' => 'Die Verbindung ist zwischendurch abgebrochen.',
 			'transfer.client.noAnswer' => ({required Object address}) => 'Keine Antwort von ${address}. Prüfe den anderen Bildschirm.',
+			'mediaBrowser.errors.signedOut' => ({required Object server}) => '${server} akzeptiert diese Anmeldung nicht mehr. Entferne ihn unter Einstellungen, Quellen und füge ihn erneut hinzu.',
+			'mediaBrowser.errors.status' => ({required Object server, required Object code}) => '${server} hat mit ${code} geantwortet.',
+			'mediaBrowser.errors.unreachable' => ({required Object server}) => '${server} war nicht erreichbar. Er ist vielleicht im Ruhezustand oder nicht im Netzwerk.',
+			'mediaBrowser.errors.notAServer' => 'Unter dieser Adresse hat kein Jellyfin- oder Emby-Server geantwortet. Prüfe sie, auch den Port (meist 8096).',
+			'mediaBrowser.errors.badAnswer' => 'Der Server hat auf eine Weise geantwortet, die diese App nicht versteht.',
+			'mediaBrowser.errors.wrongLogin' => 'Falscher Benutzername oder falsches Passwort.',
+			'mediaBrowser.title' => 'Mit Jellyfin oder Emby verbinden',
+			'mediaBrowser.explain' => 'Subnext Player spielt ab, was dein eigener Server bereits hat. Deine Anmeldung bleibt auf diesem Gerät und erreicht niemanden außer deinem Server.',
+			'mediaBrowser.address' => 'Serveradresse',
+			'mediaBrowser.addressHint' => 'z. B. 192.168.1.20:8096',
+			'mediaBrowser.find' => 'Server suchen',
+			'mediaBrowser.finding' => 'Server wird gesucht…',
+			'mediaBrowser.found' => ({required Object name, required Object kind, required Object version}) => '${name} · ${kind} ${version}',
+			'mediaBrowser.username' => 'Benutzername',
+			'mediaBrowser.password' => 'Passwort',
+			'mediaBrowser.signIn' => 'Anmelden',
+			'mediaBrowser.signingIn' => 'Wird angemeldet…',
+			'mediaBrowser.useQuickConnect' => 'Stattdessen Quick Connect verwenden',
+			'mediaBrowser.usePassword' => 'Stattdessen Benutzername und Passwort verwenden',
+			'mediaBrowser.quickConnectExplain' => 'Öffne auf einem Handy oder Computer, der schon bei Jellyfin angemeldet ist, dein Profil, Quick Connect, und gib ein:',
+			'mediaBrowser.waiting' => 'Warte auf Freigabe…',
+			'mediaBrowser.otherAddress' => 'Andere Adresse verwenden',
+			'mediaBrowser.connected' => ({required Object name}) => 'Mit ${name} verbunden.',
 			_ => null,
 		};
 	}

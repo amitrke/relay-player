@@ -52,6 +52,8 @@ class AddSourceRoute extends ConsumerWidget {
     switch (kind) {
       case SourceKind.plex:
         context.push('/link');
+      case SourceKind.mediaBrowser:
+        context.push('/link/jellyfin');
       case SourceKind.localFiles:
         // The Local & Network tab owns the permission prompt, so send the user
         // there rather than asking for access from a screen they are leaving.

@@ -95,6 +95,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$smb$es smb = _Translations$smb$es._(_root);
 	@override late final _Translations$xtream$es xtream = _Translations$xtream$es._(_root);
 	@override late final _Translations$transfer$es transfer = _Translations$transfer$es._(_root);
+	@override late final _Translations$mediaBrowser$es mediaBrowser = _Translations$mediaBrowser$es._(_root);
 }
 
 // Path: common
@@ -540,6 +541,33 @@ class _Translations$transfer$es extends Translations$transfer$en {
 	@override late final _Translations$transfer$client$es client = _Translations$transfer$client$es._(_root);
 }
 
+// Path: mediaBrowser
+class _Translations$mediaBrowser$es extends Translations$mediaBrowser$en {
+	_Translations$mediaBrowser$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$mediaBrowser$errors$es errors = _Translations$mediaBrowser$errors$es._(_root);
+	@override String get title => 'Conectar con Jellyfin o Emby';
+	@override String get explain => 'Subnext Player reproduce lo que ya tiene tu propio servidor. Tu inicio de sesión se queda en este dispositivo y no llega a nadie más que a tu servidor.';
+	@override String get address => 'Dirección del servidor';
+	@override String get addressHint => 'p. ej., 192.168.1.20:8096';
+	@override String get find => 'Buscar servidor';
+	@override String get finding => 'Buscando el servidor…';
+	@override String found({required Object name, required Object kind, required Object version}) => '${name} · ${kind} ${version}';
+	@override String get username => 'Usuario';
+	@override String get password => 'Contraseña';
+	@override String get signIn => 'Iniciar sesión';
+	@override String get signingIn => 'Iniciando sesión…';
+	@override String get useQuickConnect => 'Usar Quick Connect';
+	@override String get usePassword => 'Usar usuario y contraseña';
+	@override String get quickConnectExplain => 'En un móvil u ordenador que ya tenga la sesión iniciada en Jellyfin, abre tu perfil, Quick Connect, e introduce:';
+	@override String get waiting => 'Esperando la aprobación…';
+	@override String get otherAddress => 'Usar otra dirección';
+	@override String connected({required Object name}) => 'Conectado a ${name}.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$es extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -970,6 +998,8 @@ class _Translations$addSource$kind$es extends Translations$addSource$kind$en {
 	@override String get smbSub => 'Un NAS o una carpeta compartida de Windows en tu red doméstica.';
 	@override String get xtream => 'Inicio de sesión de Xtream Codes';
 	@override String get xtreamSub => 'Servidor, usuario y contraseña de tu proveedor.';
+	@override String get mediaBrowser => 'Servidor Jellyfin o Emby';
+	@override String get mediaBrowserSub => 'Tu propio servidor, con tu propia cuenta.';
 }
 
 // Path: plex.errors
@@ -1268,6 +1298,21 @@ class _Translations$transfer$client$es extends Translations$transfer$client$en {
 	@override String unreachable({required Object address}) => 'No se pudo contactar con ${address}. Los dos dispositivos deben estar en la misma red Wi-Fi, y el otro tiene que seguir mostrando su código.';
 	@override String get dropped => 'La conexión se cortó a medias.';
 	@override String noAnswer({required Object address}) => 'Sin respuesta de ${address}. Revisa la otra pantalla.';
+}
+
+// Path: mediaBrowser.errors
+class _Translations$mediaBrowser$errors$es extends Translations$mediaBrowser$errors$en {
+	_Translations$mediaBrowser$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String signedOut({required Object server}) => '${server} ya no acepta este inicio de sesión. Quítalo en Ajustes, Fuentes y vuelve a añadirlo.';
+	@override String status({required Object server, required Object code}) => '${server} respondió ${code}.';
+	@override String unreachable({required Object server}) => 'No se pudo contactar con ${server}. Puede que esté en reposo o fuera de la red.';
+	@override String get notAServer => 'Ningún servidor Jellyfin o Emby respondió en esa dirección. Compruébala, incluido el puerto (normalmente 8096).';
+	@override String get badAnswer => 'El servidor respondió de una forma que esta app no entiende.';
+	@override String get wrongLogin => 'Usuario o contraseña incorrectos.';
 }
 
 // Path: settings.metadata.errors
@@ -1674,6 +1719,8 @@ extension on TranslationsEs {
 			'addSource.kind.smbSub' => 'Un NAS o una carpeta compartida de Windows en tu red doméstica.',
 			'addSource.kind.xtream' => 'Inicio de sesión de Xtream Codes',
 			'addSource.kind.xtreamSub' => 'Servidor, usuario y contraseña de tu proveedor.',
+			'addSource.kind.mediaBrowser' => 'Servidor Jellyfin o Emby',
+			'addSource.kind.mediaBrowserSub' => 'Tu propio servidor, con tu propia cuenta.',
 			'addSource.copyFromDevice' => 'Copiar de otro dispositivo',
 			'addSource.copyFromDeviceSub' => '¿Ya lo tienes configurado en el móvil? Envíalo aquí en vez de volver a escribirlo.',
 			'addSource.title' => 'Añadir una fuente',
@@ -1814,10 +1861,10 @@ extension on TranslationsEs {
 			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
 			'xtream.hidden.tapToRemove' => 'Selecciona una palabra para dejar de ocultarla.',
-			'transfer.noNetwork' => 'Este dispositivo no está en una red Wi-Fi ni Ethernet. Conéctalo a la misma red que el otro dispositivo e inténtalo de nuevo.',
-			'transfer.cannotListen' => ({required Object error}) => 'No se pudo empezar a escuchar: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'transfer.noNetwork' => 'Este dispositivo no está en una red Wi-Fi ni Ethernet. Conéctalo a la misma red que el otro dispositivo e inténtalo de nuevo.',
+			'transfer.cannotListen' => ({required Object error}) => 'No se pudo empezar a escuchar: ${error}',
 			'transfer.expired' => 'Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.',
 			'transfer.wentWrong' => ({required Object error}) => 'Algo salió mal: ${error}',
 			'transfer.wentWrongPlain' => 'Algo salió mal.',
@@ -1901,6 +1948,29 @@ extension on TranslationsEs {
 			'transfer.client.unreachable' => ({required Object address}) => 'No se pudo contactar con ${address}. Los dos dispositivos deben estar en la misma red Wi-Fi, y el otro tiene que seguir mostrando su código.',
 			'transfer.client.dropped' => 'La conexión se cortó a medias.',
 			'transfer.client.noAnswer' => ({required Object address}) => 'Sin respuesta de ${address}. Revisa la otra pantalla.',
+			'mediaBrowser.errors.signedOut' => ({required Object server}) => '${server} ya no acepta este inicio de sesión. Quítalo en Ajustes, Fuentes y vuelve a añadirlo.',
+			'mediaBrowser.errors.status' => ({required Object server, required Object code}) => '${server} respondió ${code}.',
+			'mediaBrowser.errors.unreachable' => ({required Object server}) => 'No se pudo contactar con ${server}. Puede que esté en reposo o fuera de la red.',
+			'mediaBrowser.errors.notAServer' => 'Ningún servidor Jellyfin o Emby respondió en esa dirección. Compruébala, incluido el puerto (normalmente 8096).',
+			'mediaBrowser.errors.badAnswer' => 'El servidor respondió de una forma que esta app no entiende.',
+			'mediaBrowser.errors.wrongLogin' => 'Usuario o contraseña incorrectos.',
+			'mediaBrowser.title' => 'Conectar con Jellyfin o Emby',
+			'mediaBrowser.explain' => 'Subnext Player reproduce lo que ya tiene tu propio servidor. Tu inicio de sesión se queda en este dispositivo y no llega a nadie más que a tu servidor.',
+			'mediaBrowser.address' => 'Dirección del servidor',
+			'mediaBrowser.addressHint' => 'p. ej., 192.168.1.20:8096',
+			'mediaBrowser.find' => 'Buscar servidor',
+			'mediaBrowser.finding' => 'Buscando el servidor…',
+			'mediaBrowser.found' => ({required Object name, required Object kind, required Object version}) => '${name} · ${kind} ${version}',
+			'mediaBrowser.username' => 'Usuario',
+			'mediaBrowser.password' => 'Contraseña',
+			'mediaBrowser.signIn' => 'Iniciar sesión',
+			'mediaBrowser.signingIn' => 'Iniciando sesión…',
+			'mediaBrowser.useQuickConnect' => 'Usar Quick Connect',
+			'mediaBrowser.usePassword' => 'Usar usuario y contraseña',
+			'mediaBrowser.quickConnectExplain' => 'En un móvil u ordenador que ya tenga la sesión iniciada en Jellyfin, abre tu perfil, Quick Connect, e introduce:',
+			'mediaBrowser.waiting' => 'Esperando la aprobación…',
+			'mediaBrowser.otherAddress' => 'Usar otra dirección',
+			'mediaBrowser.connected' => ({required Object name}) => 'Conectado a ${name}.',
 			_ => null,
 		};
 	}

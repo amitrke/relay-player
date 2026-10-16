@@ -356,6 +356,80 @@ that, and both are this caution applied:
 
 **UX implication:** a Plex account effectively contributes its own Movies/Series categories to the always-visible Movies/Series tabs — this is flagship functionality, not gated behind Advanced Sources.
 
+### 6.2 Jellyfin and Emby, and one interface for all three (added 2026-10-16)
+
+Jellyfin and Emby are personal media servers in exactly Plex's sense: the
+user's own library, on the user's own server, signed in with the user's own
+account. That keeps them inside §1's primary-purpose framing, flagship sources
+beside Plex rather than anything behind Advanced Sources.
+
+**One interface.** `MediaServer` (`lib/domain/models/media_server.dart`) is
+everything the app asks of a server: libraries, every title in one, search
+within the libraries the user kept, an item, its children, a show's
+episodes, On Deck, watched, progress, direct play, a download, and artwork.
+Answers come back as neutral `MediaSection` and `MediaItem` values. Plex
+(`PlexService`) and Jellyfin/Emby (`MediaBrowserService`) implement it, and
+nothing above `lib/data/` knows which one it holds: the library tabs, search,
+show pages, Continue watching, the player, downloads (§18), offline sync
+(§18.6), episode rules (§18.7) and the watch trackers (§19) all work for all
+three. `connectedServersProvider` lists every kind; each kind's own session
+controller signs in and out.
+
+`CatalogSource.plex` and `PlaybackKind.plex` became `.server`, because they
+mean any of the three. Both still write `plex` on disk: the string is inside
+every stored favourite, dismissal, history entry and cached library, so the
+rename changed no stored data. Download records keep their `plex:` keys for
+the same reason.
+
+**Jellyfin and Emby share one client.** Jellyfin began as a fork of Emby and
+the two still share the API used here (`/Users/{id}/Items`, `/Shows`,
+`/Sessions/Playing`, `/Videos/{id}/stream`). Where they differ is how a
+request authenticates, and only that branches on the kind: Jellyfin takes
+`Authorization: MediaBrowser ..., Token=...` and an `ApiKey` parameter on
+media URLs; Emby takes `X-Emby-Authorization` with `X-Emby-Token`, and
+`api_key`. Which one a server is comes from `/System/Info/Public`, which
+needs no sign-in (`ProductName` "Jellyfin Server" or "Emby Server").
+
+- **Signing in.** Address first, so the server can say what it is. When a
+  Jellyfin server has **Quick Connect** on, that is the default: a six-digit
+  code here, approved from a phone or computer already signed in, so a TV
+  never types a password. Otherwise, or by choice, username and password.
+  The access token is kept in secure storage with the server's id, name and
+  address (§3); the password is never stored. A stable per-install device
+  id is sent, because both servers list devices by it.
+- **Playback is direct play only**, as for Plex (§10): `/Videos/{id}/stream`
+  with `static=true` serves the original file with byte ranges, and no
+  transcode is ever asked for. A download is `/Items/{id}/Download`, which
+  the server serves only to a user the owner allows downloads, the same rule
+  §18.5 records for a shared Plex server.
+- **Progress** uses the session API: started once, then progress, then
+  stopped. A stopped report for a session that was never started (an offline
+  watch replayed, §18.6) starts one first, so the server has one to close.
+- **Artwork carries no credential.** Both servers serve
+  `/Items/{id}/Images/Primary` without auth, so unlike Plex's (§3) a stored
+  poster path and the URL made from it hold no token.
+- **External IDs** (IMDb, TMDB, TVDB) come from `ProviderIds` on every item,
+  and from Plex's `Guid` tags; they are what a watch tracker (§19) matches on.
+
+**Not done, and why.**
+
+- **Move to another device** (§17) does not carry a Jellyfin or Emby
+  sign-in, for the reason it does not carry Plex: the token belongs to this
+  device's id on that server. Quick Connect on the TV is the answer instead.
+- **Transcoding** is not offered, as on Plex.
+- **Signing out** removes the server here only. The token stays valid on the
+  server until its owner removes the device there; there is no single call
+  that ends just this device's session on both products.
+
+**Verified against a fake server only** (`test/media_browser_test.dart`: both
+auth styles, the `/emby` fallback, paging a 450-title library, item mapping,
+play and download URLs, the session sequence, Quick Connect). On 2026-10-16 a
+real Jellyfin's public endpoint (no sign-in) answered as "Jellyfin Server",
+version 12.2, with Quick Connect enabled, which matched what the client
+expects; nothing signed in was run. Jellyfin 12 is newer than the API
+documentation this was written from, so the `ApiKey` parameter and the
+session calls are the first things to check (MANUAL_TESTING.md).
+
 ## 7. Local device storage and SMB/CIFS network shares
 
 This is the VLC-style feature: playing whatever's already on the device or on a home NAS/Windows share, no account/login model at all beyond (for SMB) server credentials. Also flagship, always-visible functionality — not gated. Scoped to **local storage + SMB** for this phase; FTP, WebDAV, and UPnP/DLNA discovery follow the same patterns below and can be added later as separate `FileSystemRepository` implementations if there's demand.
@@ -1734,10 +1808,7 @@ would need its own section and a reason before work starts.
   leanback tree (Phase 4) in the Windows build and drives it from the
   keyboard, so D-pad focus work gets the fastest loop instead of waiting for
   a TV each time. Real remotes still need hardware (§11).
-- **Jellyfin and Emby as sources.** Personal media servers like Plex, so they
-  fit §1's primary-purpose framing. `lib/data/` already keeps sources apart;
-  the work is a client per server plus the downloads, history and offline
-  handling Plex has.
+- ~~**Jellyfin and Emby as sources.**~~ **Built 2026-10-16, §6.2.**
 - **Watch-history trackers** (Trakt and similar) for scrobbling and ratings.
   A third party receiving what the user watches, so it needs a consent
   posture like §9.3's, and an account, which §16.3 is wary of.

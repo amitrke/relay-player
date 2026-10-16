@@ -76,6 +76,7 @@ class AddSourceScreen extends StatelessWidget {
 /// ladder, together with their screens.
 enum SourceKind {
   plex(Icons.dns_outlined, false),
+  mediaBrowser(Icons.storage_outlined, false),
   localFiles(Icons.smartphone_outlined, false),
   smb(Icons.lan_outlined, false),
   xtream(Icons.vpn_key_outlined, true);
@@ -84,6 +85,7 @@ enum SourceKind {
 
   String get title => switch (this) {
     plex => tr.addSource.kind.plex,
+    mediaBrowser => tr.addSource.kind.mediaBrowser,
     localFiles => tr.addSource.kind.localFiles,
     smb => tr.addSource.kind.smb,
     xtream => tr.addSource.kind.xtream,
@@ -91,6 +93,7 @@ enum SourceKind {
 
   String get _subtitle => switch (this) {
     plex => tr.addSource.kind.plexShort,
+    mediaBrowser => tr.addSource.kind.mediaBrowserSub,
     localFiles => tr.addSource.kind.localFilesSub,
     smb => tr.addSource.kind.smbSub,
     xtream => tr.addSource.kind.xtreamSub,
@@ -427,6 +430,13 @@ class _DesktopAddSource extends StatelessWidget {
                         icon: Icons.dns_outlined,
                         selected: false,
                         onTap: () => onPickSource(SourceKind.plex),
+                      ),
+                      _RailItem(
+                        title: tr.addSource.kind.mediaBrowser,
+                        subtitle: tr.addSource.kind.mediaBrowserSub,
+                        icon: Icons.storage_outlined,
+                        selected: false,
+                        onTap: () => onPickSource(SourceKind.mediaBrowser),
                       ),
                       _RailItem(
                         title: tr.addSource.pcFiles,

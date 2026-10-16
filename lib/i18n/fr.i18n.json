@@ -480,7 +480,9 @@
       "smb": "Partage réseau (SMB)",
       "smbSub": "Un NAS ou un partage Windows sur votre réseau domestique.",
       "xtream": "Identifiant Xtream Codes",
-      "xtreamSub": "Serveur, nom d'utilisateur et mot de passe de votre fournisseur."
+      "xtreamSub": "Serveur, nom d'utilisateur et mot de passe de votre fournisseur.",
+      "mediaBrowser": "Serveur Jellyfin ou Emby",
+      "mediaBrowserSub": "Votre propre serveur, avec votre propre compte."
     },
     "copyFromDevice": "Copier depuis un autre appareil",
     "copyFromDeviceSub": "Déjà configuré sur votre téléphone ? Envoyez-le ici au lieu de tout retaper.",
@@ -765,5 +767,32 @@
       "dropped": "La connexion a été coupée en cours de route.",
       "noAnswer": "Pas de réponse de {address}. Vérifiez l'autre écran."
     }
+  },
+  "mediaBrowser": {
+    "errors": {
+      "signedOut": "{server} n'accepte plus cette connexion. Retirez-le dans Réglages, Sources et ajoutez-le à nouveau.",
+      "status": "{server} a répondu {code}.",
+      "unreachable": "Impossible de joindre {server}. Il est peut-être en veille ou hors du réseau.",
+      "notAServer": "Aucun serveur Jellyfin ou Emby n'a répondu à cette adresse. Vérifiez-la, port compris (souvent 8096).",
+      "badAnswer": "Le serveur a répondu d'une façon que cette appli ne comprend pas.",
+      "wrongLogin": "Nom d'utilisateur ou mot de passe incorrect."
+    },
+    "title": "Se connecter à Jellyfin ou Emby",
+    "explain": "Subnext Player lit ce que votre propre serveur contient déjà. Votre connexion reste sur cet appareil et ne parvient qu'à votre serveur.",
+    "address": "Adresse du serveur",
+    "addressHint": "p. ex. 192.168.1.20:8096",
+    "find": "Trouver le serveur",
+    "finding": "Recherche du serveur…",
+    "found": "{name} · {kind} {version}",
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion…",
+    "useQuickConnect": "Utiliser Quick Connect",
+    "usePassword": "Utiliser le nom d'utilisateur et le mot de passe",
+    "quickConnectExplain": "Sur un téléphone ou un ordinateur déjà connecté à Jellyfin, ouvrez votre profil, Quick Connect, et saisissez :",
+    "waiting": "En attente d'approbation…",
+    "otherAddress": "Utiliser une autre adresse",
+    "connected": "Connecté à {name}."
   }
 }

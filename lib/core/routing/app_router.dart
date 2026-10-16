@@ -31,6 +31,7 @@ import '../../features/transfer/receive_screen.dart';
 import '../../features/transfer/send_screen.dart';
 import '../theme/theme_controller.dart';
 import '../../i18n/strings.g.dart';
+import '../../features/accounts/media_browser_link_screen.dart';
 
 /// Routes, with sign-in state as the only gate for now.
 ///
@@ -81,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingRoute()),
       GoRoute(path: '/add-source', builder: (_, _) => const AddSourceRoute()),
       GoRoute(path: '/link', builder: (_, _) => const PlexLinkScreen()),
+      GoRoute(
+        path: '/link/jellyfin',
+        builder: (_, _) => const MediaBrowserLinkScreen(),
+      ),
       StatefulShellRoute(
         builder: (_, _, shell) => HomeShell(navigationShell: shell),
         // Not `.indexedStack` — its container keeps every branch's Focus
