@@ -2092,6 +2092,62 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   resumability is painful, so decide before Phase 3.5.
 - **Amazon Appstore for Fire TV (§11)** — a third store pipeline not costed in
   §13. In scope for the initial release, or a follow-on?
+- **Microsoft Store (Windows), added 2026-10-16.** Flutter's Windows target
+  already carries the `flutter run -d windows` loop and media_kit playback, so
+  this is a packaging and policy task rather than new playback work: MSIX via
+  the `msix` package (the Store signs it), a Partner Center account, a privacy
+  policy URL and an age-rating questionnaire. Not yet started, and the
+  details above come from general knowledge, not checked against current
+  Partner Center docs. Three things to settle first. (1) **Licences:** the
+  ffmpeg item above notes that Windows dev builds load a different libmpv and
+  are not distributed. A Store build distributes it, so the shipped
+  `libmpv-2.dll` has to be read the way the Android and iOS binaries were
+  (LGPL vs GPL build flags) and `native_licenses.dart` extended before
+  submission. (2) **Policy position:** §1 and §8.3 apply unchanged, with no
+  provider directory or branding in the listing, and screenshots from Plex,
+  local files or SMB only (§13 Phase 6). (3) **Layout:** the mobile tree is
+  not yet desktop-shaped, so keyboard, mouse and window resizing need a pass.
+  Cheaper than the TV targets because it needs no new playback path.
+  **Setup, checked 2026-10-16 against Microsoft's current docs:** there is no
+  registration fee for Individual or Company accounts when signing up through
+  storedeveloper.microsoft.com (the earlier note of a roughly $19 fee was
+  wrong). Individual needs a personal Microsoft account plus government ID and
+  selfie verification; Company needs a DUNS number or business documents and a
+  work-domain email, with manual review of 2 to 5 business days, and cannot be
+  converted from an Individual account later. The `msix` dev dependency is
+  added and a commented `msix_config` block sits at the end of `pubspec.yaml`,
+  waiting on the identity name, publisher ID and publisher display name from
+  Partner Center after the app name is reserved.
+  **Progress, 2026-10-16:** the Individual account exists, the name "Subnext
+  Player" is reserved (publisher display name "Subnext", because the person's
+  own name was already taken by another publisher), and the identity values
+  are in `pubspec.yaml`. `dart run msix:create --store` builds
+  `relay_player.msix`. **libmpv checked, Windows release build:** the bundled
+  `libmpv-2.dll` is mpv v0.36.0-403 configured `-Dgpl=false`, with FFmpeg
+  `--disable-gpl --disable-nonfree --enable-version3` and every libav library
+  reporting "LGPL version 3 or later" (built by `libmpv-win32-video-build`).
+  So the GPL concern is cleared. **Still open:** `native_licenses.dart` has no
+  Windows list yet, so the About licence page shows no native notices on
+  Windows. The Windows set is much larger than Android's, because this build
+  statically links FFmpeg with mbedTLS, dav1d, libjxl, libvpl, libbs2b, libwebp,
+  zimg, libxml2, libsoxr (LGPL), speex, libmysofa, shaderc, fribidi and
+  freetype, and mpv with lcms2, uchardet, libpng 1.6.41, libjpeg-turbo 3.0.1,
+  zlib 1.2.13, libarchive, SPIRV-Cross and ANGLE. Versions for most are not
+  printed in the binary, so the list needs the build repo's pinned versions and
+  each licence text, not guesses. The Store listing, privacy policy, age rating and the policy
+  update effective 2026-10-22 have not been done.
+- **LG webOS TV, backlog, added 2026-10-16.** Not planned for any phase.
+  Flutter has no official webOS target. A community/LG embedder exists for
+  webOS OSE, but whether it runs on retail LG sets is unverified. The
+  alternative is a Flutter web build in webOS's Chromium web-app runtime, and
+  there media_kit (native libmpv) is unavailable, so playback would need an
+  HTML5 `<video>` backend and the HLS and MPEG-TS findings in
+  `PHASE0_FINDINGS.md` would have to be re-measured. Browser CORS limits would
+  also hit the source clients. A separate thin web client may be cheaper than
+  a Flutter port. LG's simulator and emulator cover UI and D-pad focus only;
+  decoding needs a real TV in Developer Mode, as with Android TV. Revisit
+  after Phase 4 (Android TV and Fire TV). All of this is from general
+  knowledge and unverified against LG's current developer docs.
 - **A second, worse Xtream panel** — to settle §10's malformed-TS claim, or
   else formally drop that argument.
 
