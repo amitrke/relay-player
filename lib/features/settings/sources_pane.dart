@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
@@ -13,8 +14,8 @@ import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
 import '../../domain/models/media_server.dart';
 
-/// Settings → Sources (§12.1): every connected Plex server, and what each of
-/// its libraries feeds.
+/// Settings → Sources (§12.1): every connected Plex, Jellyfin or Emby server,
+/// what each of its libraries feeds, and the way to add another source.
 ///
 /// Plex's library type is only a guess at intent. A library typed `movie` may
 /// hold course recordings or home video, and merging it into Movies while
@@ -46,6 +47,16 @@ class SourcesPane extends ConsumerWidget {
             ),
           ),
         const _AddServer(),
+        // Add source was reachable only from first run and from an empty
+        // library tab, so once Plex filled the library there was no way to
+        // add Jellyfin, Emby, a share or a panel (found 2026-10-16). It is
+        // the same screen as first run; Back returns here.
+        const SizedBox(height: 6),
+        TextButton.icon(
+          onPressed: () => context.push('/add-source'),
+          icon: Icon(Icons.add, size: 18, color: t.accent),
+          label: Text(tr.library.addSource, style: TextStyle(color: t.accent)),
+        ),
       ],
     );
   }
