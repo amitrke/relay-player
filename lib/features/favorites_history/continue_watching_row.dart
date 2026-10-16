@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/local/history_store.dart';
-import '../accounts/plex_session.dart';
 import 'resume_entries.dart';
 import 'watch_actions.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
 // around them. Shared because the row must reserve exactly the height the tile
@@ -91,7 +92,7 @@ class ContinueWatchingRow extends ConsumerWidget {
         Padding(
           padding: RelayLayout.pagePadding(f).copyWith(top: 14, bottom: 10),
           child: Text(
-            'Continue watching',
+            tr.resume.title,
             style: TextStyle(
               color: t.ink,
               fontSize: RelayLayout.bodySize(f) + 2,
@@ -132,8 +133,8 @@ class _ResumeTile extends ConsumerWidget {
   String? _poster(WidgetRef ref) {
     final ref0 = item.posterPath;
     if (ref0 == null || ref0.isEmpty) return null;
-    if (item.kind != PlaybackKind.plex) return ref0;
-    return plexServiceFor(ref, item.sourceId).posterUrlForPath(ref0);
+    if (item.kind != PlaybackKind.server) return ref0;
+    return mediaServerFor(ref, item.sourceId).posterUrlForPath(ref0);
   }
 
   @override
@@ -159,7 +160,7 @@ class _ResumeTile extends ConsumerWidget {
         onLongPress: () => showWatchActions(
           context,
           ref,
-          item.kind == PlaybackKind.plex
+          item.kind == PlaybackKind.server
               ? WatchTarget(
                   serverId: item.sourceId,
                   ratingKey: item.itemId,
@@ -235,7 +236,7 @@ class _ResumeTile extends ConsumerWidget {
                         child: IconButton(
                           visualDensity: VisualDensity.compact,
                           iconSize: 16,
-                          tooltip: 'Remove from continue watching',
+                          tooltip: tr.resume.remove,
                           icon: Icon(Icons.close, color: t.inkDim),
                           onPressed: () => ref
                               .read(resumeDismissalsProvider.notifier)

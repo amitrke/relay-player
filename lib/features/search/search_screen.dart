@@ -8,12 +8,11 @@ import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
 import '../../data/ai/ai_provider.dart';
 import '../../data/xtream/xtream_account_store.dart';
-import '../accounts/plex_session.dart';
 import '../advanced_sources/xtream_controller.dart';
 import '../ai/ai_controller.dart';
 import '../metadata/tmdb_controller.dart';
 import '../library/library_dedupe.dart';
-import '../library/library_screen.dart' show plexSectionsProvider;
+import '../library/library_screen.dart' show serverSectionsProvider;
 import '../library/poster_grid.dart';
 import '../settings/settings_controller.dart';
 import 'search_filters.dart';
@@ -22,6 +21,9 @@ import 'ai_recommendations_view.dart';
 import 'ai_results_view.dart';
 import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../seerr/seerr_search_row.dart';
 
 final _queryProvider = NotifierProvider<_QueryController, String>(
   _QueryController.new,
@@ -106,15 +108,13 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
             // Only libraries not hidden in Settings → Sources; see
             // PlexService.searchIn for why this cannot be filtered afterwards.
             final sections = await ref.watch(
-              plexSectionsProvider(server.id).future,
+              serverSectionsProvider(server.id).future,
             );
             final found = await server.service.searchIn(
               mapping.visibleSections(server.id, sections),
               query,
             );
-            return [
-              for (final i in found) server.service.toCatalogItem(i.metadata),
-            ];
+            return [for (final i in found) server.service.toCatalogItem(i)];
           } catch (_) {
             return const <CatalogItem>[];
           }
@@ -135,7 +135,7 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
       ],
       localPlexServers: {
         for (final s in servers)
-          if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+          if (plexUrlIsLocal(s.service.baseUrl ?? '')) s.id,
       },
     ),
     query,
@@ -230,7 +230,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       FocusManager.instance.primaryFocus?.unfocus(),
                   style: TextStyle(color: t.ink),
                   decoration: InputDecoration(
-                    hintText: 'Search your sources',
+                    hintText: tr.search.hint,
                     hintStyle: TextStyle(color: t.inkDim),
                     prefixIcon: Icon(Icons.search, color: t.inkDim, size: 20),
                     suffixIcon: query.isEmpty
@@ -308,37 +308,48 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           rows: [],
                           leading: AiRecommendationsSection(),
                         ),
-                        _ => const LibraryEmptyState(
+                        _ => LibraryEmptyState(
                           icon: Icons.search,
-                          message:
-                              'Search movies and series across your server.',
+                          message: tr.search.prompt,
                         ),
                       },
-                      1 => const LibraryEmptyState(
+                      1 => LibraryEmptyState(
                         icon: Icons.search,
-                        message: 'Keep typing…',
+                        message: tr.search.keepTyping,
                       ),
-                      _ => results.when(
-                        loading: () => Center(
-                          child: CircularProgressIndicator(color: t.accent),
-                        ),
-                        error: (e, _) => LibraryEmptyState(
-                          icon: Icons.cloud_off_outlined,
-                          message: '$e',
-                          onRetry: () => ref.invalidate(_resultsProvider),
-                        ),
-                        data: (list) => list.isEmpty
-                            ? LibraryEmptyState(
-                                icon: Icons.search_off,
-                                message: 'Nothing matching "$query".',
-                              )
-                            : SearchResultsView(
-                                all: enriched ?? list,
-                                filters: filters,
-                                sourceNames: sourceNames,
-                                onFilters: (v) =>
-                                    ref.read(_filtersProvider.notifier).set(v),
+                      // What the request server could add sits above the
+                      // results, and stays when the library has nothing (§20).
+                      _ => Column(
+                        children: [
+                          SeerrSearchRow(query: query.trim()),
+                          Expanded(
+                            child: results.when(
+                              loading: () => Center(
+                                child: CircularProgressIndicator(
+                                  color: t.accent,
+                                ),
                               ),
+                              error: (e, _) => LibraryEmptyState(
+                                icon: Icons.cloud_off_outlined,
+                                message: '$e',
+                                onRetry: () => ref.invalidate(_resultsProvider),
+                              ),
+                              data: (list) => list.isEmpty
+                                  ? LibraryEmptyState(
+                                      icon: Icons.search_off,
+                                      message: tr.search.noMatch(query: query),
+                                    )
+                                  : SearchResultsView(
+                                      all: enriched ?? list,
+                                      filters: filters,
+                                      sourceNames: sourceNames,
+                                      onFilters: (v) => ref
+                                          .read(_filtersProvider.notifier)
+                                          .set(v),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     },
             ),
@@ -381,7 +392,7 @@ class _AskAiChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              active ? 'Back to results' : 'Ask AI',
+              active ? tr.search.backToResults : tr.search.askAi,
               style: TextStyle(
                 color: active ? t.inkDim : t.ink,
                 fontSize: size,

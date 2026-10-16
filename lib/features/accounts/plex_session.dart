@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/plex/plex_service.dart';
 import '../../data/plex/plex_session_store.dart';
 import '../library/library_cache_provider.dart';
+import '../../i18n/strings.g.dart';
 
 /// Where the user is in the link flow.
 enum PlexStage {
@@ -26,9 +27,10 @@ enum PlexStage {
   ready,
 }
 
-/// A connected server and the client bound to it.
-class ConnectedServer {
-  const ConnectedServer({required this.stored, required this.service});
+/// A connected Plex server and the client bound to it. What the rest of the
+/// app sees is the neutral `ConnectedServer` (media_servers.dart).
+class PlexConnection {
+  const PlexConnection({required this.stored, required this.service});
 
   final StoredPlexServer stored;
   final PlexService service;
@@ -54,7 +56,7 @@ class PlexState {
   final List<PlexResource> available;
 
   /// Servers actually connected.
-  final List<ConnectedServer> servers;
+  final List<PlexConnection> servers;
 
   final String? error;
   final bool busy;
@@ -71,7 +73,7 @@ class PlexState {
     PlexStage? stage,
     PlexLinkCode? linkCode,
     List<PlexResource>? available,
-    List<ConnectedServer>? servers,
+    List<PlexConnection>? servers,
     String? error,
     bool? busy,
     bool clearError = false,
@@ -90,22 +92,6 @@ class PlexState {
 final plexSessionStoreProvider = Provider<PlexSessionStore>(
   (ref) => PlexSessionStore(),
 );
-
-/// Every connected server, in connection order.
-final connectedServersProvider = Provider<List<ConnectedServer>>((ref) {
-  return ref.watch(plexSessionProvider.select((s) => s.servers));
-});
-
-/// The client for one server. Throws rather than returning null: a caller
-/// holding a server id for a server that is gone has a bug, and a silent null
-/// would surface as an empty screen instead.
-PlexService plexServiceFor(WidgetRef ref, String serverId) {
-  final servers = ref.read(connectedServersProvider);
-  for (final server in servers) {
-    if (server.id == serverId) return server.service;
-  }
-  throw StateError('No connected Plex server with id "$serverId".');
-}
 
 final plexSessionProvider = NotifierProvider<PlexSessionController, PlexState>(
   PlexSessionController.new,
@@ -154,7 +140,7 @@ class PlexSessionController extends Notifier<PlexState> {
     // queries, and surfaced per server in Settings → Sources.
     final connected = [
       for (final server in stored)
-        ConnectedServer(
+        PlexConnection(
           stored: server,
           service: PlexService(
             clientId: clientId,
@@ -216,7 +202,7 @@ class PlexSessionController extends Notifier<PlexState> {
         timer.cancel();
         state = state.copyWith(
           stage: PlexStage.signedOut,
-          error: 'That code expired. Try again.',
+          error: tr.plex.codeExpired,
         );
         return;
       }
@@ -243,7 +229,7 @@ class PlexSessionController extends Notifier<PlexState> {
         state = state.copyWith(
           stage: PlexStage.signedOut,
           busy: false,
-          error: 'That account has no Plex servers.',
+          error: tr.plex.noServers,
         );
         return;
       }
@@ -282,7 +268,7 @@ class PlexSessionController extends Notifier<PlexState> {
       );
       final servers = [
         ...state.servers.where((s) => s.id != stored.id),
-        ConnectedServer(stored: stored, service: service),
+        PlexConnection(stored: stored, service: service),
       ];
       await _store.setServers([for (final s in servers) s.stored]);
 

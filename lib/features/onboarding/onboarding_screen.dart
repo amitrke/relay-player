@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// Screen 01 — Onboarding / disclaimer.
 ///
@@ -24,12 +25,9 @@ class OnboardingScreen extends StatelessWidget {
   final VoidCallback onAddSource;
   final VoidCallback onSkip;
 
-  static const String tagline = 'Play from the sources you connect.';
+  static String get tagline => tr.onboarding.tagline;
 
-  static const String blurb =
-      'Subnext Player streams from sources you connect yourself — a Plex '
-      'server, a home NAS or local files, or optionally an IPTV provider or '
-      'playlist. We host no content.';
+  static String get blurb => tr.onboarding.blurb;
 
   @override
   Widget build(BuildContext context) {
@@ -83,23 +81,21 @@ class _SourceCopy {
   /// PC", TV says "on this TV".
   static List<_SourceCopy> forForm(RelayFormFactor form) {
     final local = switch (form) {
-      RelayFormFactor.desktop =>
-        'Files on this PC, or a folder on a home NAS or SMB share.',
-      RelayFormFactor.tv => 'A folder on a home NAS or SMB share.',
-      _ => 'Video on this device, or a folder on a home NAS or SMB share.',
+      RelayFormFactor.desktop => tr.onboarding.localDesktop,
+      RelayFormFactor.tv => tr.onboarding.localTv,
+      _ => tr.onboarding.local,
     };
     final plex = form == RelayFormFactor.tv
-        ? 'Sign in with your own account on this TV.'
-        : 'Your personal library, signed in with your own account.';
+        ? tr.onboarding.plexTv
+        : tr.onboarding.plex;
     final advanced = form == RelayFormFactor.tv
-        ? 'Off by default. Turn on in Settings.'
-        : 'Off by default. Turn on in Settings to use an IPTV provider or '
-            'playlist.';
+        ? tr.onboarding.advancedTv
+        : tr.onboarding.advanced;
 
     return [
       _SourceCopy(_SourceKind.plex, 'Plex', plex),
-      _SourceCopy(_SourceKind.localNetwork, 'Local & Network', local),
-      _SourceCopy(_SourceKind.advanced, 'Advanced sources', advanced),
+      _SourceCopy(_SourceKind.localNetwork, tr.onboarding.localTitle, local),
+      _SourceCopy(_SourceKind.advanced, tr.onboarding.advancedTitle, advanced),
     ];
   }
 }
@@ -251,9 +247,9 @@ class _CompactLayout extends StatelessWidget {
           const SizedBox(height: 18),
           const RelayDrmNotice(),
           const SizedBox(height: 24),
-          RelayButton(label: 'Add your first source', onPressed: onAddSource),
+          RelayButton(label: tr.onboarding.addFirst, onPressed: onAddSource),
           const SizedBox(height: 4),
-          RelayTextButton(label: 'Not now', onPressed: onSkip),
+          RelayTextButton(label: tr.onboarding.notNow, onPressed: onSkip),
         ],
       ),
     );
@@ -292,10 +288,10 @@ class _DesktopLayout extends StatelessWidget {
                     Row(
                       children: [
                         RelayButton(
-                            label: 'Add your first source',
+                            label: tr.onboarding.addFirst,
                             onPressed: onAddSource),
                         const SizedBox(width: 8),
-                        RelayTextButton(label: 'Not now', onPressed: onSkip),
+                        RelayTextButton(label: tr.onboarding.notNow, onPressed: onSkip),
                       ],
                     ),
                     const SizedBox(height: 28),
@@ -312,7 +308,7 @@ class _DesktopLayout extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(left: 2, bottom: 12),
                       child: Text(
-                        'Connect a source',
+                        tr.onboarding.connect,
                         style: TextStyle(
                           color: t.ink,
                           fontSize: RelayLayout.bodySize(form) + 2,
@@ -384,7 +380,7 @@ class _TvLayout extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 RelayButton(
-                  label: 'Add source',
+                  label: tr.onboarding.addSource,
                   onPressed: onAddSource,
                   autofocus: true,
                 ),
@@ -399,11 +395,11 @@ class _TvLayout extends StatelessWidget {
                         border: Border.all(color: t.line),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text('OK',
+                      child: Text(tr.onboarding.okKey,
                           style: TextStyle(color: t.inkDim, fontSize: 16)),
                     ),
                     const SizedBox(width: 10),
-                    Text('to select',
+                    Text(tr.onboarding.toSelect,
                         style: TextStyle(color: t.inkDim, fontSize: 18)),
                   ],
                 ),

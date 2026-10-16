@@ -10,6 +10,9 @@ import '../local_network/smb_controller.dart';
 import '../metadata/tmdb_controller.dart';
 import '../player/playback_prefs.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../../data/trackers/tracker.dart';
+import '../trackers/trackers_controller.dart';
 
 /// What [TransferService.collect] found, and anything it left out on purpose.
 class CollectedSettings {
@@ -102,13 +105,14 @@ class TransferService {
       // localhost would point the TV at itself.
       if (_isThisDevice(setup.config.host)) {
         notes.add(
-          'Your AI provider runs on this device, so it is not sent. Set it up '
-          'again there with this device\'s address on your network.',
+          tr.transfer.notes.aiLocal,
         );
       } else {
         ai = TransferredAi(setup.config.toJson(), setup.apiKey);
       }
     }
+
+    final trackerTokens = await _ref.read(trackerTokenStoreProvider).load();
 
     return CollectedSettings(
       TransferBundle(
@@ -118,6 +122,9 @@ class TransferService {
         smb: smb,
         tmdbKey: tmdbKey,
         ai: ai,
+        trackers: {
+          for (final e in trackerTokens.entries) e.key.name: e.value.toJson(),
+        },
       ),
       notes,
     );
@@ -159,8 +166,7 @@ class TransferService {
         // §8.2's acknowledgement is the person's, at this device, so the
         // switch is not copied with the accounts.
         notes.add(
-          'The IPTV accounts are saved but hidden. Turn on Advanced sources '
-          'in Settings to use them.',
+          tr.transfer.notes.xtreamHidden,
         );
       }
     }
@@ -192,14 +198,31 @@ class TransferService {
       });
       if (failed.isEmpty) {
         notes.add(
-          'AI features will ask before they send anything to the provider.',
+          tr.transfer.notes.aiAsks,
         );
       }
     }
 
+    if (bundle.trackers.isNotEmpty) {
+      await step(TransferItem.trackers, () async {
+        // Only trackers this build can use: a receiver built without a
+        // tracker's credentials has nowhere to send to it.
+        final available = _ref.read(availableTrackersProvider).toSet();
+        final tokens = {
+          for (final e in bundle.trackers.entries)
+            if (TrackerKind.fromName(e.key) case final kind?
+                when available.contains(kind))
+              kind: ?TrackerToken.fromJson(e.value),
+        };
+        if (tokens.isNotEmpty) {
+          await _ref.read(trackersProvider.notifier).importTokens(tokens);
+        }
+      });
+    }
+
     if (failed.isNotEmpty) {
       throw TransferApplyException(
-        'Could not save: ${failed.join(', ')}. The rest was saved.',
+        tr.transfer.notes.partial(failed: failed.join(', ')),
       );
     }
     return ApplyResult(notes);

@@ -1,4 +1,5 @@
 import 'package:photo_manager/photo_manager.dart';
+import '../../i18n/strings.g.dart';
 
 /// A folder of videos on the device, as MediaStore groups them.
 class DeviceVideoFolder {
@@ -55,7 +56,7 @@ class DeviceVideoSource {
     final title = asset.title;
     if (title != null && title.isNotEmpty) return title;
     final resolved = await asset.titleAsync;
-    return resolved.isNotEmpty ? resolved : 'Video';
+    return resolved.isNotEmpty ? resolved : tr.player.untitledVideo;
   }
 
   /// Asks for media access, returning whether we may read.

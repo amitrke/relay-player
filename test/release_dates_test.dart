@@ -94,7 +94,7 @@ class _FakeApi implements TmdbApi {
 
 CatalogItem _movie(String title, {int? year, String source = 'plex'}) =>
     CatalogItem(
-      source: CatalogSource.plex,
+      source: CatalogSource.server,
       sourceId: source,
       kind: CatalogKind.movie,
       id: '$source-$title',

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
@@ -10,9 +10,13 @@ import '../accounts/plex_session.dart';
 import '../library/library_mapping.dart';
 import '../library/library_screen.dart';
 import 'settings_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
+import 'settings_screen.dart';
 
-/// Settings → Sources (§12.1): every connected Plex server, and what each of
-/// its libraries feeds.
+/// Settings → Sources (§12.1): every connected Plex, Jellyfin or Emby server,
+/// what each of its libraries feeds, and the way to add another source.
 ///
 /// Plex's library type is only a guess at intent. A library typed `movie` may
 /// hold course recordings or home video, and merging it into Movies while
@@ -24,26 +28,43 @@ class SourcesPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final state = ref.watch(plexSessionProvider);
+    final servers = ref.watch(connectedServersProvider);
 
     // A Column, not a ListView: both Settings layouts already scroll, and
     // nesting a second scrollable inside them fights for the gesture.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final server in state.servers) ...[
+        for (final server in servers) ...[
           _ServerBlock(server: server),
           const SizedBox(height: 22),
         ],
-        if (state.servers.isEmpty)
+        if (servers.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
-              'No Plex servers connected.',
+              tr.settings.sources.noServers,
               style: TextStyle(color: t.inkDim, fontSize: 13),
             ),
           ),
         const _AddServer(),
+        const SizedBox(height: 18),
+        SettingsToggleRow(
+          title: tr.settings.sources.localTab,
+          subtitle: tr.settings.sources.localTabSub,
+          value: ref.watch(localNetworkTabProvider),
+          onChanged: (v) => ref.read(localNetworkTabProvider.notifier).set(v),
+        ),
+        // Add source was reachable only from first run and from an empty
+        // library tab, so once Plex filled the library there was no way to
+        // add Jellyfin, Emby, a share or a panel (found 2026-10-16). It is
+        // the same screen as first run; Back returns here.
+        const SizedBox(height: 6),
+        TextButton.icon(
+          onPressed: () => context.push('/add-source'),
+          icon: Icon(Icons.add, size: 18, color: t.accent),
+          label: Text(tr.library.addSource, style: TextStyle(color: t.accent)),
+        ),
       ],
     );
   }
@@ -57,7 +78,7 @@ class _ServerBlock extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final sections = ref.watch(plexSectionsProvider(server.id));
+    final sections = ref.watch(serverSectionsProvider(server.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +89,11 @@ class _ServerBlock extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                server.name,
+                // Which kind, when it is not the one most people have: two
+                // servers can share a name across products.
+                server.kind == ServerKind.plex
+                    ? server.name
+                    : '${server.name} (${server.kind.label})',
                 style: TextStyle(
                   color: t.ink,
                   fontSize: 16,
@@ -77,9 +102,11 @@ class _ServerBlock extends ConsumerWidget {
               ),
             ),
             TextButton(
-              onPressed: () =>
-                  ref.read(plexSessionProvider.notifier).disconnect(server.id),
-              child: Text('Remove', style: TextStyle(color: t.inkDim)),
+              onPressed: () => disconnectServer(ref, server),
+              child: Text(
+                tr.settings.sources.remove,
+                style: TextStyle(color: t.inkDim),
+              ),
             ),
           ],
         ),
@@ -98,19 +125,22 @@ class _ServerBlock extends ConsumerWidget {
               Text(
                 e is TimeoutException && e.message != null
                     ? e.message!
-                    : 'Could not load libraries from this server.\n\n$e',
+                    : tr.settings.sources.loadFailed(error: '$e'),
                 style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.45),
               ),
               const SizedBox(height: 6),
               TextButton(
                 onPressed: () =>
-                    ref.invalidate(plexSectionsProvider(server.id)),
+                    ref.invalidate(serverSectionsProvider(server.id)),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text('Try again', style: TextStyle(color: t.accent)),
+                child: Text(
+                  tr.common.tryAgain,
+                  style: TextStyle(color: t.accent),
+                ),
               ),
             ],
           ),
@@ -141,7 +171,10 @@ class _AddServer extends ConsumerWidget {
         onPressed: () =>
             ref.read(plexSessionProvider.notifier).refreshAvailable(),
         icon: Icon(Icons.refresh, size: 18, color: t.inkDim),
-        label: Text('Look for more servers', style: TextStyle(color: t.inkDim)),
+        label: Text(
+          tr.settings.sources.lookForMore,
+          style: TextStyle(color: t.inkDim),
+        ),
       );
     }
 
@@ -149,7 +182,7 @@ class _AddServer extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Add another server',
+          tr.settings.sources.addAnother,
           style: TextStyle(
             color: t.ink,
             fontSize: 14,
@@ -172,8 +205,11 @@ class _AddServer extends ConsumerWidget {
               ),
               subtitle: Text(
                 [
-                  if (resource.owned) 'Yours' else 'Shared with you',
-                  if (resource.relay) 'via relay',
+                  if (resource.owned)
+                    tr.settings.sources.yours
+                  else
+                    tr.settings.sources.shared,
+                  if (resource.relay) tr.settings.sources.viaRelay,
                 ].join(' · '),
                 style: TextStyle(color: t.inkDim, fontSize: 12),
               ),
@@ -191,7 +227,7 @@ class _LibraryRow extends ConsumerWidget {
   const _LibraryRow({required this.serverId, required this.section});
 
   final String serverId;
-  final PlexLibrarySection section;
+  final MediaSection section;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -227,8 +263,9 @@ class _LibraryRow extends ConsumerWidget {
         const SizedBox(height: 3),
         Text(
           [
-            'Plex type: ${section.type.name}',
-            if (mapping.isOverridden(serverId, section)) 'changed by you',
+            tr.settings.sources.plexType(type: section.type.name),
+            if (mapping.isOverridden(serverId, section))
+              tr.settings.sources.changedByYou,
           ].join(' · '),
           style: TextStyle(color: t.inkDim, fontSize: 12),
         ),

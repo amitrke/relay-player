@@ -10,7 +10,7 @@ CatalogItem _item(
   CatalogKind kind = CatalogKind.movie,
   String source = 'a',
 }) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: source,
   kind: kind,
   id: id,

@@ -1,16 +1,19 @@
-import 'package:dart_plex/dart_plex.dart';
 
 import 'library_tab.dart';
+import '../../i18n/strings.g.dart';
+import '../../domain/models/media_server.dart';
 
 /// Where a single Plex library's contents appear.
 enum LibraryPlacement {
-  movies('Movies'),
-  series('Series'),
-  hidden('Hidden');
+  movies,
+  series,
+  hidden;
 
-  const LibraryPlacement(this.label);
-
-  final String label;
+  String get label => switch (this) {
+    movies => tr.library.placement.movies,
+    series => tr.library.placement.series,
+    hidden => tr.library.placement.hidden,
+  };
 
   LibraryTab? get tab => switch (this) {
     movies => LibraryTab.movies,
@@ -51,7 +54,7 @@ class LibraryMapping {
   /// alone would silently apply one server's choice to another's library.
   final Map<String, LibraryPlacement> _overrides;
 
-  static String keyFor(String serverId, PlexLibrarySection section) =>
+  static String keyFor(String serverId, MediaSection section) =>
       '$serverId:${section.id}';
 
   Map<String, String> toStorage() => {
@@ -65,37 +68,37 @@ class LibraryMapping {
     });
   }
 
-  static LibraryPlacement defaultFor(PlexLibrarySection section) =>
-      section.type == PlexLibraryType.show
+  static LibraryPlacement defaultFor(MediaSection section) =>
+      section.type == MediaSectionType.shows
       ? LibraryPlacement.series
       : LibraryPlacement.movies;
 
-  LibraryPlacement placementOf(String serverId, PlexLibrarySection section) =>
+  LibraryPlacement placementOf(String serverId, MediaSection section) =>
       _overrides[keyFor(serverId, section)] ?? defaultFor(section);
 
-  bool isOverridden(String serverId, PlexLibrarySection section) =>
+  bool isOverridden(String serverId, MediaSection section) =>
       _overrides.containsKey(keyFor(serverId, section));
 
   /// The sections of [serverId] feeding [tab], in the server's own order.
-  List<PlexLibrarySection> sectionsFor(
+  List<MediaSection> sectionsFor(
     LibraryTab tab,
     String serverId,
-    List<PlexLibrarySection> all,
+    List<MediaSection> all,
   ) => all.where((s) => placementOf(serverId, s).tab == tab).toList();
 
   /// Every section of [serverId] the user has not hidden, whichever tab it
   /// feeds. What search covers: a library hidden in Settings → Sources is
   /// hidden everywhere, not only from the Movies and Series tabs.
-  List<PlexLibrarySection> visibleSections(
+  List<MediaSection> visibleSections(
     String serverId,
-    List<PlexLibrarySection> all,
+    List<MediaSection> all,
   ) => all
       .where((s) => placementOf(serverId, s) != LibraryPlacement.hidden)
       .toList();
 
   LibraryMapping withPlacement(
     String serverId,
-    PlexLibrarySection section,
+    MediaSection section,
     LibraryPlacement placement,
   ) {
     return LibraryMapping({

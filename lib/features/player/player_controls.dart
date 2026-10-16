@@ -2,82 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import 'engine/playback_engine.dart';
 import 'playback_prefs.dart';
+import '../../i18n/strings.g.dart';
 
-/// The slice of a player the controls need.
-///
-/// An interface rather than media_kit's `Player` directly so the controls can
-/// be driven in a widget test. Everything that went wrong in #10 was key and
-/// focus behaviour, which a test can pin down, and none of it needs libmpv.
-abstract class PlayerTransport {
-  Stream<Duration> get positionStream;
-  Duration get position;
-  Duration get duration;
-  Stream<bool> get playingStream;
-  bool get playing;
-  Future<void> seek(Duration to);
-  Future<void> play();
-  Future<void> pause();
-  Future<void> playOrPause();
-
-  /// 0 to 100, media_kit's scale. Used only for ducking (§10).
-  Future<void> setVolume(double percent);
-
-  /// Audio and subtitle tracks, including media_kit's "auto" and "no"
-  /// pseudo-tracks (see `isRealTrack`).
-  Stream<Tracks> get tracksStream;
-  Tracks get tracks;
-
-  /// What is selected now.
-  Stream<Track> get trackStream;
-  Track get track;
-  Future<void> setAudioTrack(AudioTrack track);
-  Future<void> setSubtitleTrack(SubtitleTrack track);
-}
-
-class MediaKitTransport implements PlayerTransport {
-  MediaKitTransport(this._player);
-
-  final Player _player;
-
-  @override
-  Stream<Duration> get positionStream => _player.stream.position;
-  @override
-  Duration get position => _player.state.position;
-  @override
-  Duration get duration => _player.state.duration;
-  @override
-  Stream<bool> get playingStream => _player.stream.playing;
-  @override
-  bool get playing => _player.state.playing;
-  @override
-  Future<void> seek(Duration to) => _player.seek(to);
-  @override
-  Future<void> play() => _player.play();
-  @override
-  Future<void> pause() => _player.pause();
-  @override
-  Future<void> playOrPause() => _player.playOrPause();
-  @override
-  Future<void> setVolume(double percent) => _player.setVolume(percent);
-  @override
-  Stream<Tracks> get tracksStream => _player.stream.tracks;
-  @override
-  Tracks get tracks => _player.state.tracks;
-  @override
-  Stream<Track> get trackStream => _player.stream.track;
-  @override
-  Track get track => _player.state.track;
-  @override
-  Future<void> setAudioTrack(AudioTrack track) => _player.setAudioTrack(track);
-  @override
-  Future<void> setSubtitleTrack(SubtitleTrack track) =>
-      _player.setSubtitleTrack(track);
-}
+export 'engine/playback_engine.dart' show PlayerTransport;
 
 /// Icons and text drawn over the picture.
 ///
@@ -470,7 +402,7 @@ class _TitleBar extends StatelessWidget {
         children: [
           _ChromeButton(
             icon: Icons.arrow_back,
-            tooltip: 'Back',
+            tooltip: tr.common.back,
             focusNode: backFocus,
             onPressed: onBack,
           ),
@@ -494,7 +426,7 @@ class _TitleBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                'LIVE',
+                tr.player.live,
                 style: TextStyle(
                   color: t.accentInk,
                   fontSize: 11,
@@ -544,7 +476,7 @@ class _TransportRow extends StatelessWidget {
             if (seekable)
               _ChromeButton(
                 icon: back,
-                tooltip: 'Back ${skip.inSeconds} seconds',
+                tooltip: tr.player.skipBack(seconds: skip.inSeconds),
                 onPressed: () => onSkip(-skip),
               ),
             const SizedBox(width: 16),
@@ -557,7 +489,7 @@ class _TransportRow extends StatelessWidget {
                   icon: playing
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_filled,
-                  tooltip: playing ? 'Pause' : 'Play',
+                  tooltip: playing ? tr.player.pause : tr.player.play,
                   size: 48,
                   focusNode: playFocus,
                   onPressed: transport.playOrPause,
@@ -568,7 +500,7 @@ class _TransportRow extends StatelessWidget {
             if (seekable)
               _ChromeButton(
                 icon: forward,
-                tooltip: 'Forward ${skip.inSeconds} seconds',
+                tooltip: tr.player.skipForward(seconds: skip.inSeconds),
                 onPressed: () => onSkip(skip),
               ),
           ],
@@ -577,19 +509,17 @@ class _TransportRow extends StatelessWidget {
         // choice to make: one audio track and no subtitles has nothing to pick.
         Align(
           alignment: Alignment.centerRight,
-          child: StreamBuilder<Tracks>(
+          child: StreamBuilder<TrackList>(
             stream: transport.tracksStream,
             initialData: transport.tracks,
             builder: (context, snap) {
               final tracks = snap.data ?? transport.tracks;
-              final audio = tracks.audio.where((t) => isRealTrack(t.id));
-              final subs = tracks.subtitle.where((t) => isRealTrack(t.id));
-              if (audio.length < 2 && subs.isEmpty) {
+              if (tracks.audio.length < 2 && tracks.subtitle.isEmpty) {
                 return const SizedBox.shrink();
               }
               return _ChromeButton(
                 icon: Icons.subtitles_outlined,
-                tooltip: 'Audio and subtitles',
+                tooltip: tr.player.tracks,
                 onPressed: onTracks,
               );
             },
@@ -615,21 +545,15 @@ class TrackSheet extends StatelessWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
 
-    return StreamBuilder<Track>(
-      stream: transport.trackStream,
-      initialData: transport.track,
+    return StreamBuilder<TrackSelection>(
+      stream: transport.selectionStream,
+      initialData: transport.selection,
       builder: (context, snap) {
-        final current = snap.data ?? transport.track;
+        final current = snap.data ?? transport.selection;
         final tracks = transport.tracks;
-        final audio = [
-          for (final a in tracks.audio)
-            if (isRealTrack(a.id)) a,
-        ];
-        final subs = [
-          for (final s in tracks.subtitle)
-            if (isRealTrack(s.id)) s,
-        ];
-        final subsOff = !isRealTrack(current.subtitle.id);
+        final audio = tracks.audio;
+        final subs = tracks.subtitle;
+        final subsOff = current.subtitleId == null;
         // Focus starts on what is selected in the first section shown.
         final audioFirst = audio.length > 1;
 
@@ -689,29 +613,29 @@ class TrackSheet extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               children: [
                 if (audioFirst) ...[
-                  header('Audio'),
+                  header(tr.player.audio),
                   for (final (i, a) in audio.indexed)
                     row(
                       describeTrack(a.title, a.language, i),
-                      a.id == current.audio.id,
+                      a.id == current.audioId,
                       () => transport.setAudioTrack(a),
-                      autofocus: a.id == current.audio.id,
+                      autofocus: a.id == current.audioId,
                     ),
                 ],
                 if (subs.isNotEmpty) ...[
-                  header('Subtitles'),
+                  header(tr.player.subtitles),
                   row(
-                    'Off',
+                    tr.player.off,
                     subsOff,
-                    () => transport.setSubtitleTrack(SubtitleTrack.no()),
+                    () => transport.setSubtitleTrack(null),
                     autofocus: !audioFirst && subsOff,
                   ),
                   for (final (i, s) in subs.indexed)
                     row(
                       describeTrack(s.title, s.language, i),
-                      s.id == current.subtitle.id,
+                      s.id == current.subtitleId,
                       () => transport.setSubtitleTrack(s),
-                      autofocus: !audioFirst && s.id == current.subtitle.id,
+                      autofocus: !audioFirst && s.id == current.subtitleId,
                     ),
                 ],
               ],

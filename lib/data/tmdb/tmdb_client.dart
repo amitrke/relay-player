@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'title_match.dart';
+import '../../i18n/strings.g.dart';
 
 /// What TMDB knows about one title, reduced to what the app filters on.
 class TmdbInfo {
@@ -148,12 +149,14 @@ class TmdbClient implements TmdbApi {
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 401) {
-        throw const TmdbException('TMDB rejected that key.');
+        throw TmdbException(tr.settings.metadata.errors.rejected);
       }
       if (status == 429) {
-        throw const TmdbException('TMDB is rate limiting this device.');
+        throw TmdbException(tr.settings.metadata.errors.rateLimited);
       }
-      throw TmdbException('Could not reach TMDB (${e.type.name}).');
+      throw TmdbException(
+        tr.settings.metadata.errors.unreachable(type: e.type.name),
+      );
     }
   }
 
@@ -161,7 +164,7 @@ class TmdbClient implements TmdbApi {
   Future<void> verify() async {
     final body = await _get('/authentication');
     if (body['success'] != true) {
-      throw const TmdbException('TMDB rejected that key.');
+      throw TmdbException(tr.settings.metadata.errors.rejected);
     }
   }
 
@@ -234,9 +237,13 @@ class TmdbClient implements TmdbApi {
   }
 }
 
-/// A language's display name from TMDB's ISO 639-1 code.
+/// A language's display name from TMDB's ISO 639-1 code: in the app's
+/// language where the base file names it (§12.3), else the English name
+/// below, else the code.
 String languageNameOfIso(String code) =>
-    _isoNames[code.toLowerCase()] ?? code.toUpperCase();
+    tr.languages[code.toLowerCase()] ??
+    _isoNames[code.toLowerCase()] ??
+    code.toUpperCase();
 
 const _isoNames = <String, String>{
   'en': 'English',

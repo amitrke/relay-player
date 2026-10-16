@@ -1,9 +1,11 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../library/library_mapping.dart';
 import 'settings_screen.dart';
+import '../../domain/models/media_server.dart';
+
+import 'dart:async';
 
 /// Set once at startup, before `runApp`, so settings are readable synchronously
 /// and the first frame never renders a default the user already changed.
@@ -15,6 +17,7 @@ const _kAdvancedSources = 'advancedSourcesEnabled';
 const _kCrashReporting = 'crashReportingEnabled';
 const _kLibraryMapping = 'plex.libraryMapping';
 const _kOnboardingSeen = 'onboardingSeen';
+const _kLocalNetworkTab = 'library.localNetworkTab';
 
 final settingsProvider = NotifierProvider<SettingsController, SettingsState>(
   SettingsController.new,
@@ -72,6 +75,43 @@ class OnboardingSeenController extends Notifier<bool> {
   }
 }
 
+/// Whether Home shows the Local & Network tab (§12 screen 3).
+///
+/// It was always there until 2026-10-16, which suited someone playing files
+/// from the device and cost everyone who only uses servers the widest tab on
+/// the strip. Now it appears once it is used: picking Local files or a network
+/// share in Add source, or saving a share, turns it on, and Settings, Sources
+/// has the switch both ways.
+///
+/// Media access is not a signal: it is not remembered between launches
+/// (`deviceAccessProvider` starts unasked), and asking at launch to find out
+/// would show a permission prompt nobody requested. So the first read decides
+/// once and writes it down: an install already past first run keeps the tab it
+/// has always had, and a new install starts without it.
+final localNetworkTabProvider =
+    NotifierProvider<LocalNetworkTabController, bool>(
+      LocalNetworkTabController.new,
+    );
+
+class LocalNetworkTabController extends Notifier<bool> {
+  AppSettingsStore get _store => ref.read(appSettingsStoreProvider);
+
+  @override
+  bool build() {
+    if (_store.has(_kLocalNetworkTab)) {
+      return _store.getBool(_kLocalNetworkTab, fallback: false);
+    }
+    final existing = _store.getBool(_kOnboardingSeen, fallback: false);
+    unawaited(_store.setBool(_kLocalNetworkTab, existing));
+    return existing;
+  }
+
+  Future<void> set(bool shown) async {
+    state = shown;
+    await _store.setBool(_kLocalNetworkTab, shown);
+  }
+}
+
 /// §8.2's gate, as the rest of the app sees it.
 ///
 /// Read this rather than `settingsProvider.advancedSourcesEnabled` directly, so
@@ -95,7 +135,7 @@ class LibraryMappingController extends Notifier<LibraryMapping> {
 
   Future<void> setPlacement(
     String serverId,
-    PlexLibrarySection section,
+    MediaSection section,
     LibraryPlacement placement,
   ) async {
     final next = state.withPlacement(serverId, section, placement);

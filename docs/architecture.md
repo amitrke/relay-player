@@ -356,6 +356,80 @@ that, and both are this caution applied:
 
 **UX implication:** a Plex account effectively contributes its own Movies/Series categories to the always-visible Movies/Series tabs — this is flagship functionality, not gated behind Advanced Sources.
 
+### 6.2 Jellyfin and Emby, and one interface for all three (added 2026-10-16)
+
+Jellyfin and Emby are personal media servers in exactly Plex's sense: the
+user's own library, on the user's own server, signed in with the user's own
+account. That keeps them inside §1's primary-purpose framing, flagship sources
+beside Plex rather than anything behind Advanced Sources.
+
+**One interface.** `MediaServer` (`lib/domain/models/media_server.dart`) is
+everything the app asks of a server: libraries, every title in one, search
+within the libraries the user kept, an item, its children, a show's
+episodes, On Deck, watched, progress, direct play, a download, and artwork.
+Answers come back as neutral `MediaSection` and `MediaItem` values. Plex
+(`PlexService`) and Jellyfin/Emby (`MediaBrowserService`) implement it, and
+nothing above `lib/data/` knows which one it holds: the library tabs, search,
+show pages, Continue watching, the player, downloads (§18), offline sync
+(§18.6), episode rules (§18.7) and the watch trackers (§19) all work for all
+three. `connectedServersProvider` lists every kind; each kind's own session
+controller signs in and out.
+
+`CatalogSource.plex` and `PlaybackKind.plex` became `.server`, because they
+mean any of the three. Both still write `plex` on disk: the string is inside
+every stored favourite, dismissal, history entry and cached library, so the
+rename changed no stored data. Download records keep their `plex:` keys for
+the same reason.
+
+**Jellyfin and Emby share one client.** Jellyfin began as a fork of Emby and
+the two still share the API used here (`/Users/{id}/Items`, `/Shows`,
+`/Sessions/Playing`, `/Videos/{id}/stream`). Where they differ is how a
+request authenticates, and only that branches on the kind: Jellyfin takes
+`Authorization: MediaBrowser ..., Token=...` and an `ApiKey` parameter on
+media URLs; Emby takes `X-Emby-Authorization` with `X-Emby-Token`, and
+`api_key`. Which one a server is comes from `/System/Info/Public`, which
+needs no sign-in (`ProductName` "Jellyfin Server" or "Emby Server").
+
+- **Signing in.** Address first, so the server can say what it is. When a
+  Jellyfin server has **Quick Connect** on, that is the default: a six-digit
+  code here, approved from a phone or computer already signed in, so a TV
+  never types a password. Otherwise, or by choice, username and password.
+  The access token is kept in secure storage with the server's id, name and
+  address (§3); the password is never stored. A stable per-install device
+  id is sent, because both servers list devices by it.
+- **Playback is direct play only**, as for Plex (§10): `/Videos/{id}/stream`
+  with `static=true` serves the original file with byte ranges, and no
+  transcode is ever asked for. A download is `/Items/{id}/Download`, which
+  the server serves only to a user the owner allows downloads, the same rule
+  §18.5 records for a shared Plex server.
+- **Progress** uses the session API: started once, then progress, then
+  stopped. A stopped report for a session that was never started (an offline
+  watch replayed, §18.6) starts one first, so the server has one to close.
+- **Artwork carries no credential.** Both servers serve
+  `/Items/{id}/Images/Primary` without auth, so unlike Plex's (§3) a stored
+  poster path and the URL made from it hold no token.
+- **External IDs** (IMDb, TMDB, TVDB) come from `ProviderIds` on every item,
+  and from Plex's `Guid` tags; they are what a watch tracker (§19) matches on.
+
+**Not done, and why.**
+
+- **Move to another device** (§17) does not carry a Jellyfin or Emby
+  sign-in, for the reason it does not carry Plex: the token belongs to this
+  device's id on that server. Quick Connect on the TV is the answer instead.
+- **Transcoding** is not offered, as on Plex.
+- **Signing out** removes the server here only. The token stays valid on the
+  server until its owner removes the device there; there is no single call
+  that ends just this device's session on both products.
+
+**Verified against a fake server only** (`test/media_browser_test.dart`: both
+auth styles, the `/emby` fallback, paging a 450-title library, item mapping,
+play and download URLs, the session sequence, Quick Connect). On 2026-10-16 a
+real Jellyfin's public endpoint (no sign-in) answered as "Jellyfin Server",
+version 12.2, with Quick Connect enabled, which matched what the client
+expects; nothing signed in was run. Jellyfin 12 is newer than the API
+documentation this was written from, so the `ApiKey` parameter and the
+session calls are the first things to check (MANUAL_TESTING.md).
+
 ## 7. Local device storage and SMB/CIFS network shares
 
 This is the VLC-style feature: playing whatever's already on the device or on a home NAS/Windows share, no account/login model at all beyond (for SMB) server credentials. Also flagship, always-visible functionality — not gated. Scoped to **local storage + SMB** for this phase; FTP, WebDAV, and UPnP/DLNA discovery follow the same patterns below and can be added later as separate `FileSystemRepository` implementations if there's demand.
@@ -531,7 +605,7 @@ AI features are independent of Advanced Sources (§8) — they apply across Plex
 - It also handles Plex's two playback modes (direct-play byte-range files in almost any container, and HLS transcode output), arbitrary local files, and the local-proxy HTTP streams from §7 without needing a second engine — one player pipeline for every source type in this plan.
 - media_kit supports desktop too, which costs nothing now and is useful if you ever want a companion desktop build.
 - Trade-off: slightly bigger binary size (bundles libmpv) and you lose iOS/tvOS's native hardware-decode-everywhere guarantees that AVPlayer gives you — worth a short spike (3–5 days, covering Plex and SMB as well as Xtream) against 2–3 real provider streams, a real Plex server, and a real SMB share before committing, since this is the one architectural decision worth validating empirically before building the rest.
-- Fallback plan if media_kit underperforms on a specific source: `better_player` (ExoPlayer-based) as a per-stream fallback engine, selected automatically on playback error.
+- Fallback plan if media_kit underperforms on a specific source: `better_player` (ExoPlayer-based) as a per-stream fallback engine, selected automatically on playback error. **Not built, 2026-10-15:** a second engine was weighed and deferred (§10.2); what exists instead is the seam it would plug into.
 - **The ffmpeg licensing decision belongs here, in Phase 0 — not in Phase 3.5.** §14 flags the LGPL-vs-GPL choice against the transcription pipeline, but that framing is wrong on sequencing: **media_kit bundles libmpv, which bundles ffmpeg**, so you take on the dependency and its license the moment you pick the player engine — before any AI feature exists. Resolve it once, at engine selection, and let the transcription pipeline inherit that decision rather than re-litigating it later. The practical rule: use an **LGPL** build and link it **dynamically**, keeping any GPL-only components (notably `libx264`/`libx265` encoders, which this app has no reason to need — it decodes, it doesn't encode) out of the build entirely. A statically-linked GPL build would impose GPL terms on the whole app, which is incompatible both with a permissively-licensed public repo and with App Store distribution.
 
 **DRM is explicitly out of scope.** No Widevine, no FairPlay, no PlayReady. This bounds what "plays anything" means and should be stated plainly in onboarding copy and the store description: the app plays unencrypted media from sources the user connects. It cannot play protected commercial catalogs (Netflix, Disney+, and similar), and no amount of configuration will change that. Worth saying out loud because it is a recurring support question, and because it is quietly helpful to the §1 primary-purpose argument — an app with no DRM stack is transparently not attempting to be a commercial-catalog substitute.
@@ -622,6 +696,114 @@ the code, per #17:
   window on Windows does count as hidden and pauses, which is harmless.
 
 Player screen needs: play/pause/seek (VOD/series/Plex/local/SMB — Xtream/M3U live has no seek), audio/subtitle track selection (including AI-generated/translated tracks from §9), aspect ratio toggle, PiP (both platforms support it), background audio continuation, resume-from-history prompt, and the transcode/SMB session keep-alive/stop lifecycle from §6/§7.
+
+### 10.1 Pinning the libmpv we ship (added 2026-10-15)
+
+The ffmpeg item under Open items established what is inside the shipped libmpv
+by reading the binary, and warned that a media_kit upgrade "can change every
+line of this". Until now nothing enforced that warning: the upgrade would have
+gone through, the licence page would have kept describing the old binary, and
+nobody would have noticed.
+
+`native-libs.lock.json` at the repo root now records, per platform, the
+media_kit library package and version, the upstream build it comes from (the
+same URL the licence page gives as corresponding source), the artifact URLs
+the package fetches with the checksum the package itself verifies, and, for
+Android, the **SHA-256 of `libmpv.so` per ABI as it appears in the release
+build**. Two checks hold it to the truth:
+
+- `test/native_lock_test.dart`, in every `flutter test`: pubspec.lock resolves
+  the locked versions, each package's own build file (`build.gradle`, the iOS
+  `Makefile`, the Windows `CMakeLists.txt`, read from the pub cache) still
+  fetches exactly the locked URLs and checksums, and the licence page names the
+  locked build source. A media_kit upgrade therefore fails the tests until the
+  lock and `native_licenses.dart` change in the same commit.
+- `tool/native_lock.py`, after the APK build in `build.yml` and the AAB build in
+  `release.yml`: hashes every `libmpv.so` in the archive against the lock, and
+  fails on a mismatch, on an ABI the lock does not know, or on an archive with
+  no `libmpv.so` (which would mean the check proved nothing).
+
+Why hash the shipped file and not trust the package's checksum: the Android
+package verifies with **md5**, and the check it does proves the download
+matched what the package expected, not that the binary is the one whose
+contents we wrote down. The shipped hashes were taken from release APKs built
+2026-09-11 and 2026-09-22, which agree with each other and with Gradle's
+merged native libraries. Controls run: a lock with one hash altered fails the
+script, and a lock with a changed version and URL fails the test.
+
+**What this does not do.** It does not build libmpv ourselves, which is the
+stronger form of pinning (a build lock naming the source commit of every
+dependency) and would let us move off the 2023-vintage binaries. That is a
+build pipeline to own and keep secure, and it is not justified while the
+prebuilt LGPL binaries are adequate. The Windows binary is development-only
+and gets the version and URL check but no shipped-binary check; iOS gets the
+package's own SHA-256 (its Makefile already uses one) but no check of the
+built `.app`, since there is no macOS runner in `build.yml`.
+
+**Upgrading media_kit**, in order: bump the package, read the new binaries'
+build strings as the ffmpeg item describes, update `native_licenses.dart`,
+then print the new hashes with `python3 tool/native_lock.py --print <apk>` and
+update the lock.
+
+### 10.2 The engine seam, and why there is still one engine (added 2026-10-15)
+
+**Question asked:** should Android get a second engine, ExoPlayer (media3), as
+its main player, for better HDR, Dolby Vision, audio passthrough and hardware
+decode on TV boxes? It was raised after looking at how other open-source
+Flutter media clients are built.
+
+**What was found.** A mature open-source Flutter client for personal media
+servers, which runs on Android TV, does ship an ExoPlayer backend, but *not*
+as the default. mpv is its Android default; ExoPlayer is an opt-in setting
+described in its code as "the escape hatch for devices MPV mishandles", backed
+by roughly 12,500 lines of Kotlin (Dolby Vision conversion, IEC passthrough
+packers, PGS and ASS subtitle handling, stall and decoder-recovery policies),
+and a comment in its audio settings says that backend "is being removed". The
+reading of that project's README that prompted the question had it the wrong
+way round. So the evidence from a project further along this road is that a
+second engine is a large, permanent cost and still did not displace mpv.
+
+**Decision: no second engine now; build the seam instead.** Everything the
+player screen used to do with media_kit directly now goes through
+`lib/features/player/engine/playback_engine.dart`:
+
+- `PlaybackEngine`: open/stop/dispose, the picture (`buildView`), errors
+  with the engine's own fatal-or-not judgement, duration, and
+  `checkOutputAfterStart` for the direct-output trap below. It extends
+  `PlayerTransport`, which the controls and the focus policy use.
+- Engine-neutral tracks: `MediaTrack`, `TrackList` (real tracks only) and
+  `TrackSelection` (null subtitle means off). media_kit's "auto" and "no"
+  pseudo-tracks stop at the engine; `chooseTracks` and the picker no longer
+  know they exist.
+- `MediaKitEngine` holds everything media_kit-shaped: the `Player`, the
+  `VideoController`, mpv log lines classified through `player_errors.dart`,
+  and the Android direct/compatible output choice and its `hwdec-current`
+  check (`video_output.dart`). The screen still owns the policy (reopen the
+  route on the compatible path, once), because that is about routes and
+  history rather than decoding.
+- `playbackEngineFactoryProvider` is the one place an engine is chosen. It
+  is also how `test/player_screen_engine_test.dart` drives the screen with a
+  fake: stop before open, "playing" only on a moving position, the stall
+  failure, and fatal versus non-fatal errors. The screen had no tests before,
+  because it built a `Player` itself.
+
+**The position rule is part of the engine contract** (§10, "only the position
+counts"). Any future engine must report position only while frames are
+presented, or every guard on the screen is fooled.
+
+**Reopen this if** a specific, reproduced failure on real hardware is one
+mpv cannot fix and ExoPlayer would (a Dolby Vision profile a TV needs,
+passthrough a receiver needs), and then add ExoPlayer as an opt-in second
+engine behind the factory, for that device class only, not as a default.
+Before then, the cheaper levers are the ones already in §10: direct output
+(`mediacodec_embed`), and a newer libmpv (§10.1).
+
+**Seen on Windows, 2026-10-15:** a debug build played a live panel channel
+through `MediaKitEngine` (first frame, controls hid, picture and sound), with
+the Live TV list drawn from the new string files. **Not yet seen:** Plex
+direct play, a saved copy, or anything on Android, where the direct-output
+check lives; play a Plex title on the Chromecast before trusting it
+(MANUAL_TESTING.md).
 
 ## 11. Platform-specific notes
 
@@ -890,7 +1072,7 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
-3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+3. Home — Movies / Series tabs, plus Local & Network once it is used (see the note below) (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
    > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
    > above the Movies grid, from the artboard. On the Chromecast a show in
    > progress then appeared under Movies and read as a bug, so films now resume
@@ -900,6 +1082,8 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > from before it are treated as films until played again, unless Plex's On
    > Deck lists the same item, in which case they take its type. Pinned by the
    > `episode or film` group in `test/watch_state_test.dart`.
+   >
+   > **Local & Network is opt-in, 2026-10-16.** It used to be on Home for everyone, which suited playing device files and cost anyone who only uses servers the widest tab on the strip (the label already clips on phones, MANUAL_TESTING.md). It now appears when Video on this device or a network share is picked in Add source, or a share is saved, and Settings, Sources has a switch for it both ways (`localNetworkTabProvider`). Media access is not used as a signal: it is not remembered between launches, and asking at startup to find out would show a prompt nobody asked for. So the first read decides once and writes it down: an install already past first run keeps the tab, and a new install starts without it. The cost is that someone with no server who only wants device video has to pick it in Add source, which first run already offers.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
    > **Movies and Series are rows, 2026-10-10.** One poster grid for the whole
    > merged library meant scrolling past hundreds of Plex posters to reach a
@@ -1185,6 +1369,59 @@ point correctly: **theme is a runtime setting, not a build-time palette.**
   companion build, and Phase 0 found it carries a real toolchain cost) — treat
   the existing desktop artboard as a layout study, not a commitment.
 
+### 12.3 Languages (added 2026-10-15)
+
+Every string the app shows now lives in `lib/i18n/en.i18n.json` (611 of them
+at the time of writing), compiled to typed Dart by
+[slang](https://pub.dev/packages/slang): `tr.downloads.title`,
+`tr.library.tab.countMovies(n: 3)`. Plurals and placeholders are part of the
+string files, so a translation can order its words as its grammar needs
+rather than as an English sentence was concatenated. Regenerate with
+`dart run slang` after editing a string file; the generated code is committed.
+
+- **The variable is `tr`, not slang's default `t`.** Build methods here
+  already use `t` for the theme (`final t = RelayTheme.of(context)`), and a
+  translation call shadowed by the theme, or the reverse, is a bug that
+  compiles.
+- **The app follows the device's language.** There is no in-app language
+  setting yet. Material's own strings (dialog buttons, text selection) follow
+  through `flutter_localizations`.
+- **English is the only reviewed language.** `es`, `fr` and `de` are
+  **drafts**: machine-made on 2026-10-15 to exercise the pipeline end to end,
+  and not read by anyone who speaks them. `reviewedLocales` in
+  `lib/core/i18n/app_locale.dart` decides what a release build may show; a
+  draft appears in debug builds, so it can be reviewed in place, and a release
+  build on a German phone stays in English. Adding a locale to that set is the
+  record that a speaker has read it, and belongs in the same change as a note
+  here saying who and when. Play internal-testing builds are release builds,
+  so testers see English until then.
+- **Consent wording must survive translation intact.** §9.3's AI data
+  categories (`ai.feature.*Sends`, `*Timing`), the TMDB lookup consent
+  (`settings.metadata.consent`) and the Advanced sources acknowledgement
+  (`settings.advanced.*`) are what the person agrees to. A reviewer checks
+  them for meaning, not only fluency.
+- **Not translated, on purpose:** product and service names (Plex, TMDB,
+  OpenRouter, Ollama, Subnext Player); the TMDB attribution line, whose
+  wording TMDB's terms require; the prompts sent to an AI model, which are
+  instructions to the model and not UI; developer errors and log lines; and
+  the names a source gives its own content.
+- **Known gaps.** The language names the IPTV search filter guesses from
+  category names (`category_language.dart`) are still English; TMDB's
+  original-language names now come from the string files where the base
+  names the language. Byte units (KB, MB) are left as they are.
+
+`test/i18n_test.dart` holds this to what can be checked without a speaker:
+every draft has exactly the base keys and the same placeholders, the
+generated code matches the string files, drafts never reach a release build,
+and no widget is handed a literal English string (a scan of `lib/`, with an
+allowlist for the app's name, the logo's letter and the TMDB line). Each
+check was shown to fail on an injected fault before being trusted.
+
+**Copy changed in passing.** A handful of English strings lost an em dash
+while moving (the onboarding blurb, the Add a source privacy line, the SAF
+error, the Advanced sources confirm button now "I understand, turn on"). The
+meaning is unchanged. Store copy that quotes the old wording should be checked.
+
 ## 13. Phased roadmap
 
 **Timeline caveat — read before planning against these numbers.** The per-phase estimates below describe focused engineering time for someone already fluent in Flutter, and they sum to roughly 11–14 weeks. They do **not** include: the rework implied if a Phase 0 spike comes back negative (a hand-rolled Plex client, or the SMB proxy bridge, each add ~1 week); the rejection-and-resubmit cycle Phase 5 itself predicts; Amazon Appstore submission (§11); or the ordinary drag of TV focus-traversal debugging on real hardware. **If this is solo or part-time work, plan for roughly double the stated figures** and treat the phase boundaries — not the day counts — as the useful structure.
@@ -1268,7 +1505,7 @@ session on every user's server — and a second, worse Xtream panel to settle
 | Concern | Choice |
 |---|---|
 | State management | Riverpod |
-| Video playback | media_kit (primary), better_player fallback |
+| Video playback | media_kit, behind the `PlaybackEngine` seam; no second engine (§10.2, 2026-10-15) |
 | Local storage | Isar or Hive (content cache, favorites, history, feature-flag/consent state) — **not encrypted by default, never put secrets here**; flutter_secure_storage for all credentials/tokens/API keys, keyed by entity id (§3) |
 | Networking | dio (interceptors for retry/timeout) |
 | JSON models | freezed + json_serializable |
@@ -1371,6 +1608,7 @@ Not defended against: someone who can see the receiving screen (the code is on i
 | Xtream accounts with passwords, and the categories and channel picks chosen | **AI consent** (§9.3). It is per feature, per provider, per device. The provider and key arrive; the first feature to use them asks |
 | SMB shares with passwords | **Plex.** A Plex token is bound to the client identifier that requested it (`PlexSessionStore`), so a copied token cannot be assumed to work, and sharing one identifier across devices would make them one device to Plex. Linking Plex on a TV is already a code on the screen and nothing to type. **Not tested against a real server**, so this is a decision from the stored design rather than a measured failure |
 | The user's TMDB key | **Theme** (not persisted yet, so there is nothing to copy), **caches**, **watch history and favourites** (§16.3) |
+| Tracker sign-ins (Trakt, Simkl, AniList, MyAnimeList; §19.4), only those the receiving build has credentials for | |
 | The AI provider and key, unless it points at `localhost` | An AI provider at `localhost` or `127.x`: on a TV that would be the TV. Left out, and the sender says so |
 
 Same-id items are **replaced**, everything else on the receiver is **kept** (the Plex placement map is merged entry by entry, so a server only the receiver is linked to keeps its choices; a first version replaced the whole map, found and fixed the same day): copying a phone to a TV that already has one line does not delete the line. There is no "make the receiver identical" mode, because it would delete what the person cannot see being deleted.
@@ -1437,7 +1675,7 @@ Added 2026-10-09. A film or episode from the user's own Plex server can be saved
 
 - **IPTV panels (Xtream) are excluded.** §1 and §8.3 rest on the app being a player that does not curate, host or copy a provider's catalogue. A "download from my provider" action is the thing a reviewer reads as piracy tooling, however it is meant. A panel's `max_connections` (§4) would also make a second fetch fail in a way that looks like a flaky provider. A *record what you are watching* feature for live channels was discussed (mpv can write the stream it is already playing, using no second connection) and set aside; if it comes back, it needs its own section, the §8.2 acknowledgement widened to cover recording, and a test that `stream-record` produces a playable file from the extensions a real panel serves.
 - **SMB and device files are excluded** for now: the file is already on a NAS or the phone, and copying a NAS file to a phone for a trip is a smaller, separate feature.
-- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list.
+- **A show is never downloaded as a whole.** Downloading every episode is a decision about gigabytes that one press should not make. Episodes are downloaded one at a time from the season list. The bounded form, *keep the next N*, is §18.7 (2026-10-15).
 
 ### 18.2 How
 
@@ -1467,11 +1705,273 @@ A saved copy outlives the connection to its server: removing the Plex server doe
 ### 18.5 Open
 
 - **Not run against a real Plex server or on a device.** Everything is tested against a local file server that behaves like Plex's part endpoint; whether a *shared* server (one the owner has not allowed downloads on) refuses `/library/parts` for download but serves it for streaming is not known. The engine reports a 401 or 403 as "the server would not let this device download that".
-- **Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does. A small offline queue is the obvious next piece.
+- ~~**Watched state while offline** is not queued: watching a saved title with no network does not mark it watched on Plex when the network returns, beyond what the next progress report does.~~ **Built 2026-10-15, §18.6.**
 - **iOS backup.** The downloads directory is in Application Support, which iCloud backup includes unless excluded. Excluding it needs a native `isExcludedFromBackup` call that is not written.
-- **Storage limits.** There is no cap and no "remove after watching" yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space".
-- **Artwork** is not saved, so the Downloads list shows no posters offline.
+- **Storage limits.** There is no cap yet; the Downloads screen shows what is used. A full disk fails the download with "the device may be out of space". "Remove after watching" exists only for episodes an episode rule fetched (§18.7).
+- ~~**Artwork** is not saved, so the Downloads list shows no posters offline.~~ **Built 2026-10-15, §18.8**, for the Downloads list only; the library's own posters still need the server.
 - **Library when offline.** Cached lists still show (§12, the library cache); tapping a title that is not downloaded fails with the player's usual error. A badge on downloaded titles, and an offline-only filter, are not built.
+
+### 18.6 Watching offline, told to Plex later (added 2026-10-15)
+
+Before this, a saved film watched on a flight stayed unwatched on the server:
+§18.4's progress reports simply failed, and nothing remembered them.
+
+- **What is queued.** When the player is on a saved copy (§18.4) and a progress
+  report cannot reach Plex, or there is no connected server to send it to,
+  the report becomes a `PendingWatch` in the settings box
+  (`downloads.pendingWatch`): ids, a position, a duration, the device time,
+  and whether it is a finish. Past 90% of the runtime counts as a finish,
+  which is Plex's default threshold. Streams are not queued: a stream with no
+  server is not playing. **No token and no URL**, as with download records
+  (§3); `offline_sync_test.dart` checks the stored form.
+- **One entry per title, latest wins**, except that a finish is never
+  downgraded by a later position for the same title (the credits after 90%
+  would otherwise undo it). A report that does reach Plex removes the title's
+  entry, so a flaky session does not leave a stale one behind.
+- **"Mark as watched" offline**, on a title with a finished download, queues a
+  finish and shows the tick at once, with a message saying Plex will be told.
+  **Unwatched is not queued**: replaying it is an unscrobble, and a stale
+  device removing a play count is the direction where being wrong loses
+  something. Offline, unwatched still fails with the old message.
+- **Replay.** `offlineSyncJobProvider`, watched from the app root, runs
+  whenever the set of connected servers changes, which includes launch once
+  Plex has reconnected. For each entry whose server is connected it asks the
+  server for the title. Gone: dropped. The server's `lastViewedAt` is later
+  than the entry: dropped, because another client watched on and **newer
+  wins**. Otherwise a finish is sent as a scrobble and a position as a
+  `stopped` timeline report. Anything that fails is kept for the next
+  connect. Clock skew between device and server can tilt "newer" by however
+  far apart they are; accepted, since the cost of a wrong call is one stale
+  position.
+- The Downloads tab says how many watches are waiting.
+
+**Not verified against a real server.** Two assumptions to check: that a late
+`stopped` timeline report sets the resume point the way a live one does, and
+that `lastViewedAt` moves on another client's progress and not only on a
+finish. If the second is wrong, a position from this device could overwrite a
+later partial watch elsewhere. The in-memory watched tick (`WatchOverrides`)
+does not survive a restart, so a title marked watched offline shows unwatched
+again after relaunch until the queue has been delivered.
+
+### 18.7 Keep the next episodes downloaded (added 2026-10-15)
+
+§18.1 refuses to download a whole show on one press. A rule is the bounded
+form of the same wish: on a show's page, *Keep episodes downloaded* offers
+Off, or the next 1, 3, 5 or 10 episodes. The cap at 10 is deliberate; a rule
+must not quietly become "the whole show".
+
+- **The next N are the first N unwatched episodes in season and episode
+  order**, specials (season 0) left out. An episode skipped and never
+  watched is still "next", which matches Plex's On Deck.
+- An episode **already on the device counts towards N**, whoever downloaded
+  it, so nothing is fetched twice. A failed one is retried.
+- **A rule removes only its own downloads**, and only once finished and
+  watched. `DownloadRecord.rule` records which rule fetched a file. A
+  download made by hand is never touched by a rule. An episode in progress is
+  not watched, so it stays.
+- Watched state comes from the server (`allLeaves`, one request per show),
+  plus anything finished offline and still in §18.6's queue, so a finished
+  episode is not fetched again before Plex has heard.
+- **Turning a rule off leaves its downloads.** Deleting files as a side effect
+  of changing a setting would surprise someone about to watch one.
+- It runs when a rule is set, and on the same reconnect trigger as §18.6,
+  after the queue has been delivered. Foreground only, like every download
+  (§18.3): there is no background service, so a rule tops up while the app
+  is open.
+- The Downloads tab lists the rules; selecting one changes or stops it.
+
+**Not seen against a real server.** `offline_sync_test.dart` covers the plan
+and the controller against a fake. Unknowns: how `allLeaves` orders and
+numbers a show with absolute numbering, and whether a long show's `allLeaves`
+is slow enough to need paging.
+
+### 18.8 Posters for saved titles (added 2026-10-15)
+
+When a download completes, its poster is fetched once (a 320x480 transcode,
+signed fresh from the live connection and never stored, §3) and kept beside
+the file as `<file>.poster`; the record holds only that file name. Deleting
+the download deletes it. Downloads saved before this, or whose poster fetch
+failed, are filled in on the next reconnect. Anything over 4 MB is refused,
+since that is not the image that was asked for. The Downloads list shows the
+poster, falling back to the state icon.
+
+### Ideas recorded for later (2026-10-15)
+
+From the same look at other open-source Flutter media clients that led to
+§10.1, §10.2 and §18.6-18.8. Each is plausible and none is planned; each
+would need its own section and a reason before work starts.
+
+- **End-to-end tests against a containerised media server.** Drive the
+  Android app with a UI test runner (Maestro or similar) on an emulator,
+  against a Plex or Jellyfin container started in CI with open-licensed
+  fixture media. It would catch protocol regressions unit tests cannot,
+  without touching a real provider (§1). It cannot test video, which the
+  emulator does not render (CLAUDE.md §6).
+- **Force the TV layout on desktop.** A debug switch that renders the
+  leanback tree (Phase 4) in the Windows build and drives it from the
+  keyboard, so D-pad focus work gets the fastest loop instead of waiting for
+  a TV each time. Real remotes still need hardware (§11).
+- ~~**Jellyfin and Emby as sources.**~~ **Built 2026-10-16, §6.2.**
+- ~~**Watch-history trackers**~~ **Built 2026-10-16, §19**, finished watches
+  only; ratings and "watching now" were left out.
+- **Watching together** in sync on several devices. Needs a relay server to
+  coordinate, which §16 rules out today; the case would have to be argued
+  against §16.3 first.
+- **Background downloads** (Android foreground service, iOS background
+  transfer). Still §18.3's open item; weighed and not chosen this round.
+
+---
+
+## 19. Watch trackers (added 2026-10-16)
+
+Trakt, Simkl, AniList and MyAnimeList keep a record of what someone has
+watched, shared across every app they connect. When a person signs in to
+one here, what they finish watching from their own servers is added to their
+history there. Code in `lib/data/trackers/` (one client per service) and
+`lib/features/trackers/` (sign-in, the queue, Settings).
+
+### 19.1 What is sent, to whom, and what is never sent
+
+- **Only from the person's own servers.** A film or episode from Plex,
+  Jellyfin or Emby. Nothing from an IPTV panel, ever: a panel is not the
+  person's own library, and sending its titles to a third party is exactly
+  the cataloguing §1 and §8.3 keep this app away from.
+- **Only when finished.** 90% played (the threshold §18.6 uses for a finished
+  offline watch), or marked watched by hand. Not "now watching", not
+  progress, not ratings.
+- **Only what identifies the title.** Its title, year, IMDb, TMDB or TVDB id,
+  for an episode its show's ids with season and number, and when it was
+  watched. Nothing about the server, the file or the device.
+- **Straight from the device to the service**, as with AI (§9.3). We run
+  nothing in between, so §16.3's test passes: no server of ours is in the
+  path of user content or credentials. It is still a third party receiving
+  viewing history, which is why each one has its own consent.
+- **Consent, per tracker, before signing in.** A dialog naming the service
+  and listing the above, with "Not now" focused. Signing in is the yes, and
+  is recorded with its time; signing out removes it. The privacy policy and
+  Play's data-safety form must say this before a build with credentials
+  ships (Open items).
+
+### 19.2 Credentials, sign-in, and the general-purpose trackers
+
+Each service identifies the app with a client id that the owner registers on
+the service's developer site (RELEASING.md, "Tracker credentials"). The ids,
+and Trakt's client secret, are compiled in from CI secrets with
+`--dart-define-from-file` (`tool/tracker_defines.py`); none is in this
+public repository. **A tracker whose credentials a build lacks is not offered
+in that build at all**, and with none the Settings section is absent. Local
+and fork builds therefore have no trackers, and nothing breaks.
+
+Shipping Trakt's secret inside the app means anyone can extract it. That is
+the norm for installed apps and accepted by Trakt; what it guards is the
+app's rate limit and its name on the approval page, not any user's data.
+
+- **Trakt.** Device flow: a code typed at trakt.tv/activate on any device,
+  so a TV types nothing. Finished watches go to `/sync/history` with their
+  time, which is right both live and for an offline watch delivered later.
+  Tokens are refreshed when they lapse.
+- **Simkl.** PIN flow, the same experience, client id only. `/sync/history`
+  in the same shape. Tokens do not expire.
+
+### 19.3 The anime lists
+
+AniList and MyAnimeList list anime, and key everything on their own ids,
+which no media server knows. So:
+
+- **Only titles the server tags as anime** (a genre containing "Anime", on
+  the item or its show) are sent to them.
+- **Found by name**: the show's title, with " Season N" after the first
+  season, since both list most anime one entry per season; progress is the
+  episode's number in its season. An exact title match (any of the names the
+  list gives) wins over the service's top result.
+- **Progress never goes down.** A rewatch of an early episode does not undo
+  a list someone keeps by hand. Reaching the last episode marks it completed.
+- **Known gaps:** shows a server numbers absolutely across seasons, and
+  seasons a list splits into several entries, land on the wrong entry or
+  episode. Recorded rather than guessed at; a manual "this is that entry"
+  mapping is the fix if it matters.
+- **Sign-in needs a browser.** AniList shows a token on its own page for the
+  person to copy (implicit grant, redirect registered as
+  `https://anilist.co/api/v2/oauth/pin`). MyAnimeList has no device flow:
+  OAuth 2 with PKCE, redirect registered as `http://localhost:41235/mal`; on
+  a device with a browser the app listens on that loopback port for the
+  moment of the sign-in and catches the code itself, and otherwise the
+  person pastes the address the browser was sent to. **A TV can do
+  neither**, and gets these sign-ins from a phone with Move to another
+  device (§17), which now carries tracker sign-ins.
+
+### 19.4 Delivery
+
+A finished watch goes into a queue (`trackers.queue` in the settings box)
+holding only the server id, the item id and the time; no token, no title.
+Sending reads the item, and an episode's show, from the server, so a saved
+copy watched offline (§18.6) is matched exactly as a stream is, once the
+server is back. The queue is flushed when a watch is added, at launch, and
+on every server reconnect. Per tracker: down means keep and retry; title not
+found means drop; a lapsed sign-in is refreshed once, and otherwise signed
+out here with the watch kept for when the person signs back in. A watch
+older than 30 days, or tried 20 times, is dropped. The same title reported
+twice within 3 hours (the player at 90%, then a manual mark) is one watch.
+
+Tracker sign-ins move with Move to another device (§17), unlike Plex's,
+because a tracker token belongs to the account rather than the device.
+Accepting "Watch tracking" on the receiving screen is that device's consent,
+and the item's description there says so.
+
+**Verified against fakes only** (`test/trackers_test.dart`: request bodies,
+anime matching, the MyAnimeList code check, Trakt's device flow and history
+call over a local server, and the queue's retry, drop, refresh and sign-out
+rules). No tracker has been signed in to for real: that needs the
+credentials registered first (MANUAL_TESTING.md).
+
+## 20. Requests through the person's own Seerr (added 2026-10-16)
+
+Overseerr, Jellyseerr and Seerr (one project under three names) sit beside a
+person's own Plex, Jellyfin or Emby server and take requests for titles the
+library does not have. Connecting one in Settings, Requests adds a row under
+search: what the request server found that the library is missing, with a
+Request button. Code in `lib/data/seerr/` (the client) and
+`lib/features/seerr/` (the connection, the Settings pane, the search row).
+
+- **The person's own server, at an address they type.** Like Plex and
+  Jellyfin (§1), there is no default, no directory and no suggestion. The
+  app only ever talks to the address it was given.
+- **The owner decides.** A request is a request, made exactly as from
+  Seerr's own web page: the server's permissions and approval rules apply,
+  and nothing is downloaded by this app. Asking always goes through a
+  confirmation dialog with Cancel focused, so one press on a remote cannot
+  make a request.
+- **A show is requested in full**, every season but specials. Picking
+  seasons is what Seerr's own page is for; a partly available show can be
+  requested again for the rest.
+- **Sign-in.** On a Plex-backed server, "Sign in with my Plex account" sends
+  the Plex account token this device already holds to that server's
+  `/auth/plex`, which is what Seerr's own Plex sign-in does; it is offered
+  only when Plex is linked here. Otherwise a username and password: a local
+  account at `/auth/local` on a Plex-backed server, or a Jellyfin or Emby
+  user at `/auth/jellyfin`. What is kept is the `connect.sid` session
+  cookie, never the password. An API key also works but acts as the
+  server's administrator, so requests made with it are not the person's on
+  the server; the form says so and puts it last. The cookie or key is in
+  secure storage (§3) and does not move with Move to another device (§17):
+  it is cheap to sign in again, and an admin key should not travel.
+- **Posters come from TMDB.** Seerr returns TMDB image paths, so the row's
+  posters load from TMDB's public image host. That request carries no
+  credential and no account, only the image path, and only once a request
+  server is connected.
+- **What the row leaves out.** Titles the request server reports as
+  available are dropped: they are already in the library results below,
+  playable. Pending and partial titles stay, labelled.
+- Search waits 400 ms after typing stops before asking the server, and a
+  stale session reports "connect it again" rather than an empty row.
+
+**Verified against a fake only** (`test/seerr_test.dart`: the probe, each
+sign-in path and its body, the cookie kept without attributes, `%20` in the
+search query, which films and shows are kept, the request bodies, the 409
+message, my-requests filtering, and a stale session). No real Overseerr,
+Jellyseerr or Seerr has been connected (MANUAL_TESTING.md). The `%20`
+detail is from Overseerr's request validator, which refuses `+` for a space;
+whether Jellyseerr and Seerr behave the same is part of that check.
 
 ---
 
@@ -1540,7 +2040,9 @@ A saved copy outlives the connection to its server: removing the Plex server doe
   signing steps that let someone rebuild the app with their own libraries.
   Not legal advice; this records what the binary contains.
 - **Check for a newer media_kit** (§10) — the bundled `libmpv-2.dll` is dated
-  2023-09-24, over two years stale.
+  2023-09-24, over two years stale. Since 2026-10-15 an upgrade fails the tests
+  until `native-libs.lock.json` and the licence list are updated with it
+  (§10.1), so it cannot happen by accident, only on purpose.
 - **Q5, the Android-device questions** (PHASE0_FINDINGS.md) — SAF persisted
   permissions across a reboot, `MediaStore` scanning, hardware decode, release
   binary size. Deferred from Phase 0 for lack of hardware; do them as Phase 1
@@ -1563,6 +2065,12 @@ A saved copy outlives the connection to its server: removing the Plex server doe
 
 ### Open — decide before the relevant phase
 
+- **Watch trackers in the privacy policy and store forms (§19.1)** before
+  the first build with tracker credentials reaches testers: the policy must
+  say that, with consent, finished watches go to the tracker the person
+  chose, and Play's data-safety form must declare "app activity, other user
+  content" shared with a third party at the user's request. Added 2026-10-16.
+
 - **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
   out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
   the MVP contains no Firebase at all. **The Remote Config kill switch was
@@ -1584,6 +2092,62 @@ A saved copy outlives the connection to its server: removing the Plex server doe
   resumability is painful, so decide before Phase 3.5.
 - **Amazon Appstore for Fire TV (§11)** — a third store pipeline not costed in
   §13. In scope for the initial release, or a follow-on?
+- **Microsoft Store (Windows), added 2026-10-16.** Flutter's Windows target
+  already carries the `flutter run -d windows` loop and media_kit playback, so
+  this is a packaging and policy task rather than new playback work: MSIX via
+  the `msix` package (the Store signs it), a Partner Center account, a privacy
+  policy URL and an age-rating questionnaire. Not yet started, and the
+  details above come from general knowledge, not checked against current
+  Partner Center docs. Three things to settle first. (1) **Licences:** the
+  ffmpeg item above notes that Windows dev builds load a different libmpv and
+  are not distributed. A Store build distributes it, so the shipped
+  `libmpv-2.dll` has to be read the way the Android and iOS binaries were
+  (LGPL vs GPL build flags) and `native_licenses.dart` extended before
+  submission. (2) **Policy position:** §1 and §8.3 apply unchanged, with no
+  provider directory or branding in the listing, and screenshots from Plex,
+  local files or SMB only (§13 Phase 6). (3) **Layout:** the mobile tree is
+  not yet desktop-shaped, so keyboard, mouse and window resizing need a pass.
+  Cheaper than the TV targets because it needs no new playback path.
+  **Setup, checked 2026-10-16 against Microsoft's current docs:** there is no
+  registration fee for Individual or Company accounts when signing up through
+  storedeveloper.microsoft.com (the earlier note of a roughly $19 fee was
+  wrong). Individual needs a personal Microsoft account plus government ID and
+  selfie verification; Company needs a DUNS number or business documents and a
+  work-domain email, with manual review of 2 to 5 business days, and cannot be
+  converted from an Individual account later. The `msix` dev dependency is
+  added and a commented `msix_config` block sits at the end of `pubspec.yaml`,
+  waiting on the identity name, publisher ID and publisher display name from
+  Partner Center after the app name is reserved.
+  **Progress, 2026-10-16:** the Individual account exists, the name "Subnext
+  Player" is reserved (publisher display name "Subnext", because the person's
+  own name was already taken by another publisher), and the identity values
+  are in `pubspec.yaml`. `dart run msix:create --store` builds
+  `relay_player.msix`. **libmpv checked, Windows release build:** the bundled
+  `libmpv-2.dll` is mpv v0.36.0-403 configured `-Dgpl=false`, with FFmpeg
+  `--disable-gpl --disable-nonfree --enable-version3` and every libav library
+  reporting "LGPL version 3 or later" (built by `libmpv-win32-video-build`).
+  So the GPL concern is cleared. **Still open:** `native_licenses.dart` has no
+  Windows list yet, so the About licence page shows no native notices on
+  Windows. The Windows set is much larger than Android's, because this build
+  statically links FFmpeg with mbedTLS, dav1d, libjxl, libvpl, libbs2b, libwebp,
+  zimg, libxml2, libsoxr (LGPL), speex, libmysofa, shaderc, fribidi and
+  freetype, and mpv with lcms2, uchardet, libpng 1.6.41, libjpeg-turbo 3.0.1,
+  zlib 1.2.13, libarchive, SPIRV-Cross and ANGLE. Versions for most are not
+  printed in the binary, so the list needs the build repo's pinned versions and
+  each licence text, not guesses. The Store listing, privacy policy, age rating and the policy
+  update effective 2026-10-22 have not been done.
+- **LG webOS TV, backlog, added 2026-10-16.** Not planned for any phase.
+  Flutter has no official webOS target. A community/LG embedder exists for
+  webOS OSE, but whether it runs on retail LG sets is unverified. The
+  alternative is a Flutter web build in webOS's Chromium web-app runtime, and
+  there media_kit (native libmpv) is unavailable, so playback would need an
+  HTML5 `<video>` backend and the HLS and MPEG-TS findings in
+  `PHASE0_FINDINGS.md` would have to be re-measured. Browser CORS limits would
+  also hit the source clients. A separate thin web client may be cheaper than
+  a Flutter port. LG's simulator and emulator cover UI and D-pad focus only;
+  decoding needs a real TV in Developer Mode, as with Android TV. Revisit
+  after Phase 4 (Android TV and Fire TV). All of this is from general
+  knowledge and unverified against LG's current developer docs.
 - **A second, worse Xtream panel** — to settle §10's malformed-TS claim, or
   else formally drop that argument.
 

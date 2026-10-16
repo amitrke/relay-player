@@ -38,6 +38,8 @@ class DownloadRecord {
     this.posterPath,
     this.isEpisode = false,
     this.error,
+    this.rule,
+    this.artworkFile,
   });
 
   final String serverId;
@@ -62,6 +64,16 @@ class DownloadRecord {
 
   /// Why it [DownloadState.failed], in words for the person.
   final String? error;
+
+  /// The show rating key of the [EpisodeRule] that fetched this, or null when
+  /// the person asked for it by hand. Only a rule's own downloads are ever
+  /// removed by it (§18.7).
+  final String? rule;
+
+  /// The poster saved beside the file, inside the downloads directory, so the
+  /// Downloads list has artwork with no network (§18.8). A file name, like
+  /// [fileName], never a URL: the URL that fetched it carried the token.
+  final String? artworkFile;
 
   /// `plex:<server>:<ratingKey>`, matching the history key for the same title.
   String get key => keyOf(serverId, ratingKey);
@@ -89,6 +101,7 @@ class DownloadRecord {
     bool? isEpisode,
     String? error,
     bool clearError = false,
+    String? artworkFile,
   }) => DownloadRecord(
     serverId: serverId,
     ratingKey: ratingKey,
@@ -102,6 +115,8 @@ class DownloadRecord {
     posterPath: posterPath ?? this.posterPath,
     isEpisode: isEpisode ?? this.isEpisode,
     error: clearError ? null : (error ?? this.error),
+    rule: rule,
+    artworkFile: artworkFile ?? this.artworkFile,
   );
 
   Map<String, Object?> toJson() => {
@@ -117,6 +132,8 @@ class DownloadRecord {
     'posterPath': ?posterPath,
     'isEpisode': isEpisode,
     'error': ?error,
+    'rule': ?rule,
+    'artworkFile': ?artworkFile,
   };
 
   static DownloadRecord? fromJson(Object? raw) {
@@ -150,6 +167,10 @@ class DownloadRecord {
           : null,
       isEpisode: raw['isEpisode'] == true,
       error: raw['error'] is String ? raw['error'] as String : null,
+      rule: raw['rule'] is String ? raw['rule'] as String : null,
+      artworkFile: raw['artworkFile'] is String
+          ? raw['artworkFile'] as String
+          : null,
     );
   }
 }

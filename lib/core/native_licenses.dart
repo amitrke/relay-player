@@ -18,7 +18,9 @@ import 'package:flutter/services.dart';
 /// The versions below are `buildscripts/include/depinfo.sh` at the
 /// `libmpv-android-video-build` tag that `media_kit_libs_android_video` pins.
 /// **Upgrading media_kit can change all of it** — re-read the binary and update
-/// this list in the same change.
+/// this list in the same change. `native-libs.lock.json` pins the binary this
+/// list describes, and `test/native_lock_test.dart` fails an upgrade until both
+/// move together (architecture.md §10.1).
 ///
 /// **iOS has its own list**, added 2026-09-23 when the first TestFlight builds
 /// shipped with no native notices at all. It is not the Android list relabelled:

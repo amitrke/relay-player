@@ -8,7 +8,9 @@ import 'app_settings_store.dart';
 /// the route itself — a stored URL would rot the moment routing changed, and
 /// history is meant to outlive refactors.
 enum PlaybackKind {
-  plex('plex'),
+  /// A personal media server item, Plex, Jellyfin or Emby. Named `plex` until
+  /// 2026-10-16; [wire] stays `plex` because it is in every stored key.
+  server('plex'),
   xtreamVod('xtream_vod'),
   xtreamEpisode('xtream_episode');
 
@@ -81,13 +83,13 @@ class HistoryItem {
   bool get isEpisode => switch (kind) {
         PlaybackKind.xtreamEpisode => true,
         PlaybackKind.xtreamVod => false,
-        PlaybackKind.plex => episode ?? false,
+        PlaybackKind.server => episode ?? false,
       };
 
   String get key => '${kind.wire}:$sourceId:$itemId';
 
   String get route => switch (kind) {
-        PlaybackKind.plex => '/play/$sourceId/$itemId',
+        PlaybackKind.server => '/play/$sourceId/$itemId',
         PlaybackKind.xtreamVod => '/vod/$sourceId/$itemId',
         PlaybackKind.xtreamEpisode => '/episode/$sourceId/$itemId',
       };

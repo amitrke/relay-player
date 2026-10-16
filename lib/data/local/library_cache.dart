@@ -165,10 +165,10 @@ class HiveLibraryCache implements LibraryCache {
 /// does carry `X-Plex-Token` is dropped whatever its source, the same rule the
 /// history store applies, so a future caller cannot reintroduce the leak.
 Map<String, dynamic> catalogItemToJson(CatalogItem i) {
-  final plex = i.source == CatalogSource.plex;
+  final plex = i.source == CatalogSource.server;
   final url = plex ? null : i.posterUrl;
   return {
-    's': i.source.name,
+    's': i.source.wire,
     'sid': i.sourceId,
     'k': i.kind.name,
     'id': i.id,
@@ -191,9 +191,7 @@ Map<String, dynamic> catalogItemToJson(CatalogItem i) {
 /// null when the server is not reachable yet.
 CatalogItem? catalogItemFromJson(Object? json) {
   if (json is! Map) return null;
-  final source = CatalogSource.values
-      .where((v) => v.name == json['s'])
-      .firstOrNull;
+  final source = CatalogSource.fromWire(json['s'] as String?);
   final kind = CatalogKind.values.where((v) => v.name == json['k']).firstOrNull;
   final sid = json['sid'];
   final id = json['id'];

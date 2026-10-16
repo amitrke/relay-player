@@ -1,18 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:media_kit/media_kit.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../settings/settings_controller.dart';
+import 'engine/playback_engine.dart';
+import '../../i18n/strings.g.dart';
 
 /// Subtitle text size, as a multiplier on media_kit's own default.
 enum SubtitleSize {
-  small('Small', 0.75),
-  medium('Medium', 1.0),
-  large('Large', 1.35);
+  small(0.75),
+  medium(1.0),
+  large(1.35);
 
-  const SubtitleSize(this.label, this.scale);
-  final String label;
+  const SubtitleSize(this.scale);
   final double scale;
+
+  String get label => switch (this) {
+    small => tr.subtitleSize.small,
+    medium => tr.subtitleSize.medium,
+    large => tr.subtitleSize.large,
+  };
 
   static SubtitleSize fromName(String? name) =>
       values.where((s) => s.name == name).firstOrNull ?? medium;
@@ -116,41 +122,10 @@ class PlaybackPrefsController extends Notifier<PlaybackPrefs> {
 /// A fixed list rather than every language a file might carry: these are the
 /// ones common enough in subtitle and audio tracks to be worth a row, and a
 /// file in anything else can still be switched by hand in the player.
-const playbackLanguages = <String, String>{
-  'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'it': 'Italian',
-  'pt': 'Portuguese',
-  'nl': 'Dutch',
-  'sv': 'Swedish',
-  'no': 'Norwegian',
-  'da': 'Danish',
-  'fi': 'Finnish',
-  'pl': 'Polish',
-  'cs': 'Czech',
-  'hu': 'Hungarian',
-  'ro': 'Romanian',
-  'el': 'Greek',
-  'ru': 'Russian',
-  'uk': 'Ukrainian',
-  'tr': 'Turkish',
-  'ar': 'Arabic',
-  'he': 'Hebrew',
-  'hi': 'Hindi',
-  'bn': 'Bengali',
-  'pa': 'Punjabi',
-  'ta': 'Tamil',
-  'te': 'Telugu',
-  'ur': 'Urdu',
-  'th': 'Thai',
-  'vi': 'Vietnamese',
-  'id': 'Indonesian',
-  'zh': 'Chinese',
-  'ja': 'Japanese',
-  'ko': 'Korean',
-};
+///
+/// Named in the app's language (§12.3), in the order the base file lists
+/// them, which is the order Settings shows.
+Map<String, String> get playbackLanguages => tr.languages;
 
 /// ISO 639-2 codes, both bibliographic and terminological forms, to 639-1.
 /// Matroska and MP4 usually tag tracks with these three-letter forms.
@@ -183,45 +158,44 @@ String describeTrack(String? title, String? language, int index) {
     ?lang,
     if (title != null && title.trim().isNotEmpty && title != language) title,
   ];
-  return parts.isEmpty ? 'Track ${index + 1}' : parts.join(' · ');
+  return parts.isEmpty
+      ? tr.player.trackNumber(n: index + 1)
+      : parts.join(' · ');
 }
-
-/// Real tracks only: media_kit also lists "auto" and "no" as pseudo-tracks.
-bool isRealTrack(String id) => id != 'auto' && id != 'no';
 
 /// What to select once a file's tracks are known.
 ///
-/// Null means "leave the player's own choice alone", which for audio is the
-/// file's default track. Applied once per file, when the track list first
-/// arrives, so a choice the viewer then makes by hand is never overridden.
+/// A null [audio] means "leave the engine's own choice alone", which is the
+/// file's default track. A null [subtitle] means off, and is applied: unlike
+/// audio there is always a decision to make. Applied once per file, when the
+/// track list first arrives, so a choice the viewer then makes by hand is
+/// never overridden.
 class TrackChoice {
   const TrackChoice({this.audio, this.subtitle});
-  final AudioTrack? audio;
-  final SubtitleTrack? subtitle;
+  final MediaTrack? audio;
+  final MediaTrack? subtitle;
 }
 
-TrackChoice chooseTracks(Tracks tracks, PlaybackPrefs prefs) {
-  final audio = [for (final t in tracks.audio) if (isRealTrack(t.id)) t];
-  final subs = [for (final t in tracks.subtitle) if (isRealTrack(t.id)) t];
+TrackChoice chooseTracks(TrackList tracks, PlaybackPrefs prefs) {
+  final audio = tracks.audio;
+  final subs = tracks.subtitle;
 
-  AudioTrack? pickedAudio;
+  MediaTrack? pickedAudio;
   if (prefs.audioLanguage case final want?) {
     pickedAudio =
         audio.where((t) => normalizeLanguage(t.language) == want).firstOrNull;
   }
 
-  final SubtitleTrack pickedSub;
+  final MediaTrack? pickedSub;
   if (!prefs.subtitlesOn || subs.isEmpty) {
-    pickedSub = SubtitleTrack.no();
+    pickedSub = null;
   } else if (prefs.subtitleLanguage case final want?) {
     // No match means off, not "some other language": subtitles in a language
     // the viewer did not ask for are noise, and they can pick one by hand.
-    pickedSub = subs
-            .where((t) => normalizeLanguage(t.language) == want)
-            .firstOrNull ??
-        SubtitleTrack.no();
+    pickedSub =
+        subs.where((t) => normalizeLanguage(t.language) == want).firstOrNull;
   } else {
-    pickedSub = subs.where((t) => t.isDefault == true).firstOrNull ?? subs.first;
+    pickedSub = subs.where((t) => t.isDefault).firstOrNull ?? subs.first;
   }
   return TrackChoice(audio: pickedAudio, subtitle: pickedSub);
 }

@@ -1,15 +1,16 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../../data/local/history_store.dart';
-import '../accounts/plex_session.dart';
-import '../library/library_screen.dart' show plexSectionsProvider;
+import '../library/library_screen.dart' show serverSectionsProvider;
 import '../library/library_tab.dart';
 import '../settings/settings_controller.dart';
 import 'history_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
 
 /// One tile in the continue-watching row, from either place it can come from.
 ///
@@ -71,7 +72,7 @@ class ResumeEntry {
   String get key => '${kind.wire}:$sourceId:$itemId';
 
   String get route => switch (kind) {
-        PlaybackKind.plex => '/play/$sourceId/$itemId',
+        PlaybackKind.server => '/play/$sourceId/$itemId',
         PlaybackKind.xtreamVod => '/vod/$sourceId/$itemId',
         PlaybackKind.xtreamEpisode => '/episode/$sourceId/$itemId',
       };
@@ -90,12 +91,12 @@ class ResumeEntry {
       );
 
   /// Null for anything that is not a film or an episode.
-  static ResumeEntry? fromPlex(String serverId, PlexMetadata m) {
-    final episode = m.type == PlexMetadataType.episode;
-    if (!episode && m.type != PlexMetadataType.movie) return null;
+  static ResumeEntry? fromServer(String serverId, MediaItem m) {
+    final episode = m.type == MediaItemType.episode;
+    if (!episode && m.type != MediaItemType.movie) return null;
 
-    final offset = m.viewOffsetMs ?? 0;
-    final total = m.durationMs ?? 0;
+    final offset = m.viewOffset?.inMilliseconds ?? 0;
+    final total = m.duration?.inMilliseconds ?? 0;
     final started = offset > 0 && total > 0;
     final left =
         started ? _minutesLeft(Duration(milliseconds: total - offset)) : null;
@@ -105,17 +106,20 @@ class ResumeEntry {
     ].join(' ');
 
     return ResumeEntry(
-      kind: PlaybackKind.plex,
+      kind: PlaybackKind.server,
       sourceId: serverId,
-      itemId: m.ratingKey,
+      itemId: m.id,
       // An episode title alone ("Pilot") says little in a row of mixed
       // things; the show's name is what people look for.
-      title: episode ? (m.grandparentTitle ?? m.title) : m.title,
+      title: episode ? (m.showTitle ?? m.title) : m.title,
       detail: episode
-          ? [if (numbering.isNotEmpty) numbering, left ?? 'Up next'].join(' · ')
-          : (left ?? 'Up next'),
+          ? [
+              if (numbering.isNotEmpty) numbering,
+              left ?? tr.resume.upNext,
+            ].join(' · ')
+          : (left ?? tr.resume.upNext),
       progress: started ? offset / total : null,
-      posterPath: m.thumb,
+      posterPath: m.posterPath,
       lastActivity: m.lastViewedAt,
       signature: 'plex:$offset:${m.lastViewedAt?.millisecondsSinceEpoch}',
       episode: episode,
@@ -123,7 +127,7 @@ class ResumeEntry {
   }
 
   static String _minutesLeft(Duration d) =>
-      '${d.inMinutes < 1 ? 1 : d.inMinutes} min left';
+      tr.units.minutesLeft(m: d.inMinutes < 1 ? 1 : d.inMinutes);
 }
 
 /// This device's history and Plex's On Deck, as one row.
@@ -187,7 +191,7 @@ List<ResumeEntry> mergeResume({
 ///
 /// Refetched when a Plex playback ends (the player invalidates it), not on a
 /// timer: the row only needs to be right when someone is looking at Home.
-final plexOnDeckProvider = FutureProvider<List<ResumeEntry>>((ref) async {
+final onDeckProvider = FutureProvider<List<ResumeEntry>>((ref) async {
   final servers = ref.watch(connectedServersProvider);
   final mapping = ref.watch(libraryMappingProvider);
 
@@ -196,7 +200,7 @@ final plexOnDeckProvider = FutureProvider<List<ResumeEntry>>((ref) async {
       () async {
         try {
           final sections =
-              await ref.watch(plexSectionsProvider(server.id).future);
+              await ref.watch(serverSectionsProvider(server.id).future);
           final wanted = [
             ...mapping.sectionsFor(LibraryTab.movies, server.id, sections),
             ...mapping.sectionsFor(LibraryTab.series, server.id, sections),
@@ -205,7 +209,7 @@ final plexOnDeckProvider = FutureProvider<List<ResumeEntry>>((ref) async {
               .onDeck(wanted)
               .timeout(const Duration(seconds: 10));
           return [
-            for (final m in deck) ?ResumeEntry.fromPlex(server.id, m),
+            for (final m in deck) ?ResumeEntry.fromServer(server.id, m),
           ];
         } catch (_) {
           // A sleeping server costs its own entries, not the row.
@@ -238,7 +242,7 @@ class ResumeDismissals extends Notifier<Map<String, String>> {
   Map<String, String> build() => _store.getStringMap(_kDismissed);
 
   Future<void> dismiss(ResumeEntry entry) async {
-    if (entry.kind != PlaybackKind.plex) {
+    if (entry.kind != PlaybackKind.server) {
       await ref.read(historyProvider.notifier).remove(entry.key);
     }
     final next = {...state, entry.key: entry.signature};
@@ -251,7 +255,7 @@ class ResumeDismissals extends Notifier<Map<String, String>> {
 final resumeEntriesProvider = Provider<List<ResumeEntry>>((ref) {
   return mergeResume(
     history: ref.watch(historyProvider),
-    plexDeck: ref.watch(plexOnDeckProvider).value ?? const [],
+    plexDeck: ref.watch(onDeckProvider).value ?? const [],
     dismissed: ref.watch(resumeDismissalsProvider),
   );
 });

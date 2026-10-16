@@ -3,16 +3,19 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../local/app_settings_store.dart';
+import '../../i18n/strings.g.dart';
 
 /// The three catalogues a panel exposes, each with its own categories.
 enum XtreamCatalogue {
-  live('Live TV'),
-  vod('Movies'),
-  series('Series');
+  live,
+  vod,
+  series;
 
-  const XtreamCatalogue(this.label);
-
-  final String label;
+  String get label => switch (this) {
+    live => tr.xtream.catalogue.live,
+    vod => tr.xtream.catalogue.vod,
+    series => tr.xtream.catalogue.series,
+  };
 }
 
 /// A configured Xtream line, minus its password.

@@ -12,7 +12,7 @@ CatalogItem _item(
   double? rating,
   String? originalLanguage,
 }) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: source,
   kind: kind,
   id: id,

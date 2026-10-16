@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../i18n/strings.g.dart';
 
 /// What the panel says about the line itself.
 class XtreamAccountInfo {
@@ -178,7 +179,7 @@ class XtreamClient {
         if (response.statusCode != null && response.statusCode! >= 500) {
           if (attempt == 0) continue;
           throw XtreamException(
-            'The panel returned ${response.statusCode}. Try again later.',
+            tr.xtream.errors.status(code: response.statusCode!),
           );
         }
         return response;
@@ -195,10 +196,9 @@ class XtreamClient {
   static String _describe(DioException e) => switch (e.type) {
         DioExceptionType.connectionTimeout ||
         DioExceptionType.receiveTimeout =>
-          'The panel did not respond in time.',
-        DioExceptionType.connectionError =>
-          'Could not reach that address. Check the host and port.',
-        _ => 'Could not talk to the panel (${e.type.name}).',
+          tr.xtream.errors.timeout,
+        DioExceptionType.connectionError => tr.xtream.errors.unreachable,
+        _ => tr.xtream.errors.other(type: e.type.name),
       };
 
   /// Authenticates and returns the line's own description of itself.
@@ -206,17 +206,15 @@ class XtreamClient {
     final response = await _get(_auth);
     final data = response.data;
     if (data is! Map) {
-      throw const XtreamException(
-        'That address did not answer like an Xtream panel.',
-      );
+      throw XtreamException(tr.xtream.errors.notXtream);
     }
 
     final user = data['user_info'];
     if (user is! Map) {
-      throw const XtreamException('The panel rejected those credentials.');
+      throw XtreamException(tr.xtream.errors.rejected);
     }
     if (_asInt(user['auth']) == 0) {
-      throw const XtreamException('Wrong username or password.');
+      throw XtreamException(tr.xtream.errors.wrongLogin);
     }
 
     final expiry = _asInt(user['exp_date']);
@@ -244,7 +242,7 @@ class XtreamClient {
         if (entry is Map)
           XtreamCategory(
             id: '${entry['category_id']}',
-            name: '${entry['category_name'] ?? 'Unnamed'}',
+            name: '${entry['category_name'] ?? tr.xtream.errors.unnamed}',
           ),
     ];
   }
@@ -267,7 +265,7 @@ class XtreamClient {
         if (entry is Map)
           XtreamChannel(
             streamId: '${entry['stream_id']}',
-            name: '${entry['name'] ?? 'Unnamed'}',
+            name: '${entry['name'] ?? tr.xtream.errors.unnamed}',
             categoryId: '${entry['category_id'] ?? categoryId}',
             logoUrl: _asNonEmpty(entry['stream_icon']),
             epgChannelId: _asNonEmpty(entry['epg_channel_id']),
@@ -290,7 +288,7 @@ class XtreamClient {
         if (entry is Map)
           XtreamCategory(
             id: '${entry['category_id']}',
-            name: '${entry['category_name'] ?? 'Unnamed'}',
+            name: '${entry['category_name'] ?? tr.xtream.errors.unnamed}',
           ),
     ];
   }
@@ -310,7 +308,7 @@ class XtreamClient {
         if (entry is Map)
           XtreamVodItem(
             streamId: '${entry['stream_id']}',
-            name: '${entry['name'] ?? 'Unnamed'}',
+            name: '${entry['name'] ?? tr.xtream.errors.unnamed}',
             posterUrl: _asNonEmpty(entry['stream_icon']),
             year: _year(entry['year'] ?? entry['releaseDate']),
             addedAt: _epochSeconds(entry['added']),
@@ -335,7 +333,7 @@ class XtreamClient {
         if (entry is Map)
           XtreamSeriesItem(
             seriesId: '${entry['series_id']}',
-            name: '${entry['name'] ?? 'Unnamed'}',
+            name: '${entry['name'] ?? tr.xtream.errors.unnamed}',
             posterUrl: _asNonEmpty(entry['cover']),
             year: _year(entry['year'] ?? entry['releaseDate']),
             plot: _asNonEmpty(entry['plot']),
@@ -372,7 +370,7 @@ class XtreamClient {
             if (e is Map)
               XtreamEpisode(
                 id: '${e['id']}',
-                title: '${e['title'] ?? 'Episode'}',
+                title: '${e['title'] ?? tr.xtream.errors.episode}',
                 episodeNumber: _asInt(e['episode_num']),
                 containerExtension:
                     _asNonEmpty(e['container_extension']) ?? 'mp4',

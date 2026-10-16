@@ -11,6 +11,7 @@ import '../advanced_sources/xtream_controller.dart';
 import '../favorites_history/favorites_controller.dart';
 import '../library/poster_grid.dart';
 import 'channel_groups.dart';
+import '../../i18n/strings.g.dart';
 
 /// The Live TV tab (§12 screen 3), reachable only behind the §8.2 gate.
 class LiveTvTab extends ConsumerWidget {
@@ -31,13 +32,13 @@ class LiveTvTab extends ConsumerWidget {
               Icon(Icons.live_tv_outlined, color: t.inkDim, size: 34),
               const SizedBox(height: 14),
               Text(
-                'No playlist or panel configured.',
+                tr.liveTv.noPanel,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: t.inkDim, height: 1.5),
               ),
               const SizedBox(height: 18),
               RelayButton(
-                label: 'Add one',
+                label: tr.liveTv.addOne,
                 onPressed: () => context.push('/advanced/xtream/new'),
               ),
             ],
@@ -96,14 +97,13 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
               Icon(Icons.filter_list, color: t.inkDim, size: 34),
               const SizedBox(height: 14),
               Text(
-                'No categories chosen yet.\nPanels carry tens of thousands of '
-                'channels, so Subnext Player only fetches the ones you pick.',
+                tr.liveTv.noCategories,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: t.inkDim, height: 1.5),
               ),
               const SizedBox(height: 18),
               RelayButton(
-                label: 'Choose categories',
+                label: tr.liveTv.chooseCategories,
                 onPressed: () => context.push(
                     '/advanced/xtream/${account.id}/categories/live'),
               ),
@@ -124,9 +124,9 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const LibraryEmptyState(
+          return LibraryEmptyState(
             icon: Icons.live_tv_outlined,
-            message: 'Those categories returned no channels.',
+            message: tr.liveTv.noChannels,
           );
         }
 
@@ -175,7 +175,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
         final Widget channelPane = shown.isEmpty
             ? LibraryEmptyState(
                 icon: Icons.search_off,
-                message: 'No channel matching "$_query".',
+                message: tr.liveTv.noMatch(query: _query),
               )
             : ListView.builder(
                 // Keyed by the selection so a new group starts at its top
@@ -199,7 +199,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
                   autocorrect: false,
                   style: TextStyle(color: t.ink),
                   decoration: InputDecoration(
-                    hintText: 'Search ${list.length} channels',
+                    hintText: tr.liveTv.searchHint(n: list.length),
                     hintStyle: TextStyle(color: t.inkDim),
                     prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
                     suffixIcon: _query.isEmpty
@@ -254,7 +254,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
                         ),
                         children: [
                           _GroupRow(
-                            label: 'All',
+                            label: tr.liveTv.all,
                             count: list.length,
                             selected: selected == null,
                             onTap: () => select(null),
@@ -281,7 +281,7 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
                   padding: padding.copyWith(top: 6, bottom: 4),
                   children: [
                     _GroupChip(
-                      label: 'All',
+                      label: tr.liveTv.all,
                       selected: selected == null,
                       onTap: () => select(null),
                     ),

@@ -54,9 +54,21 @@ jobs:
           cache: true
       - run: flutter pub get
 
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python3 tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
       # Split per ABI: the universal APK is ~99 MB against ~31 MB for arm64,
       # purely from carrying libmpv three times (PHASE0_FINDINGS.md Q5).
-      - run: flutter build apk --release --split-per-abi
+      - run: flutter build apk --release --split-per-abi --dart-define-from-file="$RUNNER_TEMP/trackers.json"
 
       # And a universal one, because a split APK carries exactly one ABI and
       # installing the wrong one reports only "app isn't compatible with your
@@ -65,7 +77,7 @@ jobs:
       # arm64-v8a is refused by hardware that looks like it should take it.
       # Worth the extra build so the artifact set has one APK that installs
       # anywhere.
-      - run: flutter build apk --release
+      - run: flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/trackers.json"
 
       # Fail here rather than shipping an artifact that silently lost one,
       # since the upload glob only checks that *something* matched.
@@ -77,6 +89,12 @@ jobs:
             test -f "$apk" || { echo "missing $apk"; exit 1; }
             echo "$apk  $(du -h "$apk" | cut -f1)"
           done
+
+      # The libmpv inside each APK must be the one native-libs.lock.json pins,
+      # since the licence list describes that binary and no other
+      # (architecture.md §10.1).
+      - name: Check the shipped libmpv matches the lock
+        run: python3 tool/native_lock.py build/app/outputs/flutter-apk/*-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -132,7 +150,19 @@ jobs:
           Write-Host "Visual Studio: $install"
           Write-Host "ATL headers:   $found"
 
-      - run: flutter build windows --release
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
+      - run: flutter build windows --release --dart-define-from-file="${{ runner.temp }}/trackers.json"
 
       - uses: actions/upload-artifact@v4
         with:

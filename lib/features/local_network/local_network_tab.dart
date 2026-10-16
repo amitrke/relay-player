@@ -11,6 +11,7 @@ import '../../data/filesystem/saf_folder_source.dart';
 import 'smb_controller.dart';
 import '../settings/settings_controller.dart';
 import '../library/poster_grid.dart';
+import '../../i18n/strings.g.dart';
 
 /// Whether "pick a folder" is offered at all.
 ///
@@ -107,28 +108,29 @@ class LocalNetworkTab extends ConsumerWidget {
               const SizedBox(height: 14),
               Text(
                 access == false
-                    ? 'Subnext Player cannot see your videos without media '
-                        'access. You can grant it in '
-                        '${Platform.isIOS ? 'the Settings app' : 'Android settings'}.'
-                    : 'Play videos stored on this device.\nSubnext Player only '
-                        'asks for video access, never full file access.',
+                    ? tr.local.noAccess(
+                        where: Platform.isIOS
+                            ? tr.local.settingsIos
+                            : tr.local.settingsAndroid,
+                      )
+                    : tr.local.intro,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: t.inkDim, height: 1.5),
               ),
               const SizedBox(height: 18),
               RelayButton(
-                label: access == false ? 'Try again' : 'Allow video access',
+                label: access == false ? tr.common.tryAgain : tr.local.allowAccess,
                 onPressed: () =>
                     ref.read(deviceAccessProvider.notifier).request(),
               ),
               const SizedBox(height: 14),
               if (_canPickFolder)
                 RelayTextButton(
-                  label: 'Or pick a folder instead',
+                  label: tr.local.pickFolderInstead,
                   onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
                 ),
               RelayTextButton(
-                label: 'Add a network share',
+                label: tr.local.addShare,
                 onPressed: () => context.push('/smb/new'),
               ),
             ],
@@ -143,7 +145,7 @@ class LocalNetworkTab extends ConsumerWidget {
       padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 28),
       children: [
         if (shares.isNotEmpty) ...[
-          _Heading(label: 'Network shares'),
+          _Heading(label: tr.local.shares),
           for (final share in shares)
             _FolderRow(
               label: share.name,
@@ -155,7 +157,7 @@ class LocalNetworkTab extends ConsumerWidget {
           const SizedBox(height: 18),
         ],
         if (picked.isNotEmpty) ...[
-          _Heading(label: 'Folders you picked'),
+          _Heading(label: tr.local.pickedFolders),
           for (final folder in picked)
             _FolderRow(
               label: folder.name,
@@ -169,13 +171,13 @@ class LocalNetworkTab extends ConsumerWidget {
           const SizedBox(height: 18),
         ],
         if (access == true) ...[
-          _Heading(label: 'On this device'),
+          _Heading(label: tr.local.onDevice),
           ...switch (deviceFolders) {
             AsyncData(:final value) when value.isEmpty => [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    'No videos found on this device.',
+                    tr.local.noVideos,
                     style: TextStyle(color: t.inkDim, fontSize: 13),
                   ),
                 ),
@@ -217,12 +219,18 @@ class LocalNetworkTab extends ConsumerWidget {
                 onPressed: () => ref.read(safFoldersProvider.notifier).pick(),
                 icon: Icon(Icons.create_new_folder_outlined,
                     size: 18, color: t.accent),
-                label: Text('Add a folder', style: TextStyle(color: t.accent)),
+                label: Text(
+                  tr.local.addFolderShort,
+                  style: TextStyle(color: t.accent),
+                ),
               ),
             TextButton.icon(
               onPressed: () => context.push('/smb/new'),
               icon: Icon(Icons.lan_outlined, size: 18, color: t.accent),
-              label: Text('Add a share', style: TextStyle(color: t.accent)),
+              label: Text(
+                tr.local.addShareShort,
+                style: TextStyle(color: t.accent),
+              ),
             ),
             if (access != true)
               TextButton.icon(
@@ -230,7 +238,7 @@ class LocalNetworkTab extends ConsumerWidget {
                     ref.read(deviceAccessProvider.notifier).request(),
                 icon: Icon(Icons.smartphone_outlined,
                     size: 18, color: t.accent),
-                label: Text('Scan this device',
+                label: Text(tr.local.scanDevice,
                     style: TextStyle(color: t.accent)),
               ),
           ],
@@ -311,7 +319,7 @@ class _FolderRow extends StatelessWidget {
                       style: TextStyle(color: t.inkDim, fontSize: 13)),
                 if (onForget != null)
                   IconButton(
-                    tooltip: 'Forget this folder',
+                    tooltip: tr.local.forgetFolder,
                     icon: Icon(Icons.close, color: t.inkDim, size: 18),
                     onPressed: onForget,
                   )
@@ -350,7 +358,7 @@ class LocalFolderScreen extends ConsumerWidget {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: const Text('Folder'),
+        title: Text(tr.local.folder),
       ),
       body: videos.when(
         loading: () => Center(child: CircularProgressIndicator(color: t.accent)),
@@ -395,7 +403,7 @@ class LocalFolderScreen extends ConsumerWidget {
                         ),
                         if (minutes > 0)
                           Text(
-                            '$minutes min',
+                            tr.units.minutes(m: minutes),
                             style: TextStyle(color: t.inkDim, fontSize: 12.5),
                           ),
                         const SizedBox(width: 10),

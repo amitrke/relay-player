@@ -5,6 +5,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../ai/ai_controller.dart';
 import '../library/poster_grid.dart';
+import '../../i18n/strings.g.dart';
 
 /// "3194" as "3,194".
 String _count(int n) => n.toString().replaceAllMapped(
@@ -33,7 +34,8 @@ class AiResultsView extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final provider =
-        ref.watch(aiSetupProvider).value?.config.displayName ?? 'your provider';
+        ref.watch(aiSetupProvider).value?.config.displayName ??
+        tr.ai.picks.yourProvider;
     final search = ref.watch(aiSearchProvider(query));
 
     Widget searching(String label) => Center(
@@ -48,7 +50,7 @@ class AiResultsView extends ConsumerWidget {
     );
 
     return search.when(
-      loading: () => searching('Asking $provider...'),
+      loading: () => searching(tr.ai.search.asking(provider: provider)),
       error: (e, _) => LibraryEmptyState(
         icon: Icons.cloud_off_outlined,
         message: '$e',
@@ -58,21 +60,27 @@ class AiResultsView extends ConsumerWidget {
         if (p.items.isEmpty && !p.done) {
           return searching(
             p.covered == 0
-                ? 'Asking $provider...'
-                : 'Searching your library... '
-                      '${_count(p.searched)} of ${_count(p.covered)} titles',
+                ? tr.ai.search.asking(provider: provider)
+                : tr.ai.search.searching(
+                    searched: _count(p.searched),
+                    covered: _count(p.covered),
+                  ),
           );
         }
         if (p.items.isEmpty) {
           return LibraryEmptyState(
             icon: Icons.auto_awesome,
             message: p.total == 0
-                ? 'There is nothing in your library to search yet.'
-                : 'The model did not find anything in '
-                      '${p.truncated ? 'the first ${_count(p.covered)} of ' : ''}'
-                      '${_count(p.total)} titles that fits that. Try '
-                      'describing it differently.'
-                      '${p.partsFailed > 0 ? '\n\n${_failedNote(p)}' : ''}',
+                ? tr.ai.search.emptyLibrary
+                : [
+                    p.truncated
+                        ? tr.ai.search.notFoundFirst(
+                            covered: _count(p.covered),
+                            total: _count(p.total),
+                          )
+                        : tr.ai.search.notFound(total: _count(p.total)),
+                    if (p.partsFailed > 0) _failedNote(p),
+                  ].join('\n\n'),
             onRetry: p.partsFailed > 0
                 ? () => ref.invalidate(aiSearchProvider(query))
                 : null,
@@ -81,11 +89,15 @@ class AiResultsView extends ConsumerWidget {
 
         final notes = [
           if (!p.done)
-            'Still searching: ${_count(p.searched)} of ${_count(p.covered)} '
-                'titles',
+            tr.ai.search.stillSearching(
+              searched: _count(p.searched),
+              covered: _count(p.covered),
+            ),
           if (p.done && p.truncated)
-            'Searched the first ${_count(p.covered)} of ${_count(p.total)} '
-                'titles',
+            tr.ai.search.searchedFirst(
+              covered: _count(p.covered),
+              total: _count(p.total),
+            ),
           if (p.partsFailed > 0) _failedNote(p),
         ];
 
@@ -95,7 +107,7 @@ class AiResultsView extends ConsumerWidget {
             Padding(
               padding: RelayLayout.pagePadding(f).copyWith(top: 4, bottom: 0),
               child: Text(
-                'Picked by $provider for "$query"',
+                tr.ai.search.pickedFor(provider: provider, query: query),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: t.inkDim, fontSize: 13),
@@ -130,7 +142,7 @@ class AiResultsView extends ConsumerWidget {
                     // it sends the whole search again.
                     if (p.done && p.partsFailed > 0)
                       RelayTextButton(
-                        label: 'Search again',
+                        label: tr.ai.search.searchAgain,
                         onPressed: () =>
                             ref.invalidate(aiSearchProvider(query)),
                       ),
@@ -147,7 +159,5 @@ class AiResultsView extends ConsumerWidget {
   /// Said when some parts of a search could not be asked, so a short list is
   /// not mistaken for a full answer.
   static String _failedNote(AiSearchProgress p) =>
-      '${p.partsFailed} of ${p.parts} parts could not be searched, so some '
-      'of your library was not looked at. The provider may be limiting '
-      'requests';
+      tr.ai.search.partsFailed(failed: p.partsFailed, parts: p.parts);
 }

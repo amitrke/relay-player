@@ -5,20 +5,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/core/theme/relay_widgets.dart';
 import 'package:relay_player/data/local/history_store.dart';
 import 'package:relay_player/data/plex/plex_service.dart';
-import 'package:relay_player/data/plex/plex_session_store.dart';
 import 'package:relay_player/domain/models/catalog_item.dart';
-import 'package:relay_player/features/accounts/plex_session.dart';
 import 'package:relay_player/features/favorites_history/history_controller.dart';
 import 'package:relay_player/features/favorites_history/resume_entries.dart';
 import 'package:relay_player/features/favorites_history/watch_actions.dart';
 import 'package:relay_player/features/favorites_history/watch_state.dart';
 import 'package:relay_player/features/library/library_sort.dart';
+import 'package:relay_player/features/accounts/media_servers.dart';
+import 'package:relay_player/features/trackers/trackers_controller.dart';
 
 /// Mark watched / unwatched, the long press that opens it, and "Unwatched
 /// only". Plex itself is faked: whether a real server accepts the scrobble
 /// from a shared (not owned) server is a check against a real account.
 class _Plex extends PlexService {
-  _Plex({this.fail = false}) : super(clientId: 'test');
+  _Plex({this.fail = false}) : super(clientId: 'test', serverId: 'server');
 
   final bool fail;
   final calls = <String>[];
@@ -28,6 +28,17 @@ class _Plex extends PlexService {
     if (fail) throw Exception('offline');
     calls.add('${watched ? 'watched' : 'unwatched'} $ratingKey');
   }
+}
+
+class _NoTrackers extends TrackersController {
+  final finished_ = <String>[];
+
+  @override
+  TrackersState build() => const TrackersState();
+
+  @override
+  Future<void> finished(String serverId, String itemId, {DateTime? at}) async =>
+      finished_.add(itemId);
 }
 
 class _History extends HistoryController {
@@ -47,7 +58,7 @@ class _History extends HistoryController {
 }
 
 CatalogItem _film(String id, {int? views}) => CatalogItem(
-      source: CatalogSource.plex,
+      source: CatalogSource.server,
       sourceId: 'server',
       kind: CatalogKind.movie,
       id: id,
@@ -107,18 +118,11 @@ void main() {
     ProviderContainer container(_Plex plex, _History history) {
       final c = ProviderContainer(overrides: [
         connectedServersProvider.overrideWithValue([
-          ConnectedServer(
-            stored: const StoredPlexServer(
-              id: 'server',
-              name: 'server',
-              baseUrl: 'http://<lan-ip>:32400',
-              token: '<redacted>',
-            ),
-            service: plex,
-          ),
+          ConnectedServer(service: plex),
         ]),
         historyProvider.overrideWith(() => history),
-        plexOnDeckProvider.overrideWith((_) async => const []),
+        trackersProvider.overrideWith(_NoTrackers.new),
+        onDeckProvider.overrideWith((_) async => const []),
       ]);
       addTearDown(c.dispose);
       return c;
@@ -129,7 +133,7 @@ void main() {
       final plex = _Plex();
       final history = _History([
         HistoryItem(
-          kind: PlaybackKind.plex,
+          kind: PlaybackKind.server,
           sourceId: 'server',
           itemId: '42',
           title: 't',
@@ -167,7 +171,7 @@ void main() {
   group('unwatched only', () {
     test('drops watched films, keeps unwatched ones and every show', () {
       final show = CatalogItem(
-        source: CatalogSource.plex,
+        source: CatalogSource.server,
         sourceId: 'server',
         kind: CatalogKind.show,
         id: 'show',
