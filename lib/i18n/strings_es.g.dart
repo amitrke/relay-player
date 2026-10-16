@@ -1060,6 +1060,8 @@ class _Translations$settings$sources$es extends Translations$settings$sources$en
 	@override String get viaRelay => 'mediante relé';
 	@override String plexType({required Object type}) => 'Tipo en Plex: ${type}';
 	@override String get changedByYou => 'cambiado por ti';
+	@override String get localTab => 'Mostrar Local y red';
+	@override String get localTabSub => 'Una pestaña en Inicio para vídeos de este dispositivo y de carpetas de red. Se activa sola cuando añades una.';
 }
 
 // Path: addSource.kind
@@ -1809,6 +1811,8 @@ extension on TranslationsEs {
 			'settings.sources.viaRelay' => 'mediante relé',
 			'settings.sources.plexType' => ({required Object type}) => 'Tipo en Plex: ${type}',
 			'settings.sources.changedByYou' => 'cambiado por ti',
+			'settings.sources.localTab' => 'Mostrar Local y red',
+			'settings.sources.localTabSub' => 'Una pestaña en Inicio para vídeos de este dispositivo y de carpetas de red. Se activa sola cuando añades una.',
 			'onboarding.tagline' => 'Reproduce desde las fuentes que conectas.',
 			'onboarding.blurb' => 'Subnext Player reproduce desde fuentes que conectas tú: un servidor Plex, un NAS doméstico o archivos locales, u opcionalmente un proveedor o una lista de IPTV. No alojamos ningún contenido.',
 			'onboarding.localDesktop' => 'Archivos de este PC, o una carpeta de un NAS doméstico o un recurso SMB.',
@@ -1975,10 +1979,10 @@ extension on TranslationsEs {
 			'xtream.channels.none' => 'El panel no tiene canales en esta categoría.',
 			'xtream.hidden.title' => 'Ocultar palabras',
 			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
-			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
-			'xtream.hidden.add' => 'Añadir',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
+			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
 			'xtream.hidden.tapToRemove' => 'Selecciona una palabra para dejar de ocultarla.',
 			'transfer.noNetwork' => 'Este dispositivo no está en una red Wi-Fi ni Ethernet. Conéctalo a la misma red que el otro dispositivo e inténtalo de nuevo.',

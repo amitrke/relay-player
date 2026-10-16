@@ -6,6 +6,7 @@ import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/features/accounts/media_servers.dart';
 import 'package:relay_player/features/accounts/plex_session.dart';
+import 'package:relay_player/features/settings/settings_controller.dart';
 import 'package:relay_player/features/settings/sources_pane.dart';
 
 /// Until 2026-10-16 Add source was reachable only from first run and from an
@@ -31,6 +32,7 @@ void main() {
         overrides: [
           plexSessionProvider.overrideWith(_SignedOut.new),
           connectedServersProvider.overrideWithValue(const []),
+          localNetworkTabProvider.overrideWith(_LocalTab.new),
         ],
         child: MaterialApp.router(
           routerConfig: router,
@@ -53,4 +55,9 @@ void main() {
 class _SignedOut extends PlexSessionController {
   @override
   PlexState build() => const PlexState(stage: PlexStage.signedOut);
+}
+
+class _LocalTab extends LocalNetworkTabController {
+  @override
+  bool build() => false;
 }

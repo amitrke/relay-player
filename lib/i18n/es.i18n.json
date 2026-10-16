@@ -448,7 +448,9 @@
       "shared": "Compartido contigo",
       "viaRelay": "mediante relé",
       "plexType": "Tipo en Plex: {type}",
-      "changedByYou": "cambiado por ti"
+      "changedByYou": "cambiado por ti",
+      "localTab": "Mostrar Local y red",
+      "localTabSub": "Una pestaña en Inicio para vídeos de este dispositivo y de carpetas de red. Se activa sola cuando añades una."
     }
   },
   "onboarding": {

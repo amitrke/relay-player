@@ -448,7 +448,9 @@
       "shared": "Shared with you",
       "viaRelay": "via relay",
       "plexType": "Plex type: {type}",
-      "changedByYou": "changed by you"
+      "changedByYou": "changed by you",
+      "localTab": "Show Local & Network",
+      "localTabSub": "A tab on Home for videos on this device and on network shares. It turns on by itself when you add one."
     }
   },
   "onboarding": {

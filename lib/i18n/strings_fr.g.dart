@@ -1060,6 +1060,8 @@ class _Translations$settings$sources$fr extends Translations$settings$sources$en
 	@override String get viaRelay => 'via relais';
 	@override String plexType({required Object type}) => 'Type Plex : ${type}';
 	@override String get changedByYou => 'modifié par vous';
+	@override String get localTab => 'Afficher Local et réseau';
+	@override String get localTabSub => 'Un onglet de l\'accueil pour les vidéos de cet appareil et des partages réseau. Il s\'active tout seul quand vous en ajoutez un.';
 }
 
 // Path: addSource.kind
@@ -1809,6 +1811,8 @@ extension on TranslationsFr {
 			'settings.sources.viaRelay' => 'via relais',
 			'settings.sources.plexType' => ({required Object type}) => 'Type Plex : ${type}',
 			'settings.sources.changedByYou' => 'modifié par vous',
+			'settings.sources.localTab' => 'Afficher Local et réseau',
+			'settings.sources.localTabSub' => 'Un onglet de l\'accueil pour les vidéos de cet appareil et des partages réseau. Il s\'active tout seul quand vous en ajoutez un.',
 			'onboarding.tagline' => 'Lisez depuis les sources que vous connectez.',
 			'onboarding.blurb' => 'Subnext Player lit depuis des sources que vous connectez vous-même : un serveur Plex, un NAS domestique ou des fichiers locaux, ou en option un fournisseur ou une playlist IPTV. Nous n\'hébergeons aucun contenu.',
 			'onboarding.localDesktop' => 'Des fichiers sur ce PC, ou un dossier sur un NAS domestique ou un partage SMB.',
@@ -1975,10 +1979,10 @@ extension on TranslationsFr {
 			'xtream.channels.none' => 'Le panel ne liste aucune chaîne dans cette catégorie.',
 			'xtream.hidden.title' => 'Masquer des mots',
 			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
-			'xtream.hidden.hint' => 'Un pays, une langue, un mot',
-			'xtream.hidden.add' => 'Ajouter',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.hint' => 'Un pays, une langue, un mot',
+			'xtream.hidden.add' => 'Ajouter',
 			'xtream.hidden.none' => 'Rien n\'est masqué pour l\'instant.',
 			'xtream.hidden.tapToRemove' => 'Sélectionnez un mot pour ne plus le masquer.',
 			'transfer.noNetwork' => 'Cet appareil n\'est pas sur un réseau Wi-Fi ou Ethernet. Connectez-le au même réseau que l\'autre appareil et réessayez.',

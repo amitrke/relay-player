@@ -378,7 +378,7 @@ class _AdvancedSourcesControl extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ToggleRow(
+        SettingsToggleRow(
           title: tr.settings.advanced.toggle,
           // Names only what this build has. It said "the guide, and Xtream or
           // M3U sources" before either existed (v1.2.0 on the RELEASING.md
@@ -556,8 +556,10 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({
+/// A titled switch row. Public so panes in their own files match it.
+class SettingsToggleRow extends StatelessWidget {
+  const SettingsToggleRow({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.value,

@@ -13,6 +13,7 @@ import 'settings_controller.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
 import '../../domain/models/media_server.dart';
+import 'settings_screen.dart';
 
 /// Settings → Sources (§12.1): every connected Plex, Jellyfin or Emby server,
 /// what each of its libraries feeds, and the way to add another source.
@@ -47,6 +48,13 @@ class SourcesPane extends ConsumerWidget {
             ),
           ),
         const _AddServer(),
+        const SizedBox(height: 18),
+        SettingsToggleRow(
+          title: tr.settings.sources.localTab,
+          subtitle: tr.settings.sources.localTabSub,
+          value: ref.watch(localNetworkTabProvider),
+          onChanged: (v) => ref.read(localNetworkTabProvider.notifier).set(v),
+        ),
         // Add source was reachable only from first run and from an empty
         // library tab, so once Plex filled the library there was no way to
         // add Jellyfin, Emby, a share or a panel (found 2026-10-16). It is

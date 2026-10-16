@@ -10,6 +10,7 @@ import 'package:relay_player/core/theme/theme_controller.dart';
 import 'package:relay_player/features/accounts/plex_session.dart';
 import 'package:relay_player/features/ai/ai_controller.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
+import 'package:relay_player/features/settings/settings_controller.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
 import 'package:relay_player/features/trackers/trackers_controller.dart';
 import 'package:relay_player/data/trackers/tracker.dart';
@@ -197,6 +198,7 @@ void main() {
         overrides: [
           plexSessionProvider.overrideWith(_SignedOut.new),
           playbackPrefsProvider.overrideWith(_Prefs.new),
+          localNetworkTabProvider.overrideWith(_LocalTab.new),
         ],
         child: MaterialApp(
           home: RelayTheme(
@@ -235,6 +237,7 @@ void main() {
       overrides: [
         plexSessionProvider.overrideWith(_SignedOut.new),
         playbackPrefsProvider.overrideWith(_Prefs.new),
+        localNetworkTabProvider.overrideWith(_LocalTab.new),
       ],
     );
     addTearDown(container.dispose);
@@ -283,6 +286,12 @@ void main() {
 class _SignedOut extends PlexSessionController {
   @override
   PlexState build() => const PlexState(stage: PlexStage.signedOut);
+}
+
+/// In memory, like [_Prefs]: Sources shows the Local & Network switch.
+class _LocalTab extends LocalNetworkTabController {
+  @override
+  bool build() => false;
 }
 
 /// In memory: the real controller writes to the Hive-backed settings store.

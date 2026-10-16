@@ -1072,7 +1072,7 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
-3. Home — Movies / Series / Local & Network tabs by default (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
+3. Home — Movies / Series tabs, plus Local & Network once it is used (see the note below) (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
    > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
    > above the Movies grid, from the artboard. On the Chromecast a show in
    > progress then appeared under Movies and read as a bug, so films now resume
@@ -1082,6 +1082,8 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > from before it are treated as films until played again, unless Plex's On
    > Deck lists the same item, in which case they take its type. Pinned by the
    > `episode or film` group in `test/watch_state_test.dart`.
+   >
+   > **Local & Network is opt-in, 2026-10-16.** It used to be on Home for everyone, which suited playing device files and cost anyone who only uses servers the widest tab on the strip (the label already clips on phones, MANUAL_TESTING.md). It now appears when Video on this device or a network share is picked in Add source, or a share is saved, and Settings, Sources has a switch for it both ways (`localNetworkTabProvider`). Media access is not used as a signal: it is not remembered between launches, and asking at startup to find out would show a prompt nobody asked for. So the first read decides once and writes it down: an install already past first run keeps the tab, and a new install starts without it. The cost is that someone with no server who only wants device video has to pick it in Add source, which first run already offers.
 4. Category → grid/list of movies/series, **or** breadcrumb folder browser for Local & Network
    > **Movies and Series are rows, 2026-10-10.** One poster grid for the whole
    > merged library meant scrolling past hundreds of Plex posters to reach a

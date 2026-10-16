@@ -1060,6 +1060,8 @@ class _Translations$settings$sources$de extends Translations$settings$sources$en
 	@override String get viaRelay => 'über Relay';
 	@override String plexType({required Object type}) => 'Plex-Typ: ${type}';
 	@override String get changedByYou => 'von dir geändert';
+	@override String get localTab => 'Lokal & Netzwerk anzeigen';
+	@override String get localTabSub => 'Ein Tab auf der Startseite für Videos auf diesem Gerät und in Netzwerkfreigaben. Er schaltet sich von selbst ein, wenn du eine hinzufügst.';
 }
 
 // Path: addSource.kind
@@ -1809,6 +1811,8 @@ extension on TranslationsDe {
 			'settings.sources.viaRelay' => 'über Relay',
 			'settings.sources.plexType' => ({required Object type}) => 'Plex-Typ: ${type}',
 			'settings.sources.changedByYou' => 'von dir geändert',
+			'settings.sources.localTab' => 'Lokal & Netzwerk anzeigen',
+			'settings.sources.localTabSub' => 'Ein Tab auf der Startseite für Videos auf diesem Gerät und in Netzwerkfreigaben. Er schaltet sich von selbst ein, wenn du eine hinzufügst.',
 			'onboarding.tagline' => 'Spiel ab, was deine verbundenen Quellen bieten.',
 			'onboarding.blurb' => 'Subnext Player spielt aus Quellen ab, die du selbst verbindest: einem Plex-Server, einem NAS zu Hause oder lokalen Dateien, oder optional einem IPTV-Anbieter oder einer Playlist. Wir hosten keine Inhalte.',
 			'onboarding.localDesktop' => 'Dateien auf diesem PC oder ein Ordner auf einem NAS zu Hause oder einer SMB-Freigabe.',
@@ -1975,10 +1979,10 @@ extension on TranslationsDe {
 			'xtream.channels.none' => 'Das Panel listet in dieser Kategorie keine Sender.',
 			'xtream.hidden.title' => 'Wörter ausblenden',
 			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
-			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
-			'xtream.hidden.add' => 'Hinzufügen',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
+			'xtream.hidden.add' => 'Hinzufügen',
 			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',
 			'xtream.hidden.tapToRemove' => 'Wähle ein Wort aus, um es nicht mehr auszublenden.',
 			'transfer.noNetwork' => 'Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.',

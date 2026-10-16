@@ -34,11 +34,16 @@ enum LibraryTab {
 
   /// §8.2: Live TV exists only while Advanced Sources is on. The tab is absent
   /// from the tree rather than disabled, so there is nothing to discover when
-  /// the gate is off.
-  static List<LibraryTab> visible({required bool advancedSources}) => [
+  /// the gate is off. Local & Network is absent until it is used
+  /// (`localNetworkTabProvider`, 2026-10-16).
+  static List<LibraryTab> visible({
+    required bool advancedSources,
+    bool localNetwork = true,
+  }) =>
+      [
         movies,
         series,
-        localNetwork,
+        if (localNetwork) LibraryTab.localNetwork,
         if (advancedSources) liveTv,
       ];
 

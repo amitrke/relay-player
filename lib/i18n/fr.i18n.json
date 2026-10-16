@@ -448,7 +448,9 @@
       "shared": "Partagé avec vous",
       "viaRelay": "via relais",
       "plexType": "Type Plex : {type}",
-      "changedByYou": "modifié par vous"
+      "changedByYou": "modifié par vous",
+      "localTab": "Afficher Local et réseau",
+      "localTabSub": "Un onglet de l'accueil pour les vidéos de cet appareil et des partages réseau. Il s'active tout seul quand vous en ajoutez un."
     }
   },
   "onboarding": {

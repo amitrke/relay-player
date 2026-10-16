@@ -8,6 +8,7 @@ import '../../data/filesystem/smb_source.dart';
 import '../library/poster_grid.dart';
 import 'smb_controller.dart';
 import '../../i18n/strings.g.dart';
+import '../settings/settings_controller.dart';
 
 /// Adds a network share (§7.2).
 ///
@@ -68,6 +69,9 @@ class _AddSmbScreenState extends ConsumerState<AddSmbScreen> {
       await ref
           .read(smbSharesProvider.notifier)
           .save(share, password: _password.text);
+      // A saved share is a reason to have the tab, however this screen was
+      // reached (§12 screen 3).
+      await ref.read(localNetworkTabProvider.notifier).set(true);
 
       if (mounted) context.go('/library?tab=local');
     } catch (e) {

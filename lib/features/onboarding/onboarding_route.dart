@@ -39,12 +39,22 @@ class AddSourceRoute extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Picking a local kind is using Local & Network, so its tab appears
+    // before the app goes there; otherwise `?tab=local` would land on a tab
+    // that is not on the strip and fall back to Movies.
+    Future<void> showLocal() =>
+        ref.read(localNetworkTabProvider.notifier).set(true);
     return AddSourceScreen(
       advancedEnabled: ref.watch(advancedSourcesEnabledProvider),
       onBack: () => context.canPop() ? context.pop() : context.go('/library'),
       onOpenSettings: () => context.go('/settings'),
       onReceiveFromDevice: () => context.push('/transfer/receive'),
-      onPickSource: (kind) => _open(context, kind),
+      onPickSource: (kind) async {
+        if (kind == SourceKind.localFiles || kind == SourceKind.smb) {
+          await showLocal();
+        }
+        if (context.mounted) _open(context, kind);
+      },
     );
   }
 

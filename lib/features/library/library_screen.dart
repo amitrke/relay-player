@@ -257,10 +257,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final f = RelayLayout.of(context);
     final tabs = LibraryTab.visible(
       advancedSources: ref.watch(advancedSourcesEnabledProvider),
+      localNetwork: ref.watch(localNetworkTabProvider),
     );
 
     // The gate can retract the tab the user is standing on (toggling Advanced sources
-    // off while standing on it), so fall back rather than render a dead tab.
+    // off while standing on it, or hiding Local & Network in Settings), so fall
+    // back rather than render a dead tab.
     final requested = _tabFromQuery(context);
     final selected = tabs.contains(_selected ?? requested)
         ? (_selected ?? requested)!

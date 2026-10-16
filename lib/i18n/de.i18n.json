@@ -448,7 +448,9 @@
       "shared": "Mit dir geteilt",
       "viaRelay": "über Relay",
       "plexType": "Plex-Typ: {type}",
-      "changedByYou": "von dir geändert"
+      "changedByYou": "von dir geändert",
+      "localTab": "Lokal & Netzwerk anzeigen",
+      "localTabSub": "Ein Tab auf der Startseite für Videos auf diesem Gerät und in Netzwerkfreigaben. Er schaltet sich von selbst ein, wenn du eine hinzufügst."
     }
   },
   "onboarding": {

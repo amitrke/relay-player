@@ -2016,6 +2016,12 @@ class Translations$settings$sources$en {
 
 	/// en: 'changed by you'
 	String get changedByYou => 'changed by you';
+
+	/// en: 'Show Local & Network'
+	String get localTab => 'Show Local & Network';
+
+	/// en: 'A tab on Home for videos on this device and on network shares. It turns on by itself when you add one.'
+	String get localTabSub => 'A tab on Home for videos on this device and on network shares. It turns on by itself when you add one.';
 }
 
 // Path: addSource.kind
@@ -3135,6 +3141,8 @@ extension on Translations {
 			'settings.sources.viaRelay' => 'via relay',
 			'settings.sources.plexType' => ({required Object type}) => 'Plex type: ${type}',
 			'settings.sources.changedByYou' => 'changed by you',
+			'settings.sources.localTab' => 'Show Local & Network',
+			'settings.sources.localTabSub' => 'A tab on Home for videos on this device and on network shares. It turns on by itself when you add one.',
 			'onboarding.tagline' => 'Play from the sources you connect.',
 			'onboarding.blurb' => 'Subnext Player streams from sources you connect yourself: a Plex server, a home NAS or local files, or optionally an IPTV provider or playlist. We host no content.',
 			'onboarding.localDesktop' => 'Files on this PC, or a folder on a home NAS or SMB share.',
@@ -3301,10 +3309,10 @@ extension on Translations {
 			'xtream.channels.none' => 'The panel lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
-			'xtream.hidden.hint' => 'A country, a language, a word',
-			'xtream.hidden.add' => 'Add',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.hint' => 'A country, a language, a word',
+			'xtream.hidden.add' => 'Add',
 			'xtream.hidden.none' => 'Nothing hidden yet.',
 			'xtream.hidden.tapToRemove' => 'Select a word to stop hiding it.',
 			'transfer.noNetwork' => 'This device is not on a Wi-Fi or Ethernet network. Connect it to the same network as the other device and try again.',
