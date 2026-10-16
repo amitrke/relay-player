@@ -15,7 +15,7 @@ import 'package:relay_player/features/favorites_history/history_controller.dart'
 import 'package:relay_player/features/search/ai_results_view.dart';
 
 CatalogItem _film(String title) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: 'server',
   kind: CatalogKind.movie,
   id: title,

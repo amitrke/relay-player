@@ -113,7 +113,7 @@ void main() {
   testWidgets('holding an in-progress Plex title offers to download it', (
     tester,
   ) async {
-    await pump(tester, [_entry(PlaybackKind.plex)]);
+    await pump(tester, [_entry(PlaybackKind.server)]);
 
     await tester.longPress(find.text('Half Watched'));
     await tester.pumpAndSettle();
@@ -130,7 +130,7 @@ void main() {
 
   testWidgets('an episode is downloaded as an episode', (tester) async {
     await pump(tester, [
-      _entry(PlaybackKind.plex, title: 'Show S1 E2', episode: true),
+      _entry(PlaybackKind.server, title: 'Show S1 E2', episode: true),
     ], episodes: true);
 
     await tester.longPress(find.text('Show S1 E2'));
@@ -144,7 +144,7 @@ void main() {
   testWidgets('one already saved offers to delete it instead', (tester) async {
     await pump(
       tester,
-      [_entry(PlaybackKind.plex)],
+      [_entry(PlaybackKind.server)],
       downloads: [
         DownloadRecord(
           serverId: 'srv',

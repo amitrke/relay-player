@@ -26,7 +26,7 @@ CatalogItem _film(
   DateTime? watchedAt,
   int views = 0,
 }) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: 's',
   kind: CatalogKind.movie,
   id: id,

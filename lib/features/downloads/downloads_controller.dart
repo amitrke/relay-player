@@ -6,10 +6,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../data/downloads/download_engine.dart';
 import '../../data/downloads/download_record.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
 
 /// Where downloaded files live: the app's private storage, so they cannot be
 /// browsed, shared or picked up by a gallery. Overridden in tests.
@@ -28,7 +28,7 @@ final downloadEngineProvider = Provider<DownloadEngine>(
 
 /// Turns a server and an item into something to fetch. A seam for tests.
 typedef DownloadSourceResolver =
-    Future<PlexDownloadSource> Function(String serverId, String ratingKey);
+    Future<MediaDownloadSource> Function(String serverId, String ratingKey);
 
 final downloadSourceResolverProvider = Provider<DownloadSourceResolver>((ref) {
   return (serverId, ratingKey) {
@@ -368,7 +368,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         key,
         (r) => r.copyWith(state: DownloadState.failed, error: e.message),
       );
-    } on PlexUnreachable catch (e) {
+    } on MediaServerUnreachable catch (e) {
       _update(
         key,
         (r) => r.copyWith(state: DownloadState.failed, error: e.message),

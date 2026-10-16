@@ -25,7 +25,7 @@ List<CatalogItem> recentlyWatchedFilms(
       if (!h.isEpisode && h.position >= const Duration(minutes: 1))
         (
           item: CatalogItem(
-            source: CatalogSource.plex,
+            source: CatalogSource.server,
             sourceId: h.sourceId,
             kind: CatalogKind.movie,
             id: h.itemId,

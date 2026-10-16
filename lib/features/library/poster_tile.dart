@@ -11,6 +11,8 @@ import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
 import '../../i18n/strings.g.dart';
+import '../../domain/models/media_server.dart';
+import '../accounts/media_servers.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
@@ -66,7 +68,7 @@ class PosterTile extends ConsumerWidget {
       onLongPress: () => showWatchActions(
         context,
         ref,
-        item.source == CatalogSource.plex
+        item.source == CatalogSource.server
             ? WatchTarget(
                 serverId: item.sourceId,
                 ratingKey: item.id,
@@ -115,7 +117,10 @@ class PosterTile extends ConsumerWidget {
                     left: 6,
                     // Clear of the progress bar when there is one.
                     bottom: watch.inProgress ? 14 : 6,
-                    child: SourceBadge(source: item.source),
+                    child: SourceBadge(
+                      source: item.source,
+                      sourceId: item.sourceId,
+                    ),
                   ),
                 Positioned(
                   top: -6,
@@ -249,18 +254,31 @@ class WatchProgressBar extends StatelessWidget {
 /// Plex by name, and a panel as IPTV, as in Settings and onboarding. Never the
 /// panel's own name: a provider label on a poster belongs to the user, but it
 /// would also turn up in anything shot from a screen (§1).
-class SourceBadge extends StatelessWidget {
-  const SourceBadge({super.key, required this.source});
+///
+/// A server item names its product (Plex, Jellyfin, Emby), looked up from the
+/// connected server; one that is no longer connected falls back to "Plex",
+/// which was the only kind before §6.2.
+class SourceBadge extends ConsumerWidget {
+  const SourceBadge({super.key, required this.source, this.sourceId});
 
   final CatalogSource source;
+  final String? sourceId;
 
-  static String labelFor(CatalogSource source) => switch (source) {
-    CatalogSource.plex => 'Plex',
-    CatalogSource.xtream => 'IPTV',
-  };
+  static String labelFor(CatalogSource source, {ServerKind? kind}) =>
+      switch (source) {
+        CatalogSource.server => (kind ?? ServerKind.plex).label,
+        CatalogSource.xtream => 'IPTV',
+      };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kind = sourceId == null
+        ? null
+        : ref
+              .watch(connectedServersProvider)
+              .where((s) => s.id == sourceId)
+              .firstOrNull
+              ?.kind;
     final t = RelayTheme.of(context);
     final tv = RelayLayout.of(context) == RelayFormFactor.tv;
     return DecoratedBox(
@@ -273,7 +291,7 @@ class SourceBadge extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         child: Text(
-          labelFor(source),
+          labelFor(source, kind: kind),
           style: TextStyle(
             color: t.ink,
             fontSize: tv ? 12 : 9.5,

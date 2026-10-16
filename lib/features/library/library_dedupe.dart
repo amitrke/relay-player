@@ -27,7 +27,7 @@ List<CatalogItem> dedupeLibrary(
   required Set<String> localPlexServers,
 }) {
   int rank(CatalogItem item) => switch (item.source) {
-    CatalogSource.plex => localPlexServers.contains(item.sourceId) ? 0 : 1,
+    CatalogSource.server => localPlexServers.contains(item.sourceId) ? 0 : 1,
     CatalogSource.xtream => 2,
   };
 

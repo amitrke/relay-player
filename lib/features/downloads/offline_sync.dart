@@ -1,15 +1,14 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/downloads/episode_rules.dart';
 import '../../data/downloads/offline_watch_queue.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
+import '../../domain/models/media_server.dart';
 import '../settings/settings_controller.dart';
 import 'downloads_controller.dart';
+import '../accounts/media_servers.dart';
 
 /// The four things offline sync asks of a server. Narrower than
 /// [PlexService] so the queue and the rules can be tested against a fake.
@@ -25,10 +24,10 @@ abstract class SyncServer {
   Future<List<RuleEpisode>> episodesOf(String showRatingKey);
 }
 
-class PlexSyncServer implements SyncServer {
-  PlexSyncServer(this._plex);
+class MediaSyncServer implements SyncServer {
+  MediaSyncServer(this._plex);
 
-  final PlexService _plex;
+  final MediaServer _plex;
 
   @override
   Future<({bool exists, DateTime? lastViewedAt})> viewState(
@@ -48,7 +47,7 @@ class PlexSyncServer implements SyncServer {
     required Duration position,
     required Duration duration,
   }) => _plex.reportProgress(
-    ratingKey: ratingKey,
+    id: ratingKey,
     state: 'stopped',
     position: position,
     duration: duration,
@@ -57,9 +56,9 @@ class PlexSyncServer implements SyncServer {
   @override
   Future<List<RuleEpisode>> episodesOf(String showRatingKey) async => [
     for (final m in await _plex.episodesOf(showRatingKey))
-      if (m.type == PlexMetadataType.episode)
+      if (m.type == MediaItemType.episode)
         RuleEpisode(
-          ratingKey: m.ratingKey,
+          ratingKey: m.id,
           title: m.title,
           season: m.parentIndex ?? 1,
           index: m.index ?? 0,
@@ -78,7 +77,7 @@ final syncServerLookupProvider = Provider<SyncServerLookup>((ref) {
         .where((s) => s.id == serverId)
         .firstOrNull
         ?.service;
-    return service == null ? null : PlexSyncServer(service);
+    return service == null ? null : MediaSyncServer(service);
   };
 });
 

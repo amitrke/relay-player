@@ -8,9 +8,9 @@ import 'package:hive_ce/hive.dart';
 import 'package:relay_player/data/downloads/download_engine.dart';
 import 'package:relay_player/data/downloads/download_record.dart';
 import 'package:relay_player/data/local/app_settings_store.dart';
-import 'package:relay_player/data/plex/plex_service.dart';
 import 'package:relay_player/features/downloads/downloads_controller.dart';
 import 'package:relay_player/features/settings/settings_controller.dart';
+import 'package:relay_player/domain/models/media_server.dart';
 
 /// What the fake server answers for a poster: a few bytes, not an image,
 /// because the controller stores whatever it is given.
@@ -297,7 +297,7 @@ void main() {
             ratingKey,
           ) async {
             final s = servers[ratingKey]!;
-            return PlexDownloadSource(
+            return MediaDownloadSource(
               // A token in the URL, as the real one has. It must never reach
               // the stored record.
               url: '${s.url}?X-Plex-Token=secret-token',
@@ -507,7 +507,7 @@ void main() {
             (serverId, posterPath) async => _poster,
           ),
           downloadSourceResolverProvider.overrideWithValue(
-            (_, _) async => PlexDownloadSource(
+            (_, _) async => MediaDownloadSource(
               url: server.url.toString(),
               title: 'Film',
               duration: Duration.zero,

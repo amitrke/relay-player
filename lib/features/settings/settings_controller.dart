@@ -1,9 +1,9 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/app_settings_store.dart';
 import '../library/library_mapping.dart';
 import 'settings_screen.dart';
+import '../../domain/models/media_server.dart';
 
 /// Set once at startup, before `runApp`, so settings are readable synchronously
 /// and the first frame never renders a default the user already changed.
@@ -95,7 +95,7 @@ class LibraryMappingController extends Notifier<LibraryMapping> {
 
   Future<void> setPlacement(
     String serverId,
-    PlexLibrarySection section,
+    MediaSection section,
     LibraryPlacement placement,
   ) async {
     final next = state.withPlacement(serverId, section, placement);

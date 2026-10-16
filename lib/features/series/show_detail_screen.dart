@@ -1,12 +1,10 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
+import '../../domain/models/media_server.dart';
 import '../downloads/episode_rule_sheet.dart';
 import '../../data/local/history_store.dart';
 import '../favorites_history/history_controller.dart';
@@ -15,19 +13,20 @@ import '../favorites_history/watch_state.dart';
 import '../library/poster_grid.dart';
 import '../library/poster_tile.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
 
 /// (serverId, ratingKey). A ratingKey alone is ambiguous once more than one
 /// server is connected.
 typedef _Ref = (String, String);
 
-PlexService _serviceOf(Ref ref, String serverId) {
+MediaServer _serviceOf(Ref ref, String serverId) {
   for (final server in ref.watch(connectedServersProvider)) {
     if (server.id == serverId) return server.service;
   }
   throw StateError('No connected Plex server with id "$serverId".');
 }
 
-final _showProvider = FutureProvider.family<PlexMetadata?, _Ref>((ref, arg) {
+final _showProvider = FutureProvider.family<MediaItem?, _Ref>((ref, arg) {
   return _serviceOf(ref, arg.$1).item(arg.$2);
 });
 
@@ -38,12 +37,12 @@ final _showProvider = FutureProvider.family<PlexMetadata?, _Ref>((ref, arg) {
 /// what was true before a "mark whole show watched" or a watch in another
 /// Plex app.
 final _seasonsProvider =
-    FutureProvider.autoDispose.family<List<PlexMetadata>, _Ref>((ref, arg) {
+    FutureProvider.autoDispose.family<List<MediaItem>, _Ref>((ref, arg) {
   return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
 final _episodesProvider =
-    FutureProvider.autoDispose.family<List<PlexMetadata>, _Ref>((ref, arg) {
+    FutureProvider.autoDispose.family<List<MediaItem>, _Ref>((ref, arg) {
   return _serviceOf(ref, arg.$1).children(arg.$2);
 });
 
@@ -98,7 +97,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           // Plex usually nests show -> season -> episode, but a show with no
           // season folders returns episodes straight away. Treat both, rather
           // than assuming the nesting and rendering an empty season list.
-          final isFlat = list.first.type == PlexMetadataType.episode;
+          final isFlat = list.first.type == MediaItemType.episode;
           if (isFlat) {
             return ListView(
               padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
@@ -111,9 +110,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
             );
           }
 
-          final selected = list.any((s) => s.ratingKey == _selectedSeason)
+          final selected = list.any((s) => s.id == _selectedSeason)
               ? _selectedSeason!
-              : list.first.ratingKey;
+              : list.first.id;
 
           return ListView(
             padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
@@ -138,7 +137,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 class _ShowHeader extends ConsumerWidget {
   const _ShowHeader({required this.show, required this.serverId});
 
-  final PlexMetadata? show;
+  final MediaItem? show;
   final String serverId;
 
   @override
@@ -146,7 +145,7 @@ class _ShowHeader extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final item = show;
     if (item == null) return const SizedBox.shrink();
-    final poster = plexServiceFor(ref, serverId).posterUrl(item);
+    final poster = mediaServerFor(ref, serverId).posterUrl(item);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +188,7 @@ class _ShowHeader extends ConsumerWidget {
               const SizedBox(height: 6),
               EpisodeRuleButton(
                 serverId: serverId,
-                showRatingKey: item.ratingKey,
+                showRatingKey: item.id,
                 showTitle: item.title,
               ),
               if ((item.summary ?? '').isNotEmpty) ...[
@@ -214,7 +213,7 @@ class _SeasonChips extends StatelessWidget {
     required this.onSelect,
   });
 
-  final List<PlexMetadata> seasons;
+  final List<MediaItem> seasons;
   final String selected;
   final ValueChanged<String> onSelect;
 
@@ -229,21 +228,21 @@ class _SeasonChips extends StatelessWidget {
         for (final season in seasons)
           RelayTappable(
             borderRadius: 999,
-            onTap: () => onSelect(season.ratingKey),
+            onTap: () => onSelect(season.id),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: season.ratingKey == selected ? t.accent : t.surface,
+                color: season.id == selected ? t.accent : t.surface,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: season.ratingKey == selected ? t.accent : t.line,
+                  color: season.id == selected ? t.accent : t.line,
                 ),
               ),
               child: Text(
                 season.title,
                 style: TextStyle(
-                  color: season.ratingKey == selected ? t.accentInk : t.inkDim,
+                  color: season.id == selected ? t.accentInk : t.inkDim,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -287,24 +286,20 @@ class _EpisodeRow extends ConsumerWidget {
   const _EpisodeRow({required this.serverId, required this.episode});
 
   final String serverId;
-  final PlexMetadata episode;
+  final MediaItem episode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
-    final total = episode.durationMs == null
-        ? null
-        : Duration(milliseconds: episode.durationMs!);
-    final key = '${PlaybackKind.plex.wire}:$serverId:${episode.ratingKey}';
+    final total = episode.duration;
+    final key = '${PlaybackKind.server.wire}:$serverId:${episode.id}';
     final watch = WatchState.resolve(
       override: ref.watch(watchOverridesProvider.select((m) => m[key])),
       // Only this row's entry, so playback elsewhere does not rebuild the list.
       local: ref.watch(historyProvider
           .select((all) => all.where((h) => h.key == key).firstOrNull)),
       plexViewCount: episode.viewCount,
-      plexOffset: episode.viewOffsetMs == null
-          ? null
-          : Duration(milliseconds: episode.viewOffsetMs!),
+      plexOffset: episode.viewOffset,
       plexDuration: total,
       plexLastViewedAt: episode.lastViewedAt,
     );
@@ -323,13 +318,13 @@ class _EpisodeRow extends ConsumerWidget {
       // is Material's tint, which MANUAL_TESTING §6 found invisible on a TV.
       child: RelaySurface(
         padding: const EdgeInsets.all(14),
-        onTap: () => context.push('/play/$serverId/${episode.ratingKey}'),
+        onTap: () => context.push('/play/$serverId/${episode.id}'),
         onLongPress: () => showWatchActions(
           context,
           ref,
           WatchTarget(
             serverId: serverId,
-            ratingKey: episode.ratingKey,
+            ratingKey: episode.id,
             title: episode.title,
             watched: watch.watched,
             downloadable: true,

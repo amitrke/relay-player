@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +11,6 @@ import '../../data/local/library_loader.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../advanced_sources/xtream_controller.dart';
-import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
 import '../live_tv/live_tv_tab.dart';
@@ -25,11 +23,13 @@ import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
 
 /// One server's video libraries. Shared by the tabs and by Settings → Sources,
 /// so the mapping UI lists exactly what the tabs draw from.
-final plexSectionsProvider =
-    FutureProvider.family<List<PlexLibrarySection>, String>((
+final serverSectionsProvider =
+    FutureProvider.family<List<MediaSection>, String>((
       ref,
       serverId,
     ) async {
@@ -123,7 +123,7 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
           },
           fetch: () async {
             final sections = await ref.read(
-              plexSectionsProvider(server.id).future,
+              serverSectionsProvider(server.id).future,
             );
             final wanted = mapping.sectionsFor(tab, server.id, sections);
             // Section by section, and not through `itemsFrom`, which merges
@@ -169,7 +169,7 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
     // AI index, release dates) sees one copy of a title; see dedupeLibrary.
     final localPlex = {
       for (final s in servers)
-        if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+        if (plexUrlIsLocal(s.service.baseUrl ?? '')) s.id,
     };
     final events = StreamIterator(
       loadLibrary(

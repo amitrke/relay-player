@@ -7,8 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
+import '../../domain/models/media_server.dart';
 import '../../data/local/history_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
@@ -26,6 +25,7 @@ import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -295,7 +295,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // final position, and reading a Riverpod ref during disposal throws — so the
   // last write would be the one that crashes rather than the one that saves.
   HistoryController? _history;
-  PlexService? _plexService;
+  MediaServer? _plexService;
   OfflineWatchQueue? _offlineQueue;
 
   /// For refreshing Plex's On Deck once playback ends. Captured for the same
@@ -408,7 +408,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // provider change Riverpod refuses mid-lifecycle.
     final container = _container;
     if (container != null) {
-      scheduleMicrotask(() => container.invalidate(plexOnDeckProvider));
+      scheduleMicrotask(() => container.invalidate(onDeckProvider));
     }
     for (final s in _subs) {
       unawaited(s.cancel());
@@ -546,7 +546,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         // Where Plex last saw this title, if it can be asked quickly. Another
         // device may have watched on since. Offline this just fails, and the
         // position kept on this device is used instead.
-        resumeFrom = (await plexServiceFor(
+        resumeFrom = (await mediaServerFor(
           ref,
           widget.serverId!,
         ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3)))
@@ -557,7 +557,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title: record.title,
         live: false,
         posterRef: record.posterPath,
-        historyKind: PlaybackKind.plex,
+        historyKind: PlaybackKind.server,
         historyId: widget.ratingKey,
         resumeFrom: resumeFrom,
         episode: record.isEpisode,
@@ -565,14 +565,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
     }
 
-    final playable = await plexServiceFor(ref, widget.serverId!)
+    final playable = await mediaServerFor(ref, widget.serverId!)
         .directPlay(widget.ratingKey!);
     return _Playable(
       url: playable.url,
       title: playable.title,
       live: false,
       posterRef: playable.posterPath,
-      historyKind: PlaybackKind.plex,
+      historyKind: PlaybackKind.server,
       historyId: widget.ratingKey,
       resumeFrom: playable.resumeFrom,
       episode: playable.isEpisode,
@@ -593,7 +593,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         // server removed there is nobody to report progress to, and that must
         // not stop the film playing.
         try {
-          _plexService = plexServiceFor(ref, widget.serverId!);
+          _plexService = mediaServerFor(ref, widget.serverId!);
         } on StateError {
           _plexService = null;
         }
@@ -680,7 +680,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // otherwise fine. For a saved copy, a report that cannot be made is kept
     // and delivered when the server is back (§18.6); for a stream there is
     // nothing to keep, because a stream with no server is not playing.
-    if (kind == PlaybackKind.plex) {
+    if (kind == PlaybackKind.server) {
       void keep(Object? _) {
         if (!playable.savedCopy) return;
         unawaited(_offlineQueue?.add(pendingFrom(
@@ -699,7 +699,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         unawaited(
           service
               .reportProgress(
-                ratingKey: playable.historyId!,
+                id: playable.historyId!,
                 state: state,
                 position: position,
                 duration: duration,

@@ -8,12 +8,11 @@ import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
 import '../../data/ai/ai_provider.dart';
 import '../../data/xtream/xtream_account_store.dart';
-import '../accounts/plex_session.dart';
 import '../advanced_sources/xtream_controller.dart';
 import '../ai/ai_controller.dart';
 import '../metadata/tmdb_controller.dart';
 import '../library/library_dedupe.dart';
-import '../library/library_screen.dart' show plexSectionsProvider;
+import '../library/library_screen.dart' show serverSectionsProvider;
 import '../library/poster_grid.dart';
 import '../settings/settings_controller.dart';
 import 'search_filters.dart';
@@ -23,6 +22,7 @@ import 'ai_results_view.dart';
 import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
 
 final _queryProvider = NotifierProvider<_QueryController, String>(
   _QueryController.new,
@@ -107,14 +107,14 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
             // Only libraries not hidden in Settings → Sources; see
             // PlexService.searchIn for why this cannot be filtered afterwards.
             final sections = await ref.watch(
-              plexSectionsProvider(server.id).future,
+              serverSectionsProvider(server.id).future,
             );
             final found = await server.service.searchIn(
               mapping.visibleSections(server.id, sections),
               query,
             );
             return [
-              for (final i in found) server.service.toCatalogItem(i.metadata),
+              for (final i in found) server.service.toCatalogItem(i),
             ];
           } catch (_) {
             return const <CatalogItem>[];
@@ -136,7 +136,7 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
       ],
       localPlexServers: {
         for (final s in servers)
-          if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+          if (plexUrlIsLocal(s.service.baseUrl ?? '')) s.id,
       },
     ),
     query,

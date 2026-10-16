@@ -7,13 +7,13 @@ import '../../data/downloads/download_record.dart';
 import '../../data/downloads/offline_watch_queue.dart';
 import '../../data/local/favorites_store.dart';
 import '../../data/local/history_store.dart';
-import '../accounts/plex_session.dart';
 import '../downloads/downloads_controller.dart';
 import '../downloads/offline_sync.dart';
 import 'favorites_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
 import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
 
 /// Watched / unwatched marks made in this session, by history key
 /// (`plex:<server>:<ratingKey>`).
@@ -75,13 +75,13 @@ class WatchOverrides extends Notifier<Map<String, bool>> {
     String ratingKey,
     bool watched,
   ) async {
-    final key = '${PlaybackKind.plex.wire}:$serverId:$ratingKey';
+    final key = '${PlaybackKind.server.wire}:$serverId:$ratingKey';
     state = {...state, key: watched};
     // Either way the local position is now wrong: a watched title has nothing
     // to resume, and an unwatched one starts again. Leaving it would put the
     // title straight back in Continue watching.
     await ref.read(historyProvider.notifier).remove(key);
-    ref.invalidate(plexOnDeckProvider);
+    ref.invalidate(onDeckProvider);
   }
 }
 

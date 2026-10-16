@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/data/local/history_store.dart';
 import 'package:relay_player/features/favorites_history/resume_entries.dart';
 import 'package:relay_player/features/favorites_history/watch_state.dart';
+import 'package:relay_player/data/plex/plex_service.dart';
 
 /// Plex watch state combined with this device's history.
 ///
@@ -12,7 +13,7 @@ HistoryItem _local(
   String id, {
   required int positionMin,
   required DateTime at,
-  PlaybackKind kind = PlaybackKind.plex,
+  PlaybackKind kind = PlaybackKind.server,
   bool? episode,
 }) =>
     HistoryItem(
@@ -47,7 +48,8 @@ PlexMetadata _deck(
           : viewed.millisecondsSinceEpoch ~/ 1000),
     });
 
-ResumeEntry _entry(PlexMetadata m) => ResumeEntry.fromPlex('server', m)!;
+ResumeEntry _entry(PlexMetadata m) =>
+    ResumeEntry.fromServer('server', PlexService.itemOf(m))!;
 
 void main() {
   final earlier = DateTime.utc(2026, 9, 1);
@@ -93,7 +95,7 @@ void main() {
     test('a glance here does not undo a watch elsewhere', () {
       final w = WatchState.resolve(
         local: HistoryItem(
-          kind: PlaybackKind.plex,
+          kind: PlaybackKind.server,
           sourceId: 'server',
           itemId: '1',
           title: 't',

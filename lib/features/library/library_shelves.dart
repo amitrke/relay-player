@@ -30,7 +30,7 @@ class Shelf {
 
   /// Unique across sources, so a Plex library and a panel category with the
   /// same name are two shelves, and stable enough to put in a route.
-  String get key => '${source.name}|$title';
+  String get key => '${source.wire}|$title';
 }
 
 /// How many titles a row draws before it ends in a "See all" tile. A panel
