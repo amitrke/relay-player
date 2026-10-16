@@ -135,9 +135,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Licence texts for the native libraries media_kit bundles on Android,
+  # Licence texts for the native libraries media_kit bundles on Android, iOS and Windows,
   # registered with Flutter's licence page by lib/core/native_licenses.dart.
-  # Fetched verbatim from upstream at the pinned versions; do not edit them.
+  # Fetched verbatim from upstream (Windows-only ones from upstream's
+  # current default branch, see native_licenses.dart); do not edit them.
   assets:
     - assets/licenses/
 

@@ -2126,15 +2126,34 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   `libmpv-2.dll` is mpv v0.36.0-403 configured `-Dgpl=false`, with FFmpeg
   `--disable-gpl --disable-nonfree --enable-version3` and every libav library
   reporting "LGPL version 3 or later" (built by `libmpv-win32-video-build`).
-  So the GPL concern is cleared. **Still open:** `native_licenses.dart` has no
-  Windows list yet, so the About licence page shows no native notices on
-  Windows. The Windows set is much larger than Android's, because this build
-  statically links FFmpeg with mbedTLS, dav1d, libjxl, libvpl, libbs2b, libwebp,
-  zimg, libxml2, libsoxr (LGPL), speex, libmysofa, shaderc, fribidi and
-  freetype, and mpv with lcms2, uchardet, libpng 1.6.41, libjpeg-turbo 3.0.1,
-  zlib 1.2.13, libarchive, SPIRV-Cross and ANGLE. Versions for most are not
-  printed in the binary, so the list needs the build repo's pinned versions and
-  each licence text, not guesses. The Store listing, privacy policy, age rating and the policy
+  So the GPL concern is cleared. **Licence list done, 2026-10-16:** `native_licenses.dart` now has a Windows
+  set of 26 entries, with the texts under `assets/licenses/` and the loading
+  covered by `test/native_licenses_test.dart`; `native-libs.lock.json` records
+  the SHA-256 of the `libmpv-2.dll` it was read from. The set is larger than
+  Android's because this build statically links FFmpeg with mbedTLS, dav1d,
+  libjxl, libvpl, libbs2b, libwebp, zimg, libxml2, libsoxr (LGPL), speex,
+  libmysofa, shaderc, fribidi and freetype, and mpv with libass, harfbuzz,
+  lcms2, uchardet, libpng, libjpeg-turbo, zlib, libarchive, SPIRV-Cross and
+  ANGLE. **What could not be verified, stated plainly:** the build repo
+  (`libmpv-win32-video-build`, release 2023-09-24) does not pin its
+  dependencies. Its package files clone upstream's default branch, so there is
+  no lock to copy; only mbedTLS 3.4.1 and Speex 1.2.1 are pinned by URL. Read
+  out of the DLL itself: mpv v0.36.0-403-g652a1dd907, FFmpeg n6.0, dav1d
+  1.2.1-48-g769bd14, libass 0.17.0-55-g5c15c883a4, libsoxr 0.1.3, FriBidi
+  1.0.13, libpng 1.6.41, libjpeg-turbo 3.0.1, zlib 1.2.13, libarchive 3.7.3dev.
+  The binary prints no version for libjxl, libvpl, libbs2b, libwebp, zimg,
+  libxml2, libmysofa, shaderc, FreeType, HarfBuzz, Little CMS, uchardet,
+  SPIRV-Cross or ANGLE, so those entries say "snapshot of upstream main,
+  2023-09-24" instead of a number. Their licence texts are upstream's current
+  ones (zlib's is from its 1.2.13 tag), not confirmed byte-identical to the
+  2023 files. Shaderc's bundled glslang and SPIRV-Tools and ANGLE's own
+  third-party parts are not itemised. All of these are static inside one DLL,
+  so the LGPL relink path is "replace `libmpv-2.dll`", which the entry text
+  says; nothing yet checks a built MSIX's DLL against the locked hash (the
+  Android check in `tool/native_lock.py` has no Windows equivalent). The
+  libxml2/FreeType/HarfBuzz/etc. versions can be pinned for good only by
+  moving to a build with a lock file or by building libmpv ourselves.
+  The Store listing, privacy policy, age rating and the policy
   update effective 2026-10-22 have not been done.
 - **LG webOS TV, backlog, added 2026-10-16.** Not planned for any phase.
   Flutter has no official webOS target. A community/LG embedder exists for

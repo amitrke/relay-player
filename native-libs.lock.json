@@ -49,17 +49,21 @@
   "windows": {
     "package": "media_kit_libs_windows_video",
     "version": "1.0.11",
+    "buildSource": "https://github.com/media-kit/libmpv-win32-video-build/releases/tag/2023-09-24",
     "buildFile": "windows/CMakeLists.txt",
     "pins": [
       "set(LIBMPV \"mpv-dev-x86_64-20230924-git-652a1dd.7z\")"
     ],
-    "note": "Development builds only; not distributed, so no licence entries and no shipped-binary check.",
+    "note": "Distributed in the Microsoft Store MSIX (licence entries added 2026-10-16). The build repo does not pin most dependencies, so most versions in native_licenses.dart are upstream snapshots; see the Windows paragraph there. shipped is the SHA-256 of libmpv-2.dll as read for that list; no tool checks it against a built MSIX yet.",
     "artifacts": [
       {
         "url": "https://github.com/media-kit/libmpv-win32-video-build/releases/download/2023-09-24/${LIBMPV}",
         "md5": "a832ef24b3a6ff97cd2560b5b9d04cd8",
         "measuredSha256": "dce982222d7a23e4a1c6f0fb6cc39f6e899a6714624b95ea49cff6558ee97572"
       }
-    ]
+    ],
+    "shipped": {
+      "libmpv-2.dll": "d5f0694b08c124e785d858d00082f3e3b158dd9138bfc48c0382bf1eb443a5fc"
+    }
   }
 }
