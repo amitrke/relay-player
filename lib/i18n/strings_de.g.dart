@@ -97,6 +97,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$transfer$de transfer = _Translations$transfer$de._(_root);
 	@override late final _Translations$mediaBrowser$de mediaBrowser = _Translations$mediaBrowser$de._(_root);
 	@override late final _Translations$trackers$de trackers = _Translations$trackers$de._(_root);
+	@override late final _Translations$seerr$de seerr = _Translations$seerr$de._(_root);
 }
 
 // Path: common
@@ -607,6 +608,45 @@ class _Translations$trackers$de extends Translations$trackers$en {
 	@override String connected({required Object service}) => 'Mit ${service} verbunden.';
 }
 
+// Path: seerr
+class _Translations$seerr$de extends Translations$seerr$en {
+	_Translations$seerr$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$seerr$errors$de errors = _Translations$seerr$errors$de._(_root);
+	@override String get intro => 'Verbinde deinen eigenen Overseerr-, Jellyseerr- oder Seerr-Server, um Filme und Serien anzufragen, die deine Mediathek noch nicht hat. Anfragen gehen an deinen Server und nirgendwo sonst; wer ihn betreibt, entscheidet über den Rest.';
+	@override String get address => 'Serveradresse';
+	@override String get addressHint => 'z. B. 192.168.1.20:5055';
+	@override String get find => 'Server suchen';
+	@override String get withPlex => 'Mit meinem Plex-Konto anmelden';
+	@override String get withPassword => 'Mit Benutzername und Passwort anmelden';
+	@override String get withKey => 'API-Schlüssel verwenden';
+	@override String get username => 'Benutzername oder E-Mail';
+	@override String get password => 'Passwort';
+	@override String get apiKey => 'API-Schlüssel';
+	@override String get keyNote => 'Ein API-Schlüssel handelt als Administrator des Servers, Anfragen damit laufen also nicht unter deinem Namen. Melde dich lieber an.';
+	@override String get connect => 'Verbinden';
+	@override String get connecting => 'Wird verbunden…';
+	@override String connected({required Object title, required Object name}) => 'Mit ${title} verbunden als ${name}';
+	@override String get disconnect => 'Trennen';
+	@override String get myRequests => 'Deine letzten Anfragen';
+	@override String get none => 'Noch keine Anfragen.';
+	@override String get statusPending => 'Wartet auf Freigabe';
+	@override String get statusApproved => 'Freigegeben';
+	@override String get statusDeclined => 'Abgelehnt';
+	@override String get statusAvailable => 'Verfügbar';
+	@override String rowTitle({required Object title}) => 'Bei ${title} anfragen';
+	@override String get requested => 'Angefragt';
+	@override String get partial => 'Teilweise verfügbar';
+	@override String askTitle({required Object title}) => '${title} anfragen?';
+	@override String askMovie({required Object server}) => 'Damit bittest du ${server}, den Film hinzuzufügen. Wer ihn betreibt, entscheidet darüber.';
+	@override String askShow({required Object server}) => 'Damit bittest du ${server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.';
+	@override String get request => 'Anfragen';
+	@override String sent({required Object title}) => '${title} angefragt.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$de extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -983,6 +1023,7 @@ class _Translations$settings$section$de extends Translations$settings$section$en
 	@override String get privacy => 'Datenschutz und Daten';
 	@override String get about => 'Über';
 	@override String get trackers => 'Wiedergabe-Tracking';
+	@override String get requests => 'Anfragen';
 }
 
 // Path: settings.advanced
@@ -1374,6 +1415,22 @@ class _Translations$trackers$errors$de extends Translations$trackers$errors$en {
 	@override String get badPaste => 'Das ist nicht, was die Anmeldeseite angezeigt hat. Kopiere es erneut und füge alles ein.';
 }
 
+// Path: seerr.errors
+class _Translations$seerr$errors$de extends Translations$seerr$errors$en {
+	_Translations$seerr$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get notASeerr => 'Unter dieser Adresse hat kein Overseerr-, Jellyseerr- oder Seerr-Server geantwortet. Prüfe sie, auch den Port (meist 5055).';
+	@override String get badKey => 'Der Server hat diesen API-Schlüssel nicht angenommen.';
+	@override String get refused => 'Der Server hat diese Anmeldung nicht angenommen.';
+	@override String status({required Object code}) => 'Der Server hat mit ${code} geantwortet.';
+	@override String get unreachable => 'Der Anfrage-Server war nicht erreichbar.';
+	@override String get signedOut => 'Der Anfrage-Server akzeptiert diese Anmeldung nicht mehr. Verbinde ihn erneut unter Einstellungen, Anfragen.';
+	@override String get alreadyRequested => 'Das wurde bereits angefragt.';
+}
+
 // Path: settings.metadata.errors
 class _Translations$settings$metadata$errors$de extends Translations$settings$metadata$errors$en {
 	_Translations$settings$metadata$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -1733,6 +1790,7 @@ extension on TranslationsDe {
 			'settings.section.privacy' => 'Datenschutz und Daten',
 			'settings.section.about' => 'Über',
 			'settings.section.trackers' => 'Wiedergabe-Tracking',
+			'settings.section.requests' => 'Anfragen',
 			'settings.advanced.dialogTitle' => 'Erweiterte Quellen einschalten',
 			'settings.advanced.dialogLead' => 'Du bist dabei, einen Drittanbieter mit deinen eigenen Zugangsdaten zu verbinden.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.',
@@ -1919,9 +1977,9 @@ extension on TranslationsDe {
 			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
 			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
 			'xtream.hidden.add' => 'Hinzufügen',
-			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',
 			'xtream.hidden.tapToRemove' => 'Wähle ein Wort aus, um es nicht mehr auszublenden.',
 			'transfer.noNetwork' => 'Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.',
 			'transfer.cannotListen' => ({required Object error}) => 'Empfang konnte nicht gestartet werden: ${error}',
@@ -2063,6 +2121,42 @@ extension on TranslationsDe {
 			'trackers.finish' => 'Anmeldung abschließen',
 			'trackers.copyAddress' => 'Adresse kopieren',
 			'trackers.connected' => ({required Object service}) => 'Mit ${service} verbunden.',
+			'seerr.errors.notASeerr' => 'Unter dieser Adresse hat kein Overseerr-, Jellyseerr- oder Seerr-Server geantwortet. Prüfe sie, auch den Port (meist 5055).',
+			'seerr.errors.badKey' => 'Der Server hat diesen API-Schlüssel nicht angenommen.',
+			'seerr.errors.refused' => 'Der Server hat diese Anmeldung nicht angenommen.',
+			'seerr.errors.status' => ({required Object code}) => 'Der Server hat mit ${code} geantwortet.',
+			'seerr.errors.unreachable' => 'Der Anfrage-Server war nicht erreichbar.',
+			'seerr.errors.signedOut' => 'Der Anfrage-Server akzeptiert diese Anmeldung nicht mehr. Verbinde ihn erneut unter Einstellungen, Anfragen.',
+			'seerr.errors.alreadyRequested' => 'Das wurde bereits angefragt.',
+			'seerr.intro' => 'Verbinde deinen eigenen Overseerr-, Jellyseerr- oder Seerr-Server, um Filme und Serien anzufragen, die deine Mediathek noch nicht hat. Anfragen gehen an deinen Server und nirgendwo sonst; wer ihn betreibt, entscheidet über den Rest.',
+			'seerr.address' => 'Serveradresse',
+			'seerr.addressHint' => 'z. B. 192.168.1.20:5055',
+			'seerr.find' => 'Server suchen',
+			'seerr.withPlex' => 'Mit meinem Plex-Konto anmelden',
+			'seerr.withPassword' => 'Mit Benutzername und Passwort anmelden',
+			'seerr.withKey' => 'API-Schlüssel verwenden',
+			'seerr.username' => 'Benutzername oder E-Mail',
+			'seerr.password' => 'Passwort',
+			'seerr.apiKey' => 'API-Schlüssel',
+			'seerr.keyNote' => 'Ein API-Schlüssel handelt als Administrator des Servers, Anfragen damit laufen also nicht unter deinem Namen. Melde dich lieber an.',
+			'seerr.connect' => 'Verbinden',
+			'seerr.connecting' => 'Wird verbunden…',
+			'seerr.connected' => ({required Object title, required Object name}) => 'Mit ${title} verbunden als ${name}',
+			'seerr.disconnect' => 'Trennen',
+			'seerr.myRequests' => 'Deine letzten Anfragen',
+			'seerr.none' => 'Noch keine Anfragen.',
+			'seerr.statusPending' => 'Wartet auf Freigabe',
+			'seerr.statusApproved' => 'Freigegeben',
+			'seerr.statusDeclined' => 'Abgelehnt',
+			'seerr.statusAvailable' => 'Verfügbar',
+			'seerr.rowTitle' => ({required Object title}) => 'Bei ${title} anfragen',
+			'seerr.requested' => 'Angefragt',
+			'seerr.partial' => 'Teilweise verfügbar',
+			'seerr.askTitle' => ({required Object title}) => '${title} anfragen?',
+			'seerr.askMovie' => ({required Object server}) => 'Damit bittest du ${server}, den Film hinzuzufügen. Wer ihn betreibt, entscheidet darüber.',
+			'seerr.askShow' => ({required Object server}) => 'Damit bittest du ${server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.',
+			'seerr.request' => 'Anfragen',
+			'seerr.sent' => ({required Object title}) => '${title} angefragt.',
 			_ => null,
 		};
 	}

@@ -97,6 +97,7 @@ class TranslationsFr extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$transfer$fr transfer = _Translations$transfer$fr._(_root);
 	@override late final _Translations$mediaBrowser$fr mediaBrowser = _Translations$mediaBrowser$fr._(_root);
 	@override late final _Translations$trackers$fr trackers = _Translations$trackers$fr._(_root);
+	@override late final _Translations$seerr$fr seerr = _Translations$seerr$fr._(_root);
 }
 
 // Path: common
@@ -607,6 +608,45 @@ class _Translations$trackers$fr extends Translations$trackers$en {
 	@override String connected({required Object service}) => 'Connecté à ${service}.';
 }
 
+// Path: seerr
+class _Translations$seerr$fr extends Translations$seerr$en {
+	_Translations$seerr$fr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$seerr$errors$fr errors = _Translations$seerr$errors$fr._(_root);
+	@override String get intro => 'Connectez votre propre serveur Overseerr, Jellyseerr ou Seerr pour demander des films et séries que votre bibliothèque n\'a pas encore. Les demandes vont à votre serveur et nulle part ailleurs ; son administrateur décide de la suite.';
+	@override String get address => 'Adresse du serveur';
+	@override String get addressHint => 'p. ex. 192.168.1.20:5055';
+	@override String get find => 'Trouver le serveur';
+	@override String get withPlex => 'Se connecter avec mon compte Plex';
+	@override String get withPassword => 'Se connecter avec nom d\'utilisateur et mot de passe';
+	@override String get withKey => 'Utiliser une clé d\'API';
+	@override String get username => 'Nom d\'utilisateur ou e-mail';
+	@override String get password => 'Mot de passe';
+	@override String get apiKey => 'Clé d\'API';
+	@override String get keyNote => 'Une clé d\'API agit comme l\'administrateur du serveur, donc les demandes faites avec elle ne sont pas à votre nom. Préférez vous connecter.';
+	@override String get connect => 'Se connecter';
+	@override String get connecting => 'Connexion…';
+	@override String connected({required Object title, required Object name}) => 'Connecté à ${title} en tant que ${name}';
+	@override String get disconnect => 'Déconnecter';
+	@override String get myRequests => 'Vos demandes récentes';
+	@override String get none => 'Aucune demande pour le moment.';
+	@override String get statusPending => 'En attente d\'approbation';
+	@override String get statusApproved => 'Approuvée';
+	@override String get statusDeclined => 'Refusée';
+	@override String get statusAvailable => 'Disponible';
+	@override String rowTitle({required Object title}) => 'Demander à ${title}';
+	@override String get requested => 'Demandé';
+	@override String get partial => 'En partie disponible';
+	@override String askTitle({required Object title}) => 'Demander ${title} ?';
+	@override String askMovie({required Object server}) => 'Cela demande à ${server} d\'ajouter le film. Son administrateur décide s\'il le fait.';
+	@override String askShow({required Object server}) => 'Cela demande à ${server} d\'ajouter toutes les saisons. Son administrateur décide s\'il le fait.';
+	@override String get request => 'Demander';
+	@override String sent({required Object title}) => '${title} demandé.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$fr extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$fr._(TranslationsFr root) : this._root = root, super.internal(root);
@@ -983,6 +1023,7 @@ class _Translations$settings$section$fr extends Translations$settings$section$en
 	@override String get privacy => 'Confidentialité et données';
 	@override String get about => 'À propos';
 	@override String get trackers => 'Suivi des visionnages';
+	@override String get requests => 'Demandes';
 }
 
 // Path: settings.advanced
@@ -1374,6 +1415,22 @@ class _Translations$trackers$errors$fr extends Translations$trackers$errors$en {
 	@override String get badPaste => 'Ce n\'est pas ce qu\'a donné la page de connexion. Copiez-le à nouveau et collez-le en entier.';
 }
 
+// Path: seerr.errors
+class _Translations$seerr$errors$fr extends Translations$seerr$errors$en {
+	_Translations$seerr$errors$fr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get notASeerr => 'Aucun serveur Overseerr, Jellyseerr ou Seerr n\'a répondu à cette adresse. Vérifiez-la, port compris (souvent 5055).';
+	@override String get badKey => 'Le serveur n\'a pas accepté cette clé d\'API.';
+	@override String get refused => 'Le serveur n\'a pas accepté cette connexion.';
+	@override String status({required Object code}) => 'Le serveur a répondu ${code}.';
+	@override String get unreachable => 'Impossible de joindre le serveur de demandes.';
+	@override String get signedOut => 'Le serveur de demandes n\'accepte plus cette connexion. Reconnectez-le dans Réglages, Demandes.';
+	@override String get alreadyRequested => 'Cela a déjà été demandé.';
+}
+
 // Path: settings.metadata.errors
 class _Translations$settings$metadata$errors$fr extends Translations$settings$metadata$errors$en {
 	_Translations$settings$metadata$errors$fr._(TranslationsFr root) : this._root = root, super.internal(root);
@@ -1733,6 +1790,7 @@ extension on TranslationsFr {
 			'settings.section.privacy' => 'Confidentialité et données',
 			'settings.section.about' => 'À propos',
 			'settings.section.trackers' => 'Suivi des visionnages',
+			'settings.section.requests' => 'Demandes',
 			'settings.advanced.dialogTitle' => 'Activer les sources avancées',
 			'settings.advanced.dialogLead' => 'Vous allez connecter un fournisseur tiers avec vos propres identifiants.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player ne fournit, n\'héberge ni ne cautionne aucun contenu ni aucun fournisseur. Vous indiquez l\'adresse et l\'identifiant, et l\'appli lit ce que renvoie cette adresse.',
@@ -1919,9 +1977,9 @@ extension on TranslationsFr {
 			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
 			'xtream.hidden.hint' => 'Un pays, une langue, un mot',
 			'xtream.hidden.add' => 'Ajouter',
-			'xtream.hidden.none' => 'Rien n\'est masqué pour l\'instant.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.none' => 'Rien n\'est masqué pour l\'instant.',
 			'xtream.hidden.tapToRemove' => 'Sélectionnez un mot pour ne plus le masquer.',
 			'transfer.noNetwork' => 'Cet appareil n\'est pas sur un réseau Wi-Fi ou Ethernet. Connectez-le au même réseau que l\'autre appareil et réessayez.',
 			'transfer.cannotListen' => ({required Object error}) => 'Impossible de commencer l\'écoute : ${error}',
@@ -2063,6 +2121,42 @@ extension on TranslationsFr {
 			'trackers.finish' => 'Terminer la connexion',
 			'trackers.copyAddress' => 'Copier l\'adresse',
 			'trackers.connected' => ({required Object service}) => 'Connecté à ${service}.',
+			'seerr.errors.notASeerr' => 'Aucun serveur Overseerr, Jellyseerr ou Seerr n\'a répondu à cette adresse. Vérifiez-la, port compris (souvent 5055).',
+			'seerr.errors.badKey' => 'Le serveur n\'a pas accepté cette clé d\'API.',
+			'seerr.errors.refused' => 'Le serveur n\'a pas accepté cette connexion.',
+			'seerr.errors.status' => ({required Object code}) => 'Le serveur a répondu ${code}.',
+			'seerr.errors.unreachable' => 'Impossible de joindre le serveur de demandes.',
+			'seerr.errors.signedOut' => 'Le serveur de demandes n\'accepte plus cette connexion. Reconnectez-le dans Réglages, Demandes.',
+			'seerr.errors.alreadyRequested' => 'Cela a déjà été demandé.',
+			'seerr.intro' => 'Connectez votre propre serveur Overseerr, Jellyseerr ou Seerr pour demander des films et séries que votre bibliothèque n\'a pas encore. Les demandes vont à votre serveur et nulle part ailleurs ; son administrateur décide de la suite.',
+			'seerr.address' => 'Adresse du serveur',
+			'seerr.addressHint' => 'p. ex. 192.168.1.20:5055',
+			'seerr.find' => 'Trouver le serveur',
+			'seerr.withPlex' => 'Se connecter avec mon compte Plex',
+			'seerr.withPassword' => 'Se connecter avec nom d\'utilisateur et mot de passe',
+			'seerr.withKey' => 'Utiliser une clé d\'API',
+			'seerr.username' => 'Nom d\'utilisateur ou e-mail',
+			'seerr.password' => 'Mot de passe',
+			'seerr.apiKey' => 'Clé d\'API',
+			'seerr.keyNote' => 'Une clé d\'API agit comme l\'administrateur du serveur, donc les demandes faites avec elle ne sont pas à votre nom. Préférez vous connecter.',
+			'seerr.connect' => 'Se connecter',
+			'seerr.connecting' => 'Connexion…',
+			'seerr.connected' => ({required Object title, required Object name}) => 'Connecté à ${title} en tant que ${name}',
+			'seerr.disconnect' => 'Déconnecter',
+			'seerr.myRequests' => 'Vos demandes récentes',
+			'seerr.none' => 'Aucune demande pour le moment.',
+			'seerr.statusPending' => 'En attente d\'approbation',
+			'seerr.statusApproved' => 'Approuvée',
+			'seerr.statusDeclined' => 'Refusée',
+			'seerr.statusAvailable' => 'Disponible',
+			'seerr.rowTitle' => ({required Object title}) => 'Demander à ${title}',
+			'seerr.requested' => 'Demandé',
+			'seerr.partial' => 'En partie disponible',
+			'seerr.askTitle' => ({required Object title}) => 'Demander ${title} ?',
+			'seerr.askMovie' => ({required Object server}) => 'Cela demande à ${server} d\'ajouter le film. Son administrateur décide s\'il le fait.',
+			'seerr.askShow' => ({required Object server}) => 'Cela demande à ${server} d\'ajouter toutes les saisons. Son administrateur décide s\'il le fait.',
+			'seerr.request' => 'Demander',
+			'seerr.sent' => ({required Object title}) => '${title} demandé.',
 			_ => null,
 		};
 	}

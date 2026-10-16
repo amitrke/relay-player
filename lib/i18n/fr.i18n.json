@@ -425,7 +425,8 @@
       "transfer": "Transférer vers un autre appareil",
       "privacy": "Confidentialité et données",
       "about": "À propos",
-      "trackers": "Suivi des visionnages"
+      "trackers": "Suivi des visionnages",
+      "requests": "Demandes"
     },
     "advanced": {
       "dialogTitle": "Activer les sources avancées",
@@ -837,5 +838,45 @@
     "finish": "Terminer la connexion",
     "copyAddress": "Copier l'adresse",
     "connected": "Connecté à {service}."
+  },
+  "seerr": {
+    "errors": {
+      "notASeerr": "Aucun serveur Overseerr, Jellyseerr ou Seerr n'a répondu à cette adresse. Vérifiez-la, port compris (souvent 5055).",
+      "badKey": "Le serveur n'a pas accepté cette clé d'API.",
+      "refused": "Le serveur n'a pas accepté cette connexion.",
+      "status": "Le serveur a répondu {code}.",
+      "unreachable": "Impossible de joindre le serveur de demandes.",
+      "signedOut": "Le serveur de demandes n'accepte plus cette connexion. Reconnectez-le dans Réglages, Demandes.",
+      "alreadyRequested": "Cela a déjà été demandé."
+    },
+    "intro": "Connectez votre propre serveur Overseerr, Jellyseerr ou Seerr pour demander des films et séries que votre bibliothèque n'a pas encore. Les demandes vont à votre serveur et nulle part ailleurs ; son administrateur décide de la suite.",
+    "address": "Adresse du serveur",
+    "addressHint": "p. ex. 192.168.1.20:5055",
+    "find": "Trouver le serveur",
+    "withPlex": "Se connecter avec mon compte Plex",
+    "withPassword": "Se connecter avec nom d'utilisateur et mot de passe",
+    "withKey": "Utiliser une clé d'API",
+    "username": "Nom d'utilisateur ou e-mail",
+    "password": "Mot de passe",
+    "apiKey": "Clé d'API",
+    "keyNote": "Une clé d'API agit comme l'administrateur du serveur, donc les demandes faites avec elle ne sont pas à votre nom. Préférez vous connecter.",
+    "connect": "Se connecter",
+    "connecting": "Connexion…",
+    "connected": "Connecté à {title} en tant que {name}",
+    "disconnect": "Déconnecter",
+    "myRequests": "Vos demandes récentes",
+    "none": "Aucune demande pour le moment.",
+    "statusPending": "En attente d'approbation",
+    "statusApproved": "Approuvée",
+    "statusDeclined": "Refusée",
+    "statusAvailable": "Disponible",
+    "rowTitle": "Demander à {title}",
+    "requested": "Demandé",
+    "partial": "En partie disponible",
+    "askTitle": "Demander {title} ?",
+    "askMovie": "Cela demande à {server} d'ajouter le film. Son administrateur décide s'il le fait.",
+    "askShow": "Cela demande à {server} d'ajouter toutes les saisons. Son administrateur décide s'il le fait.",
+    "request": "Demander",
+    "sent": "{title} demandé."
   }
 }

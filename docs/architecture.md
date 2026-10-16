@@ -1922,6 +1922,55 @@ call over a local server, and the queue's retry, drop, refresh and sign-out
 rules). No tracker has been signed in to for real: that needs the
 credentials registered first (MANUAL_TESTING.md).
 
+## 20. Requests through the person's own Seerr (added 2026-10-16)
+
+Overseerr, Jellyseerr and Seerr (one project under three names) sit beside a
+person's own Plex, Jellyfin or Emby server and take requests for titles the
+library does not have. Connecting one in Settings, Requests adds a row under
+search: what the request server found that the library is missing, with a
+Request button. Code in `lib/data/seerr/` (the client) and
+`lib/features/seerr/` (the connection, the Settings pane, the search row).
+
+- **The person's own server, at an address they type.** Like Plex and
+  Jellyfin (§1), there is no default, no directory and no suggestion. The
+  app only ever talks to the address it was given.
+- **The owner decides.** A request is a request, made exactly as from
+  Seerr's own web page: the server's permissions and approval rules apply,
+  and nothing is downloaded by this app. Asking always goes through a
+  confirmation dialog with Cancel focused, so one press on a remote cannot
+  make a request.
+- **A show is requested in full**, every season but specials. Picking
+  seasons is what Seerr's own page is for; a partly available show can be
+  requested again for the rest.
+- **Sign-in.** On a Plex-backed server, "Sign in with my Plex account" sends
+  the Plex account token this device already holds to that server's
+  `/auth/plex`, which is what Seerr's own Plex sign-in does; it is offered
+  only when Plex is linked here. Otherwise a username and password: a local
+  account at `/auth/local` on a Plex-backed server, or a Jellyfin or Emby
+  user at `/auth/jellyfin`. What is kept is the `connect.sid` session
+  cookie, never the password. An API key also works but acts as the
+  server's administrator, so requests made with it are not the person's on
+  the server; the form says so and puts it last. The cookie or key is in
+  secure storage (§3) and does not move with Move to another device (§17):
+  it is cheap to sign in again, and an admin key should not travel.
+- **Posters come from TMDB.** Seerr returns TMDB image paths, so the row's
+  posters load from TMDB's public image host. That request carries no
+  credential and no account, only the image path, and only once a request
+  server is connected.
+- **What the row leaves out.** Titles the request server reports as
+  available are dropped: they are already in the library results below,
+  playable. Pending and partial titles stay, labelled.
+- Search waits 400 ms after typing stops before asking the server, and a
+  stale session reports "connect it again" rather than an empty row.
+
+**Verified against a fake only** (`test/seerr_test.dart`: the probe, each
+sign-in path and its body, the cookie kept without attributes, `%20` in the
+search query, which films and shows are kept, the request bodies, the 409
+message, my-requests filtering, and a stale session). No real Overseerr,
+Jellyseerr or Seerr has been connected (MANUAL_TESTING.md). The `%20`
+detail is from Overseerr's request validator, which refuses `+` for a space;
+whether Jellyseerr and Seerr behave the same is part of that check.
+
 ---
 
 ## Open items

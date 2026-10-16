@@ -99,6 +99,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$transfer$en transfer = Translations$transfer$en.internal(_root);
 	late final Translations$mediaBrowser$en mediaBrowser = Translations$mediaBrowser$en.internal(_root);
 	late final Translations$trackers$en trackers = Translations$trackers$en.internal(_root);
+	late final Translations$seerr$en seerr = Translations$seerr$en.internal(_root);
 }
 
 // Path: common
@@ -1116,6 +1117,103 @@ class Translations$trackers$en {
 	String connected({required Object service}) => 'Connected to ${service}.';
 }
 
+// Path: seerr
+class Translations$seerr$en {
+	Translations$seerr$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$seerr$errors$en errors = Translations$seerr$errors$en.internal(_root);
+
+	/// en: 'Connect your own Overseerr, Jellyseerr or Seerr server to ask for films and shows your library does not have yet. Requests go to your server and nowhere else; whoever runs it decides what happens next.'
+	String get intro => 'Connect your own Overseerr, Jellyseerr or Seerr server to ask for films and shows your library does not have yet. Requests go to your server and nowhere else; whoever runs it decides what happens next.';
+
+	/// en: 'Server address'
+	String get address => 'Server address';
+
+	/// en: 'e.g. 192.168.1.20:5055'
+	String get addressHint => 'e.g. 192.168.1.20:5055';
+
+	/// en: 'Find server'
+	String get find => 'Find server';
+
+	/// en: 'Sign in with my Plex account'
+	String get withPlex => 'Sign in with my Plex account';
+
+	/// en: 'Sign in with username and password'
+	String get withPassword => 'Sign in with username and password';
+
+	/// en: 'Use an API key'
+	String get withKey => 'Use an API key';
+
+	/// en: 'Username or email'
+	String get username => 'Username or email';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'An API key acts as the server's administrator, so requests made with it are not yours on the server. Prefer signing in.'
+	String get keyNote => 'An API key acts as the server\'s administrator, so requests made with it are not yours on the server. Prefer signing in.';
+
+	/// en: 'Connect'
+	String get connect => 'Connect';
+
+	/// en: 'Connecting…'
+	String get connecting => 'Connecting…';
+
+	/// en: 'Connected to {title} as {name}'
+	String connected({required Object title, required Object name}) => 'Connected to ${title} as ${name}';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Your recent requests'
+	String get myRequests => 'Your recent requests';
+
+	/// en: 'No requests yet.'
+	String get none => 'No requests yet.';
+
+	/// en: 'Waiting for approval'
+	String get statusPending => 'Waiting for approval';
+
+	/// en: 'Approved'
+	String get statusApproved => 'Approved';
+
+	/// en: 'Declined'
+	String get statusDeclined => 'Declined';
+
+	/// en: 'Available'
+	String get statusAvailable => 'Available';
+
+	/// en: 'Request from {title}'
+	String rowTitle({required Object title}) => 'Request from ${title}';
+
+	/// en: 'Requested'
+	String get requested => 'Requested';
+
+	/// en: 'Some available'
+	String get partial => 'Some available';
+
+	/// en: 'Request {title}?'
+	String askTitle({required Object title}) => 'Request ${title}?';
+
+	/// en: 'This asks {server} to add the film. Whoever runs it decides whether it does.'
+	String askMovie({required Object server}) => 'This asks ${server} to add the film. Whoever runs it decides whether it does.';
+
+	/// en: 'This asks {server} to add every season. Whoever runs it decides whether it does.'
+	String askShow({required Object server}) => 'This asks ${server} to add every season. Whoever runs it decides whether it does.';
+
+	/// en: 'Request'
+	String get request => 'Request';
+
+	/// en: 'Requested {title}.'
+	String sent({required Object title}) => 'Requested ${title}.';
+}
+
 // Path: downloads.errors
 class Translations$downloads$errors$en {
 	Translations$downloads$errors$en.internal(this._root);
@@ -1843,6 +1941,9 @@ class Translations$settings$section$en {
 
 	/// en: 'Watch tracking'
 	String get trackers => 'Watch tracking';
+
+	/// en: 'Requests'
+	String get requests => 'Requests';
 }
 
 // Path: settings.advanced
@@ -2610,6 +2711,36 @@ class Translations$trackers$errors$en {
 	String get badPaste => 'That is not what the sign-in page gave. Copy it again and paste the whole thing.';
 }
 
+// Path: seerr.errors
+class Translations$seerr$errors$en {
+	Translations$seerr$errors$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).'
+	String get notASeerr => 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).';
+
+	/// en: 'The server did not accept that API key.'
+	String get badKey => 'The server did not accept that API key.';
+
+	/// en: 'The server did not accept that sign-in.'
+	String get refused => 'The server did not accept that sign-in.';
+
+	/// en: 'The server answered {code}.'
+	String status({required Object code}) => 'The server answered ${code}.';
+
+	/// en: 'Could not reach the request server.'
+	String get unreachable => 'Could not reach the request server.';
+
+	/// en: 'The request server no longer accepts this sign-in. Connect it again in Settings, Requests.'
+	String get signedOut => 'The request server no longer accepts this sign-in. Connect it again in Settings, Requests.';
+
+	/// en: 'That has already been requested.'
+	String get alreadyRequested => 'That has already been requested.';
+}
+
 // Path: settings.metadata.errors
 class Translations$settings$metadata$errors$en {
 	Translations$settings$metadata$errors$en.internal(this._root);
@@ -2985,6 +3116,7 @@ extension on Translations {
 			'settings.section.privacy' => 'Privacy and data',
 			'settings.section.about' => 'About',
 			'settings.section.trackers' => 'Watch tracking',
+			'settings.section.requests' => 'Requests',
 			'settings.advanced.dialogTitle' => 'Turning on advanced sources',
 			'settings.advanced.dialogLead' => 'You are about to connect a third-party provider using your own credentials.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.',
@@ -3171,9 +3303,9 @@ extension on Translations {
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',
-			'xtream.hidden.none' => 'Nothing hidden yet.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.none' => 'Nothing hidden yet.',
 			'xtream.hidden.tapToRemove' => 'Select a word to stop hiding it.',
 			'transfer.noNetwork' => 'This device is not on a Wi-Fi or Ethernet network. Connect it to the same network as the other device and try again.',
 			'transfer.cannotListen' => ({required Object error}) => 'Could not start listening: ${error}',
@@ -3315,6 +3447,42 @@ extension on Translations {
 			'trackers.finish' => 'Finish signing in',
 			'trackers.copyAddress' => 'Copy address',
 			'trackers.connected' => ({required Object service}) => 'Connected to ${service}.',
+			'seerr.errors.notASeerr' => 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).',
+			'seerr.errors.badKey' => 'The server did not accept that API key.',
+			'seerr.errors.refused' => 'The server did not accept that sign-in.',
+			'seerr.errors.status' => ({required Object code}) => 'The server answered ${code}.',
+			'seerr.errors.unreachable' => 'Could not reach the request server.',
+			'seerr.errors.signedOut' => 'The request server no longer accepts this sign-in. Connect it again in Settings, Requests.',
+			'seerr.errors.alreadyRequested' => 'That has already been requested.',
+			'seerr.intro' => 'Connect your own Overseerr, Jellyseerr or Seerr server to ask for films and shows your library does not have yet. Requests go to your server and nowhere else; whoever runs it decides what happens next.',
+			'seerr.address' => 'Server address',
+			'seerr.addressHint' => 'e.g. 192.168.1.20:5055',
+			'seerr.find' => 'Find server',
+			'seerr.withPlex' => 'Sign in with my Plex account',
+			'seerr.withPassword' => 'Sign in with username and password',
+			'seerr.withKey' => 'Use an API key',
+			'seerr.username' => 'Username or email',
+			'seerr.password' => 'Password',
+			'seerr.apiKey' => 'API key',
+			'seerr.keyNote' => 'An API key acts as the server\'s administrator, so requests made with it are not yours on the server. Prefer signing in.',
+			'seerr.connect' => 'Connect',
+			'seerr.connecting' => 'Connecting…',
+			'seerr.connected' => ({required Object title, required Object name}) => 'Connected to ${title} as ${name}',
+			'seerr.disconnect' => 'Disconnect',
+			'seerr.myRequests' => 'Your recent requests',
+			'seerr.none' => 'No requests yet.',
+			'seerr.statusPending' => 'Waiting for approval',
+			'seerr.statusApproved' => 'Approved',
+			'seerr.statusDeclined' => 'Declined',
+			'seerr.statusAvailable' => 'Available',
+			'seerr.rowTitle' => ({required Object title}) => 'Request from ${title}',
+			'seerr.requested' => 'Requested',
+			'seerr.partial' => 'Some available',
+			'seerr.askTitle' => ({required Object title}) => 'Request ${title}?',
+			'seerr.askMovie' => ({required Object server}) => 'This asks ${server} to add the film. Whoever runs it decides whether it does.',
+			'seerr.askShow' => ({required Object server}) => 'This asks ${server} to add every season. Whoever runs it decides whether it does.',
+			'seerr.request' => 'Request',
+			'seerr.sent' => ({required Object title}) => 'Requested ${title}.',
 			_ => null,
 		};
 	}

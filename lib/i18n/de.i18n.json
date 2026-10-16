@@ -425,7 +425,8 @@
       "transfer": "Auf ein anderes Gerät übertragen",
       "privacy": "Datenschutz und Daten",
       "about": "Über",
-      "trackers": "Wiedergabe-Tracking"
+      "trackers": "Wiedergabe-Tracking",
+      "requests": "Anfragen"
     },
     "advanced": {
       "dialogTitle": "Erweiterte Quellen einschalten",
@@ -837,5 +838,45 @@
     "finish": "Anmeldung abschließen",
     "copyAddress": "Adresse kopieren",
     "connected": "Mit {service} verbunden."
+  },
+  "seerr": {
+    "errors": {
+      "notASeerr": "Unter dieser Adresse hat kein Overseerr-, Jellyseerr- oder Seerr-Server geantwortet. Prüfe sie, auch den Port (meist 5055).",
+      "badKey": "Der Server hat diesen API-Schlüssel nicht angenommen.",
+      "refused": "Der Server hat diese Anmeldung nicht angenommen.",
+      "status": "Der Server hat mit {code} geantwortet.",
+      "unreachable": "Der Anfrage-Server war nicht erreichbar.",
+      "signedOut": "Der Anfrage-Server akzeptiert diese Anmeldung nicht mehr. Verbinde ihn erneut unter Einstellungen, Anfragen.",
+      "alreadyRequested": "Das wurde bereits angefragt."
+    },
+    "intro": "Verbinde deinen eigenen Overseerr-, Jellyseerr- oder Seerr-Server, um Filme und Serien anzufragen, die deine Mediathek noch nicht hat. Anfragen gehen an deinen Server und nirgendwo sonst; wer ihn betreibt, entscheidet über den Rest.",
+    "address": "Serveradresse",
+    "addressHint": "z. B. 192.168.1.20:5055",
+    "find": "Server suchen",
+    "withPlex": "Mit meinem Plex-Konto anmelden",
+    "withPassword": "Mit Benutzername und Passwort anmelden",
+    "withKey": "API-Schlüssel verwenden",
+    "username": "Benutzername oder E-Mail",
+    "password": "Passwort",
+    "apiKey": "API-Schlüssel",
+    "keyNote": "Ein API-Schlüssel handelt als Administrator des Servers, Anfragen damit laufen also nicht unter deinem Namen. Melde dich lieber an.",
+    "connect": "Verbinden",
+    "connecting": "Wird verbunden…",
+    "connected": "Mit {title} verbunden als {name}",
+    "disconnect": "Trennen",
+    "myRequests": "Deine letzten Anfragen",
+    "none": "Noch keine Anfragen.",
+    "statusPending": "Wartet auf Freigabe",
+    "statusApproved": "Freigegeben",
+    "statusDeclined": "Abgelehnt",
+    "statusAvailable": "Verfügbar",
+    "rowTitle": "Bei {title} anfragen",
+    "requested": "Angefragt",
+    "partial": "Teilweise verfügbar",
+    "askTitle": "{title} anfragen?",
+    "askMovie": "Damit bittest du {server}, den Film hinzuzufügen. Wer ihn betreibt, entscheidet darüber.",
+    "askShow": "Damit bittest du {server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.",
+    "request": "Anfragen",
+    "sent": "{title} angefragt."
   }
 }

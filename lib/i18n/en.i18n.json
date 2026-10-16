@@ -425,7 +425,8 @@
       "transfer": "Move to another device",
       "privacy": "Privacy and data",
       "about": "About",
-      "trackers": "Watch tracking"
+      "trackers": "Watch tracking",
+      "requests": "Requests"
     },
     "advanced": {
       "dialogTitle": "Turning on advanced sources",
@@ -837,5 +838,45 @@
     "finish": "Finish signing in",
     "copyAddress": "Copy address",
     "connected": "Connected to {service}."
+  },
+  "seerr": {
+    "errors": {
+      "notASeerr": "No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).",
+      "badKey": "The server did not accept that API key.",
+      "refused": "The server did not accept that sign-in.",
+      "status": "The server answered {code}.",
+      "unreachable": "Could not reach the request server.",
+      "signedOut": "The request server no longer accepts this sign-in. Connect it again in Settings, Requests.",
+      "alreadyRequested": "That has already been requested."
+    },
+    "intro": "Connect your own Overseerr, Jellyseerr or Seerr server to ask for films and shows your library does not have yet. Requests go to your server and nowhere else; whoever runs it decides what happens next.",
+    "address": "Server address",
+    "addressHint": "e.g. 192.168.1.20:5055",
+    "find": "Find server",
+    "withPlex": "Sign in with my Plex account",
+    "withPassword": "Sign in with username and password",
+    "withKey": "Use an API key",
+    "username": "Username or email",
+    "password": "Password",
+    "apiKey": "API key",
+    "keyNote": "An API key acts as the server's administrator, so requests made with it are not yours on the server. Prefer signing in.",
+    "connect": "Connect",
+    "connecting": "Connecting…",
+    "connected": "Connected to {title} as {name}",
+    "disconnect": "Disconnect",
+    "myRequests": "Your recent requests",
+    "none": "No requests yet.",
+    "statusPending": "Waiting for approval",
+    "statusApproved": "Approved",
+    "statusDeclined": "Declined",
+    "statusAvailable": "Available",
+    "rowTitle": "Request from {title}",
+    "requested": "Requested",
+    "partial": "Some available",
+    "askTitle": "Request {title}?",
+    "askMovie": "This asks {server} to add the film. Whoever runs it decides whether it does.",
+    "askShow": "This asks {server} to add every season. Whoever runs it decides whether it does.",
+    "request": "Request",
+    "sent": "Requested {title}."
   }
 }

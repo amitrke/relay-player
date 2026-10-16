@@ -23,6 +23,7 @@ import 'suggestions_provider.dart';
 import 'suggestions_view.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
+import '../seerr/seerr_search_row.dart';
 
 final _queryProvider = NotifierProvider<_QueryController, String>(
   _QueryController.new,
@@ -113,9 +114,7 @@ final _resultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
               mapping.visibleSections(server.id, sections),
               query,
             );
-            return [
-              for (final i in found) server.service.toCatalogItem(i),
-            ];
+            return [for (final i in found) server.service.toCatalogItem(i)];
           } catch (_) {
             return const <CatalogItem>[];
           }
@@ -318,27 +317,39 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         icon: Icons.search,
                         message: tr.search.keepTyping,
                       ),
-                      _ => results.when(
-                        loading: () => Center(
-                          child: CircularProgressIndicator(color: t.accent),
-                        ),
-                        error: (e, _) => LibraryEmptyState(
-                          icon: Icons.cloud_off_outlined,
-                          message: '$e',
-                          onRetry: () => ref.invalidate(_resultsProvider),
-                        ),
-                        data: (list) => list.isEmpty
-                            ? LibraryEmptyState(
-                                icon: Icons.search_off,
-                                message: tr.search.noMatch(query: query),
-                              )
-                            : SearchResultsView(
-                                all: enriched ?? list,
-                                filters: filters,
-                                sourceNames: sourceNames,
-                                onFilters: (v) =>
-                                    ref.read(_filtersProvider.notifier).set(v),
+                      // What the request server could add sits above the
+                      // results, and stays when the library has nothing (§20).
+                      _ => Column(
+                        children: [
+                          SeerrSearchRow(query: query.trim()),
+                          Expanded(
+                            child: results.when(
+                              loading: () => Center(
+                                child: CircularProgressIndicator(
+                                  color: t.accent,
+                                ),
                               ),
+                              error: (e, _) => LibraryEmptyState(
+                                icon: Icons.cloud_off_outlined,
+                                message: '$e',
+                                onRetry: () => ref.invalidate(_resultsProvider),
+                              ),
+                              data: (list) => list.isEmpty
+                                  ? LibraryEmptyState(
+                                      icon: Icons.search_off,
+                                      message: tr.search.noMatch(query: query),
+                                    )
+                                  : SearchResultsView(
+                                      all: enriched ?? list,
+                                      filters: filters,
+                                      sourceNames: sourceNames,
+                                      onFilters: (v) => ref
+                                          .read(_filtersProvider.notifier)
+                                          .set(v),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     },
             ),

@@ -14,9 +14,12 @@ import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../i18n/strings.g.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../trackers/trackers_controller.dart';
 import '../trackers/trackers_pane.dart';
+import '../seerr/seerr_pane.dart';
 
 /// Screen 09 — Settings.
 ///
@@ -146,6 +149,8 @@ enum SettingsSection {
   // Built 2026-10-16: Trakt, Simkl, AniList, MyAnimeList (§19). Shown only
   // when the build has credentials for at least one of them.
   trackers(built: true),
+  // Built 2026-10-16: an Overseerr, Jellyseerr or Seerr server (§20).
+  requests(built: true),
   // Unbuilt from 2026-09-22 to 2026-10-09: its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
   // says no crash reports are sent. Built again around clearing cached data,
@@ -167,6 +172,7 @@ enum SettingsSection {
     advancedSources => tr.settings.section.advancedSources,
     transfer => tr.settings.section.transfer,
     trackers => tr.settings.section.trackers,
+    requests => tr.settings.section.requests,
     privacy => tr.settings.section.privacy,
     about => tr.settings.section.about,
   };
@@ -268,6 +274,12 @@ class _PhoneSettings extends ConsumerWidget {
           const SizedBox(height: 22),
         ],
 
+        _Section(
+          title: SettingsSection.requests.label,
+          child: const SeerrPane(),
+        ),
+        const SizedBox(height: 22),
+
         if (SettingsSection.transfer.built) ...[
           _Section(
             title: SettingsSection.transfer.label,
@@ -279,17 +291,14 @@ class _PhoneSettings extends ConsumerWidget {
         // Hand-listed here rather than driven by the enum, so it has to ask.
         if (SettingsSection.privacy.built) ...[
           _Section(
-          title: SettingsSection.privacy.label,
-          child: const PrivacyPane(),
-        ),
+            title: SettingsSection.privacy.label,
+            child: const PrivacyPane(),
+          ),
           const SizedBox(height: 22),
         ],
 
         // Last, as in §12.1: compliance-shaped, rarely visited, but required.
-        _Section(
-          title: SettingsSection.about.label,
-          child: const AboutPane(),
-        ),
+        _Section(title: SettingsSection.about.label, child: const AboutPane()),
       ],
     );
   }
@@ -716,6 +725,10 @@ class _DesktopSettings extends ConsumerWidget {
               SettingsSection.trackers => _DesktopPane(
                 title: SettingsSection.trackers.label,
                 child: const TrackersPane(),
+              ),
+              SettingsSection.requests => _DesktopPane(
+                title: SettingsSection.requests.label,
+                child: const SeerrPane(),
               ),
               SettingsSection.transfer => _DesktopPane(
                 title: SettingsSection.transfer.label,

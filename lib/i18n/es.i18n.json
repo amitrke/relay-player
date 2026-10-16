@@ -425,7 +425,8 @@
       "transfer": "Pasar a otro dispositivo",
       "privacy": "Privacidad y datos",
       "about": "Acerca de",
-      "trackers": "Seguimiento de lo visto"
+      "trackers": "Seguimiento de lo visto",
+      "requests": "Solicitudes"
     },
     "advanced": {
       "dialogTitle": "Activar fuentes avanzadas",
@@ -837,5 +838,45 @@
     "finish": "Terminar de iniciar sesión",
     "copyAddress": "Copiar dirección",
     "connected": "Conectado a {service}."
+  },
+  "seerr": {
+    "errors": {
+      "notASeerr": "Ningún servidor Overseerr, Jellyseerr o Seerr respondió en esa dirección. Compruébala, incluido el puerto (normalmente 5055).",
+      "badKey": "El servidor no aceptó esa clave de API.",
+      "refused": "El servidor no aceptó ese inicio de sesión.",
+      "status": "El servidor respondió {code}.",
+      "unreachable": "No se pudo contactar con el servidor de solicitudes.",
+      "signedOut": "El servidor de solicitudes ya no acepta este inicio de sesión. Vuelve a conectarlo en Ajustes, Solicitudes.",
+      "alreadyRequested": "Eso ya se ha solicitado."
+    },
+    "intro": "Conecta tu propio servidor Overseerr, Jellyseerr o Seerr para pedir películas y series que tu biblioteca aún no tiene. Las solicitudes van a tu servidor y a ningún otro sitio; quien lo administra decide qué pasa después.",
+    "address": "Dirección del servidor",
+    "addressHint": "p. ej., 192.168.1.20:5055",
+    "find": "Buscar servidor",
+    "withPlex": "Iniciar sesión con mi cuenta de Plex",
+    "withPassword": "Iniciar sesión con usuario y contraseña",
+    "withKey": "Usar una clave de API",
+    "username": "Usuario o correo",
+    "password": "Contraseña",
+    "apiKey": "Clave de API",
+    "keyNote": "Una clave de API actúa como administrador del servidor, así que las solicitudes hechas con ella no constan como tuyas. Mejor inicia sesión.",
+    "connect": "Conectar",
+    "connecting": "Conectando…",
+    "connected": "Conectado a {title} como {name}",
+    "disconnect": "Desconectar",
+    "myRequests": "Tus solicitudes recientes",
+    "none": "Aún no hay solicitudes.",
+    "statusPending": "Esperando aprobación",
+    "statusApproved": "Aprobada",
+    "statusDeclined": "Rechazada",
+    "statusAvailable": "Disponible",
+    "rowTitle": "Solicitar a {title}",
+    "requested": "Solicitado",
+    "partial": "Disponible en parte",
+    "askTitle": "¿Solicitar {title}?",
+    "askMovie": "Esto pide a {server} que añada la película. Quien lo administra decide si lo hace.",
+    "askShow": "Esto pide a {server} que añada todas las temporadas. Quien lo administra decide si lo hace.",
+    "request": "Solicitar",
+    "sent": "Se solicitó {title}."
   }
 }
