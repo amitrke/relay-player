@@ -246,10 +246,13 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
       record.serverId,
       poster,
     );
-    if (bytes == null || bytes.isEmpty) return;
+    // The controller can go while a poster is in flight (the app closing, a
+    // test ending); every read after an await has to ask first.
+    if (!ref.mounted || bytes == null || bytes.isEmpty) return;
     // Still wanted? It may have been deleted while the poster was fetched.
     if (find(record.serverId, record.ratingKey) == null) return;
     final dir = await ref.read(downloadsDirectoryProvider.future);
+    if (!ref.mounted) return;
     final artwork = '$name.poster';
     final file = File('${dir.path}${Platform.pathSeparator}$artwork');
     try {
@@ -257,6 +260,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     } on FileSystemException {
       return;
     }
+    if (!ref.mounted) return;
     // Deleted while the poster was being written: the delete could not know
     // about a file that did not exist yet, so this one has to go here.
     if (find(record.serverId, record.ratingKey) == null) {
