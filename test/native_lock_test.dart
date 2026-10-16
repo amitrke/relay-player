@@ -56,6 +56,7 @@ void main() {
     for (final (platform, key) in [
       (TargetPlatform.android, 'android'),
       (TargetPlatform.iOS, 'ios'),
+      (TargetPlatform.windows, 'windows'),
     ]) {
       debugDefaultTargetPlatformOverride = platform;
       registerNativeLicenses();
