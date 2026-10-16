@@ -96,6 +96,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$xtream$es xtream = _Translations$xtream$es._(_root);
 	@override late final _Translations$transfer$es transfer = _Translations$transfer$es._(_root);
 	@override late final _Translations$mediaBrowser$es mediaBrowser = _Translations$mediaBrowser$es._(_root);
+	@override late final _Translations$trackers$es trackers = _Translations$trackers$es._(_root);
 }
 
 // Path: common
@@ -568,6 +569,44 @@ class _Translations$mediaBrowser$es extends Translations$mediaBrowser$en {
 	@override String connected({required Object name}) => 'Conectado a ${name}.';
 }
 
+// Path: trackers
+class _Translations$trackers$es extends Translations$trackers$en {
+	_Translations$trackers$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$trackers$errors$es errors = _Translations$trackers$errors$es._(_root);
+	@override String get malCaught => 'Sesión iniciada. Puedes cerrar esta ventana y volver a Subnext Player.';
+	@override String get intro => 'Envía lo que terminas de ver en tus propios servidores a un servicio de historial. No se envía nada de IPTV, y nada llega a nosotros.';
+	@override String get animeNote => 'AniList y MyAnimeList solo reciben títulos que tu servidor marca como anime, buscados por nombre.';
+	@override String signedInAs({required Object name}) => 'Sesión iniciada como ${name}';
+	@override String get signedIn => 'Sesión iniciada';
+	@override String get notConnected => 'Sin conectar';
+	@override String get signIn => 'Iniciar sesión';
+	@override String get signOut => 'Cerrar sesión';
+	@override String pending({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '1 visionado está pendiente de enviarse.',
+		other: '${n} visionados están pendientes de enviarse.',
+	);
+	@override String consentTitle({required Object service}) => '¿Enviar lo que ves a ${service}?';
+	@override String consentBody({required Object service}) => 'Cuando terminas una película o un episodio de tu propio servidor Plex, Jellyfin o Emby, Subnext Player envía a ${service} su título, año, su identificador de IMDb, TMDB o TVDB, y cuándo lo viste. Va directamente de este dispositivo a ${service}, nunca a través de nosotros. No se envía nada de IPTV. Puedes cerrar sesión cuando quieras en Ajustes, Seguimiento de lo visto.';
+	@override String consentAnime({required Object service}) => 'A ${service} solo se envían títulos que tu servidor marca como anime, y se buscan en ${service} por su nombre.';
+	@override String get agree => 'Continuar';
+	@override String get notNow => 'Ahora no';
+	@override String signInTitle({required Object service}) => 'Iniciar sesión en ${service}';
+	@override String deviceCodeExplain({required Object url}) => 'En cualquier dispositivo, abre ${url} e introduce:';
+	@override String get waiting => 'Esperando la aprobación…';
+	@override String browserExplain({required Object service}) => 'Abre esta dirección en un navegador, inicia sesión en ${service} y aprueba Subnext Player. Luego pega abajo lo que te dé ${service}.';
+	@override String get anilistPaste => 'AniList muestra un token largo al aprobar. Cópialo entero.';
+	@override String get malPaste => 'En este dispositivo la app termina sola. Si el navegador estaba en otro, acaba en una página que no carga: copia la dirección completa de esa página.';
+	@override String get tvHint => 'En una TV, inicia sesión en el móvil y usa Pasar a otro dispositivo para traerlo aquí.';
+	@override String get pasteLabel => 'Pega aquí';
+	@override String get finish => 'Terminar de iniciar sesión';
+	@override String get copyAddress => 'Copiar dirección';
+	@override String connected({required Object service}) => 'Conectado a ${service}.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$es extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -943,6 +982,7 @@ class _Translations$settings$section$es extends Translations$settings$section$en
 	@override String get transfer => 'Pasar a otro dispositivo';
 	@override String get privacy => 'Privacidad y datos';
 	@override String get about => 'Acerca de';
+	@override String get trackers => 'Seguimiento de lo visto';
 }
 
 // Path: settings.advanced
@@ -1278,6 +1318,12 @@ class _Translations$transfer$item$es extends Translations$transfer$item$en {
 	);
 	@override String get notBundle => 'Eso no era un paquete de ajustes.';
 	@override String get newer => 'Ese paquete es de una versión más reciente de la app. Actualiza este dispositivo e inténtalo de nuevo.';
+	@override String get trackers => 'Seguimiento de lo visto';
+	@override String get trackersSub => 'Tus inicios de sesión en Trakt, Simkl, AniList y MyAnimeList. Aceptarlos aquí es aceptar enviar también lo que veas en este dispositivo.';
+	@override String services({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '${n} servicio',
+		other: '${n} servicios',
+	);
 }
 
 // Path: transfer.client
@@ -1313,6 +1359,19 @@ class _Translations$mediaBrowser$errors$es extends Translations$mediaBrowser$err
 	@override String get notAServer => 'Ningún servidor Jellyfin o Emby respondió en esa dirección. Compruébala, incluido el puerto (normalmente 8096).';
 	@override String get badAnswer => 'El servidor respondió de una forma que esta app no entiende.';
 	@override String get wrongLogin => 'Usuario o contraseña incorrectos.';
+}
+
+// Path: trackers.errors
+class _Translations$trackers$errors$es extends Translations$trackers$errors$en {
+	_Translations$trackers$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String unavailable({required Object service}) => 'No se pudo contactar con ${service}. Se volverá a intentar.';
+	@override String get denied => 'Se rechazó el inicio de sesión.';
+	@override String get expired => 'Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.';
+	@override String get badPaste => 'Eso no es lo que dio la página de inicio de sesión. Vuelve a copiarlo y pégalo entero.';
 }
 
 // Path: settings.metadata.errors
@@ -1673,6 +1732,7 @@ extension on TranslationsEs {
 			'settings.section.transfer' => 'Pasar a otro dispositivo',
 			'settings.section.privacy' => 'Privacidad y datos',
 			'settings.section.about' => 'Acerca de',
+			'settings.section.trackers' => 'Seguimiento de lo visto',
 			'settings.advanced.dialogTitle' => 'Activar fuentes avanzadas',
 			'settings.advanced.dialogLead' => 'Vas a conectar un proveedor externo con tus propias credenciales.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.',
@@ -1860,9 +1920,9 @@ extension on TranslationsEs {
 			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
 			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
-			'xtream.hidden.tapToRemove' => 'Selecciona una palabra para dejar de ocultarla.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.tapToRemove' => 'Selecciona una palabra para dejar de ocultarla.',
 			'transfer.noNetwork' => 'Este dispositivo no está en una red Wi-Fi ni Ethernet. Conéctalo a la misma red que el otro dispositivo e inténtalo de nuevo.',
 			'transfer.cannotListen' => ({required Object error}) => 'No se pudo empezar a escuchar: ${error}',
 			'transfer.expired' => 'Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.',
@@ -1937,6 +1997,9 @@ extension on TranslationsEs {
 			'transfer.item.shares' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} recurso', other: '${n} recursos', ), 
 			'transfer.item.notBundle' => 'Eso no era un paquete de ajustes.',
 			'transfer.item.newer' => 'Ese paquete es de una versión más reciente de la app. Actualiza este dispositivo e inténtalo de nuevo.',
+			'transfer.item.trackers' => 'Seguimiento de lo visto',
+			'transfer.item.trackersSub' => 'Tus inicios de sesión en Trakt, Simkl, AniList y MyAnimeList. Aceptarlos aquí es aceptar enviar también lo que veas en este dispositivo.',
+			'transfer.item.services' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} servicio', other: '${n} servicios', ), 
 			'transfer.client.declined' => 'El otro dispositivo no aceptó los ajustes.',
 			'transfer.client.wrongCode' => 'El código no era correcto. Compruébalo con la otra pantalla.',
 			'transfer.client.used' => 'El otro dispositivo ya recibió algo. Vuelve a abrir Recibir allí para obtener un código nuevo.',
@@ -1971,6 +2034,35 @@ extension on TranslationsEs {
 			'mediaBrowser.waiting' => 'Esperando la aprobación…',
 			'mediaBrowser.otherAddress' => 'Usar otra dirección',
 			'mediaBrowser.connected' => ({required Object name}) => 'Conectado a ${name}.',
+			'trackers.errors.unavailable' => ({required Object service}) => 'No se pudo contactar con ${service}. Se volverá a intentar.',
+			'trackers.errors.denied' => 'Se rechazó el inicio de sesión.',
+			'trackers.errors.expired' => 'Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.',
+			'trackers.errors.badPaste' => 'Eso no es lo que dio la página de inicio de sesión. Vuelve a copiarlo y pégalo entero.',
+			'trackers.malCaught' => 'Sesión iniciada. Puedes cerrar esta ventana y volver a Subnext Player.',
+			'trackers.intro' => 'Envía lo que terminas de ver en tus propios servidores a un servicio de historial. No se envía nada de IPTV, y nada llega a nosotros.',
+			'trackers.animeNote' => 'AniList y MyAnimeList solo reciben títulos que tu servidor marca como anime, buscados por nombre.',
+			'trackers.signedInAs' => ({required Object name}) => 'Sesión iniciada como ${name}',
+			'trackers.signedIn' => 'Sesión iniciada',
+			'trackers.notConnected' => 'Sin conectar',
+			'trackers.signIn' => 'Iniciar sesión',
+			'trackers.signOut' => 'Cerrar sesión',
+			'trackers.pending' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '1 visionado está pendiente de enviarse.', other: '${n} visionados están pendientes de enviarse.', ), 
+			'trackers.consentTitle' => ({required Object service}) => '¿Enviar lo que ves a ${service}?',
+			'trackers.consentBody' => ({required Object service}) => 'Cuando terminas una película o un episodio de tu propio servidor Plex, Jellyfin o Emby, Subnext Player envía a ${service} su título, año, su identificador de IMDb, TMDB o TVDB, y cuándo lo viste. Va directamente de este dispositivo a ${service}, nunca a través de nosotros. No se envía nada de IPTV. Puedes cerrar sesión cuando quieras en Ajustes, Seguimiento de lo visto.',
+			'trackers.consentAnime' => ({required Object service}) => 'A ${service} solo se envían títulos que tu servidor marca como anime, y se buscan en ${service} por su nombre.',
+			'trackers.agree' => 'Continuar',
+			'trackers.notNow' => 'Ahora no',
+			'trackers.signInTitle' => ({required Object service}) => 'Iniciar sesión en ${service}',
+			'trackers.deviceCodeExplain' => ({required Object url}) => 'En cualquier dispositivo, abre ${url} e introduce:',
+			'trackers.waiting' => 'Esperando la aprobación…',
+			'trackers.browserExplain' => ({required Object service}) => 'Abre esta dirección en un navegador, inicia sesión en ${service} y aprueba Subnext Player. Luego pega abajo lo que te dé ${service}.',
+			'trackers.anilistPaste' => 'AniList muestra un token largo al aprobar. Cópialo entero.',
+			'trackers.malPaste' => 'En este dispositivo la app termina sola. Si el navegador estaba en otro, acaba en una página que no carga: copia la dirección completa de esa página.',
+			'trackers.tvHint' => 'En una TV, inicia sesión en el móvil y usa Pasar a otro dispositivo para traerlo aquí.',
+			'trackers.pasteLabel' => 'Pega aquí',
+			'trackers.finish' => 'Terminar de iniciar sesión',
+			'trackers.copyAddress' => 'Copiar dirección',
+			'trackers.connected' => ({required Object service}) => 'Conectado a ${service}.',
 			_ => null,
 		};
 	}

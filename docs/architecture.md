@@ -1606,6 +1606,7 @@ Not defended against: someone who can see the receiving screen (the code is on i
 | Xtream accounts with passwords, and the categories and channel picks chosen | **AI consent** (§9.3). It is per feature, per provider, per device. The provider and key arrive; the first feature to use them asks |
 | SMB shares with passwords | **Plex.** A Plex token is bound to the client identifier that requested it (`PlexSessionStore`), so a copied token cannot be assumed to work, and sharing one identifier across devices would make them one device to Plex. Linking Plex on a TV is already a code on the screen and nothing to type. **Not tested against a real server**, so this is a decision from the stored design rather than a measured failure |
 | The user's TMDB key | **Theme** (not persisted yet, so there is nothing to copy), **caches**, **watch history and favourites** (§16.3) |
+| Tracker sign-ins (Trakt, Simkl, AniList, MyAnimeList; §19.4), only those the receiving build has credentials for | |
 | The AI provider and key, unless it points at `localhost` | An AI provider at `localhost` or `127.x`: on a TV that would be the TV. Left out, and the sender says so |
 
 Same-id items are **replaced**, everything else on the receiver is **kept** (the Plex placement map is merged entry by entry, so a server only the receiver is linked to keeps its choices; a first version replaced the whole map, found and fixed the same day): copying a phone to a TV that already has one line does not delete the line. There is no "make the receiver identical" mode, because it would delete what the person cannot see being deleted.
@@ -1809,14 +1810,117 @@ would need its own section and a reason before work starts.
   keyboard, so D-pad focus work gets the fastest loop instead of waiting for
   a TV each time. Real remotes still need hardware (§11).
 - ~~**Jellyfin and Emby as sources.**~~ **Built 2026-10-16, §6.2.**
-- **Watch-history trackers** (Trakt and similar) for scrobbling and ratings.
-  A third party receiving what the user watches, so it needs a consent
-  posture like §9.3's, and an account, which §16.3 is wary of.
+- ~~**Watch-history trackers**~~ **Built 2026-10-16, §19**, finished watches
+  only; ratings and "watching now" were left out.
 - **Watching together** in sync on several devices. Needs a relay server to
   coordinate, which §16 rules out today; the case would have to be argued
   against §16.3 first.
 - **Background downloads** (Android foreground service, iOS background
   transfer). Still §18.3's open item; weighed and not chosen this round.
+
+---
+
+## 19. Watch trackers (added 2026-10-16)
+
+Trakt, Simkl, AniList and MyAnimeList keep a record of what someone has
+watched, shared across every app they connect. When a person signs in to
+one here, what they finish watching from their own servers is added to their
+history there. Code in `lib/data/trackers/` (one client per service) and
+`lib/features/trackers/` (sign-in, the queue, Settings).
+
+### 19.1 What is sent, to whom, and what is never sent
+
+- **Only from the person's own servers.** A film or episode from Plex,
+  Jellyfin or Emby. Nothing from an IPTV panel, ever: a panel is not the
+  person's own library, and sending its titles to a third party is exactly
+  the cataloguing §1 and §8.3 keep this app away from.
+- **Only when finished.** 90% played (the threshold §18.6 uses for a finished
+  offline watch), or marked watched by hand. Not "now watching", not
+  progress, not ratings.
+- **Only what identifies the title.** Its title, year, IMDb, TMDB or TVDB id,
+  for an episode its show's ids with season and number, and when it was
+  watched. Nothing about the server, the file or the device.
+- **Straight from the device to the service**, as with AI (§9.3). We run
+  nothing in between, so §16.3's test passes: no server of ours is in the
+  path of user content or credentials. It is still a third party receiving
+  viewing history, which is why each one has its own consent.
+- **Consent, per tracker, before signing in.** A dialog naming the service
+  and listing the above, with "Not now" focused. Signing in is the yes, and
+  is recorded with its time; signing out removes it. The privacy policy and
+  Play's data-safety form must say this before a build with credentials
+  ships (Open items).
+
+### 19.2 Credentials, sign-in, and the general-purpose trackers
+
+Each service identifies the app with a client id that the owner registers on
+the service's developer site (RELEASING.md, "Tracker credentials"). The ids,
+and Trakt's client secret, are compiled in from CI secrets with
+`--dart-define-from-file` (`tool/tracker_defines.py`); none is in this
+public repository. **A tracker whose credentials a build lacks is not offered
+in that build at all**, and with none the Settings section is absent. Local
+and fork builds therefore have no trackers, and nothing breaks.
+
+Shipping Trakt's secret inside the app means anyone can extract it. That is
+the norm for installed apps and accepted by Trakt; what it guards is the
+app's rate limit and its name on the approval page, not any user's data.
+
+- **Trakt.** Device flow: a code typed at trakt.tv/activate on any device,
+  so a TV types nothing. Finished watches go to `/sync/history` with their
+  time, which is right both live and for an offline watch delivered later.
+  Tokens are refreshed when they lapse.
+- **Simkl.** PIN flow, the same experience, client id only. `/sync/history`
+  in the same shape. Tokens do not expire.
+
+### 19.3 The anime lists
+
+AniList and MyAnimeList list anime, and key everything on their own ids,
+which no media server knows. So:
+
+- **Only titles the server tags as anime** (a genre containing "Anime", on
+  the item or its show) are sent to them.
+- **Found by name**: the show's title, with " Season N" after the first
+  season, since both list most anime one entry per season; progress is the
+  episode's number in its season. An exact title match (any of the names the
+  list gives) wins over the service's top result.
+- **Progress never goes down.** A rewatch of an early episode does not undo
+  a list someone keeps by hand. Reaching the last episode marks it completed.
+- **Known gaps:** shows a server numbers absolutely across seasons, and
+  seasons a list splits into several entries, land on the wrong entry or
+  episode. Recorded rather than guessed at; a manual "this is that entry"
+  mapping is the fix if it matters.
+- **Sign-in needs a browser.** AniList shows a token on its own page for the
+  person to copy (implicit grant, redirect registered as
+  `https://anilist.co/api/v2/oauth/pin`). MyAnimeList has no device flow:
+  OAuth 2 with PKCE, redirect registered as `http://localhost:41235/mal`; on
+  a device with a browser the app listens on that loopback port for the
+  moment of the sign-in and catches the code itself, and otherwise the
+  person pastes the address the browser was sent to. **A TV can do
+  neither**, and gets these sign-ins from a phone with Move to another
+  device (§17), which now carries tracker sign-ins.
+
+### 19.4 Delivery
+
+A finished watch goes into a queue (`trackers.queue` in the settings box)
+holding only the server id, the item id and the time; no token, no title.
+Sending reads the item, and an episode's show, from the server, so a saved
+copy watched offline (§18.6) is matched exactly as a stream is, once the
+server is back. The queue is flushed when a watch is added, at launch, and
+on every server reconnect. Per tracker: down means keep and retry; title not
+found means drop; a lapsed sign-in is refreshed once, and otherwise signed
+out here with the watch kept for when the person signs back in. A watch
+older than 30 days, or tried 20 times, is dropped. The same title reported
+twice within 3 hours (the player at 90%, then a manual mark) is one watch.
+
+Tracker sign-ins move with Move to another device (§17), unlike Plex's,
+because a tracker token belongs to the account rather than the device.
+Accepting "Watch tracking" on the receiving screen is that device's consent,
+and the item's description there says so.
+
+**Verified against fakes only** (`test/trackers_test.dart`: request bodies,
+anime matching, the MyAnimeList code check, Trakt's device flow and history
+call over a local server, and the queue's retry, drop, refresh and sign-out
+rules). No tracker has been signed in to for real: that needs the
+credentials registered first (MANUAL_TESTING.md).
 
 ---
 
@@ -1909,6 +2013,12 @@ would need its own section and a reason before work starts.
   name, since renaming them changes nothing a user sees.
 
 ### Open — decide before the relevant phase
+
+- **Watch trackers in the privacy policy and store forms (§19.1)** before
+  the first build with tracker credentials reaches testers: the policy must
+  say that, with consent, finished watches go to the tracker the person
+  chose, and Play's data-safety form must declare "app activity, other user
+  content" shared with a third party at the user's request. Added 2026-10-16.
 
 - **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
   out of the MVP, 2026-09-21:** it does not ship in the first Play release, so

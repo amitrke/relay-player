@@ -11,6 +11,8 @@ import '../metadata/tmdb_controller.dart';
 import '../player/playback_prefs.dart';
 import '../settings/settings_controller.dart';
 import '../../i18n/strings.g.dart';
+import '../../data/trackers/tracker.dart';
+import '../trackers/trackers_controller.dart';
 
 /// What [TransferService.collect] found, and anything it left out on purpose.
 class CollectedSettings {
@@ -110,6 +112,8 @@ class TransferService {
       }
     }
 
+    final trackerTokens = await _ref.read(trackerTokenStoreProvider).load();
+
     return CollectedSettings(
       TransferBundle(
         createdAt: DateTime.now(),
@@ -118,6 +122,9 @@ class TransferService {
         smb: smb,
         tmdbKey: tmdbKey,
         ai: ai,
+        trackers: {
+          for (final e in trackerTokens.entries) e.key.name: e.value.toJson(),
+        },
       ),
       notes,
     );
@@ -194,6 +201,23 @@ class TransferService {
           tr.transfer.notes.aiAsks,
         );
       }
+    }
+
+    if (bundle.trackers.isNotEmpty) {
+      await step(TransferItem.trackers, () async {
+        // Only trackers this build can use: a receiver built without a
+        // tracker's credentials has nowhere to send to it.
+        final available = _ref.read(availableTrackersProvider).toSet();
+        final tokens = {
+          for (final e in bundle.trackers.entries)
+            if (TrackerKind.fromName(e.key) case final kind?
+                when available.contains(kind))
+              kind: ?TrackerToken.fromJson(e.value),
+        };
+        if (tokens.isNotEmpty) {
+          await _ref.read(trackersProvider.notifier).importTokens(tokens);
+        }
+      });
     }
 
     if (failed.isNotEmpty) {

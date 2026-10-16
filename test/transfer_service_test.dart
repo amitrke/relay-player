@@ -19,6 +19,8 @@ import 'package:relay_player/features/metadata/tmdb_controller.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/settings/settings_controller.dart';
 import 'package:relay_player/features/transfer/transfer_service.dart';
+import 'package:relay_player/data/trackers/tracker.dart';
+import 'package:relay_player/features/trackers/trackers_controller.dart';
 
 /// Moves settings from one "device" to another through the real stores and
 /// controllers, so a storage key that is renamed in one place fails here instead
@@ -57,6 +59,17 @@ void main() {
       overrides: [
         appSettingsStoreProvider.overrideWithValue(store),
         libraryCacheProvider.overrideWith((ref) async => MemoryLibraryCache()),
+        // A build with Simkl and AniList credentials, so tracker sign-ins
+        // have somewhere to land (§19.2).
+        trackerCredentialsProvider.overrideWithValue(
+          const TrackerCredentials(
+            traktId: '',
+            traktSecret: '',
+            simklId: 'simkl-app',
+            anilistId: 'anilist-app',
+            malId: '',
+          ),
+        ),
       ],
     );
     addTearDown(c.dispose);
@@ -112,6 +125,11 @@ void main() {
     await c.read(tmdbKeyProvider.notifier).restore('tmdb-key');
     await c.read(aiSetupProvider.future);
     await c.read(aiSetupProvider.notifier).restore(openAi, 'sk-test');
+    await c.read(trackerTokenStoreProvider).save({
+      TrackerKind.simkl: const TrackerToken(access: 'simkl-tok', userName: 'me'),
+      // Not in the receiving build: dropped there, not an error.
+      TrackerKind.trakt: const TrackerToken(access: 'trakt-tok'),
+    });
     // The things that must NOT travel.
     await d.store.setBool('advancedSourcesEnabled', true);
     await d.store.setBool('onboardingSeen', true);
@@ -170,6 +188,10 @@ void main() {
     final ai = (await tv.c.read(aiSetupProvider.future))!;
     expect(ai.config.model, 'gpt-4o-mini');
     expect(ai.apiKey, 'sk-test');
+
+    final trackers = await tv.c.read(trackerTokenStoreProvider).load();
+    expect(trackers.keys, [TrackerKind.simkl]);
+    expect(trackers[TrackerKind.simkl]?.access, 'simkl-tok');
 
     expect(result.notes, isNotEmpty);
   });

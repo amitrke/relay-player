@@ -424,7 +424,8 @@
       "advancedSources": "Fuentes avanzadas",
       "transfer": "Pasar a otro dispositivo",
       "privacy": "Privacidad y datos",
-      "about": "Acerca de"
+      "about": "Acerca de",
+      "trackers": "Seguimiento de lo visto"
     },
     "advanced": {
       "dialogTitle": "Activar fuentes avanzadas",
@@ -752,7 +753,13 @@
         "other": "{n} recursos"
       },
       "notBundle": "Eso no era un paquete de ajustes.",
-      "newer": "Ese paquete es de una versión más reciente de la app. Actualiza este dispositivo e inténtalo de nuevo."
+      "newer": "Ese paquete es de una versión más reciente de la app. Actualiza este dispositivo e inténtalo de nuevo.",
+      "trackers": "Seguimiento de lo visto",
+      "trackersSub": "Tus inicios de sesión en Trakt, Simkl, AniList y MyAnimeList. Aceptarlos aquí es aceptar enviar también lo que veas en este dispositivo.",
+      "services": {
+        "one": "{n} servicio",
+        "other": "{n} servicios"
+      }
     },
     "client": {
       "declined": "El otro dispositivo no aceptó los ajustes.",
@@ -794,5 +801,41 @@
     "waiting": "Esperando la aprobación…",
     "otherAddress": "Usar otra dirección",
     "connected": "Conectado a {name}."
+  },
+  "trackers": {
+    "errors": {
+      "unavailable": "No se pudo contactar con {service}. Se volverá a intentar.",
+      "denied": "Se rechazó el inicio de sesión.",
+      "expired": "Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.",
+      "badPaste": "Eso no es lo que dio la página de inicio de sesión. Vuelve a copiarlo y pégalo entero."
+    },
+    "malCaught": "Sesión iniciada. Puedes cerrar esta ventana y volver a Subnext Player.",
+    "intro": "Envía lo que terminas de ver en tus propios servidores a un servicio de historial. No se envía nada de IPTV, y nada llega a nosotros.",
+    "animeNote": "AniList y MyAnimeList solo reciben títulos que tu servidor marca como anime, buscados por nombre.",
+    "signedInAs": "Sesión iniciada como {name}",
+    "signedIn": "Sesión iniciada",
+    "notConnected": "Sin conectar",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "pending": {
+      "one": "1 visionado está pendiente de enviarse.",
+      "other": "{n} visionados están pendientes de enviarse."
+    },
+    "consentTitle": "¿Enviar lo que ves a {service}?",
+    "consentBody": "Cuando terminas una película o un episodio de tu propio servidor Plex, Jellyfin o Emby, Subnext Player envía a {service} su título, año, su identificador de IMDb, TMDB o TVDB, y cuándo lo viste. Va directamente de este dispositivo a {service}, nunca a través de nosotros. No se envía nada de IPTV. Puedes cerrar sesión cuando quieras en Ajustes, Seguimiento de lo visto.",
+    "consentAnime": "A {service} solo se envían títulos que tu servidor marca como anime, y se buscan en {service} por su nombre.",
+    "agree": "Continuar",
+    "notNow": "Ahora no",
+    "signInTitle": "Iniciar sesión en {service}",
+    "deviceCodeExplain": "En cualquier dispositivo, abre {url} e introduce:",
+    "waiting": "Esperando la aprobación…",
+    "browserExplain": "Abre esta dirección en un navegador, inicia sesión en {service} y aprueba Subnext Player. Luego pega abajo lo que te dé {service}.",
+    "anilistPaste": "AniList muestra un token largo al aprobar. Cópialo entero.",
+    "malPaste": "En este dispositivo la app termina sola. Si el navegador estaba en otro, acaba en una página que no carga: copia la dirección completa de esa página.",
+    "tvHint": "En una TV, inicia sesión en el móvil y usa Pasar a otro dispositivo para traerlo aquí.",
+    "pasteLabel": "Pega aquí",
+    "finish": "Terminar de iniciar sesión",
+    "copyAddress": "Copiar dirección",
+    "connected": "Conectado a {service}."
   }
 }

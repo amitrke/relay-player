@@ -96,6 +96,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$xtream$de xtream = _Translations$xtream$de._(_root);
 	@override late final _Translations$transfer$de transfer = _Translations$transfer$de._(_root);
 	@override late final _Translations$mediaBrowser$de mediaBrowser = _Translations$mediaBrowser$de._(_root);
+	@override late final _Translations$trackers$de trackers = _Translations$trackers$de._(_root);
 }
 
 // Path: common
@@ -568,6 +569,44 @@ class _Translations$mediaBrowser$de extends Translations$mediaBrowser$en {
 	@override String connected({required Object name}) => 'Mit ${name} verbunden.';
 }
 
+// Path: trackers
+class _Translations$trackers$de extends Translations$trackers$en {
+	_Translations$trackers$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$trackers$errors$de errors = _Translations$trackers$errors$de._(_root);
+	@override String get malCaught => 'Angemeldet. Du kannst dieses Fenster schließen und zu Subnext Player zurückkehren.';
+	@override String get intro => 'Sende, was du auf deinen eigenen Servern zu Ende schaust, an einen Verlaufsdienst. Nichts aus IPTV wird gesendet, und nichts geht an uns.';
+	@override String get animeNote => 'AniList und MyAnimeList bekommen nur Titel, die dein Server als Anime kennzeichnet, gesucht nach Namen.';
+	@override String signedInAs({required Object name}) => 'Angemeldet als ${name}';
+	@override String get signedIn => 'Angemeldet';
+	@override String get notConnected => 'Nicht verbunden';
+	@override String get signIn => 'Anmelden';
+	@override String get signOut => 'Abmelden';
+	@override String pending({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n,
+		one: '1 Wiedergabe wartet darauf, gesendet zu werden.',
+		other: '${n} Wiedergaben warten darauf, gesendet zu werden.',
+	);
+	@override String consentTitle({required Object service}) => 'Deine Wiedergaben an ${service} senden?';
+	@override String consentBody({required Object service}) => 'Wenn du einen Film oder eine Folge von deinem eigenen Plex-, Jellyfin- oder Emby-Server zu Ende schaust, sendet Subnext Player an ${service} den Titel, das Jahr, die IMDb-, TMDB- oder TVDB-ID und wann du es gesehen hast. Es geht direkt von diesem Gerät an ${service}, nie über uns. Nichts aus IPTV wird gesendet. Du kannst dich jederzeit unter Einstellungen, Wiedergabe-Tracking abmelden.';
+	@override String consentAnime({required Object service}) => 'An ${service} gehen nur Titel, die dein Server als Anime kennzeichnet, und sie werden über eine Suche nach ihrem Namen bei ${service} gefunden.';
+	@override String get agree => 'Weiter';
+	@override String get notNow => 'Nicht jetzt';
+	@override String signInTitle({required Object service}) => 'Bei ${service} anmelden';
+	@override String deviceCodeExplain({required Object url}) => 'Öffne auf einem beliebigen Gerät ${url} und gib ein:';
+	@override String get waiting => 'Warte auf Freigabe…';
+	@override String browserExplain({required Object service}) => 'Öffne diese Adresse in einem Browser, melde dich bei ${service} an und erlaube Subnext Player. Füge dann unten ein, was ${service} dir gibt.';
+	@override String get anilistPaste => 'AniList zeigt nach der Freigabe ein langes Token an. Kopiere es vollständig.';
+	@override String get malPaste => 'Auf diesem Gerät schließt die App die Anmeldung selbst ab. War der Browser woanders, endet er auf einer Seite, die nicht lädt: Kopiere deren vollständige Adresse.';
+	@override String get tvHint => 'Auf einem Fernseher melde dich auf dem Handy an und übertrage es mit Auf ein anderes Gerät übertragen hierher.';
+	@override String get pasteLabel => 'Hier einfügen';
+	@override String get finish => 'Anmeldung abschließen';
+	@override String get copyAddress => 'Adresse kopieren';
+	@override String connected({required Object service}) => 'Mit ${service} verbunden.';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$de extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -943,6 +982,7 @@ class _Translations$settings$section$de extends Translations$settings$section$en
 	@override String get transfer => 'Auf ein anderes Gerät übertragen';
 	@override String get privacy => 'Datenschutz und Daten';
 	@override String get about => 'Über';
+	@override String get trackers => 'Wiedergabe-Tracking';
 }
 
 // Path: settings.advanced
@@ -1278,6 +1318,12 @@ class _Translations$transfer$item$de extends Translations$transfer$item$en {
 	);
 	@override String get notBundle => 'Das war kein Einstellungspaket.';
 	@override String get newer => 'Dieses Paket stammt aus einer neueren Version der App. Aktualisiere dieses Gerät und versuch es erneut.';
+	@override String get trackers => 'Wiedergabe-Tracking';
+	@override String get trackersSub => 'Deine Anmeldungen bei Trakt, Simkl, AniList und MyAnimeList. Sie hier anzunehmen heißt zuzustimmen, dass auch auf diesem Gerät Gesehenes gesendet wird.';
+	@override String services({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n,
+		one: '${n} Dienst',
+		other: '${n} Dienste',
+	);
 }
 
 // Path: transfer.client
@@ -1313,6 +1359,19 @@ class _Translations$mediaBrowser$errors$de extends Translations$mediaBrowser$err
 	@override String get notAServer => 'Unter dieser Adresse hat kein Jellyfin- oder Emby-Server geantwortet. Prüfe sie, auch den Port (meist 8096).';
 	@override String get badAnswer => 'Der Server hat auf eine Weise geantwortet, die diese App nicht versteht.';
 	@override String get wrongLogin => 'Falscher Benutzername oder falsches Passwort.';
+}
+
+// Path: trackers.errors
+class _Translations$trackers$errors$de extends Translations$trackers$errors$en {
+	_Translations$trackers$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String unavailable({required Object service}) => '${service} war nicht erreichbar. Es wird erneut versucht.';
+	@override String get denied => 'Die Anmeldung wurde abgelehnt.';
+	@override String get expired => 'Dieser Code ist abgelaufen. Starte neu, um einen neuen zu bekommen.';
+	@override String get badPaste => 'Das ist nicht, was die Anmeldeseite angezeigt hat. Kopiere es erneut und füge alles ein.';
 }
 
 // Path: settings.metadata.errors
@@ -1673,6 +1732,7 @@ extension on TranslationsDe {
 			'settings.section.transfer' => 'Auf ein anderes Gerät übertragen',
 			'settings.section.privacy' => 'Datenschutz und Daten',
 			'settings.section.about' => 'Über',
+			'settings.section.trackers' => 'Wiedergabe-Tracking',
 			'settings.advanced.dialogTitle' => 'Erweiterte Quellen einschalten',
 			'settings.advanced.dialogLead' => 'Du bist dabei, einen Drittanbieter mit deinen eigenen Zugangsdaten zu verbinden.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.',
@@ -1860,9 +1920,9 @@ extension on TranslationsDe {
 			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
 			'xtream.hidden.add' => 'Hinzufügen',
 			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',
-			'xtream.hidden.tapToRemove' => 'Wähle ein Wort aus, um es nicht mehr auszublenden.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.tapToRemove' => 'Wähle ein Wort aus, um es nicht mehr auszublenden.',
 			'transfer.noNetwork' => 'Dieses Gerät ist in keinem WLAN- oder Ethernet-Netzwerk. Verbinde es mit demselben Netzwerk wie das andere Gerät und versuch es erneut.',
 			'transfer.cannotListen' => ({required Object error}) => 'Empfang konnte nicht gestartet werden: ${error}',
 			'transfer.expired' => 'Dieser Code ist abgelaufen. Starte neu, um einen neuen zu bekommen.',
@@ -1937,6 +1997,9 @@ extension on TranslationsDe {
 			'transfer.item.shares' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '${n} Freigabe', other: '${n} Freigaben', ), 
 			'transfer.item.notBundle' => 'Das war kein Einstellungspaket.',
 			'transfer.item.newer' => 'Dieses Paket stammt aus einer neueren Version der App. Aktualisiere dieses Gerät und versuch es erneut.',
+			'transfer.item.trackers' => 'Wiedergabe-Tracking',
+			'transfer.item.trackersSub' => 'Deine Anmeldungen bei Trakt, Simkl, AniList und MyAnimeList. Sie hier anzunehmen heißt zuzustimmen, dass auch auf diesem Gerät Gesehenes gesendet wird.',
+			'transfer.item.services' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '${n} Dienst', other: '${n} Dienste', ), 
 			'transfer.client.declined' => 'Das andere Gerät hat die Einstellungen nicht angenommen.',
 			'transfer.client.wrongCode' => 'Der Code war nicht richtig. Vergleich ihn mit dem anderen Bildschirm.',
 			'transfer.client.used' => 'Das andere Gerät hat schon etwas empfangen. Öffne dort Empfangen erneut, um einen neuen Code zu bekommen.',
@@ -1971,6 +2034,35 @@ extension on TranslationsDe {
 			'mediaBrowser.waiting' => 'Warte auf Freigabe…',
 			'mediaBrowser.otherAddress' => 'Andere Adresse verwenden',
 			'mediaBrowser.connected' => ({required Object name}) => 'Mit ${name} verbunden.',
+			'trackers.errors.unavailable' => ({required Object service}) => '${service} war nicht erreichbar. Es wird erneut versucht.',
+			'trackers.errors.denied' => 'Die Anmeldung wurde abgelehnt.',
+			'trackers.errors.expired' => 'Dieser Code ist abgelaufen. Starte neu, um einen neuen zu bekommen.',
+			'trackers.errors.badPaste' => 'Das ist nicht, was die Anmeldeseite angezeigt hat. Kopiere es erneut und füge alles ein.',
+			'trackers.malCaught' => 'Angemeldet. Du kannst dieses Fenster schließen und zu Subnext Player zurückkehren.',
+			'trackers.intro' => 'Sende, was du auf deinen eigenen Servern zu Ende schaust, an einen Verlaufsdienst. Nichts aus IPTV wird gesendet, und nichts geht an uns.',
+			'trackers.animeNote' => 'AniList und MyAnimeList bekommen nur Titel, die dein Server als Anime kennzeichnet, gesucht nach Namen.',
+			'trackers.signedInAs' => ({required Object name}) => 'Angemeldet als ${name}',
+			'trackers.signedIn' => 'Angemeldet',
+			'trackers.notConnected' => 'Nicht verbunden',
+			'trackers.signIn' => 'Anmelden',
+			'trackers.signOut' => 'Abmelden',
+			'trackers.pending' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '1 Wiedergabe wartet darauf, gesendet zu werden.', other: '${n} Wiedergaben warten darauf, gesendet zu werden.', ), 
+			'trackers.consentTitle' => ({required Object service}) => 'Deine Wiedergaben an ${service} senden?',
+			'trackers.consentBody' => ({required Object service}) => 'Wenn du einen Film oder eine Folge von deinem eigenen Plex-, Jellyfin- oder Emby-Server zu Ende schaust, sendet Subnext Player an ${service} den Titel, das Jahr, die IMDb-, TMDB- oder TVDB-ID und wann du es gesehen hast. Es geht direkt von diesem Gerät an ${service}, nie über uns. Nichts aus IPTV wird gesendet. Du kannst dich jederzeit unter Einstellungen, Wiedergabe-Tracking abmelden.',
+			'trackers.consentAnime' => ({required Object service}) => 'An ${service} gehen nur Titel, die dein Server als Anime kennzeichnet, und sie werden über eine Suche nach ihrem Namen bei ${service} gefunden.',
+			'trackers.agree' => 'Weiter',
+			'trackers.notNow' => 'Nicht jetzt',
+			'trackers.signInTitle' => ({required Object service}) => 'Bei ${service} anmelden',
+			'trackers.deviceCodeExplain' => ({required Object url}) => 'Öffne auf einem beliebigen Gerät ${url} und gib ein:',
+			'trackers.waiting' => 'Warte auf Freigabe…',
+			'trackers.browserExplain' => ({required Object service}) => 'Öffne diese Adresse in einem Browser, melde dich bei ${service} an und erlaube Subnext Player. Füge dann unten ein, was ${service} dir gibt.',
+			'trackers.anilistPaste' => 'AniList zeigt nach der Freigabe ein langes Token an. Kopiere es vollständig.',
+			'trackers.malPaste' => 'Auf diesem Gerät schließt die App die Anmeldung selbst ab. War der Browser woanders, endet er auf einer Seite, die nicht lädt: Kopiere deren vollständige Adresse.',
+			'trackers.tvHint' => 'Auf einem Fernseher melde dich auf dem Handy an und übertrage es mit Auf ein anderes Gerät übertragen hierher.',
+			'trackers.pasteLabel' => 'Hier einfügen',
+			'trackers.finish' => 'Anmeldung abschließen',
+			'trackers.copyAddress' => 'Adresse kopieren',
+			'trackers.connected' => ({required Object service}) => 'Mit ${service} verbunden.',
 			_ => null,
 		};
 	}

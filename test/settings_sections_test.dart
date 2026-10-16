@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,8 @@ import 'package:relay_player/features/accounts/plex_session.dart';
 import 'package:relay_player/features/ai/ai_controller.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/settings/settings_screen.dart';
+import 'package:relay_player/features/trackers/trackers_controller.dart';
+import 'package:relay_player/data/trackers/tracker.dart';
 
 /// Guards the release-build Settings against sections that look finished and are
 /// not.
@@ -42,6 +45,7 @@ void main() {
     WidgetTester tester, {
     SettingsState state = const SettingsState(),
     bool showUnbuiltSections = false,
+    List<Override> overrides = const [],
   }) async {
     // A TV's real logical size (see tv_navigation_test.dart).
     tester.view.physicalSize = const Size(960, 540);
@@ -50,16 +54,19 @@ void main() {
 
     var current = state;
     await tester.pumpWidget(
-      MaterialApp(
-        home: RelayTheme(
-          tokens: RelayPalettes.midnight,
-          palette: RelayPalette.midnight,
-          child: StatefulBuilder(
-            builder: (context, setState) => SettingsScreen(
-              theme: ThemeController(),
-              state: current,
-              onStateChanged: (s) => setState(() => current = s),
-              showUnbuiltSections: showUnbuiltSections,
+      ProviderScope(
+        overrides: overrides,
+        child: MaterialApp(
+          home: RelayTheme(
+            tokens: RelayPalettes.midnight,
+            palette: RelayPalette.midnight,
+            child: StatefulBuilder(
+              builder: (context, setState) => SettingsScreen(
+                theme: ThemeController(),
+                state: current,
+                onStateChanged: (s) => setState(() => current = s),
+                showUnbuiltSections: showUnbuiltSections,
+              ),
             ),
           ),
         ),
@@ -67,6 +74,35 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Watch tracking is absent from a build with no tracker keys, '
+      'and lists only the trackers a build has', (tester) async {
+    await pump(tester);
+    expect(find.text('Watch tracking'), findsNothing);
+    // A scope's overrides cannot change in place; start a fresh one.
+    await tester.pumpWidget(const SizedBox());
+
+    await pump(
+      tester,
+      state: const SettingsState(section: SettingsSection.trackers),
+      overrides: [
+        trackerCredentialsProvider.overrideWithValue(
+          const TrackerCredentials(
+            traktId: '',
+            traktSecret: '',
+            simklId: 'id',
+            anilistId: '',
+            malId: '',
+          ),
+        ),
+        trackersProvider.overrideWith(_NoTrackers.new),
+      ],
+    );
+    expect(find.text('Watch tracking'), findsWidgets);
+    expect(find.text('Simkl'), findsOneWidget);
+    expect(find.text('Trakt'), findsNothing);
+    expect(find.text('Not connected'), findsOneWidget);
+  });
 
   testWidgets('the TV layout lists every section, and opens on Appearance', (
     tester,
@@ -262,4 +298,9 @@ class _Prefs extends PlaybackPrefsController {
 class _NoAi extends AiSetupController {
   @override
   Future<AiSetup?> build() async => null;
+}
+
+class _NoTrackers extends TrackersController {
+  @override
+  TrackersState build() => const TrackersState();
 }

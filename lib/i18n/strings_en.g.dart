@@ -98,6 +98,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$xtream$en xtream = Translations$xtream$en.internal(_root);
 	late final Translations$transfer$en transfer = Translations$transfer$en.internal(_root);
 	late final Translations$mediaBrowser$en mediaBrowser = Translations$mediaBrowser$en.internal(_root);
+	late final Translations$trackers$en trackers = Translations$trackers$en.internal(_root);
 }
 
 // Path: common
@@ -1027,6 +1028,94 @@ class Translations$mediaBrowser$en {
 	String connected({required Object name}) => 'Connected to ${name}.';
 }
 
+// Path: trackers
+class Translations$trackers$en {
+	Translations$trackers$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$trackers$errors$en errors = Translations$trackers$errors$en.internal(_root);
+
+	/// en: 'Signed in. You can close this window and go back to Subnext Player.'
+	String get malCaught => 'Signed in. You can close this window and go back to Subnext Player.';
+
+	/// en: 'Send what you finish watching from your own servers to a watch-history service. Nothing from IPTV is sent, and nothing goes to us.'
+	String get intro => 'Send what you finish watching from your own servers to a watch-history service. Nothing from IPTV is sent, and nothing goes to us.';
+
+	/// en: 'AniList and MyAnimeList get only titles your server tags as anime, found by name.'
+	String get animeNote => 'AniList and MyAnimeList get only titles your server tags as anime, found by name.';
+
+	/// en: 'Signed in as {name}'
+	String signedInAs({required Object name}) => 'Signed in as ${name}';
+
+	/// en: 'Signed in'
+	String get signedIn => 'Signed in';
+
+	/// en: 'Not connected'
+	String get notConnected => 'Not connected';
+
+	/// en: 'Sign in'
+	String get signIn => 'Sign in';
+
+	/// en: 'Sign out'
+	String get signOut => 'Sign out';
+
+	/// en: '(one) {1 watch is waiting to be sent.} (other) {{n} watches are waiting to be sent.}'
+	String pending({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 watch is waiting to be sent.',
+		other: '${n} watches are waiting to be sent.',
+	);
+
+	/// en: 'Send your watches to {service}?'
+	String consentTitle({required Object service}) => 'Send your watches to ${service}?';
+
+	/// en: 'When you finish a film or episode from your own Plex, Jellyfin or Emby server, Subnext Player sends {service} its title, year, its IMDb, TMDB or TVDB id, and when you watched it. It goes straight from this device to {service}, never through us. Nothing from IPTV is sent. You can sign out at any time in Settings, Watch tracking.'
+	String consentBody({required Object service}) => 'When you finish a film or episode from your own Plex, Jellyfin or Emby server, Subnext Player sends ${service} its title, year, its IMDb, TMDB or TVDB id, and when you watched it. It goes straight from this device to ${service}, never through us. Nothing from IPTV is sent. You can sign out at any time in Settings, Watch tracking.';
+
+	/// en: 'For {service}, only titles your server tags as anime are sent, and they are found by searching {service} for their name.'
+	String consentAnime({required Object service}) => 'For ${service}, only titles your server tags as anime are sent, and they are found by searching ${service} for their name.';
+
+	/// en: 'Continue'
+	String get agree => 'Continue';
+
+	/// en: 'Not now'
+	String get notNow => 'Not now';
+
+	/// en: 'Sign in to {service}'
+	String signInTitle({required Object service}) => 'Sign in to ${service}';
+
+	/// en: 'On any device, open {url} and enter:'
+	String deviceCodeExplain({required Object url}) => 'On any device, open ${url} and enter:';
+
+	/// en: 'Waiting for approval…'
+	String get waiting => 'Waiting for approval…';
+
+	/// en: 'Open this address in a browser, sign in to {service} and approve Subnext Player. Then paste what {service} gives you below.'
+	String browserExplain({required Object service}) => 'Open this address in a browser, sign in to ${service} and approve Subnext Player. Then paste what ${service} gives you below.';
+
+	/// en: 'AniList shows a long token after you approve. Copy all of it.'
+	String get anilistPaste => 'AniList shows a long token after you approve. Copy all of it.';
+
+	/// en: 'On this device the app finishes by itself. If the browser was elsewhere, it ends on a page that does not load: copy that page's whole address.'
+	String get malPaste => 'On this device the app finishes by itself. If the browser was elsewhere, it ends on a page that does not load: copy that page\'s whole address.';
+
+	/// en: 'On a TV, sign in on your phone and use Move to another device to bring it here.'
+	String get tvHint => 'On a TV, sign in on your phone and use Move to another device to bring it here.';
+
+	/// en: 'Paste here'
+	String get pasteLabel => 'Paste here';
+
+	/// en: 'Finish signing in'
+	String get finish => 'Finish signing in';
+
+	/// en: 'Copy address'
+	String get copyAddress => 'Copy address';
+
+	/// en: 'Connected to {service}.'
+	String connected({required Object service}) => 'Connected to ${service}.';
+}
+
 // Path: downloads.errors
 class Translations$downloads$errors$en {
 	Translations$downloads$errors$en.internal(this._root);
@@ -1751,6 +1840,9 @@ class Translations$settings$section$en {
 
 	/// en: 'About'
 	String get about => 'About';
+
+	/// en: 'Watch tracking'
+	String get trackers => 'Watch tracking';
 }
 
 // Path: settings.advanced
@@ -2414,6 +2506,18 @@ class Translations$transfer$item$en {
 
 	/// en: 'That bundle is from a newer version of the app. Update this device and try again.'
 	String get newer => 'That bundle is from a newer version of the app. Update this device and try again.';
+
+	/// en: 'Watch tracking'
+	String get trackers => 'Watch tracking';
+
+	/// en: 'Your Trakt, Simkl, AniList and MyAnimeList sign-ins. Accepting them here is agreeing to send what you watch on this device too.'
+	String get trackersSub => 'Your Trakt, Simkl, AniList and MyAnimeList sign-ins. Accepting them here is agreeing to send what you watch on this device too.';
+
+	/// en: '(one) {{n} service} (other) {{n} services}'
+	String services({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} service',
+		other: '${n} services',
+	);
 }
 
 // Path: transfer.client
@@ -2483,6 +2587,27 @@ class Translations$mediaBrowser$errors$en {
 
 	/// en: 'Wrong username or password.'
 	String get wrongLogin => 'Wrong username or password.';
+}
+
+// Path: trackers.errors
+class Translations$trackers$errors$en {
+	Translations$trackers$errors$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '{service} could not be reached. It will be tried again.'
+	String unavailable({required Object service}) => '${service} could not be reached. It will be tried again.';
+
+	/// en: 'Sign-in was declined.'
+	String get denied => 'Sign-in was declined.';
+
+	/// en: 'That code has expired. Start again for a new one.'
+	String get expired => 'That code has expired. Start again for a new one.';
+
+	/// en: 'That is not what the sign-in page gave. Copy it again and paste the whole thing.'
+	String get badPaste => 'That is not what the sign-in page gave. Copy it again and paste the whole thing.';
 }
 
 // Path: settings.metadata.errors
@@ -2859,6 +2984,7 @@ extension on Translations {
 			'settings.section.transfer' => 'Move to another device',
 			'settings.section.privacy' => 'Privacy and data',
 			'settings.section.about' => 'About',
+			'settings.section.trackers' => 'Watch tracking',
 			'settings.advanced.dialogTitle' => 'Turning on advanced sources',
 			'settings.advanced.dialogLead' => 'You are about to connect a third-party provider using your own credentials.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.',
@@ -3046,9 +3172,9 @@ extension on Translations {
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',
 			'xtream.hidden.none' => 'Nothing hidden yet.',
-			'xtream.hidden.tapToRemove' => 'Select a word to stop hiding it.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.tapToRemove' => 'Select a word to stop hiding it.',
 			'transfer.noNetwork' => 'This device is not on a Wi-Fi or Ethernet network. Connect it to the same network as the other device and try again.',
 			'transfer.cannotListen' => ({required Object error}) => 'Could not start listening: ${error}',
 			'transfer.expired' => 'That code has expired. Start again for a new one.',
@@ -3123,6 +3249,9 @@ extension on Translations {
 			'transfer.item.shares' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} share', other: '${n} shares', ), 
 			'transfer.item.notBundle' => 'That was not a settings bundle.',
 			'transfer.item.newer' => 'That bundle is from a newer version of the app. Update this device and try again.',
+			'transfer.item.trackers' => 'Watch tracking',
+			'transfer.item.trackersSub' => 'Your Trakt, Simkl, AniList and MyAnimeList sign-ins. Accepting them here is agreeing to send what you watch on this device too.',
+			'transfer.item.services' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} service', other: '${n} services', ), 
 			'transfer.client.declined' => 'The other device did not accept the settings.',
 			'transfer.client.wrongCode' => 'The code was not right. Check it against the other screen.',
 			'transfer.client.used' => 'The other device already received something. Open Receive again there for a fresh code.',
@@ -3157,6 +3286,35 @@ extension on Translations {
 			'mediaBrowser.waiting' => 'Waiting for approval…',
 			'mediaBrowser.otherAddress' => 'Use a different address',
 			'mediaBrowser.connected' => ({required Object name}) => 'Connected to ${name}.',
+			'trackers.errors.unavailable' => ({required Object service}) => '${service} could not be reached. It will be tried again.',
+			'trackers.errors.denied' => 'Sign-in was declined.',
+			'trackers.errors.expired' => 'That code has expired. Start again for a new one.',
+			'trackers.errors.badPaste' => 'That is not what the sign-in page gave. Copy it again and paste the whole thing.',
+			'trackers.malCaught' => 'Signed in. You can close this window and go back to Subnext Player.',
+			'trackers.intro' => 'Send what you finish watching from your own servers to a watch-history service. Nothing from IPTV is sent, and nothing goes to us.',
+			'trackers.animeNote' => 'AniList and MyAnimeList get only titles your server tags as anime, found by name.',
+			'trackers.signedInAs' => ({required Object name}) => 'Signed in as ${name}',
+			'trackers.signedIn' => 'Signed in',
+			'trackers.notConnected' => 'Not connected',
+			'trackers.signIn' => 'Sign in',
+			'trackers.signOut' => 'Sign out',
+			'trackers.pending' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 watch is waiting to be sent.', other: '${n} watches are waiting to be sent.', ), 
+			'trackers.consentTitle' => ({required Object service}) => 'Send your watches to ${service}?',
+			'trackers.consentBody' => ({required Object service}) => 'When you finish a film or episode from your own Plex, Jellyfin or Emby server, Subnext Player sends ${service} its title, year, its IMDb, TMDB or TVDB id, and when you watched it. It goes straight from this device to ${service}, never through us. Nothing from IPTV is sent. You can sign out at any time in Settings, Watch tracking.',
+			'trackers.consentAnime' => ({required Object service}) => 'For ${service}, only titles your server tags as anime are sent, and they are found by searching ${service} for their name.',
+			'trackers.agree' => 'Continue',
+			'trackers.notNow' => 'Not now',
+			'trackers.signInTitle' => ({required Object service}) => 'Sign in to ${service}',
+			'trackers.deviceCodeExplain' => ({required Object url}) => 'On any device, open ${url} and enter:',
+			'trackers.waiting' => 'Waiting for approval…',
+			'trackers.browserExplain' => ({required Object service}) => 'Open this address in a browser, sign in to ${service} and approve Subnext Player. Then paste what ${service} gives you below.',
+			'trackers.anilistPaste' => 'AniList shows a long token after you approve. Copy all of it.',
+			'trackers.malPaste' => 'On this device the app finishes by itself. If the browser was elsewhere, it ends on a page that does not load: copy that page\'s whole address.',
+			'trackers.tvHint' => 'On a TV, sign in on your phone and use Move to another device to bring it here.',
+			'trackers.pasteLabel' => 'Paste here',
+			'trackers.finish' => 'Finish signing in',
+			'trackers.copyAddress' => 'Copy address',
+			'trackers.connected' => ({required Object service}) => 'Connected to ${service}.',
 			_ => null,
 		};
 	}

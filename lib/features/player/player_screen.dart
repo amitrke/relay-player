@@ -26,6 +26,7 @@ import 'playback_prefs.dart';
 import 'player_controls.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
+import '../trackers/trackers_controller.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -297,6 +298,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   HistoryController? _history;
   MediaServer? _plexService;
   OfflineWatchQueue? _offlineQueue;
+
+  /// For watch trackers (§19). Captured, like [_history], for `dispose`.
+  TrackersController? _trackers;
+  bool _trackedFinish = false;
 
   /// For refreshing Plex's On Deck once playback ends. Captured for the same
   /// reason as [_history]: `ref` is unusable in `dispose`.
@@ -588,6 +593,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (playable.savedCopy) {
         _offlineQueue = ref.read(offlineWatchProvider.notifier);
       }
+      _trackers = ref.read(trackersProvider.notifier);
+      _trackedFinish = false;
       if (widget.serverId != null) {
         // A saved copy outlives the server it came from (§18.4): with the
         // server removed there is nobody to report progress to, and that must
@@ -681,6 +688,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // and delivered when the server is back (§18.6); for a stream there is
     // nothing to keep, because a stream with no server is not playing.
     if (kind == PlaybackKind.server) {
+      // Past the same 90% that counts as a finished watch offline (§18.6):
+      // the trackers hear once per play, and not before.
+      if (!_trackedFinish &&
+          position.inMilliseconds >= duration.inMilliseconds * watchedThreshold) {
+        _trackedFinish = true;
+        unawaited(_trackers?.finished(widget.serverId!, playable.historyId!));
+      }
       void keep(Object? _) {
         if (!playable.savedCopy) return;
         unawaited(_offlineQueue?.add(pendingFrom(

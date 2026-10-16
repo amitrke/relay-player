@@ -9,6 +9,7 @@ import '../../domain/models/media_server.dart';
 import '../settings/settings_controller.dart';
 import 'downloads_controller.dart';
 import '../accounts/media_servers.dart';
+import '../trackers/trackers_controller.dart';
 
 /// The four things offline sync asks of a server. Narrower than
 /// [PlexService] so the queue and the rules can be tested against a fake.
@@ -307,5 +308,8 @@ final offlineSyncJobProvider = Provider<void>((ref) {
     await ref.read(offlineWatchProvider.notifier).flush();
     await ref.read(episodeRulesProvider.notifier).topUpAll();
     await ref.read(downloadsProvider.notifier).saveMissingArtwork();
+    // Watches waiting for a tracker resolve against the server, so a
+    // reconnect is also when they can go (§19.4).
+    await ref.read(trackersProvider.notifier).flush();
   }());
 });

@@ -424,7 +424,8 @@
       "advancedSources": "Sources avancées",
       "transfer": "Transférer vers un autre appareil",
       "privacy": "Confidentialité et données",
-      "about": "À propos"
+      "about": "À propos",
+      "trackers": "Suivi des visionnages"
     },
     "advanced": {
       "dialogTitle": "Activer les sources avancées",
@@ -752,7 +753,13 @@
         "other": "{n} partages"
       },
       "notBundle": "Ce n'était pas un paquet de réglages.",
-      "newer": "Ce paquet vient d'une version plus récente de l'appli. Mettez à jour cet appareil et réessayez."
+      "newer": "Ce paquet vient d'une version plus récente de l'appli. Mettez à jour cet appareil et réessayez.",
+      "trackers": "Suivi des visionnages",
+      "trackersSub": "Vos connexions Trakt, Simkl, AniList et MyAnimeList. Les accepter ici, c'est accepter d'envoyer aussi ce que vous regardez sur cet appareil.",
+      "services": {
+        "one": "{n} service",
+        "other": "{n} services"
+      }
     },
     "client": {
       "declined": "L'autre appareil n'a pas accepté les réglages.",
@@ -794,5 +801,41 @@
     "waiting": "En attente d'approbation…",
     "otherAddress": "Utiliser une autre adresse",
     "connected": "Connecté à {name}."
+  },
+  "trackers": {
+    "errors": {
+      "unavailable": "Impossible de joindre {service}. Nouvel essai plus tard.",
+      "denied": "La connexion a été refusée.",
+      "expired": "Ce code a expiré. Recommencez pour en obtenir un nouveau.",
+      "badPaste": "Ce n'est pas ce qu'a donné la page de connexion. Copiez-le à nouveau et collez-le en entier."
+    },
+    "malCaught": "Connecté. Vous pouvez fermer cette fenêtre et revenir à Subnext Player.",
+    "intro": "Envoyez ce que vous finissez de regarder sur vos propres serveurs à un service d'historique. Rien ne vient de l'IPTV, et rien ne nous parvient.",
+    "animeNote": "AniList et MyAnimeList ne reçoivent que les titres que votre serveur marque comme anime, retrouvés par leur nom.",
+    "signedInAs": "Connecté en tant que {name}",
+    "signedIn": "Connecté",
+    "notConnected": "Non connecté",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "pending": {
+      "one": "1 visionnage attend d'être envoyé.",
+      "other": "{n} visionnages attendent d'être envoyés."
+    },
+    "consentTitle": "Envoyer vos visionnages à {service} ?",
+    "consentBody": "Quand vous finissez un film ou un épisode de votre propre serveur Plex, Jellyfin ou Emby, Subnext Player envoie à {service} son titre, son année, son identifiant IMDb, TMDB ou TVDB, et le moment où vous l'avez regardé. Cela va directement de cet appareil à {service}, jamais par nous. Rien ne vient de l'IPTV. Vous pouvez vous déconnecter à tout moment dans Réglages, Suivi des visionnages.",
+    "consentAnime": "Pour {service}, seuls les titres que votre serveur marque comme anime sont envoyés, et ils sont retrouvés en cherchant leur nom sur {service}.",
+    "agree": "Continuer",
+    "notNow": "Pas maintenant",
+    "signInTitle": "Se connecter à {service}",
+    "deviceCodeExplain": "Sur n'importe quel appareil, ouvrez {url} et saisissez :",
+    "waiting": "En attente d'approbation…",
+    "browserExplain": "Ouvrez cette adresse dans un navigateur, connectez-vous à {service} et autorisez Subnext Player. Collez ensuite ci-dessous ce que {service} vous donne.",
+    "anilistPaste": "AniList affiche un long jeton après l'autorisation. Copiez-le en entier.",
+    "malPaste": "Sur cet appareil, l'appli termine seule. Si le navigateur était ailleurs, il finit sur une page qui ne se charge pas : copiez l'adresse complète de cette page.",
+    "tvHint": "Sur une TV, connectez-vous sur votre téléphone et utilisez Transférer vers un autre appareil pour le ramener ici.",
+    "pasteLabel": "Collez ici",
+    "finish": "Terminer la connexion",
+    "copyAddress": "Copier l'adresse",
+    "connected": "Connecté à {service}."
   }
 }

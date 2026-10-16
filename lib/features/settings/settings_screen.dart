@@ -14,6 +14,9 @@ import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../i18n/strings.g.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../trackers/trackers_controller.dart';
+import '../trackers/trackers_pane.dart';
 
 /// Screen 09 — Settings.
 ///
@@ -140,6 +143,9 @@ enum SettingsSection {
   // Built 2026-10-09: copies sources, keys and preferences to another device on
   // the same network (section 17), so a TV is not set up by typing on it.
   transfer(built: true),
+  // Built 2026-10-16: Trakt, Simkl, AniList, MyAnimeList (§19). Shown only
+  // when the build has credentials for at least one of them.
+  trackers(built: true),
   // Unbuilt from 2026-09-22 to 2026-10-09: its only control was "Send crash
   // reports", which stored a preference nothing read while the privacy policy
   // says no crash reports are sent. Built again around clearing cached data,
@@ -160,6 +166,7 @@ enum SettingsSection {
     aiFeatures => tr.settings.section.aiFeatures,
     advancedSources => tr.settings.section.advancedSources,
     transfer => tr.settings.section.transfer,
+    trackers => tr.settings.section.trackers,
     privacy => tr.settings.section.privacy,
     about => tr.settings.section.about,
   };
@@ -167,7 +174,7 @@ enum SettingsSection {
 
 // --- Phone ------------------------------------------------------------
 
-class _PhoneSettings extends StatelessWidget {
+class _PhoneSettings extends ConsumerWidget {
   const _PhoneSettings({
     required this.theme,
     required this.state,
@@ -179,7 +186,7 @@ class _PhoneSettings extends StatelessWidget {
   final ValueChanged<SettingsState> onStateChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final form = RelayLayout.of(context);
 
@@ -252,6 +259,14 @@ class _PhoneSettings extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 22),
+
+        if (ref.watch(availableTrackersProvider).isNotEmpty) ...[
+          _Section(
+            title: SettingsSection.trackers.label,
+            child: const TrackersPane(),
+          ),
+          const SizedBox(height: 22),
+        ],
 
         if (SettingsSection.transfer.built) ...[
           _Section(
@@ -593,7 +608,7 @@ class _ToggleRow extends StatelessWidget {
 
 // --- Desktop ----------------------------------------------------------
 
-class _DesktopSettings extends StatelessWidget {
+class _DesktopSettings extends ConsumerWidget {
   const _DesktopSettings({
     required this.theme,
     required this.state,
@@ -607,11 +622,14 @@ class _DesktopSettings extends StatelessWidget {
   final bool showUnbuiltSections;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
     final sections = [
       for (final s in SettingsSection.values)
-        if (s.built || showUnbuiltSections) s,
+        if ((s.built || showUnbuiltSections) &&
+            (s != SettingsSection.trackers ||
+                ref.watch(availableTrackersProvider).isNotEmpty))
+          s,
     ];
     // Belt and braces for the default above: whatever selected an unbuilt
     // section, the app never renders one, and falls back to the same place
@@ -694,6 +712,10 @@ class _DesktopSettings extends StatelessWidget {
                     ],
                   ],
                 ),
+              ),
+              SettingsSection.trackers => _DesktopPane(
+                title: SettingsSection.trackers.label,
+                child: const TrackersPane(),
               ),
               SettingsSection.transfer => _DesktopPane(
                 title: SettingsSection.transfer.label,

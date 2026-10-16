@@ -424,7 +424,8 @@
       "advancedSources": "Advanced sources",
       "transfer": "Move to another device",
       "privacy": "Privacy and data",
-      "about": "About"
+      "about": "About",
+      "trackers": "Watch tracking"
     },
     "advanced": {
       "dialogTitle": "Turning on advanced sources",
@@ -752,7 +753,13 @@
         "other": "{n} shares"
       },
       "notBundle": "That was not a settings bundle.",
-      "newer": "That bundle is from a newer version of the app. Update this device and try again."
+      "newer": "That bundle is from a newer version of the app. Update this device and try again.",
+      "trackers": "Watch tracking",
+      "trackersSub": "Your Trakt, Simkl, AniList and MyAnimeList sign-ins. Accepting them here is agreeing to send what you watch on this device too.",
+      "services": {
+        "one": "{n} service",
+        "other": "{n} services"
+      }
     },
     "client": {
       "declined": "The other device did not accept the settings.",
@@ -794,5 +801,41 @@
     "waiting": "Waiting for approval…",
     "otherAddress": "Use a different address",
     "connected": "Connected to {name}."
+  },
+  "trackers": {
+    "errors": {
+      "unavailable": "{service} could not be reached. It will be tried again.",
+      "denied": "Sign-in was declined.",
+      "expired": "That code has expired. Start again for a new one.",
+      "badPaste": "That is not what the sign-in page gave. Copy it again and paste the whole thing."
+    },
+    "malCaught": "Signed in. You can close this window and go back to Subnext Player.",
+    "intro": "Send what you finish watching from your own servers to a watch-history service. Nothing from IPTV is sent, and nothing goes to us.",
+    "animeNote": "AniList and MyAnimeList get only titles your server tags as anime, found by name.",
+    "signedInAs": "Signed in as {name}",
+    "signedIn": "Signed in",
+    "notConnected": "Not connected",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "pending": {
+      "one": "1 watch is waiting to be sent.",
+      "other": "{n} watches are waiting to be sent."
+    },
+    "consentTitle": "Send your watches to {service}?",
+    "consentBody": "When you finish a film or episode from your own Plex, Jellyfin or Emby server, Subnext Player sends {service} its title, year, its IMDb, TMDB or TVDB id, and when you watched it. It goes straight from this device to {service}, never through us. Nothing from IPTV is sent. You can sign out at any time in Settings, Watch tracking.",
+    "consentAnime": "For {service}, only titles your server tags as anime are sent, and they are found by searching {service} for their name.",
+    "agree": "Continue",
+    "notNow": "Not now",
+    "signInTitle": "Sign in to {service}",
+    "deviceCodeExplain": "On any device, open {url} and enter:",
+    "waiting": "Waiting for approval…",
+    "browserExplain": "Open this address in a browser, sign in to {service} and approve Subnext Player. Then paste what {service} gives you below.",
+    "anilistPaste": "AniList shows a long token after you approve. Copy all of it.",
+    "malPaste": "On this device the app finishes by itself. If the browser was elsewhere, it ends on a page that does not load: copy that page's whole address.",
+    "tvHint": "On a TV, sign in on your phone and use Move to another device to bring it here.",
+    "pasteLabel": "Paste here",
+    "finish": "Finish signing in",
+    "copyAddress": "Copy address",
+    "connected": "Connected to {service}."
   }
 }

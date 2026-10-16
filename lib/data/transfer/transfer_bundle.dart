@@ -14,7 +14,12 @@ enum TransferItem {
   xtream,
   smb,
   tmdb,
-  ai;
+  ai,
+
+  /// Tracker sign-ins (§19). They move, unlike Plex, because a tracker token
+  /// belongs to the account, not to a device; and they have to, because
+  /// AniList and MyAnimeList cannot be signed in to on a TV at all.
+  trackers;
 
   String get label => switch (this) {
     preferences => tr.transfer.item.preferences,
@@ -22,6 +27,7 @@ enum TransferItem {
     smb => tr.transfer.item.smb,
     tmdb => tr.transfer.item.tmdb,
     ai => tr.transfer.item.ai,
+    trackers => tr.transfer.item.trackers,
   };
 
   String get description => switch (this) {
@@ -30,6 +36,7 @@ enum TransferItem {
     smb => tr.transfer.item.smbSub,
     tmdb => tr.transfer.item.tmdbSub,
     ai => tr.transfer.item.aiSub,
+    trackers => tr.transfer.item.trackersSub,
   };
 }
 
@@ -88,6 +95,7 @@ class TransferBundle {
     this.smb = const [],
     this.tmdbKey,
     this.ai,
+    this.trackers = const {},
   });
 
   static const format = 'subnext-transfer';
@@ -102,6 +110,10 @@ class TransferBundle {
   final String? tmdbKey;
   final TransferredAi? ai;
 
+  /// Tracker kind name to its token record (`TrackerToken.toJson()`), kept as
+  /// maps so this file does not depend on the trackers.
+  final Map<String, Map<String, Object?>> trackers;
+
   /// What this bundle contains.
   Set<TransferItem> get items => {
     if (preferences.isNotEmpty) TransferItem.preferences,
@@ -109,6 +121,7 @@ class TransferBundle {
     if (smb.isNotEmpty) TransferItem.smb,
     if (tmdbKey != null) TransferItem.tmdb,
     if (ai != null) TransferItem.ai,
+    if (trackers.isNotEmpty) TransferItem.trackers,
   };
 
   /// A line per item for the confirmation screen. Names and counts, never a
@@ -122,6 +135,7 @@ class TransferBundle {
     // Nothing to count: the label already says it ("TMDB key", "AI provider"),
     // and adding "Key" after it read as a stutter on the confirmation screen.
     TransferItem.tmdb || TransferItem.ai => '',
+    TransferItem.trackers => tr.transfer.item.services(n: trackers.length),
   };
 
   /// [describe] set after the item's label, for a title or a list line:
@@ -139,6 +153,7 @@ class TransferBundle {
     smb: keep.contains(TransferItem.smb) ? smb : const [],
     tmdbKey: keep.contains(TransferItem.tmdb) ? tmdbKey : null,
     ai: keep.contains(TransferItem.ai) ? ai : null,
+    trackers: keep.contains(TransferItem.trackers) ? trackers : const {},
   );
 
   List<int> encode() => utf8.encode(
@@ -166,6 +181,7 @@ class TransferBundle {
       if (tmdbKey != null) 'tmdbKey': tmdbKey,
       if (ai != null)
         'ai': {'config': ai!.config, if (ai!.key != null) 'key': ai!.key},
+      if (trackers.isNotEmpty) 'trackers': trackers,
     }),
   );
 
@@ -210,6 +226,15 @@ class TransferBundle {
       ],
       tmdbKey: _text(raw['tmdbKey']),
       ai: _ai(raw['ai']),
+      trackers: {
+        if (raw['trackers'] case final Map map)
+          for (final e in map.entries)
+            if (e.key is String && e.value is Map && e.value['access'] is String)
+              e.key as String: {
+                for (final f in (e.value as Map).entries)
+                  if (f.key is String) f.key as String: f.value,
+              },
+      },
     );
   }
 

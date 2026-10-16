@@ -14,6 +14,8 @@ import 'history_controller.dart';
 import 'resume_entries.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
+import 'dart:async';
+import '../trackers/trackers_controller.dart';
 
 /// Watched / unwatched marks made in this session, by history key
 /// (`plex:<server>:<ratingKey>`).
@@ -48,6 +50,11 @@ class WatchOverrides extends Notifier<Map<String, bool>> {
     }
     await server.service.setWatched(ratingKey, watched: watched);
     await _applyLocally(serverId, ratingKey, watched);
+    // A film or episode marked watched by hand is a watch the trackers
+    // should hear about (§19.4). The caller does not mark a whole show here.
+    if (watched) {
+      unawaited(ref.read(trackersProvider.notifier).finished(serverId, ratingKey));
+    }
   }
 
   /// "Mark as watched" on a saved copy with no server to tell (§18.6): the
@@ -68,6 +75,7 @@ class WatchOverrides extends Notifier<Map<String, bool>> {
           watched: true,
         ));
     await _applyLocally(serverId, ratingKey, true);
+    unawaited(ref.read(trackersProvider.notifier).finished(serverId, ratingKey));
   }
 
   Future<void> _applyLocally(

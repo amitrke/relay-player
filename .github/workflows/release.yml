@@ -221,8 +221,21 @@ jobs:
           done
           echo "::warning::No release notes found (looked for ${candidates[*]}). Uploading without them; add them in Play Console if testers should see any."
 
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python3 tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
       - run: >-
           flutter build appbundle --release
+          --dart-define-from-file=${{ runner.temp }}/trackers.json
           --build-number=${{ needs.check.outputs.code }}
           --build-name=${{ needs.check.outputs.name }}
 
@@ -351,10 +364,23 @@ jobs:
       # Without the key there is no way to sign, so the run still proves the
       # iOS build compiles — the thing most likely to break unnoticed, since
       # nothing else in CI builds for iOS — and says why it stopped there.
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python3 tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
       - name: Compile without signing
         if: env.HAS_ASC_KEY != 'true'
         run: |
           flutter build ios --release --no-codesign \
+            --dart-define-from-file="$RUNNER_TEMP/trackers.json" \
             --build-number=${{ needs.check.outputs.code }} \
             --build-name=${{ needs.check.outputs.name }}
           echo "::notice::APP_STORE_CONNECT_API_KEY_P8 is not set, so the iOS build was compiled but not signed or uploaded. See docs/RELEASING.md."
@@ -378,6 +404,7 @@ jobs:
         if: env.HAS_ASC_KEY == 'true'
         run: |
           flutter build ios --release --config-only \
+            --dart-define-from-file="$RUNNER_TEMP/trackers.json" \
             --build-number=${{ needs.check.outputs.code }} \
             --build-name=${{ needs.check.outputs.name }}
           xcodebuild archive \

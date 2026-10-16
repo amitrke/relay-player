@@ -12,6 +12,7 @@ import 'package:relay_player/features/favorites_history/watch_actions.dart';
 import 'package:relay_player/features/favorites_history/watch_state.dart';
 import 'package:relay_player/features/library/library_sort.dart';
 import 'package:relay_player/features/accounts/media_servers.dart';
+import 'package:relay_player/features/trackers/trackers_controller.dart';
 
 /// Mark watched / unwatched, the long press that opens it, and "Unwatched
 /// only". Plex itself is faked: whether a real server accepts the scrobble
@@ -27,6 +28,17 @@ class _Plex extends PlexService {
     if (fail) throw Exception('offline');
     calls.add('${watched ? 'watched' : 'unwatched'} $ratingKey');
   }
+}
+
+class _NoTrackers extends TrackersController {
+  final finished_ = <String>[];
+
+  @override
+  TrackersState build() => const TrackersState();
+
+  @override
+  Future<void> finished(String serverId, String itemId, {DateTime? at}) async =>
+      finished_.add(itemId);
 }
 
 class _History extends HistoryController {
@@ -109,6 +121,7 @@ void main() {
           ConnectedServer(service: plex),
         ]),
         historyProvider.overrideWith(() => history),
+        trackersProvider.overrideWith(_NoTrackers.new),
         onDeckProvider.overrideWith((_) async => const []),
       ]);
       addTearDown(c.dispose);

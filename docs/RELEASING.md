@@ -432,6 +432,31 @@ block of work and nothing about a store submission depends on it, whereas
 §12.1's About section does. (It also said §16's kill switch, since dropped, did, until that
 gate was withdrawn above.)
 
+## Tracker credentials (added 2026-10-16)
+
+Watch trackers (architecture.md §19) need the app registered with each
+service. The owner does this once, and nothing registered goes in the
+repository: it is public. Each value becomes a repository secret, which
+`tool/tracker_defines.py` writes to a file that every build in `build.yml`
+and `release.yml` passes with `--dart-define-from-file`. **A secret left
+unset leaves that tracker out of the build**, so the order below is also the
+rollout order: add one, ship, check it, add the next.
+
+| Service | Register at | Settings to use | Secrets |
+|---|---|---|---|
+| Trakt | trakt.tv, Settings, Your API Apps | Redirect URI `urn:ietf:wg:oauth:2.0:oob` (device flow needs no real one) | `TRAKT_CLIENT_ID`, `TRAKT_CLIENT_SECRET` |
+| Simkl | simkl.com, Settings, Developer | Redirect URI `urn:ietf:wg:oauth:2.0:oob` | `SIMKL_CLIENT_ID` |
+| AniList | anilist.co, Settings, Developer | Redirect URL exactly `https://anilist.co/api/v2/oauth/pin` | `ANILIST_CLIENT_ID` (the numeric id) |
+| MyAnimeList | myanimelist.net, Account settings, API | App type **other**; redirect URL exactly `http://localhost:41235/mal` | `MAL_CLIENT_ID` |
+
+Use the app's public name and the privacy policy URL where asked. Never
+paste a client secret anywhere but the repository's secrets; the build logs
+print which secrets are present, never their values.
+
+**Before the first build with any of these reaches testers**, the privacy
+policy and the data-safety form need the sentence architecture.md lists
+under Open items.
+
 ## Failure modes to expect
 
 - **"Only releases with status draft may be created on draft app."** Play
