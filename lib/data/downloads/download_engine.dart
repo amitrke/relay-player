@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import '../../i18n/strings.g.dart';
 
 /// A fetch that failed, with a message fit to show.
 class DownloadException implements Exception {
@@ -58,23 +59,19 @@ class DownloadEngine {
         if (total != null && total == start) return start;
         // Longer than the server's copy: the file changed underneath us.
         await file.delete();
-        throw const DownloadException(
-          'The file changed on the server. Start the download again.',
-        );
+        throw DownloadException(tr.downloads.errors.changedOnServer);
       }
 
       if (response.statusCode == HttpStatus.unauthorized ||
           response.statusCode == HttpStatus.forbidden) {
         await response.drain<void>();
-        throw const DownloadException(
-          'The server would not let this device download that.',
-        );
+        throw DownloadException(tr.downloads.errors.refused);
       }
       if (response.statusCode != HttpStatus.ok &&
           response.statusCode != HttpStatus.partialContent) {
         await response.drain<void>();
         throw DownloadException(
-          'The server answered ${response.statusCode}.',
+          tr.downloads.errors.status(code: response.statusCode),
         );
       }
 
@@ -109,21 +106,15 @@ class DownloadEngine {
       // A body that ends early is a dropped connection, not a finished file.
       // Checked against the length the server promised.
       if (total != null && received < total) {
-        throw const DownloadException(
-          'The connection dropped part-way. Resume to continue.',
-        );
+        throw DownloadException(tr.downloads.errors.dropped);
       }
       return received;
     } on SocketException {
-      throw const DownloadException(
-        'Could not reach the server. Check the connection and resume.',
-      );
+      throw DownloadException(tr.downloads.errors.unreachable);
     } on HttpException {
-      throw const DownloadException(
-        'The connection dropped part-way. Resume to continue.',
-      );
+      throw DownloadException(tr.downloads.errors.dropped);
     } on TimeoutException {
-      throw const DownloadException('The server took too long to answer.');
+      throw DownloadException(tr.downloads.errors.timeout);
     } finally {
       client.close(force: true);
     }

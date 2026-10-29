@@ -8,6 +8,7 @@ import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
 import '../../data/local/favorites_store.dart';
 import 'poster_tile.dart';
+import '../../i18n/strings.g.dart';
 
 /// The responsive poster grid shared by Library and Search.
 ///
@@ -186,7 +187,7 @@ class LibraryEmptyState extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 18),
-              RelayButton(label: 'Try again', onPressed: onRetry),
+              RelayButton(label: tr.common.tryAgain, onPressed: onRetry),
             ],
             if (onAction != null && actionLabel != null) ...[
               const SizedBox(height: 18),

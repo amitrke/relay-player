@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../i18n/strings.g.dart';
 import 'relay_theme.dart';
 import 'relay_tokens.dart';
 
@@ -54,6 +56,13 @@ class ThemeController extends ChangeNotifier {
 /// Watches the platform brightness so `System` keeps following the OS while the
 /// app is running — §12.2 calls that out specifically, and it is easy to get
 /// wrong by reading brightness once at startup.
+/// The app's language for Material, when a [TranslationProvider] is above;
+/// the design gallery runs without one and keeps the platform default.
+Locale? _locale(BuildContext context) =>
+    context.findAncestorWidgetOfExactType<TranslationProvider>() == null
+        ? null
+        : TranslationProvider.of(context).flutterLocale;
+
 class RelayApp extends StatelessWidget {
   const RelayApp({
     super.key,
@@ -103,6 +112,11 @@ class RelayApp extends StatelessWidget {
                   title: title,
                   debugShowCheckedModeBanner: false,
                   theme: theme,
+                  // Material's own strings (Cut, Paste, dialog buttons) in
+                  // the same language as ours (§12.3).
+                  locale: _locale(context),
+                  supportedLocales: AppLocaleUtils.supportedLocales,
+                  localizationsDelegates: GlobalMaterialLocalizations.delegates,
                   routerConfig: router,
                   builder: (context, child) => RelayTheme(
                     tokens: tokens,
@@ -116,6 +130,9 @@ class RelayApp extends StatelessWidget {
                 title: title,
                 debugShowCheckedModeBanner: false,
                 theme: theme,
+                locale: _locale(context),
+                supportedLocales: AppLocaleUtils.supportedLocales,
+                localizationsDelegates: GlobalMaterialLocalizations.delegates,
                 home: RelayTheme(
                   tokens: tokens,
                   palette: controller.palette,

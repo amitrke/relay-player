@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
+import '../../i18n/strings.g.dart';
 
 /// The Subnext Player design tokens.
 ///
@@ -140,8 +141,17 @@ enum RelayPalette {
 
   const RelayPalette(this.label);
 
-  /// Exactly the labels shown in the Settings theme chips.
+  /// Stable English names, kept for [fromLabel] and tests. What Settings
+  /// shows is [displayName], in the app's language (§12.3).
   final String label;
+
+  String get displayName => switch (this) {
+        system => tr.settings.appearance.palette.system,
+        midnight => tr.settings.appearance.palette.midnight,
+        slate => tr.settings.appearance.palette.slate,
+        daylight => tr.settings.appearance.palette.daylight,
+        amber => tr.settings.appearance.palette.amber,
+      };
 
   bool get isDarkPalette => this != daylight;
 

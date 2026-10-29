@@ -1,9 +1,19 @@
 # Play listing copy
 
-Plain text files in the layout fastlane `supply` expects. **fastlane is not set
-up**; these are pasted into Play Console by hand today. The layout is used
-anyway so that adopting `supply` later is a no-op rather than a migration, and
-so the screenshots from #7 land where they are already expected to.
+Plain text files in the layout fastlane `supply` expects. ~~fastlane is not
+set up; these are pasted into Play Console by hand.~~ Since 2026-10-29
+`.github/workflows/promote.yml` uploads this text to Play with every production
+release and with its `listing` action, so **an edit here overwrites the live
+listing** the next time either runs. Run its `check` action first if anyone may
+have edited the listing in Play Console. See docs/RELEASING.md, "Production".
+Images are still not uploaded; the screenshots from #7 land here for when they
+are.
+
+`changelogs/v<version>.txt` holds the notes for one version, at most 500
+characters, and is the only copy: release.yml sends it to testers, and
+promote.yml sends the same text to Play production and to the App Store as
+"What's New". The older `3.txt` is named after a versionCode, the convention
+before 2026-09-23.
 
 The reasoning behind the copy, the drafted answers to the Play Console forms,
 and the constraints that shape all of it are in

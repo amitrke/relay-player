@@ -9,6 +9,7 @@ import '../library/library_screen.dart' show libraryItemsProvider;
 import '../metadata/tmdb_controller.dart';
 import '../search/suggestions_provider.dart';
 import 'settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Empties everything the app keeps only to be faster: the library lists, the
 /// TMDB lookups and the AI picks. Your sources, keys, settings and watch history
@@ -76,14 +77,12 @@ class _PrivacyPaneState extends ConsumerState<PrivacyPane> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Subnext Player has no backend and no analytics. What it keeps lives '
-          'on this device, and the only places data is sent are the sources, '
-          'TMDB and AI provider you connect yourself.',
+          tr.settings.privacy.summary,
           style: style,
         ),
         const SizedBox(height: 22),
         Text(
-          'Cached data',
+          tr.settings.privacy.cachedData,
           style: TextStyle(
             color: t.ink,
             fontSize: 16,
@@ -92,26 +91,23 @@ class _PrivacyPaneState extends ConsumerState<PrivacyPane> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Your library lists, TMDB lookups and AI picks are kept so the app '
-          'opens quickly. Old ones clear themselves, after 30 days for a '
-          'library and 90 for a lookup, and a source\'s entry goes when you '
-          'remove the source. Clearing now leaves your sources, keys, settings '
-          'and watch history alone, and everything is fetched again when '
-          'needed.',
+          tr.settings.privacy.cachedExplain,
           style: style,
         ),
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
           child: RelayButton(
-            label: _busy ? 'Clearing...' : 'Clear cached data',
+            label: _busy
+                ? tr.settings.privacy.clearing
+                : tr.settings.privacy.clear,
             onPressed: _busy ? null : _clear,
           ),
         ),
         if (_cleared) ...[
           const SizedBox(height: 10),
           Text(
-            'Cleared. Your library is loading again.',
+            tr.settings.privacy.cleared,
             style: TextStyle(color: t.accent, fontSize: 13),
           ),
         ],

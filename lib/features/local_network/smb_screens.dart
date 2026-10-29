@@ -7,6 +7,8 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/filesystem/smb_source.dart';
 import '../library/poster_grid.dart';
 import 'smb_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../settings/settings_controller.dart';
 
 /// Adds a network share (§7.2).
 ///
@@ -67,12 +69,15 @@ class _AddSmbScreenState extends ConsumerState<AddSmbScreen> {
       await ref
           .read(smbSharesProvider.notifier)
           .save(share, password: _password.text);
+      // A saved share is a reason to have the tab, however this screen was
+      // reached (§12 screen 3).
+      await ref.read(localNetworkTabProvider.notifier).set(true);
 
       if (mounted) context.go('/library?tab=local');
     } catch (e) {
       setState(() {
         _busy = false;
-        _error = 'Could not connect: $e';
+        _error = tr.smb.connectFailed(error: '$e');
       });
     }
   }
@@ -88,21 +93,29 @@ class _AddSmbScreenState extends ConsumerState<AddSmbScreen> {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: const Text('Add a network share'),
+        title: Text(tr.smb.title),
       ),
       body: ListView(
         padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 32),
         children: [
           Text(
-            'A NAS or a shared folder on another computer on your network.',
+            tr.smb.explain,
             style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.55),
           ),
           const SizedBox(height: 22),
-          _Field(controller: _host, label: 'Server address', hint: 'e.g. nas'),
-          _Field(controller: _username, label: 'Username'),
-          _Field(controller: _password, label: 'Password', obscure: true),
-          _Field(controller: _domain, label: 'Domain (optional)'),
-          _Field(controller: _name, label: 'Name (optional)'),
+          _Field(
+            controller: _host,
+            label: tr.smb.host,
+            hint: tr.smb.hostHint,
+          ),
+          _Field(controller: _username, label: tr.smb.username),
+          _Field(
+            controller: _password,
+            label: tr.smb.password,
+            obscure: true,
+          ),
+          _Field(controller: _domain, label: tr.smb.domain),
+          _Field(controller: _name, label: tr.smb.name),
           const SizedBox(height: 10),
           if (_error != null) ...[
             Container(
@@ -122,7 +135,10 @@ class _AddSmbScreenState extends ConsumerState<AddSmbScreen> {
           if (_busy)
             Center(child: CircularProgressIndicator(color: t.accent))
           else
-            RelayButton(label: 'Connect and add', onPressed: _verifyAndSave),
+            RelayButton(
+              label: tr.smb.connectAndAdd,
+              onPressed: _verifyAndSave,
+            ),
         ],
       ),
     );
@@ -220,7 +236,7 @@ class SmbBrowseScreen extends ConsumerWidget {
       return Scaffold(
         backgroundColor: t.bg,
         appBar: AppBar(backgroundColor: t.bg, foregroundColor: t.ink),
-        body: const Center(child: Text('That share is no longer configured.')),
+        body: Center(child: Text(tr.smb.gone)),
       );
     }
 
@@ -241,15 +257,14 @@ class SmbBrowseScreen extends ConsumerWidget {
           // Phase 0 left SMB failure behaviour untested and called it out: a
           // sleeping NAS or a dropped Wi-Fi is the common case, not a corrupt
           // share, so say that first.
-          message: 'Could not reach this share. The server may be asleep or '
-              'off the network.\n\n$e',
+          message: tr.smb.unreachable(error: '$e'),
           onRetry: () => ref.invalidate(smbListingProvider((share, path))),
         ),
         data: (entries) {
           if (entries.isEmpty) {
-            return const LibraryEmptyState(
+            return LibraryEmptyState(
               icon: Icons.folder_outlined,
-              message: 'No videos or folders here.',
+              message: tr.smb.empty,
             );
           }
           return ListView.builder(

@@ -5,7 +5,10 @@ import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/data/downloads/download_record.dart';
 import 'package:relay_player/features/downloads/downloads_controller.dart';
+import 'package:relay_player/data/downloads/episode_rules.dart';
+import 'package:relay_player/data/downloads/offline_watch_queue.dart';
 import 'package:relay_player/features/downloads/downloads_screen.dart';
+import 'package:relay_player/features/downloads/offline_sync.dart';
 import 'package:relay_player/features/favorites_history/watch_actions.dart';
 
 /// Records what the screen asks for, without touching a network or a disk.
@@ -36,7 +39,18 @@ class _Fake extends DownloadsController {
     required String ratingKey,
     required String title,
     bool isEpisode = false,
+    String? rule,
   }) async => calls.add('enqueue $ratingKey $title');
+}
+
+class _NoRules extends EpisodeRules {
+  @override
+  List<EpisodeRule> build() => const [];
+}
+
+class _NoPending extends OfflineWatchQueue {
+  @override
+  List<PendingWatch> build() => const [];
 }
 
 DownloadRecord _rec(
@@ -87,7 +101,11 @@ void main() {
       fake = _Fake(records);
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [downloadsProvider.overrideWith(() => fake)],
+          overrides: [
+            downloadsProvider.overrideWith(() => fake),
+            episodeRulesProvider.overrideWith(_NoRules.new),
+            offlineWatchProvider.overrideWith(_NoPending.new),
+          ],
           child: MaterialApp(
             home: RelayTheme(
               tokens: RelayPalettes.midnight,
@@ -222,7 +240,11 @@ void main() {
       fake = _Fake(records);
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [downloadsProvider.overrideWith(() => fake)],
+          overrides: [
+            downloadsProvider.overrideWith(() => fake),
+            episodeRulesProvider.overrideWith(_NoRules.new),
+            offlineWatchProvider.overrideWith(_NoPending.new),
+          ],
           child: MaterialApp(
             // In `builder`, as the app installs it: a bottom sheet is built
             // under the Navigator, which a `home:` wrapper would not cover.

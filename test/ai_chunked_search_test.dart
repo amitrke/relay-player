@@ -16,7 +16,7 @@ CatalogItem _film(
   int? year,
   CatalogKind kind = CatalogKind.movie,
 }) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: 'server',
   kind: kind,
   id: title,

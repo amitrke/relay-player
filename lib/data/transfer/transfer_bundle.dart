@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../filesystem/smb_source.dart';
 import '../xtream/xtream_account_store.dart';
+import '../../i18n/strings.g.dart';
 
 /// The things that can be moved to another device, as the user sees them.
 ///
@@ -9,19 +10,34 @@ import '../xtream/xtream_account_store.dart';
 /// identifier that requested it, so a copied one cannot be assumed to work, and
 /// linking Plex on a TV is already a code on the screen and nothing to type.
 enum TransferItem {
-  preferences(
-    'Preferences',
-    'Playback and subtitle choices, hidden words and library placement.',
-  ),
-  xtream('IPTV accounts', 'Logins and the categories and channels you chose.'),
-  smb('Network shares', 'SMB shares and their passwords.'),
-  tmdb('TMDB key', 'Your own key for genre, rating and language filters.'),
-  ai('AI provider', 'The provider, its model and your key.');
+  preferences,
+  xtream,
+  smb,
+  tmdb,
+  ai,
 
-  const TransferItem(this.label, this.description);
+  /// Tracker sign-ins (§19). They move, unlike Plex, because a tracker token
+  /// belongs to the account, not to a device; and they have to, because
+  /// AniList and MyAnimeList cannot be signed in to on a TV at all.
+  trackers;
 
-  final String label;
-  final String description;
+  String get label => switch (this) {
+    preferences => tr.transfer.item.preferences,
+    xtream => tr.transfer.item.xtream,
+    smb => tr.transfer.item.smb,
+    tmdb => tr.transfer.item.tmdb,
+    ai => tr.transfer.item.ai,
+    trackers => tr.transfer.item.trackers,
+  };
+
+  String get description => switch (this) {
+    preferences => tr.transfer.item.preferencesSub,
+    xtream => tr.transfer.item.xtreamSub,
+    smb => tr.transfer.item.smbSub,
+    tmdb => tr.transfer.item.tmdbSub,
+    ai => tr.transfer.item.aiSub,
+    trackers => tr.transfer.item.trackersSub,
+  };
 }
 
 /// Thrown for a bundle that is not one of ours or is from a newer app.
@@ -79,6 +95,7 @@ class TransferBundle {
     this.smb = const [],
     this.tmdbKey,
     this.ai,
+    this.trackers = const {},
   });
 
   static const format = 'subnext-transfer';
@@ -93,6 +110,10 @@ class TransferBundle {
   final String? tmdbKey;
   final TransferredAi? ai;
 
+  /// Tracker kind name to its token record (`TrackerToken.toJson()`), kept as
+  /// maps so this file does not depend on the trackers.
+  final Map<String, Map<String, Object?>> trackers;
+
   /// What this bundle contains.
   Set<TransferItem> get items => {
     if (preferences.isNotEmpty) TransferItem.preferences,
@@ -100,18 +121,21 @@ class TransferBundle {
     if (smb.isNotEmpty) TransferItem.smb,
     if (tmdbKey != null) TransferItem.tmdb,
     if (ai != null) TransferItem.ai,
+    if (trackers.isNotEmpty) TransferItem.trackers,
   };
 
   /// A line per item for the confirmation screen. Names and counts, never a
   /// host, username or key: this appears on a TV across a living room.
   String describe(TransferItem item) => switch (item) {
-    TransferItem.preferences =>
-      '${preferences.length} setting${preferences.length == 1 ? '' : 's'}',
-    TransferItem.xtream => _count(xtream.length, 'account'),
-    TransferItem.smb => _count(smb.length, 'share'),
+    TransferItem.preferences => tr.transfer.item.settings(
+      n: preferences.length,
+    ),
+    TransferItem.xtream => tr.transfer.item.accounts(n: xtream.length),
+    TransferItem.smb => tr.transfer.item.shares(n: smb.length),
     // Nothing to count: the label already says it ("TMDB key", "AI provider"),
     // and adding "Key" after it read as a stutter on the confirmation screen.
     TransferItem.tmdb || TransferItem.ai => '',
+    TransferItem.trackers => tr.transfer.item.services(n: trackers.length),
   };
 
   /// [describe] set after the item's label, for a title or a list line:
@@ -121,8 +145,6 @@ class TransferBundle {
     return detail.isEmpty ? item.label : '${item.label}$separator$detail';
   }
 
-  static String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
-
   /// This bundle cut down to [keep], for a receiver that declined some of it.
   TransferBundle only(Set<TransferItem> keep) => TransferBundle(
     createdAt: createdAt,
@@ -131,6 +153,7 @@ class TransferBundle {
     smb: keep.contains(TransferItem.smb) ? smb : const [],
     tmdbKey: keep.contains(TransferItem.tmdb) ? tmdbKey : null,
     ai: keep.contains(TransferItem.ai) ? ai : null,
+    trackers: keep.contains(TransferItem.trackers) ? trackers : const {},
   );
 
   List<int> encode() => utf8.encode(
@@ -158,6 +181,7 @@ class TransferBundle {
       if (tmdbKey != null) 'tmdbKey': tmdbKey,
       if (ai != null)
         'ai': {'config': ai!.config, if (ai!.key != null) 'key': ai!.key},
+      if (trackers.isNotEmpty) 'trackers': trackers,
     }),
   );
 
@@ -169,17 +193,14 @@ class TransferBundle {
     try {
       raw = jsonDecode(utf8.decode(bytes));
     } on FormatException {
-      throw const TransferFormatException('That was not a settings bundle.');
+      throw TransferFormatException(tr.transfer.item.notBundle);
     }
     if (raw is! Map || raw['format'] != format) {
-      throw const TransferFormatException('That was not a settings bundle.');
+      throw TransferFormatException(tr.transfer.item.notBundle);
     }
     final v = raw['version'];
     if (v is! int || v > version) {
-      throw const TransferFormatException(
-        'That bundle is from a newer version of the app. Update this device '
-        'and try again.',
-      );
+      throw TransferFormatException(tr.transfer.item.newer);
     }
 
     return TransferBundle(
@@ -205,6 +226,15 @@ class TransferBundle {
       ],
       tmdbKey: _text(raw['tmdbKey']),
       ai: _ai(raw['ai']),
+      trackers: {
+        if (raw['trackers'] case final Map map)
+          for (final e in map.entries)
+            if (e.key is String && e.value is Map && e.value['access'] is String)
+              e.key as String: {
+                for (final f in (e.value as Map).entries)
+                  if (f.key is String) f.key as String: f.value,
+              },
+      },
     );
   }
 

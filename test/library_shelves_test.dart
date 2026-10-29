@@ -6,7 +6,7 @@ import 'package:relay_player/features/library/library_shelves.dart';
 CatalogItem _item(
   String id, {
   String? shelf,
-  CatalogSource source = CatalogSource.plex,
+  CatalogSource source = CatalogSource.server,
 }) => CatalogItem(
   source: source,
   sourceId: 's1',

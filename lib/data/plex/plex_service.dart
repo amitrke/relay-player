@@ -3,8 +3,9 @@ import 'dart:io';
 
 import 'package:dart_plex/dart_plex.dart';
 
-import '../../domain/models/catalog_item.dart';
+import '../../domain/models/media_server.dart';
 import 'paging.dart';
+import '../../i18n/strings.g.dart';
 
 /// A 4-character code the user types at plex.tv/link.
 class PlexLinkCode {
@@ -17,88 +18,6 @@ class PlexLinkCode {
   final int pinId;
   final String code;
   final DateTime expiresAt;
-}
-
-/// A playable stream plus the metadata the player needs to label it.
-class PlexPlayable {
-  const PlexPlayable({
-    required this.url,
-    required this.title,
-    required this.duration,
-    this.posterUrl,
-    this.posterPath,
-    this.resumeFrom,
-    this.isEpisode = false,
-  });
-
-  final String url;
-  final String title;
-  final Duration duration;
-  final String? posterUrl;
-
-  /// The unsigned artwork path behind [posterUrl]. This is what gets persisted;
-  /// see [PlexService.posterPathOf].
-  final String? posterPath;
-
-  /// Plex's own `viewOffset`. The server is the better authority here: the user
-  /// may have watched part of this in the Plex app on another device.
-  final Duration? resumeFrom;
-
-  /// Carried into history so the continue-watching tile lands above Series
-  /// rather than Movies.
-  final bool isEpisode;
-}
-
-/// What a download needs to fetch one item and label the copy (§18).
-///
-/// [url] carries the server token, so this lives for one fetch and is never
-/// stored. What outlives it is everything else: the title, the unsigned artwork
-/// path, and the size to check the file against.
-class PlexDownloadSource {
-  const PlexDownloadSource({
-    required this.url,
-    required this.title,
-    required this.duration,
-    required this.extension,
-    required this.isEpisode,
-    this.sizeBytes,
-    this.posterPath,
-  });
-
-  final String url;
-  final String title;
-  final Duration duration;
-
-  /// The container, as a file extension (`mkv`, `mp4`). libmpv sniffs content,
-  /// but a wrong extension on a file the user may find again is confusing.
-  final String extension;
-  final bool isEpisode;
-
-  /// What Plex says the file is, or null when it does not say.
-  final int? sizeBytes;
-  final String? posterPath;
-}
-
-/// A Plex item together with the server it came from.
-///
-/// A `ratingKey` is only meaningful relative to one server — two servers will
-/// happily both have a `/library/metadata/1234`. Once more than one server is
-/// connected, an item without its origin cannot be fetched, played, or even
-/// have its poster loaded, so the pair travels together everywhere.
-class SourcedItem {
-  const SourcedItem({required this.serverId, required this.metadata});
-
-  final String serverId;
-  final PlexMetadata metadata;
-}
-
-/// Raised when the account has no server we can reach.
-class PlexUnreachable implements Exception {
-  const PlexUnreachable(this.message);
-  final String message;
-
-  @override
-  String toString() => message;
 }
 
 /// The app's single entry point to Plex.
@@ -117,7 +36,7 @@ class PlexUnreachable implements Exception {
 /// run end to end. The transcode lifecycle (decision → ping → stop) is still
 /// open, with a leaked server-side session as the named risk, so this class
 /// deliberately exposes direct play only.
-class PlexService {
+class PlexService extends MediaServer {
   PlexService({
     required String clientId,
     this.serverId = '',
@@ -140,7 +59,9 @@ class PlexService {
   final String serverId;
   final String serverName;
 
+  @override
   String? get baseUrl => _client.baseUrl;
+  @override
   bool get isConnected => _client.baseUrl != null && _client.token != null;
 
   // --- Linking ---------------------------------------------------------
@@ -228,9 +149,11 @@ class PlexService {
         return uri;
       }
     }
-    throw PlexUnreachable(
-      '"${server.name}" did not answer on any of its '
-      '${server.connections.length} advertised addresses.',
+    throw MediaServerUnreachable(
+      tr.plex.errors.noAnswer(
+        server: server.name,
+        count: server.connections.length,
+      ),
     );
   }
 
@@ -293,36 +216,49 @@ class PlexService {
 
   // --- Library ---------------------------------------------------------
 
+  @override
+  String get id => serverId;
+
+  @override
+  String get name => serverName;
+
+  @override
+  ServerKind get kind => ServerKind.plex;
+
   /// Video sections only. Music and photo libraries are out of scope for §6.
-  Future<List<PlexLibrarySection>> sections() async {
+  @override
+  Future<List<MediaSection>> sections() async {
     final all = await _client.library.sections();
-    return all
-        .where(
-          (s) =>
-              s.type == PlexLibraryType.movie || s.type == PlexLibraryType.show,
-        )
-        .toList();
+    return [
+      for (final s in all)
+        if (s.type == PlexLibraryType.movie || s.type == PlexLibraryType.show)
+          MediaSection(
+            id: s.id,
+            title: s.title,
+            type: s.type == PlexLibraryType.show
+                ? MediaSectionType.shows
+                : MediaSectionType.movies,
+            typeName: s.type.name,
+          ),
+    ];
   }
 
+  static PlexMetadataType _typeOf(MediaSection section) =>
+      section.type == MediaSectionType.shows
+      ? PlexMetadataType.show
+      : PlexMetadataType.movie;
+
   Future<PlexMediaContainer<PlexMetadata>> _page(
-    PlexLibrarySection section,
+    MediaSection section,
     int start,
     int size,
   ) => _client.library.allByType(
     sectionId: section.id,
-    type: section.type == PlexLibraryType.show
-        ? PlexMetadataType.show
-        : PlexMetadataType.movie,
+    type: _typeOf(section),
     start: start,
     size: size,
     sort: 'titleSort',
   );
-
-  Future<List<PlexMetadata>> items(
-    PlexLibrarySection section, {
-    int start = 0,
-    int size = 60,
-  }) async => (await _page(section, start, size)).items;
 
   /// Every title in [section], sorted by title, page by page.
   ///
@@ -332,61 +268,75 @@ class PlexService {
   /// searching for them by name, and absent from every list built on this one:
   /// found when "James Bond movies" found no Bond film that the Continue
   /// watching row was showing.
-  Future<List<PlexMetadata>> allItems(PlexLibrarySection section) =>
-      readAllPages<PlexMetadata>((start, size) async {
-        final page = await _page(section, start, size);
-        return (total: page.totalSize, items: page.items);
-      });
+  @override
+  Future<List<MediaItem>> allItems(MediaSection section) async => [
+    for (final m in await readAllPages<PlexMetadata>((start, size) async {
+      final page = await _page(section, start, size);
+      return (total: page.totalSize, items: page.items);
+    }))
+      itemOf(m),
+  ];
 
-  /// Items from [wanted], merged and sorted by title.
-  ///
-  /// §12 screen 3 merges libraries into Movies and Series rather than showing
-  /// one tab per section, so someone with "Films" and "4K Films" sees one list.
-  /// *Which* libraries feed a tab is the caller's decision — Plex's library type
-  /// is only a default, and the user can override it.
-  ///
-  /// All of each section, unless [perSection] says otherwise.
-  Future<List<SourcedItem>> itemsFrom(
-    List<PlexLibrarySection> wanted, {
-    int? perSection,
-  }) async {
-    if (wanted.isEmpty) return const [];
-    final pages = await Future.wait(
-      wanted.map(
-        (s) => perSection == null ? allItems(s) : items(s, size: perSection),
-      ),
-    );
-    return [for (final item in pages.expand((page) => page)) sourced(item)];
-  }
-
-  SourcedItem sourced(PlexMetadata metadata) =>
-      SourcedItem(serverId: serverId, metadata: metadata);
-
-  /// Plex metadata as the shared catalogue shape (§2).
-  ///
-  /// Artwork is resolved here because a Plex thumb needs the server's token on
-  /// the query string — the widget that renders it has no way to rebuild that.
-  ///
-  /// [shelf] names the row the title belongs to on Movies and Series; see
-  /// [CatalogItem.shelf].
-  CatalogItem toCatalogItem(PlexMetadata metadata, {String? shelf}) => CatalogItem(
-    source: CatalogSource.plex,
-    sourceId: serverId,
-    kind: metadata.type == PlexMetadataType.show
-        ? CatalogKind.show
-        : CatalogKind.movie,
-    id: metadata.ratingKey,
-    title: metadata.title,
-    year: metadata.year,
-    posterUrl: posterUrl(metadata),
-    posterPath: posterPathOf(metadata),
-    addedAt: metadata.addedAt,
-    viewCount: metadata.viewCount,
-    viewOffset: _ms(metadata.viewOffsetMs),
-    duration: _ms(metadata.durationMs),
-    lastViewedAt: metadata.lastViewedAt,
-    shelf: shelf,
+  /// Plex metadata in the neutral shape every screen reads (§6.2).
+  static MediaItem itemOf(PlexMetadata m) => MediaItem(
+    id: m.ratingKey,
+    type: switch (m.type) {
+      PlexMetadataType.movie => MediaItemType.movie,
+      PlexMetadataType.show => MediaItemType.show,
+      PlexMetadataType.season => MediaItemType.season,
+      PlexMetadataType.episode => MediaItemType.episode,
+      _ => MediaItemType.other,
+    },
+    title: m.title,
+    year: m.year,
+    summary: m.summary,
+    genres: m.genres,
+    posterPath: posterPathOf(m),
+    duration: _ms(m.durationMs),
+    viewCount: m.viewCount,
+    viewOffset: _ms(m.viewOffsetMs),
+    lastViewedAt: m.lastViewedAt,
+    addedAt: m.addedAt,
+    index: m.index,
+    parentIndex: m.parentIndex,
+    showTitle: m.grandparentTitle ?? m.parentTitle,
+    showId: m.grandparentRatingKey ?? m.parentRatingKey,
+    parentId: m.parentRatingKey,
+    ids: idsOf(m.raw),
+    rating: m.rating ?? m.userRating,
   );
+
+  /// External IDs from Plex's `Guid` tags (`imdb://tt0111161`, `tmdb://278`,
+  /// `tvdb://81189`). The new Plex agents put these on an item's own
+  /// metadata; older libraries matched by legacy agents carry a single
+  /// `guid` like `com.plexapp.agents.imdb://tt0111161?lang=en` instead, which
+  /// is read as a fallback.
+  static ExternalIds idsOf(Map<String, dynamic> raw) {
+    String? imdb, tmdb, tvdb;
+    void take(String value) {
+      final m = RegExp(r'(imdb|tmdb|tvdb|themoviedb|thetvdb)://([^?/]+)')
+          .firstMatch(value);
+      if (m == null) return;
+      final id = m.group(2)!;
+      switch (m.group(1)) {
+        case 'imdb':
+          imdb ??= id;
+        case 'tmdb' || 'themoviedb':
+          tmdb ??= id;
+        case 'tvdb' || 'thetvdb':
+          tvdb ??= id;
+      }
+    }
+
+    final tags = raw['Guid'];
+    if (tags is List) {
+      for (final t in tags) {
+        if (t is Map && t['id'] is String) take(t['id'] as String);
+      }
+    }
+    if (raw['guid'] is String) take(raw['guid'] as String);
+    return ExternalIds(imdb: imdb, tmdb: tmdb, tvdb: tvdb);
+  }
 
   static Duration? _ms(int? ms) =>
       ms == null ? null : Duration(milliseconds: ms);
@@ -394,9 +344,10 @@ class PlexService {
   /// Marks an item watched or unwatched for this account (`/:/scrobble`,
   /// `/:/unscrobble`). On a show or season Plex applies it to every episode
   /// beneath, and unwatched also clears the resume position.
-  Future<void> setWatched(String ratingKey, {required bool watched}) => watched
-      ? _client.playback.scrobble(ratingKey)
-      : _client.playback.unscrobble(ratingKey);
+  @override
+  Future<void> setWatched(String id, {required bool watched}) => watched
+      ? _client.playback.scrobble(id)
+      : _client.playback.unscrobble(id);
 
   /// What Plex thinks this account is in the middle of, across [sections].
   ///
@@ -409,37 +360,16 @@ class PlexService {
   /// On Deck holds both kinds of entry: something part-watched (with a
   /// `viewOffset`), and the next unwatched episode of a show in progress
   /// (without one).
-  Future<List<PlexMetadata>> onDeck(
-    List<PlexLibrarySection> sections, {
-    int perSection = 12,
-  }) async {
+  @override
+  Future<List<MediaItem>> onDeck(List<MediaSection> sections) async {
     final pages = await Future.wait(
       sections.map(
         (s) => _client.hubs
-            .sectionOnDeck(sectionId: s.id, count: perSection)
+            .sectionOnDeck(sectionId: s.id, count: 12)
             .catchError((_) => const <PlexMetadata>[]),
       ),
     );
-    return pages.expand((p) => p).toList();
-  }
-
-  /// Server-side search across every library (§12 screen 8).
-  ///
-  /// Uses Plex's own index rather than filtering a local list — the catalogue
-  /// is far too large to hold in memory, which is the §4.1 lesson applied to
-  /// Plex rather than Xtream.
-  Future<List<SourcedItem>> search(String query, {int limit = 40}) async {
-    if (query.trim().isEmpty) return const [];
-    final results = await _client.search.flat(query: query, limit: limit);
-    const playable = {
-      PlexMetadataType.movie,
-      PlexMetadataType.show,
-      PlexMetadataType.episode,
-    };
-    return [
-      for (final m in results)
-        if (playable.contains(m.type)) sourced(m),
-    ];
+    return [for (final m in pages.expand((p) => p)) itemOf(m)];
   }
 
   /// Search restricted to [sections], one library at a time.
@@ -459,8 +389,9 @@ class PlexService {
   /// An empty [sections] searches nothing rather than falling back to
   /// everything, because "the user hid every library" must not mean "search all
   /// of them".
-  Future<List<SourcedItem>> searchIn(
-    List<PlexLibrarySection> sections,
+  @override
+  Future<List<MediaItem>> searchIn(
+    List<MediaSection> sections,
     String query, {
     int perSection = 20,
   }) async {
@@ -471,9 +402,7 @@ class PlexService {
         try {
           final page = await _client.library.allByType(
             sectionId: s.id,
-            type: s.type == PlexLibraryType.show
-                ? PlexMetadataType.show
-                : PlexMetadataType.movie,
+            type: _typeOf(s),
             size: perSection,
             sort: 'titleSort',
             filters: [
@@ -487,11 +416,14 @@ class PlexService {
         }
       }),
     );
-    return [for (final m in perLibrary.expand((items) => items)) sourced(m)];
+    return [for (final m in perLibrary.expand((items) => items)) itemOf(m)];
   }
 
-  Future<PlexMetadata?> item(String ratingKey) =>
-      _client.library.item(ratingKey);
+  @override
+  Future<MediaItem?> item(String id) async {
+    final m = await _client.library.item(id);
+    return m == null ? null : itemOf(m);
+  }
 
   /// Reports playback progress to Plex (§6).
   ///
@@ -499,14 +431,15 @@ class PlexService {
   /// user's own server — the Plex app would show nothing watched, and
   /// continue-watching would disagree between clients. Plex asks for a tick
   /// roughly every 10s plus one on each state change.
+  @override
   Future<void> reportProgress({
-    required String ratingKey,
+    required String id,
     required String state,
     required Duration position,
     required Duration duration,
   }) async {
     await _client.playback.timeline(
-      ratingKey: ratingKey,
+      ratingKey: id,
       state: state,
       timeMs: position.inMilliseconds,
       durationMs: duration.inMilliseconds,
@@ -514,19 +447,23 @@ class PlexService {
   }
 
   /// Seasons of a show, or episodes of a season.
-  Future<List<PlexMetadata>> children(String ratingKey) =>
-      _client.library.children(ratingKey);
+  @override
+  Future<List<MediaItem>> children(String id) async => [
+    for (final m in await _client.library.children(id)) itemOf(m),
+  ];
 
-  String? posterUrl(PlexMetadata item, {int width = 320, int height = 480}) {
-    final thumb = posterPathOf(item);
-    if (thumb == null) return null;
-    return posterUrlForPath(thumb, width: width, height: height);
-  }
+  /// Every episode of a show, across seasons, in one request (`allLeaves`).
+  /// What an episode rule (§18.7) plans from: one call per show rather than
+  /// one per season.
+  @override
+  Future<List<MediaItem>> episodesOf(String showId) async => [
+    for (final m in await _client.library.allLeaves(showId)) itemOf(m),
+  ];
 
   /// The server-relative artwork path, which is the only form safe to persist.
   ///
-  /// §3: [posterUrl] signs this into an image *transcode* URL, and Plex's
-  /// image transcoder is authenticated, so the signed form carries
+  /// §3: a displayable URL signs this into an image *transcode* URL, and
+  /// Plex's image transcoder is authenticated, so the signed form carries
   /// `X-Plex-Token`. Anything that outlives the process — history in
   /// particular — stores what this returns and re-signs on read. Storing the
   /// signed URL instead put a live token in the unencrypted Hive box, which is
@@ -541,6 +478,7 @@ class PlexService {
   /// Null when not connected, which is the reason history keeps the path
   /// rather than the result: a cached signed URL would appear to work while
   /// offline and would still be a token on disk.
+  @override
   String? posterUrlForPath(String path, {int width = 320, int height = 480}) {
     if (path.isEmpty || !isConnected) return null;
     return _client.images.transcodeUrl(
@@ -552,34 +490,35 @@ class PlexService {
 
   // --- Playback --------------------------------------------------------
 
-  /// Resolves [ratingKey] to a direct-play URL.
+  /// Resolves [id] to a direct-play URL.
   ///
   /// Direct play is the media Part key — `/library/parts/{id}/{ts}/file.mp4`, a
   /// plain file served with byte ranges, which media_kit treats like any
   /// progressive source. It is **not** `universalVideoUrl(directPlay: true)`:
   /// that still routes through `/video/:/transcode/universal/`, and Phase 0
   /// caught the server saying so ("App cannot direct play this item").
-  Future<PlexPlayable> directPlay(String ratingKey) async {
-    final (item, part) = await _itemAndPart(ratingKey);
+  @override
+  Future<MediaPlayable> directPlay(String id) async {
+    final (item, part) = await _itemAndPart(id);
     final (base, token) = _credentials();
 
     final offset = item.viewOffsetMs ?? 0;
-    return PlexPlayable(
+    return MediaPlayable(
       url: '$base${part.key}?X-Plex-Token=$token',
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
-      posterUrl: posterUrl(item),
       posterPath: posterPathOf(item),
       resumeFrom: offset > 0 ? Duration(milliseconds: offset) : null,
       isEpisode: item.type == PlexMetadataType.episode,
+      item: itemOf(item),
     );
   }
 
   /// The item and the file direct play (and a download) would use.
-  Future<(PlexMetadata, PlexPart)> _itemAndPart(String ratingKey) async {
-    final item = await _client.library.item(ratingKey);
+  Future<(PlexMetadata, PlexPart)> _itemAndPart(String id) async {
+    final item = await _client.library.item(id);
     if (item == null) {
-      throw const PlexUnreachable('That item is no longer on the server.');
+      throw MediaServerUnreachable(tr.plex.errors.itemGone);
     }
 
     final part = item.media
@@ -587,10 +526,7 @@ class PlexService {
         .where((p) => (p.key ?? '').isNotEmpty)
         .firstOrNull;
     if (part == null) {
-      throw const PlexUnreachable(
-        'No playable file on this item. Transcode-only sources are not '
-        'supported yet.',
-      );
+      throw MediaServerUnreachable(tr.plex.errors.noFile);
     }
     return (item, part);
   }
@@ -599,25 +535,25 @@ class PlexService {
     final base = _client.baseUrl;
     final token = _client.token;
     if (base == null || token == null) {
-      throw const PlexUnreachable('Not connected to a Plex server.');
+      throw MediaServerUnreachable(tr.plex.errors.notConnected);
     }
     return (base, token);
   }
 
-  /// Resolves [ratingKey] to the original file, for saving on this device
-  /// (§18).
+  /// Resolves [id] to the original file, for saving on this device (§18).
   ///
   /// The same Part key direct play streams, fetched whole instead of watched,
   /// so nothing here is a transcode and the server does no work beyond
   /// serving a file. Called again whenever a download starts or resumes
   /// rather than remembered, because the URL carries the token (§3) and the
   /// server's address may have changed since.
-  Future<PlexDownloadSource> downloadSource(String ratingKey) async {
-    final (item, part) = await _itemAndPart(ratingKey);
+  @override
+  Future<MediaDownloadSource> downloadSource(String id) async {
+    final (item, part) = await _itemAndPart(id);
     final (base, token) = _credentials();
     final container = (part.container ?? '').toLowerCase();
     final fromKey = RegExp(r'\.([A-Za-z0-9]{2,5})$').firstMatch(part.key!);
-    return PlexDownloadSource(
+    return MediaDownloadSource(
       url: '$base${part.key}?X-Plex-Token=$token',
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),

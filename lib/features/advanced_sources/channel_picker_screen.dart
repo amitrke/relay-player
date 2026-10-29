@@ -8,6 +8,7 @@ import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
 import 'hidden_words_controller.dart';
 import 'xtream_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// What the category screen hands over: which category, and what is already
 /// picked from it.
@@ -88,7 +89,7 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
       return Scaffold(
         backgroundColor: t.bg,
         appBar: AppBar(backgroundColor: t.bg, foregroundColor: t.ink),
-        body: const Center(child: Text('That line is no longer configured.')),
+        body: Center(child: Text(tr.xtream.lineGone)),
       );
     }
 
@@ -116,7 +117,7 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                 ? null
                 : () => _done(channels.value!),
             child: Text(
-              'Done',
+              tr.xtream.channels.done,
               style: TextStyle(color: _picked.isEmpty ? t.inkDim : t.accent),
             ),
           ),
@@ -163,7 +164,7 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                           onChanged: (v) => setState(() => _query = v),
                           style: TextStyle(color: t.ink),
                           decoration: InputDecoration(
-                            hintText: 'Search this category',
+                            hintText: tr.xtream.channels.search,
                             hintStyle: TextStyle(color: t.inkDim),
                             prefixIcon: Icon(
                               Icons.search,
@@ -195,12 +196,15 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                     ),
                     const SizedBox(width: 10),
                     _Chip(
-                      label: '${_picked.length} of ${all.length}',
+                      label: tr.xtream.channels.pickedOf(
+                        picked: _picked.length,
+                        total: all.length,
+                      ),
                       onTap: null,
                     ),
                     const SizedBox(width: 8),
                     _Chip(
-                      label: 'Whole category',
+                      label: tr.xtream.channels.whole,
                       onTap: () =>
                           Navigator.of(context)
                               .pop<List<String>>(const <String>[]),
@@ -213,7 +217,9 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                 child: Row(
                   children: [
                     _Chip(
-                      label: _query.isEmpty ? 'Select all' : 'Select shown',
+                      label: _query.isEmpty
+                          ? tr.xtream.picker.selectAll
+                          : tr.xtream.channels.selectShown,
                       onTap: () => setState(() {
                         _picked = {
                           ..._picked,
@@ -223,7 +229,9 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                     ),
                     const SizedBox(width: 8),
                     _Chip(
-                      label: _query.isEmpty ? 'Clear' : 'Clear shown',
+                      label: _query.isEmpty
+                          ? tr.xtream.channels.clear
+                          : tr.xtream.channels.clearShown,
                       onTap: () => setState(() {
                         final drop = {for (final c in shown) c.streamId};
                         _picked = _picked
@@ -239,8 +247,8 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                     ? Center(
                         child: Text(
                           all.isEmpty
-                              ? 'The panel lists no channels in this category.'
-                              : 'Nothing matches "$_query".',
+                              ? tr.xtream.channels.none
+                              : tr.xtream.picker.noMatch(query: _query),
                           style: TextStyle(color: t.inkDim),
                         ),
                       )

@@ -13,7 +13,7 @@ CatalogItem _plex(
   String? signedUrl,
   int? views,
 }) => CatalogItem(
-  source: CatalogSource.plex,
+  source: CatalogSource.server,
   sourceId: 's1',
   kind: CatalogKind.movie,
   id: id,

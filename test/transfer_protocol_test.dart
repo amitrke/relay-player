@@ -43,6 +43,9 @@ TransferBundle _bundle() => TransferBundle(
   ],
   tmdbKey: 'tmdb-key',
   ai: const TransferredAi({'preset': 'openAi'}, 'sk-test'),
+  trackers: const {
+    'simkl': {'access': 'simkl-tok', 'user': 'me'},
+  },
 );
 
 void main() {
@@ -202,6 +205,7 @@ void main() {
       expect(back.smb.single.password, 'pw');
       expect(back.tmdbKey, 'tmdb-key');
       expect(back.ai!.key, 'sk-test');
+      expect(back.trackers['simkl']?['access'], 'simkl-tok');
       expect(back.preferences['plex.libraryMapping'], {'server|1': 'movies'});
       expect(back.preferences['subtitles.on'], true);
     });

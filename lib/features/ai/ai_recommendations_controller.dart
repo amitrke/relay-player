@@ -13,6 +13,7 @@ import '../library/library_tab.dart';
 import '../search/watch_signals.dart';
 import '../settings/settings_controller.dart';
 import 'ai_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Where the last picks are kept. Cleared with the provider.
 const aiRecommendationsCacheKey = 'ai.recs';
@@ -138,9 +139,7 @@ class AiRecommendationsController extends AsyncNotifier<AiRecsState> {
       final library = await _library();
       final plan = _plan(setup, library, exclude);
       if (!plan.input.hasSignal) {
-        throw const AiException(
-          'Watch a film first, so there is something to base picks on.',
-        );
+        throw AiException(tr.ai.errors.noSignal);
       }
 
       final answer = await client.complete(
@@ -150,7 +149,7 @@ class AiRecommendationsController extends AsyncNotifier<AiRecsState> {
       );
       final picks = resolvePicks(answer, plan.input.index);
       if (picks.isEmpty) {
-        throw const AiException('The model did not pick anything this time.');
+        throw AiException(tr.ai.errors.noPicks);
       }
 
       await ref

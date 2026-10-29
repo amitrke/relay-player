@@ -110,7 +110,7 @@ class _FakeOffer implements TransferOfferServer {
 class _RefusingClient extends TransferClient {
   @override
   Future<void> requestPush(PairingInfo offer, int listenPort) async =>
-      throw const TransferDeclined(
+      throw TransferDeclined(
         'The other device did not agree to send its settings.',
       );
 }
@@ -693,7 +693,7 @@ void main() {
     testWidgets('a refusal is shown and the code step can be tried again', (
       tester,
     ) async {
-      await pump(tester, error: const TransferDeclined());
+      await pump(tester, error: TransferDeclined());
       await toTyping(tester);
       await enter(tester, pairing);
       await tester.tap(find.text('Send'));

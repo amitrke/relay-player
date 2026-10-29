@@ -4,13 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
+import '../../domain/models/media_server.dart';
 import '../../data/local/history_store.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../advanced_sources/xtream_controller.dart';
@@ -18,14 +15,18 @@ import '../../data/filesystem/loopback_bridge.dart';
 import '../../data/filesystem/saf_folder_source.dart';
 import '../local_network/local_network_tab.dart';
 import '../local_network/smb_controller.dart';
+import '../../data/downloads/offline_watch_queue.dart';
 import '../downloads/downloads_controller.dart';
+import '../downloads/offline_sync.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/resume_entries.dart';
+import 'engine/playback_engine.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
-import 'player_errors.dart';
-import 'video_output.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../trackers/trackers_controller.dart';
 
 /// Which §4 stream path a panel item uses — live, movie, or series.
 enum XtreamStreamKind { live, vod, episode }
@@ -41,6 +42,7 @@ class _Playable {
     this.historyId,
     this.resumeFrom,
     this.episode,
+    this.savedCopy = false,
   });
 
   final String url;
@@ -62,6 +64,10 @@ class _Playable {
 
   /// Plex only; see [HistoryItem.episode].
   final bool? episode;
+
+  /// Playing a file saved on this device (§18.4). Its progress is queued for
+  /// Plex when Plex cannot be told (§18.6).
+  final bool savedCopy;
 }
 
 /// Playback surface (§6, §10).
@@ -240,22 +246,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// a second time. Memory only: a TV update can bring the decoder it lacked.
   static final _compatibleRoutes = <String>{};
 
-  late final Player _player = Player();
-
-  /// Decided on first build, when the route is known; see [VideoOutput].
-  late final VideoOutput _output = _compatibleRoutes.contains(_route)
-      ? VideoOutput.compatible
-      : defaultVideoOutput();
-  late final VideoController _controller = VideoController(
-    _player,
-    configuration: videoConfigurationFor(_output),
-  );
+  /// Created once the route is known (see [didChangeDependencies]), because a
+  /// route that already fell back this session starts on the compatible path.
+  /// Everything below the seam is the engine's (§10.2).
+  late final PlaybackEngine _engine;
+  bool _engineReady = false;
 
   /// Every player is a route (app_router.dart), and the location is what is
   /// pushed again to reopen it.
   String get _route => GoRouterState.of(context).uri.toString();
   bool _fellBack = false;
-  late final PlayerTransport _transport = MediaKitTransport(_player);
 
   final _subs = <StreamSubscription<dynamic>>[];
   Timer? _stallTimer;
@@ -282,7 +282,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _tracksApplied = false;
 
   late final PlaybackFocusPolicy _focus = PlaybackFocusPolicy(
-    transport: _transport,
+    transport: _engine,
     isLive: () => _live,
     releaseLive: _releaseLive,
   );
@@ -296,7 +296,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // final position, and reading a Riverpod ref during disposal throws — so the
   // last write would be the one that crashes rather than the one that saves.
   HistoryController? _history;
-  PlexService? _plexService;
+  MediaServer? _plexService;
+  OfflineWatchQueue? _offlineQueue;
+
+  /// For watch trackers (§19). Captured, like [_history], for `dispose`.
+  TrackersController? _trackers;
+  bool _trackedFinish = false;
 
   /// For refreshing Plex's On Deck once playback ends. Captured for the same
   /// reason as [_history]: `ref` is unusable in `dispose`.
@@ -315,14 +320,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    // Not straight to _fail: media_kit forwards mpv *log lines* here, and some
-    // of them mean mpv carried on without something (player_errors.dart).
-    _subs.add(_player.stream.error.listen(_onPlayerError));
-    _subs.add(_player.stream.position.listen(_onPosition));
-    _subs.add(_player.stream.tracks.listen(_onTracks));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_engineReady) return;
+    _engineReady = true;
+    // Not in initState: the route is an inherited lookup, unavailable there.
+    _engine = ref.read(playbackEngineFactoryProvider)(
+      _compatibleRoutes.contains(_route)
+          ? EngineOutput.compatible
+          : EngineOutput.fast,
+    );
+    // The engine says which errors are fatal: media_kit forwards mpv *log
+    // lines*, and some of them mean mpv carried on without something.
+    _subs.add(_engine.errorStream.listen(_onEngineError));
+    _subs.add(_engine.positionStream.listen(_onPosition));
+    _subs.add(_engine.tracksStream.listen(_onTracks));
     // Focus is asked for whenever playback starts, not once: after a permanent
     // loss, pressing play is the viewer taking it back from the other app.
-    _subs.add(_player.stream.playing.listen((playing) {
+    _subs.add(_engine.playingStream.listen((playing) {
       if (playing) unawaited(_audioFocus?.request());
     }));
     // `hidden`, not `inactive`: pulling down the notification shade is
@@ -341,20 +359,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return;
     }
     _audioFocus = binding;
-    if (_player.state.playing) unawaited(binding?.request());
+    if (_engine.playing) unawaited(binding?.request());
   }
 
-  void _onTracks(Tracks tracks) {
+  void _onTracks(TrackList tracks) {
     if (_tracksApplied || !mounted) return;
-    // media_kit lists its "auto" and "no" pseudo-tracks before the file is
-    // parsed; wait for a real one so there is something to choose between.
-    if (!tracks.audio.any((t) => isRealTrack(t.id))) return;
+    // Engines can report an empty list before the file is parsed; wait for a
+    // real audio track so there is something to choose between.
+    if (tracks.audio.isEmpty) return;
     _tracksApplied = true;
     final choice = chooseTracks(tracks, ref.read(playbackPrefsProvider));
-    if (choice.audio case final audio?) unawaited(_player.setAudioTrack(audio));
-    if (choice.subtitle case final sub?) {
-      unawaited(_player.setSubtitleTrack(sub));
-    }
+    if (choice.audio case final audio?) unawaited(_engine.setAudioTrack(audio));
+    unawaited(_engine.setSubtitleTrack(choice.subtitle));
   }
 
   void _releaseLive() {
@@ -363,7 +379,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _progressTimer?.cancel();
     _freezeWatch?.cancel();
     _reconnectTimer?.cancel();
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     setState(() {
       _released = true;
       _started = false;
@@ -397,12 +413,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // provider change Riverpod refuses mid-lifecycle.
     final container = _container;
     if (container != null) {
-      scheduleMicrotask(() => container.invalidate(plexOnDeckProvider));
+      scheduleMicrotask(() => container.invalidate(onDeckProvider));
     }
     for (final s in _subs) {
       unawaited(s.cancel());
     }
-    _player.dispose();
+    unawaited(_engine.dispose());
     unawaited(_bridge?.stop());
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -416,14 +432,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           .where((s) => s.id == smbShareId)
           .firstOrNull;
       if (share == null) {
-        throw StateError('That share is no longer configured.');
+        throw StateError(tr.player.shareGone);
       }
       final session = await ref.read(smbSessionProvider(share).future);
       final entries = await session.list(_parentOf(widget.smbPath!));
       final entry =
           entries.where((e) => e.path == widget.smbPath).firstOrNull;
       if (entry == null) {
-        throw StateError('That file is no longer on the share.');
+        throw StateError(tr.player.shareFileGone);
       }
 
       final bridge = LoopbackBridge();
@@ -443,7 +459,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final source = await ref.read(safFolderSourceProvider).bridgeSourceFor(
             SafVideo(
               uri: safUri,
-              name: widget.safName ?? 'Video',
+              name: widget.safName ?? tr.player.untitledVideo,
               sizeBytes: widget.safSize,
             ),
           );
@@ -451,7 +467,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _bridge = bridge;
       return _Playable(
         url: await bridge.serve(source),
-        title: widget.safName ?? 'Video',
+        title: widget.safName ?? tr.player.untitledVideo,
         live: false,
       );
     }
@@ -461,12 +477,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final source = ref.read(deviceVideoSourceProvider);
       final path = await source.filePathOf(assetId);
       if (path == null) {
-        throw StateError('That file is no longer on this device.');
+        throw StateError(tr.player.deviceFileGone);
       }
       final video = await source.videoById(assetId);
       return _Playable(
         url: path,
-        title: video?.title ?? 'Video',
+        title: video?.title ?? tr.player.untitledVideo,
         live: false,
       );
     }
@@ -476,7 +492,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final accounts = ref.read(xtreamAccountsProvider);
       final account = accounts.where((a) => a.id == accountId).firstOrNull;
       if (account == null) {
-        throw StateError('That line is no longer configured.');
+        throw StateError(tr.player.lineGone);
       }
       final client = await ref.read(xtreamClientProvider(account).future);
 
@@ -489,7 +505,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         if (widget.kind == XtreamStreamKind.episode) {
           return _Playable(
             url: client.seriesStreamUrl(id, ext),
-            title: 'Episode',
+            title: tr.player.untitledEpisode,
             live: false,
             historyKind: PlaybackKind.xtreamEpisode,
             historyId: raw,
@@ -501,7 +517,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         final match = items.where((i) => i.id == raw).firstOrNull;
         return _Playable(
           url: client.vodStreamUrl(id, ext),
-          title: match?.title ?? 'Film',
+          title: match?.title ?? tr.player.untitledFilm,
           live: false,
           posterRef: match?.posterUrl,
           historyKind: PlaybackKind.xtreamVod,
@@ -514,7 +530,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           channels.where((c) => c.streamId == widget.streamId).firstOrNull;
       return _Playable(
         url: client.liveStreamUrl(widget.streamId!),
-        title: channel?.name ?? 'Live',
+        title: channel?.name ?? tr.player.untitledLive,
         live: true,
       );
     }
@@ -535,7 +551,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         // Where Plex last saw this title, if it can be asked quickly. Another
         // device may have watched on since. Offline this just fails, and the
         // position kept on this device is used instead.
-        resumeFrom = (await plexServiceFor(
+        resumeFrom = (await mediaServerFor(
           ref,
           widget.serverId!,
         ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3)))
@@ -546,21 +562,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title: record.title,
         live: false,
         posterRef: record.posterPath,
-        historyKind: PlaybackKind.plex,
+        historyKind: PlaybackKind.server,
         historyId: widget.ratingKey,
         resumeFrom: resumeFrom,
         episode: record.isEpisode,
+        savedCopy: true,
       );
     }
 
-    final playable = await plexServiceFor(ref, widget.serverId!)
+    final playable = await mediaServerFor(ref, widget.serverId!)
         .directPlay(widget.ratingKey!);
     return _Playable(
       url: playable.url,
       title: playable.title,
       live: false,
       posterRef: playable.posterPath,
-      historyKind: PlaybackKind.plex,
+      historyKind: PlaybackKind.server,
       historyId: widget.ratingKey,
       resumeFrom: playable.resumeFrom,
       episode: playable.isEpisode,
@@ -573,12 +590,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final playable = await _resolve();
       if (!mounted) return;
       _history = ref.read(historyProvider.notifier);
+      if (playable.savedCopy) {
+        _offlineQueue = ref.read(offlineWatchProvider.notifier);
+      }
+      _trackers = ref.read(trackersProvider.notifier);
+      _trackedFinish = false;
       if (widget.serverId != null) {
         // A saved copy outlives the server it came from (§18.4): with the
         // server removed there is nobody to report progress to, and that must
         // not stop the film playing.
         try {
-          _plexService = plexServiceFor(ref, widget.serverId!);
+          _plexService = mediaServerFor(ref, widget.serverId!);
         } on StateError {
           _plexService = null;
         }
@@ -598,15 +620,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // `max_connections: 1` the natural open-then-stop ordering is the wrong
       // one, and fails in a way that looks like a flaky provider rather than a
       // client bug.
-      await _player.stop();
-      await _player.open(Media(playable.url));
+      await _engine.stop();
+      await _engine.open(playable.url);
 
       final resume = _resumePoint(playable);
       if (resume != null) {
         // Seek after opening: libmpv needs the stream long enough to know it is
         // seekable, and a seek issued before that is silently dropped.
-        await _player.stream.duration.firstWhere((d) => d > Duration.zero);
-        await _player.seek(resume);
+        await _engine.durationStream.firstWhere((d) => d > Duration.zero);
+        await _engine.seek(resume);
       }
       _progressTimer?.cancel();
       _progressTimer =
@@ -643,8 +665,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final kind = playable?.historyKind;
     if (playable == null || kind == null || !_started) return;
 
-    final position = _player.state.position;
-    final duration = _player.state.duration;
+    final position = _engine.position;
+    final duration = _engine.duration;
     if (duration <= Duration.zero) return;
 
     unawaited(_history?.record(
@@ -662,18 +684,50 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ));
 
     // Best effort: a server that has gone away must not break playback that is
-    // otherwise fine.
-    if (kind == PlaybackKind.plex) {
-      unawaited(
-        _plexService
-            ?.reportProgress(
-              ratingKey: playable.historyId!,
-              state: state,
-              position: position,
-              duration: duration,
-            )
-            .catchError((_) {}),
-      );
+    // otherwise fine. For a saved copy, a report that cannot be made is kept
+    // and delivered when the server is back (§18.6); for a stream there is
+    // nothing to keep, because a stream with no server is not playing.
+    if (kind == PlaybackKind.server) {
+      // Past the same 90% that counts as a finished watch offline (§18.6):
+      // the trackers hear once per play, and not before.
+      if (!_trackedFinish &&
+          position.inMilliseconds >= duration.inMilliseconds * watchedThreshold) {
+        _trackedFinish = true;
+        unawaited(_trackers?.finished(widget.serverId!, playable.historyId!));
+      }
+      void keep(Object? _) {
+        if (!playable.savedCopy) return;
+        unawaited(_offlineQueue?.add(pendingFrom(
+          serverId: widget.serverId!,
+          ratingKey: playable.historyId!,
+          position: position,
+          duration: duration,
+          at: DateTime.now(),
+        )));
+      }
+
+      final service = _plexService;
+      if (service == null) {
+        keep(null);
+      } else {
+        unawaited(
+          service
+              .reportProgress(
+                id: playable.historyId!,
+                state: state,
+                position: position,
+                duration: duration,
+              )
+              // Delivered after all: anything queued for this title earlier in
+              // a flaky session is older than this, and would only be dropped
+              // on replay anyway.
+              .then((_) => _offlineQueue?.discard(
+                    widget.serverId!,
+                    playable.historyId!,
+                  ))
+              .catchError(keep),
+        );
+      }
     }
   }
 
@@ -691,36 +745,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _freezeWatch = Timer.periodic(const Duration(seconds: 2), (_) => _watch());
     }
     if (mounted) setState(() => _started = true);
-    if (_output == VideoOutput.direct) unawaited(_checkVideoOutput());
+    if (_engine.hasCompatibleFallback) unawaited(_checkVideoOutput());
   }
 
-  /// Once playing on the direct path, asks mpv which decoder it ended up with.
-  /// Software means a black picture under direct output (see [VideoOutput]), so
-  /// the title is reopened on the compatible path.
+  /// Once playing on a fast output path, gives the engine a moment and asks
+  /// whether this file can actually be shown there (video_output.dart: the
+  /// direct path plays sound over black when the hardware decoder declines).
   Future<void> _checkVideoOutput() async {
     // The decoder is settled by the first position tick; the pause is margin
     // for mpv's own fallback, which happens on the first frames it cannot take.
     await Future<void>.delayed(const Duration(seconds: 1));
     if (!mounted || _fellBack) return;
-    final String hwdec;
-    try {
-      hwdec = await (_player.platform as NativePlayer).getProperty(
-        'hwdec-current',
-      );
-    } catch (_) {
-      return;
-    }
-    final hasVideo =
-        _player.state.track.video.id != 'no' &&
-        _player.state.tracks.video.any((t) => t.id != 'auto' && t.id != 'no');
-    debugPrint('Player: direct output, hwdec-current=$hwdec video=$hasVideo');
-    if (needsCompatibleOutput(
-      output: _output,
-      hasVideo: hasVideo,
-      hwdecCurrent: hwdec,
-    )) {
-      await _reopenCompatible('hardware decoder declined (hwdec=$hwdec)');
-    }
+    final reason = await _engine.checkOutputAfterStart();
+    if (reason != null) await _reopenCompatible(reason);
   }
 
   /// Opens this title again on a fresh player with compatible output.
@@ -740,7 +777,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _compatibleRoutes.add(route);
     _stallTimer?.cancel();
     _recordProgress(state: 'stopped');
-    await _player.stop();
+    await _engine.stop();
     if (!mounted) return;
     router.pushReplacement(route);
   }
@@ -754,9 +791,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_reconnects > 0 && now.difference(_playingSince) >= _stableAfter) {
       _reconnects = 0;
     }
-    if (!_player.state.playing) return;
+    if (!_engine.playing) return;
     if (now.difference(_lastAdvance) >= _freezeTimeout) {
-      _reconnect('This channel stopped and did not come back.');
+      _reconnect(tr.player.channelFroze);
     }
   }
 
@@ -769,7 +806,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_reconnectTimer?.isActive ?? false) return true;
     if (_reconnects >= _maxReconnects) {
       _freezeWatch?.cancel();
-      unawaited(_player.stop());
+      unawaited(_engine.stop());
       _fail(giveUp);
       return false;
     }
@@ -779,7 +816,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _freezeWatch?.cancel();
     _stallTimer?.cancel();
     _progressTimer?.cancel();
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     _lastPosition = Duration.zero;
     if (mounted) setState(() => _started = false);
     _reconnectTimer = Timer(Duration(seconds: 2 * _reconnects), () {
@@ -794,25 +831,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // on the first miss. A first-ever open still fails straight away: a dead
     // listing should say so in 15s, not after three more attempts.
     if (_live && _reconnects > 0) {
-      _reconnect('This channel is not responding. Listings often outrun '
-          'reality on a panel - try another, or the same one again.');
+      _reconnect(tr.player.channelNotResponding);
       return;
     }
     // Release the connection rather than leaving it held. On a one-connection
     // line a dead channel would otherwise cost the user their only slot until
     // the panel times it out server-side.
-    unawaited(_player.stop());
+    unawaited(_engine.stop());
     _fail(
-      _live
-          ? 'This channel is not responding. Listings often outrun reality on '
-              'a panel — try another, or the same one again.'
-          : 'This did not start playing. The server may be busy, or the file '
-              'may need transcoding, which is not supported yet.',
+      _live ? tr.player.channelNotResponding : tr.player.didNotStart,
     );
   }
 
-  void _onPlayerError(String message) {
-    if (isFatalPlayerError(message)) {
+  void _onEngineError(EngineError error) {
+    final message = error.message;
+    if (error.fatal) {
       // A live stream that dies mid-watch is the common drop, so it gets the
       // same reconnect as a freeze rather than an immediate error screen.
       if (_live && !_released && (_started || _reconnects > 0)) {
@@ -823,13 +856,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // the compatible one: a decoder or output that would not start there is
       // exactly what the direct path adds. A source that is really broken fails
       // the same way again and shows its error then.
-      if (_output == VideoOutput.direct && !_started) {
+      if (_engine.hasCompatibleFallback && !_started) {
         unawaited(_reopenCompatible(message));
         return;
       }
       _fail(message);
     } else {
-      debugPrint('Player: continuing past non-fatal mpv error: $message');
+      debugPrint('Player: continuing past non-fatal ${_engine.name} error: '
+          '$message');
     }
   }
 
@@ -846,7 +880,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Scaffold(
       backgroundColor: t.stage,
       body: PlayerChrome(
-        transport: _transport,
+        transport: _engine,
         title: _title,
         live: _live,
         enabled: _started && _error == null,
@@ -856,21 +890,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           fit: StackFit.expand,
           children: [
             Center(
-              child: Video(
-                controller: _controller,
-                controls: null,
-                subtitleViewConfiguration: SubtitleViewConfiguration(
-                  textScaler: TextScaler.linear(prefs.subtitleSize.scale),
-                ),
+              child: _engine.buildView(
+                subtitleScale: prefs.subtitleSize.scale,
               ),
             ),
             if (_released)
               _PlaybackError(
                 title: _title,
-                message: 'Stopped while the app was in the background, so the '
-                    'connection is free for other devices.',
+                message: tr.player.released,
                 icon: Icons.pause_circle_outline,
-                action: ('Rejoin', _rejoin),
+                action: (tr.player.rejoin, _rejoin),
               )
             else if (_error != null)
               _PlaybackError(message: _error!, title: _title)
@@ -960,12 +989,12 @@ class _PlaybackErrorState extends State<_PlaybackError> {
               ),
               const SizedBox(height: 8),
               RelayTextButton(
-                label: 'Back',
+                label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
             ] else
               RelayButton(
-                label: 'Back',
+                label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
           ],

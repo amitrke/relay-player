@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "about": "The native player libraries this app ships, pinned by what is actually inside the build. See docs/architecture.md section 10.1. Checked by test/native_lock_test.dart (package versions, fetch URLs, licence pointers) and tool/native_lock.py (the binaries inside a built APK or AAB). Change this file in the same commit as a media_kit upgrade, and re-read the binary for lib/core/native_licenses.dart while doing it.",
+  "android": {
+    "package": "media_kit_libs_android_video",
+    "version": "1.3.8",
+    "buildSource": "https://github.com/media-kit/libmpv-android-video-build/tree/v1.1.7",
+    "buildFile": "android/build.gradle",
+    "pins": [],
+    "artifacts": [
+      {
+        "url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-arm64-v8a.jar",
+        "md5": "83df25b61193af8fa815e373143ac9af"
+      },
+      {
+        "url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-armeabi-v7a.jar",
+        "md5": "22e21526fefc0a2b8f17adbec9f57590"
+      },
+      {
+        "url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-x86_64.jar",
+        "md5": "6fa26bf0459b11f1c0b0dbc29e5b940d"
+      },
+      {
+        "url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-x86.jar",
+        "md5": "0d742b756dc9d1fcd84ea271d8b68f32"
+      }
+    ],
+    "shipped": {
+      "arm64-v8a": "adf83fde58a9f6751ce6e83b9b187f651425d53ec0e20da04deb8dfb4aa775e1",
+      "armeabi-v7a": "8aa2b23d16d941a8d685b8eb995b1cb31677ed3e28c55c776954eb1618ab1a2e",
+      "x86_64": "f030e9a1a4d4664e89d7160a3d4528cd5875ee023ff6262e16e95aac28ffaec5"
+    }
+  },
+  "ios": {
+    "package": "media_kit_libs_ios_video",
+    "version": "1.1.4",
+    "buildSource": "https://github.com/media-kit/libmpv-darwin-build/tree/v0.6.0",
+    "buildFile": "ios/Makefile",
+    "pins": [
+      "MPV_XCFRAMEWORKS_VERSION=v0.6.0"
+    ],
+    "artifacts": [
+      {
+        "url": "https://github.com/media-kit/libmpv-darwin-build/releases/download/${MPV_XCFRAMEWORKS_VERSION}/libmpv-xcframeworks_${MPV_XCFRAMEWORKS_VERSION}_ios-universal-video-default.tar.gz",
+        "sha256": "a95bc18508af26136b8a408341c05b5585d644ec013f00ac07db09d2e28d36ae"
+      }
+    ]
+  },
+  "windows": {
+    "package": "media_kit_libs_windows_video",
+    "version": "1.0.11",
+    "buildSource": "https://github.com/media-kit/libmpv-win32-video-build/releases/tag/2023-09-24",
+    "buildFile": "windows/CMakeLists.txt",
+    "pins": [
+      "set(LIBMPV \"mpv-dev-x86_64-20230924-git-652a1dd.7z\")"
+    ],
+    "note": "Distributed in the Microsoft Store MSIX (licence entries added 2026-10-16). The build repo does not pin most dependencies, so most versions in native_licenses.dart are upstream snapshots; see the Windows paragraph there. shipped is the SHA-256 of libmpv-2.dll as read for that list; no tool checks it against a built MSIX yet.",
+    "artifacts": [
+      {
+        "url": "https://github.com/media-kit/libmpv-win32-video-build/releases/download/2023-09-24/${LIBMPV}",
+        "md5": "a832ef24b3a6ff97cd2560b5b9d04cd8",
+        "measuredSha256": "dce982222d7a23e4a1c6f0fb6cc39f6e899a6714624b95ea49cff6558ee97572"
+      }
+    ],
+    "shipped": {
+      "libmpv-2.dll": "d5f0694b08c124e785d858d00082f3e3b158dd9138bfc48c0382bf1eb443a5fc"
+    }
+  }
+}

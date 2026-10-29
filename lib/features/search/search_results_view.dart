@@ -5,6 +5,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
 import '../library/poster_grid.dart';
 import 'search_filters.dart';
+import '../../i18n/strings.g.dart';
 
 /// The filter chips and the grid they narrow.
 class SearchResultsView extends StatelessWidget {
@@ -35,22 +36,22 @@ class SearchResultsView extends StatelessWidget {
     final chips = [
       if (options.offersKind || filters.kind != null)
         _FilterChip(
-          label: 'Type',
+          label: tr.search.filters.type,
           value: switch (filters.kind) {
             null => null,
-            CatalogKind.movie => 'Movies',
-            CatalogKind.show => 'Series',
+            CatalogKind.movie => tr.search.filters.movies,
+            CatalogKind.show => tr.search.filters.series,
           },
           onTap: () async {
             final picked = await _pick<CatalogKind>(
               context,
-              title: 'Type',
+              title: tr.search.filters.type,
               current: filters.kind,
               choices: [
                 if (options.kinds.contains(CatalogKind.movie))
-                  (CatalogKind.movie, 'Movies'),
+                  (CatalogKind.movie, tr.search.filters.movies),
                 if (options.kinds.contains(CatalogKind.show))
-                  (CatalogKind.show, 'Series'),
+                  (CatalogKind.show, tr.search.filters.series),
               ],
             );
             if (picked != null) onFilters(filters.with_(kind: picked));
@@ -58,18 +59,19 @@ class SearchResultsView extends StatelessWidget {
         ),
       if (options.offersSource || filters.sourceId != null)
         _FilterChip(
-          label: 'Source',
+          label: tr.search.filters.source,
           value: filters.sourceId == null
               ? null
-              : sourceNames[filters.sourceId] ?? 'Unknown source',
+              : sourceNames[filters.sourceId] ??
+                    tr.search.filters.unknownSource,
           onTap: () async {
             final picked = await _pick<String>(
               context,
-              title: 'Source',
+              title: tr.search.filters.source,
               current: filters.sourceId,
               choices: [
                 for (final id in options.sourceIds)
-                  (id, sourceNames[id] ?? 'Unknown source'),
+                  (id, sourceNames[id] ?? tr.search.filters.unknownSource),
               ],
             );
             if (picked != null) onFilters(filters.with_(sourceId: picked));
@@ -77,12 +79,12 @@ class SearchResultsView extends StatelessWidget {
         ),
       if (options.offersYear || filters.decade != null)
         _FilterChip(
-          label: 'Year',
+          label: tr.search.filters.year,
           value: filters.decade == null ? null : decadeLabel(filters.decade!),
           onTap: () async {
             final picked = await _pick<int>(
               context,
-              title: 'Year',
+              title: tr.search.filters.year,
               current: filters.decade,
               choices: [for (final d in options.decades) (d, decadeLabel(d))],
             );
@@ -91,17 +93,15 @@ class SearchResultsView extends StatelessWidget {
         ),
       if (options.offersLanguage || filters.language != null)
         _FilterChip(
-          label: 'Language',
+          label: tr.search.filters.language,
           value: filters.language,
           onTap: () async {
             final picked = await _pick<String>(
               context,
-              title: 'Language',
+              title: tr.search.filters.language,
               // Said where it is chosen, not only in the docs: this is a guess
               // from panel category names, and Plex titles are never in it.
-              note:
-                  'Guessed from IPTV category names. Plex titles have no '
-                  'language here.',
+              note: tr.search.filters.languageNote,
               current: filters.language,
               choices: [for (final l in options.languages) (l, l)],
             );
@@ -111,12 +111,12 @@ class SearchResultsView extends StatelessWidget {
       // From here on the data is TMDB's, present only with a key in Settings.
       if (options.offersGenre || filters.genre != null)
         _FilterChip(
-          label: 'Genre',
+          label: tr.search.filters.genre,
           value: filters.genre,
           onTap: () async {
             final picked = await _pick<String>(
               context,
-              title: 'Genre',
+              title: tr.search.filters.genre,
               current: filters.genre,
               choices: [for (final g in options.genres) (g, g)],
             );
@@ -125,17 +125,15 @@ class SearchResultsView extends StatelessWidget {
         ),
       if (options.offersRating || filters.minRating != null)
         _FilterChip(
-          label: 'Rating',
+          label: tr.search.filters.rating,
           value: filters.minRating == null
               ? null
               : '${filters.minRating!.toStringAsFixed(0)}+',
           onTap: () async {
             final picked = await _pick<double>(
               context,
-              title: 'Rating',
-              note:
-                  'TMDB user rating out of 10. Titles TMDB has no rating '
-                  'for are left out.',
+              title: tr.search.filters.rating,
+              note: tr.search.filters.ratingNote,
               current: filters.minRating,
               choices: [
                 for (final r in ratingChoices) (r, '${r.toStringAsFixed(0)}+'),
@@ -146,15 +144,13 @@ class SearchResultsView extends StatelessWidget {
         ),
       if (options.offersOriginalLanguage || filters.originalLanguage != null)
         _FilterChip(
-          label: 'Original language',
+          label: tr.search.filters.originalLanguage,
           value: filters.originalLanguage,
           onTap: () async {
             final picked = await _pick<String>(
               context,
-              title: 'Original language',
-              note:
-                  'The language the title was made in, from TMDB. A dubbed '
-                  'copy keeps its original language here.',
+              title: tr.search.filters.originalLanguage,
+              note: tr.search.filters.originalLanguageNote,
               current: filters.originalLanguage,
               choices: [for (final l in options.originalLanguages) (l, l)],
             );
@@ -182,7 +178,7 @@ class SearchResultsView extends StatelessWidget {
                 if (filters.isActive)
                   Center(
                     child: _FilterChip(
-                      label: 'Clear',
+                      label: tr.search.filters.clear,
                       value: null,
                       plain: true,
                       onTap: () => onFilters(const SearchFilters()),
@@ -195,8 +191,8 @@ class SearchResultsView extends StatelessWidget {
           child: shown.isEmpty
               ? LibraryEmptyState(
                   icon: Icons.filter_alt_off_outlined,
-                  message: 'Nothing matches those filters.',
-                  actionLabel: 'Clear filters',
+                  message: tr.search.filters.noMatches,
+                  actionLabel: tr.search.filters.clearAll,
                   onAction: () => onFilters(const SearchFilters()),
                 )
               : PosterGrid(items: shown, showKind: true),
@@ -245,7 +241,7 @@ class _FilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              on ? '$label: $value' : label,
+              on ? tr.search.filters.chip(label: label, value: value ?? '') : label,
               style: TextStyle(
                 color: on ? t.ink : t.inkDim,
                 fontSize: size,
@@ -338,7 +334,7 @@ Future<(T?,)?> _pick<T>(
                     ),
                   ),
                 ),
-              row(null, 'Any'),
+              row(null, tr.search.filters.any),
               for (final (value, label) in choices) row(value, label),
             ],
           ),

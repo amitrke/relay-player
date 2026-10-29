@@ -17,6 +17,7 @@ import '../../data/transfer/transfer_server.dart';
 import 'pairing_widgets.dart';
 import 'transfer_service.dart';
 import 'transfer_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings -> Move to another device -> Receive (§17).
 ///
@@ -110,10 +111,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     final host = await widget.findAddress();
     if (!mounted || generation != _generation) return null;
     if (host == null) {
-      _fail(
-        'This device is not on a Wi-Fi or Ethernet network. Connect it to '
-        'the same network as the other device and try again.',
-      );
+      _fail(tr.transfer.noNetwork);
       return null;
     }
 
@@ -134,7 +132,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       unawaited(_awaitIncoming(server, generation));
       return pairing;
     } catch (e) {
-      _fail('Could not start listening: $e');
+      _fail(tr.transfer.cannotListen(error: '$e'));
       return null;
     }
   }
@@ -148,7 +146,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       if (_phase == _Phase.waiting ||
           _phase == _Phase.joining ||
           _phase == _Phase.awaitingPush) {
-        _fail('That code has expired. Start again for a new one.');
+        _fail(tr.transfer.expired);
       }
       return;
     }
@@ -201,7 +199,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     } on TransferException catch (e) {
       _fail(e.message);
     } catch (e) {
-      _fail('Something went wrong: $e');
+      _fail(tr.transfer.wentWrong(error: '$e'));
     }
   }
 
@@ -235,7 +233,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       _fail(e.message);
     } catch (e) {
       incoming.decline();
-      _fail('Could not save the settings: $e');
+      _fail(tr.transfer.receive.cannotSave(error: '$e'));
     }
   }
 
@@ -254,21 +252,18 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   @override
   Widget build(BuildContext context) {
     return TransferScaffold(
-      title: 'Receive settings',
+      title: tr.transfer.receive.title,
       children: switch (_phase) {
-        _Phase.starting => const [TransferBusy('Getting ready…')],
+        _Phase.starting => [TransferBusy(tr.transfer.gettingReady)],
         _Phase.waiting => [_waiting(context)],
         _Phase.scan => _scan(context),
         _Phase.type => _type(context),
-        _Phase.joining => const [TransferBusy('Asking the other device…')],
-        _Phase.awaitingPush => const [
-          TransferBusy(
-            'Waiting for the other device to send. Say yes there when it '
-            'asks.',
-          ),
+        _Phase.joining => [TransferBusy(tr.transfer.receive.asking)],
+        _Phase.awaitingPush => [
+          TransferBusy(tr.transfer.receive.awaitingPush),
         ],
         _Phase.review => _review(context),
-        _Phase.applying => const [TransferBusy('Saving…')],
+        _Phase.applying => [TransferBusy(tr.transfer.receive.saving)],
         _Phase.done => _done(context),
         _Phase.failed => _failed(context),
       },
@@ -279,19 +274,17 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     final pairing = _pairing!;
     return PairingDisplay(
       pairing: pairing,
-      instructions:
-          'On the device that has your settings, open Settings, Move to '
-          'another device, and choose Send. Then scan this code.',
-      waitingLabel: 'Waiting for the other device…',
+      instructions: tr.transfer.receive.waitingInstructions,
+      waitingLabel: tr.transfer.waitingOther,
       actions: [
         RelayTextButton(
-          label: 'Cancel',
+          label: tr.common.cancel,
           autofocus: true,
           onPressed: () => context.pop(),
         ),
         if (RelayLayout.of(context) != RelayFormFactor.tv)
           RelayTextButton(
-            label: 'Copy code',
+            label: tr.transfer.copyCode,
             onPressed: () => Clipboard.setData(
               ClipboardData(text: '${pairing.address} ${pairing.displayCode}'),
             ),
@@ -299,11 +292,11 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
         // For when the other device has no camera and is showing the code.
         if (_canScan)
           RelayTextButton(
-            label: 'Scan its code instead',
+            label: tr.transfer.scanInstead,
             onPressed: () => unawaited(_choose(_Phase.scan)),
           ),
         RelayTextButton(
-          label: 'Type its code instead',
+          label: tr.transfer.typeInstead,
           onPressed: () => unawaited(_choose(_Phase.type)),
         ),
       ],
@@ -311,10 +304,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   }
 
   List<Widget> _scan(BuildContext context) => [
-    const TransferText(
-      'On the device that has your settings, open Settings, Move to another '
-      'device, and choose Send, then Show a code. Point the camera at it.',
-    ),
+    TransferText(tr.transfer.receive.scanInstructions),
     const SizedBox(height: 16),
     PairingScanner(onPairing: (p) => unawaited(_join(p))),
     const SizedBox(height: 8),
@@ -322,39 +312,39 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       spacing: 8,
       children: [
         RelayTextButton(
-          label: 'Show my code instead',
+          label: tr.transfer.receive.showMine,
           onPressed: () => unawaited(_showMine()),
         ),
         RelayTextButton(
-          label: 'Type its code instead',
+          label: tr.transfer.typeInstead,
           onPressed: () => unawaited(_choose(_Phase.type)),
         ),
-        RelayTextButton(label: 'Cancel', onPressed: () => context.pop()),
+        RelayTextButton(label: tr.common.cancel, onPressed: () => context.pop()),
       ],
     ),
   ];
 
   List<Widget> _type(BuildContext context) => [
-    const TransferText(
-      'On the device that has your settings, open Settings, Move to another '
-      'device, and choose Send, then Show a code. Then enter what it shows.',
-    ),
+    TransferText(tr.transfer.receive.typeInstructions),
     const SizedBox(height: 16),
-    PairingEntry(submitLabel: 'Connect', onSubmit: (p) => unawaited(_join(p))),
+    PairingEntry(
+      submitLabel: tr.transfer.receive.connect,
+      onSubmit: (p) => unawaited(_join(p)),
+    ),
     const SizedBox(height: 8),
     Wrap(
       spacing: 8,
       children: [
         RelayTextButton(
-          label: 'Show my code instead',
+          label: tr.transfer.receive.showMine,
           onPressed: () => unawaited(_showMine()),
         ),
         if (_canScan)
           RelayTextButton(
-            label: 'Scan its code instead',
+            label: tr.transfer.scanInstead,
             onPressed: () => unawaited(_choose(_Phase.scan)),
           ),
-        RelayTextButton(label: 'Cancel', onPressed: () => context.pop()),
+        RelayTextButton(label: tr.common.cancel, onPressed: () => context.pop()),
       ],
     ),
   ];
@@ -363,10 +353,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     final bundle = _incoming!.bundle;
     final items = TransferItem.values.where(bundle.items.contains).toList();
     return [
-      const TransferText(
-        'Another device wants to send you these. Anything that is already '
-        'here with the same name is replaced; nothing else is removed.',
-      ),
+      TransferText(tr.transfer.receive.review),
       const SizedBox(height: 18),
       TransferChecklist(
         items: items,
@@ -384,21 +371,20 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
         runSpacing: 8,
         children: [
           RelayButton(
-            label: 'Save these',
+            label: tr.transfer.receive.saveThese,
             onPressed: _selected.isEmpty ? null : _apply,
           ),
-          RelayTextButton(label: 'Decline', onPressed: _decline),
+          RelayTextButton(
+            label: tr.transfer.receive.decline,
+            onPressed: _decline,
+          ),
         ],
       ),
     ];
   }
 
   List<Widget> _done(BuildContext context) => [
-    const TransferText(
-      'Done. Your settings are on this device.',
-      dim: false,
-      bold: true,
-    ),
+    TransferText(tr.transfer.receive.saved, dim: false, bold: true),
     for (final note in _notes) ...[
       const SizedBox(height: 12),
       TransferText(note),
@@ -407,7 +393,7 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
     Align(
       alignment: Alignment.centerLeft,
       child: RelayButton(
-        label: 'Done',
+        label: tr.transfer.done,
         autofocus: true,
         onPressed: () => context.pop(),
       ),
@@ -415,13 +401,20 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   ];
 
   List<Widget> _failed(BuildContext context) => [
-    TransferError(_error ?? 'Something went wrong.'),
+    TransferError(_error ?? tr.transfer.wentWrongPlain),
     const SizedBox(height: 18),
     Wrap(
       spacing: 12,
       children: [
-        RelayButton(label: 'Try again', autofocus: true, onPressed: _again),
-        RelayTextButton(label: 'Close', onPressed: () => context.pop()),
+        RelayButton(
+          label: tr.common.tryAgain,
+          autofocus: true,
+          onPressed: _again,
+        ),
+        RelayTextButton(
+          label: tr.transfer.close,
+          onPressed: () => context.pop(),
+        ),
       ],
     ),
   ];

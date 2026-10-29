@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../player/playback_prefs.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings → Playback (§12.1).
 ///
@@ -22,14 +23,12 @@ class PlaybackPane extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ChoiceRow(
-          title: 'Skip back and forward',
-          subtitle:
-              'The skip buttons, the fast-forward and rewind keys on a '
-              'remote, and the first step when moving along the seek bar.',
+          title: tr.settings.playback.skip,
+          subtitle: tr.settings.playback.skipExplain,
           options: [
             for (final s in PlaybackPrefs.skipChoices)
               (
-                '$s s',
+                tr.units.seconds(s: s),
                 prefs.skipSeconds == s,
                 () => edit((p) => p.copyWith(skipSeconds: s)),
               ),
@@ -37,12 +36,10 @@ class PlaybackPane extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         _LanguageRow(
-          title: 'Preferred audio language',
-          subtitle:
-              'Used when a file has more than one audio track. '
-              "Otherwise the file's own default plays.",
+          title: tr.settings.playback.audioLanguage,
+          subtitle: tr.settings.playback.audioLanguageExplain,
           value: prefs.audioLanguage,
-          noneLabel: "File's default",
+          noneLabel: tr.settings.playback.fileDefault,
           onChanged: (lang) =>
               edit((p) => p.copyWith(audioLanguage: () => lang)),
         ),
@@ -64,28 +61,24 @@ class SubtitlesPane extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _CheckRow(
-          title: 'Show subtitles',
-          subtitle:
-              'Turn them on when a file has them. You can always switch '
-              'in the player.',
+          title: tr.settings.playback.showSubtitles,
+          subtitle: tr.settings.playback.showSubtitlesExplain,
           value: prefs.subtitlesOn,
           onChanged: (v) => edit((p) => p.copyWith(subtitlesOn: v)),
         ),
         const SizedBox(height: 18),
         _LanguageRow(
-          title: 'Preferred subtitle language',
-          subtitle:
-              'If a file has no subtitles in this language, none are '
-              'shown.',
+          title: tr.settings.playback.subtitleLanguage,
+          subtitle: tr.settings.playback.subtitleLanguageExplain,
           value: prefs.subtitleLanguage,
-          noneLabel: 'Any',
+          noneLabel: tr.settings.playback.any,
           onChanged: (lang) =>
               edit((p) => p.copyWith(subtitleLanguage: () => lang)),
         ),
         const SizedBox(height: 18),
         _ChoiceRow(
-          title: 'Size',
-          subtitle: 'For text subtitles, such as SRT and ASS.',
+          title: tr.settings.playback.size,
+          subtitle: tr.settings.playback.sizeExplain,
           options: [
             for (final size in SubtitleSize.values)
               (

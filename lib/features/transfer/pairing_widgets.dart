@@ -8,6 +8,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/transfer/pairing.dart';
 import 'transfer_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// The QR code, address and 16-character code that one device shows so the
 /// other can find it, with whatever the screen wants beside them.
@@ -42,7 +43,7 @@ class PairingDisplay extends StatelessWidget {
       children: [
         TransferText(instructions),
         const SizedBox(height: 16),
-        const TransferText('No camera? Choose Type the code there, and enter:'),
+        TransferText(tr.transfer.pairing.noCamera),
         const SizedBox(height: 10),
         Text(
           pairing.address,
@@ -82,7 +83,7 @@ class PairingDisplay extends StatelessWidget {
         data: pairing.uri,
         size: f == RelayFormFactor.tv ? 200 : 220,
         backgroundColor: Colors.white,
-        semanticsLabel: 'Code to scan from the other device',
+        semanticsLabel: tr.transfer.pairing.qrLabel,
       ),
     );
 
@@ -170,10 +171,8 @@ class _PairingScannerState extends State<PairingScanner> {
                 padding: const EdgeInsets.all(20),
                 child: Text(
                   error.errorCode == MobileScannerErrorCode.permissionDenied
-                      ? 'The camera is switched off for this app. Type the '
-                            'code instead, or allow the camera in your '
-                            "phone's settings."
-                      : 'The camera could not start. Type the code instead.',
+                      ? tr.transfer.pairing.cameraOff
+                      : tr.transfer.pairing.cameraFailed,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: t.inkDim, height: 1.5),
                 ),
@@ -183,7 +182,7 @@ class _PairingScannerState extends State<PairingScanner> {
         ),
         if (_foreign) ...[
           const SizedBox(height: 12),
-          const TransferText('That is not a code from this app.'),
+          TransferText(tr.transfer.pairing.foreign),
         ],
       ],
     );
@@ -239,9 +238,7 @@ class _PairingEntryState extends State<PairingEntry> {
     final pairing = PairingInfo.tryParse('${_address.text} ${_code.text}');
     if (pairing == null) {
       setState(() {
-        _hint =
-            'Check the address (like 192.168.1.20:41234) and the 16-character '
-            'code.';
+        _hint = tr.transfer.pairing.checkEntry;
       });
       return;
     }
@@ -297,13 +294,19 @@ class _PairingEntryState extends State<PairingEntry> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _field(
-          'Address',
+          tr.transfer.pairing.address,
           _address,
           '192.168.1.20:41234',
           focusNode: _addressFocus,
         ),
         const SizedBox(height: 12),
-        _field('Code', _code, 'ABCD-EFGH-JKMN-PQRS', caps: true, last: true),
+        _field(
+          tr.transfer.pairing.code,
+          _code,
+          'ABCD-EFGH-JKMN-PQRS',
+          caps: true,
+          last: true,
+        ),
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,

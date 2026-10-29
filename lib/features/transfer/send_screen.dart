@@ -16,6 +16,7 @@ import '../../data/transfer/transfer_offer.dart';
 import 'pairing_widgets.dart';
 import 'transfer_service.dart';
 import 'transfer_widgets.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings -> Move to another device -> Send (§17).
 ///
@@ -96,7 +97,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         _phase = _Phase.choose;
       });
     } catch (e) {
-      _fail('Could not read this device\'s settings: $e');
+      _fail(tr.transfer.send.cannotRead(error: '$e'));
     }
   }
 
@@ -138,10 +139,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     final host = await widget.findAddress();
     if (!mounted || generation != _generation) return;
     if (host == null) {
-      _fail(
-        'This device is not on a Wi-Fi or Ethernet network. Connect it to the '
-        'same network as the other device and try again.',
-      );
+      _fail(tr.transfer.noNetwork);
       return;
     }
 
@@ -158,7 +156,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       });
       unawaited(_awaitRequest(offer, pairing, generation));
     } catch (e) {
-      _fail('Could not start listening: $e');
+      _fail(tr.transfer.cannotListen(error: '$e'));
     }
   }
 
@@ -173,7 +171,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       return;
     }
     if (request == null) {
-      _fail('That code has expired. Start again for a new one.');
+      _fail(tr.transfer.expired);
       return;
     }
 
@@ -219,7 +217,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             borderRadius: BorderRadius.circular(14),
           ),
           title: Text(
-            'Send to ${request.host}?',
+            tr.transfer.send.askTitle(host: request.host),
             style: TextStyle(
               color: t.ink,
               fontSize: 18,
@@ -227,9 +225,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             ),
           ),
           content: Text(
-            'A device on your network scanned this code and is asking for:\n\n'
-            '$summary\n\n'
-            'Only agree if you just asked for this on that device.',
+            tr.transfer.send.askBody(summary: summary),
             style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
           ),
           actions: [
@@ -237,7 +233,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
               autofocus: true,
               onPressed: () => Navigator.pop(context, false),
               style: TextButton.styleFrom(foregroundColor: t.inkDim),
-              child: const Text('Not now'),
+              child: Text(tr.transfer.send.notNow),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -245,7 +241,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                 backgroundColor: t.accent,
                 foregroundColor: t.accentInk,
               ),
-              child: const Text('Send'),
+              child: Text(tr.transfer.send.send),
             ),
           ],
         );
@@ -263,7 +259,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     } on TransferException catch (e) {
       _fail(e.message);
     } catch (e) {
-      _fail('Something went wrong: $e');
+      _fail(tr.transfer.wentWrong(error: '$e'));
     }
   }
 
@@ -272,16 +268,12 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   @override
   Widget build(BuildContext context) {
     return TransferScaffold(
-      title: 'Send settings',
+      title: tr.transfer.send.title,
       children: switch (_phase) {
-        _Phase.loading => const [TransferBusy('Reading your settings…')],
+        _Phase.loading => [TransferBusy(tr.transfer.send.reading)],
         _Phase.choose => _choose(context),
         _Phase.connect => _connect(context),
-        _Phase.sending => const [
-          TransferBusy(
-            'Sending. The other device will ask before it saves anything.',
-          ),
-        ],
+        _Phase.sending => [TransferBusy(tr.transfer.send.sending)],
         _Phase.done => _done(context),
         _Phase.failed => _failed(context),
       },
@@ -294,16 +286,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     final items = TransferItem.values.where(bundle.items.contains).toList();
 
     return [
-      const TransferText(
-        'Copies these to another device on the same Wi-Fi, so you do not have '
-        'to type them again. It goes straight there and is encrypted; nothing '
-        'passes through us.',
-      ),
+      TransferText(tr.transfer.send.explain),
       const SizedBox(height: 18),
       if (items.isEmpty)
-        const TransferText(
-          'There is nothing set up on this device to send yet.',
-        )
+        TransferText(tr.transfer.send.nothing)
       else
         TransferChecklist(
           items: items,
@@ -323,7 +309,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
       Align(
         alignment: Alignment.centerLeft,
         child: RelayButton(
-          label: 'Continue',
+          label: tr.transfer.send.proceed,
           onPressed: _selected.isEmpty ? null : _toConnect,
         ),
       ),
@@ -342,24 +328,24 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     return [
       if (_mode != _Mode.scan && _canScan)
         RelayTextButton(
-          label: 'Scan its code instead',
+          label: tr.transfer.scanInstead,
           autofocus: take(),
           onPressed: () => unawaited(_setMode(_Mode.scan)),
         ),
       if (_mode != _Mode.show)
         RelayTextButton(
-          label: 'Show a code instead',
+          label: tr.transfer.send.showInstead,
           autofocus: take(),
           onPressed: () => unawaited(_setMode(_Mode.show)),
         ),
       if (_mode != _Mode.type)
         RelayTextButton(
-          label: 'Type the code instead',
+          label: tr.transfer.send.typeInstead,
           autofocus: take(),
           onPressed: () => unawaited(_setMode(_Mode.type)),
         ),
       RelayTextButton(
-        label: 'Back',
+        label: tr.common.back,
         autofocus: take(),
         onPressed: () async {
           await _withdrawOffer();
@@ -373,10 +359,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     switch (_mode) {
       case _Mode.scan:
         return [
-          const TransferText(
-            'On the other device, open Settings, Move to another device, and '
-            'choose Receive. Point the camera at the code it shows.',
-          ),
+          TransferText(tr.transfer.send.scanInstructions),
           const SizedBox(height: 16),
           PairingScanner(onPairing: (p) => unawaited(_send(p))),
           const SizedBox(height: 8),
@@ -384,27 +367,21 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         ];
       case _Mode.show:
         final pairing = _offerPairing;
-        if (pairing == null) return const [TransferBusy('Getting ready…')];
+        if (pairing == null) return [TransferBusy(tr.transfer.gettingReady)];
         return [
           PairingDisplay(
             pairing: pairing,
-            instructions:
-                'On the other device, open Settings, Move to another device, '
-                'and choose Receive, then Scan its code and point its camera '
-                'here. You will be asked before anything is sent.',
-            waitingLabel: 'Waiting for the other device…',
+            instructions: tr.transfer.send.showInstructions,
+            waitingLabel: tr.transfer.waitingOther,
             actions: _modeButtons(autofocusFirst: true),
           ),
         ];
       case _Mode.type:
         return [
-          const TransferText(
-            'On the other device, open Settings, Move to another device, and '
-            'choose Receive. Then enter what it shows.',
-          ),
+          TransferText(tr.transfer.send.typeInstructions),
           const SizedBox(height: 16),
           PairingEntry(
-            submitLabel: 'Send',
+            submitLabel: tr.transfer.send.send,
             onSubmit: (p) => unawaited(_send(p)),
           ),
           const SizedBox(height: 8),
@@ -414,16 +391,12 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   }
 
   List<Widget> _done(BuildContext context) => [
-    const TransferText(
-      'Sent. The other device has saved your settings.',
-      dim: false,
-      bold: true,
-    ),
+    TransferText(tr.transfer.send.sent, dim: false, bold: true),
     const SizedBox(height: 20),
     Align(
       alignment: Alignment.centerLeft,
       child: RelayButton(
-        label: 'Done',
+        label: tr.transfer.done,
         autofocus: true,
         onPressed: () => context.pop(),
       ),
@@ -431,7 +404,7 @@ class _SendScreenState extends ConsumerState<SendScreen> {
   ];
 
   List<Widget> _failed(BuildContext context) => [
-    TransferError(_error ?? 'Something went wrong.'),
+    TransferError(_error ?? tr.transfer.wentWrongPlain),
     const SizedBox(height: 18),
     Wrap(
       spacing: 12,
@@ -439,11 +412,14 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         // Back to the code step, not the start: the choice of what to send is
         // still right, and the receiver needs a fresh code only if it says so.
         RelayButton(
-          label: 'Try again',
+          label: tr.common.tryAgain,
           autofocus: true,
           onPressed: _collected == null ? _load : _toConnect,
         ),
-        RelayTextButton(label: 'Close', onPressed: () => context.pop()),
+        RelayTextButton(
+          label: tr.transfer.close,
+          onPressed: () => context.pop(),
+        ),
       ],
     ),
   ];

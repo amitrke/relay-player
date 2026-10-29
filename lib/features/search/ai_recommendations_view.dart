@@ -7,6 +7,7 @@ import '../../data/ai/ai_provider.dart';
 import '../ai/ai_controller.dart';
 import '../ai/ai_recommendations_controller.dart';
 import 'suggestions_view.dart';
+import '../../i18n/strings.g.dart';
 
 /// "What should I watch?": the AI recommendations section of the empty Search
 /// screen. Shown only when a provider is set up.
@@ -46,7 +47,8 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
     final t = RelayTheme.of(context);
     final state = ref.watch(aiRecommendationsProvider).value;
     final provider =
-        ref.watch(aiSetupProvider).value?.config.displayName ?? 'your provider';
+        ref.watch(aiSetupProvider).value?.config.displayName ??
+        tr.ai.picks.yourProvider;
 
     // Still working out whether it is allowed, which takes a moment on launch.
     if (state == null) return const SizedBox.shrink();
@@ -58,13 +60,13 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
           children: [
             _Chip(
               icon: Icons.auto_awesome,
-              label: 'What should I watch?',
+              label: tr.ai.picks.ask,
               onTap: _enable,
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
-                'Ask $provider to pick from your own library.',
+                tr.ai.picks.askExplain(provider: provider),
                 style: TextStyle(color: t.inkDim, fontSize: 13),
               ),
             ),
@@ -80,7 +82,7 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
           children: [
             Expanded(
               child: RowHeading(
-                lead: 'Picked for you by ',
+                lead: tr.ai.picks.pickedBy,
                 title: provider,
                 color: t.ink,
                 dim: t.inkDim,
@@ -100,7 +102,7 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Updating',
+                    tr.ai.picks.updating,
                     style: TextStyle(color: t.inkDim, fontSize: 12.5),
                   ),
                 ],
@@ -108,7 +110,7 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
             else
               _Chip(
                 icon: Icons.refresh,
-                label: 'Again',
+                label: tr.ai.picks.again,
                 onTap: () =>
                     ref.read(aiRecommendationsProvider.notifier).refresh(),
               ),
@@ -120,7 +122,7 @@ class _SectionState extends ConsumerState<AiRecommendationsSection> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Getting your picks ready...',
+              tr.ai.picks.preparing,
               style: TextStyle(color: t.inkDim),
             ),
           ),

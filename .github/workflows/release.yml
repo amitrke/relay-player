@@ -5,7 +5,10 @@ name: Release to testers
 # account, the App Store Connect API key, and the one manual upload each store
 # insists on first — is in docs/RELEASING.md.
 #
-# One workflow for both stores, not one each, so that one tag ships both and
+# Production is promote.yml, which builds nothing and moves one of these
+# builds onward.
+#
+# One workflow for both stores, not one each, so that one push ships both and
 # github.run_number is the build number on both: Play's versionCode and iOS's
 # CFBundleVersion stay the same number for the same commit. Renamed from
 # "Release to Play internal testing" when iOS joined (2026-09-23). Renaming is
@@ -36,18 +39,21 @@ on:
         type: choice
         options: [both, android, ios]
         default: both
-  # Two ways in, decided 2026-09-23 (RELEASING.md, "Test builds and
-  # releases"):
-  # - develop is the everyday test channel. Pushing to it is the deliberate
-  #   "testers should get this" signal that used to need a tag; builds are
-  #   named after pubspec.yaml's version, e.g. "1.0.4 (12)".
-  # - a v* tag is the release: it must match pubspec.yaml, and marks which of
-  #   those builds is the one that shipped.
-  # main still releases nothing on its own. Most merges there are not worth a
-  # tester's update prompt.
+  # develop is the everyday test channel (decided 2026-09-23, RELEASING.md,
+  # "Test builds and releases"). Pushing to it is the deliberate "testers
+  # should get this" signal; builds are named after pubspec.yaml's version,
+  # e.g. "1.0.4 (12)". main still releases nothing on its own. Most merges
+  # there are not worth a tester's update prompt.
+  #
+  # ~~A pushed v* tag was the release~~, from 2026-09-23 until 2026-10-29,
+  # when promote.yml took over production and started creating the tag
+  # itself. A tag no longer builds anything: a tag build would upload a new
+  # bundle over the tested one on Play's internal track, and promotion moves
+  # whatever build number it is given, so the tested build is what ships. The
+  # version step below still checks a tag ref, for a manual run started from
+  # one.
   push:
     branches: [develop]
-    tags: ['v*']
 
 concurrency:
   # Unlike build.yml, never cancel. A run killed mid-upload leaves an open Play
@@ -221,8 +227,21 @@ jobs:
           done
           echo "::warning::No release notes found (looked for ${candidates[*]}). Uploading without them; add them in Play Console if testers should see any."
 
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python3 tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
       - run: >-
           flutter build appbundle --release
+          --dart-define-from-file=${{ runner.temp }}/trackers.json
           --build-number=${{ needs.check.outputs.code }}
           --build-name=${{ needs.check.outputs.name }}
 
@@ -247,6 +266,11 @@ jobs:
           # so a mismatch there can be diagnosed from this log.
           grep -E 'SHA256:' <<< "$cert"
           echo "versionCode ${{ needs.check.outputs.code }}, $(du -h "$aab" | cut -f1)"
+
+      # The licence page describes one particular libmpv; a bundle carrying
+      # another must not reach testers (architecture.md §10.1).
+      - name: Check the shipped libmpv matches the lock
+        run: python3 tool/native_lock.py build/app/outputs/bundle/release/app-release.aab
 
       # Kept whether or not the upload runs. Play's API cannot create an app's
       # first release, so the very first bundle has to be downloaded from here
@@ -346,10 +370,23 @@ jobs:
       # Without the key there is no way to sign, so the run still proves the
       # iOS build compiles — the thing most likely to break unnoticed, since
       # nothing else in CI builds for iOS — and says why it stopped there.
+      # Watch-tracker app credentials from secrets into a file outside the
+      # checkout (architecture.md §19.2). Unset secrets leave that tracker out.
+      - name: Tracker credentials
+        shell: bash
+        env:
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+        run: python3 tool/tracker_defines.py "$RUNNER_TEMP/trackers.json"
+
       - name: Compile without signing
         if: env.HAS_ASC_KEY != 'true'
         run: |
           flutter build ios --release --no-codesign \
+            --dart-define-from-file="$RUNNER_TEMP/trackers.json" \
             --build-number=${{ needs.check.outputs.code }} \
             --build-name=${{ needs.check.outputs.name }}
           echo "::notice::APP_STORE_CONNECT_API_KEY_P8 is not set, so the iOS build was compiled but not signed or uploaded. See docs/RELEASING.md."
@@ -373,6 +410,7 @@ jobs:
         if: env.HAS_ASC_KEY == 'true'
         run: |
           flutter build ios --release --config-only \
+            --dart-define-from-file="$RUNNER_TEMP/trackers.json" \
             --build-number=${{ needs.check.outputs.code }} \
             --build-name=${{ needs.check.outputs.name }}
           xcodebuild archive \

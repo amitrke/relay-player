@@ -6,18 +6,12 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/tmdb/tmdb_client.dart';
 import '../metadata/release_dates.dart';
 import '../metadata/tmdb_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// What the person is agreeing to when they switch on the background lookup, in
 /// the same words as the dialog, so a test can pin that it says what it sends.
-const releaseDatesConsentText =
-    'This looks up the release date of every film and series in your library on '
-    'TMDB, in the background, a few at a time. To do that it sends the title '
-    '(and the year, when there is one) of each of them from this device to '
-    'TMDB, and to no one else, not only the ones you search for. It also fills '
-    'in genre and rating for the filters. Results are kept on this device for '
-    '90 days, and titles already looked up are not asked again.\n\n'
-    'You can switch it off at any time. Removing your TMDB key switches it off '
-    'too.';
+/// A translation must keep every fact in it (§12.3): this is consent wording.
+String get releaseDatesConsentText => tr.settings.metadata.consent;
 
 Future<bool> confirmReleaseDates(BuildContext context) async {
   final t = RelayTheme.of(context);
@@ -27,7 +21,7 @@ Future<bool> confirmReleaseDates(BuildContext context) async {
       backgroundColor: t.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Text(
-        'Send your library titles to TMDB?',
+        tr.settings.metadata.consentTitle,
         style: TextStyle(
           color: t.ink,
           fontSize: 18,
@@ -44,7 +38,7 @@ Future<bool> confirmReleaseDates(BuildContext context) async {
           autofocus: true,
           onPressed: () => Navigator.pop(context, false),
           style: TextButton.styleFrom(foregroundColor: t.inkDim),
-          child: const Text('Not now'),
+          child: Text(tr.settings.metadata.notNow),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
@@ -52,7 +46,7 @@ Future<bool> confirmReleaseDates(BuildContext context) async {
             backgroundColor: t.accent,
             foregroundColor: t.accentInk,
           ),
-          child: const Text('Look them up'),
+          child: Text(tr.settings.metadata.lookThemUp),
         ),
       ],
     ),
@@ -73,17 +67,23 @@ class _ReleaseDatesControl extends ConsumerWidget {
     final status = !enabled
         ? null
         : state.total == 0
-        ? 'Waiting for your library to load.'
+        ? tr.settings.metadata.waiting
         : state.stoppedEarly
-        ? 'Paused: TMDB stopped answering. It carries on the next time the app '
-              'opens, and what it found is kept.'
+        ? tr.settings.metadata.stopped
         : state.running
-        ? 'Looked up ${state.settled} of ${state.total} titles.'
+        ? tr.settings.metadata.running(
+            settled: state.settled,
+            total: state.total,
+          )
         : state.settled < state.total
-        ? 'Looked up ${state.settled} of ${state.total} titles. The rest '
-              'carry on the next time the app opens.'
-        : 'Done: ${state.dates.length} release dates found for '
-              '${state.total} titles.';
+        ? tr.settings.metadata.partial(
+            settled: state.settled,
+            total: state.total,
+          )
+        : tr.settings.metadata.done(
+            found: state.dates.length,
+            total: state.total,
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +96,7 @@ class _ReleaseDatesControl extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Release dates for your library',
+                    tr.settings.metadata.releaseDates,
                     style: TextStyle(
                       color: t.ink,
                       fontSize: 14,
@@ -105,10 +105,7 @@ class _ReleaseDatesControl extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Adds exact release dates in the background, so Sort by '
-                    'Release date can order your library properly, including '
-                    'titles with no year. Sends every title in your library '
-                    'to TMDB.',
+                    tr.settings.metadata.releaseDatesExplain,
                     style: TextStyle(
                       color: t.inkDim,
                       fontSize: 12,
@@ -204,18 +201,12 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connect your own TMDB key to add genre, rating and original '
-          'language to search results, and suggestions based on what you have '
-          'watched. It is optional, and nothing changes until you add one.',
+          tr.settings.metadata.intro,
           style: TextStyle(color: t.inkDim, fontSize: 13.5, height: 1.6),
         ),
         const SizedBox(height: 10),
         Text(
-          'The titles being looked up are sent from this device to TMDB, and '
-          'to no one else. Create a free key in your TMDB account under '
-          'Settings, API. Either the short key or the long Read Access Token '
-          'works. On a TV it is easier to paste or type this on a phone or '
-          'computer first.',
+          tr.settings.metadata.keyExplain,
           style: TextStyle(color: t.inkDim, fontSize: 13.5, height: 1.6),
         ),
         const SizedBox(height: 18),
@@ -225,7 +216,7 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
               Icon(Icons.check_circle, color: t.accent, size: 20),
               const SizedBox(width: 8),
               Text(
-                'TMDB key saved',
+                tr.settings.metadata.keySaved,
                 style: TextStyle(
                   color: t.ink,
                   fontSize: 15,
@@ -240,7 +231,7 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
           Align(
             alignment: Alignment.centerLeft,
             child: RelayButton(
-              label: 'Remove key',
+              label: tr.settings.metadata.removeKey,
               onPressed: () => ref.read(tmdbKeyProvider.notifier).remove(),
             ),
           ),
@@ -254,7 +245,7 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
               onSubmitted: (_) => _save(),
               style: TextStyle(color: t.ink),
               decoration: InputDecoration(
-                labelText: 'TMDB API key',
+                labelText: tr.settings.metadata.keyLabel,
                 labelStyle: TextStyle(color: t.inkDim),
                 errorText: _error,
                 filled: true,
@@ -278,13 +269,16 @@ class _MetadataPaneState extends ConsumerState<MetadataPane> {
           Align(
             alignment: Alignment.centerLeft,
             child: RelayButton(
-              label: _busy ? 'Checking...' : 'Verify and save',
+              label: _busy
+                  ? tr.settings.metadata.checking
+                  : tr.settings.metadata.verify,
               onPressed: _busy ? null : _save,
             ),
           ),
         ],
         const SizedBox(height: 22),
-        // TMDB's terms require this wording wherever its data is used.
+        // TMDB's terms require this wording wherever its data is used, so it
+        // stays in English in every language (§12.3).
         Text(
           'This product uses the TMDB API but is not endorsed or certified by '
           'TMDB.',

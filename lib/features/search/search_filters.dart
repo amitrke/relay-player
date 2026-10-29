@@ -1,4 +1,5 @@
 import '../../domain/models/catalog_item.dart';
+import '../../i18n/strings.g.dart';
 
 /// The 1960s bucket also holds everything older, so the year chooser stays a
 /// short list however deep a catalogue goes.
@@ -12,7 +13,9 @@ int decadeOf(int year) =>
     year < _oldestDecade + 10 ? _oldestDecade : year ~/ 10 * 10;
 
 String decadeLabel(int decade) =>
-    decade == _oldestDecade ? '${decade}s and earlier' : '${decade}s';
+    decade == _oldestDecade
+        ? tr.search.filters.decadeOldest(decade: decade)
+        : tr.search.filters.decade(decade: decade);
 
 /// The rating thresholds on offer. TMDB's scale is out of 10 and most titles
 /// sit between 5 and 8, so finer steps would split nothing.

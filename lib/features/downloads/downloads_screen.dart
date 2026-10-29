@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/download_record.dart';
+import '../../data/downloads/episode_rules.dart';
 import '../library/poster_grid.dart' show LibraryEmptyState;
 import 'downloads_controller.dart';
+import 'episode_rule_sheet.dart';
+import 'offline_sync.dart';
+import '../../i18n/strings.g.dart';
 
 /// "1.4 GB", "850 MB", "12 KB". Decimal units, as storage and Plex both quote.
 String formatBytes(int bytes) {
@@ -29,8 +33,8 @@ String formatRuntime(Duration d) {
   if (minutes <= 0) return '';
   final h = minutes ~/ 60;
   final m = minutes % 60;
-  if (h == 0) return '$m min';
-  return m == 0 ? '$h h' : '$h h $m min';
+  if (h == 0) return tr.units.minutes(m: m);
+  return m == 0 ? tr.units.hours(h: h) : tr.units.hoursMinutes(h: h, m: m);
 }
 
 /// Downloads (§18): what is saved on this device, and what is still arriving.
@@ -45,19 +49,18 @@ class DownloadsScreen extends ConsumerWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
     final items = ref.watch(downloadsProvider);
+    final rules = ref.watch(episodeRulesProvider);
+    final pending = ref.watch(offlineWatchProvider).length;
     final used = ref.read(downloadsProvider.notifier).bytesUsed;
     final unfinished = items.any((r) => !r.isComplete);
 
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
-        child: items.isEmpty
-            ? const LibraryEmptyState(
+        child: items.isEmpty && rules.isEmpty
+            ? LibraryEmptyState(
                 icon: Icons.download_outlined,
-                message:
-                    'Nothing downloaded yet. Press and hold a movie or episode '
-                    'from your Plex library and choose Download, then watch it '
-                    'here with no network.',
+                message: tr.downloads.empty,
               )
             : ListView(
                 padding: RelayLayout.pagePadding(
@@ -65,7 +68,7 @@ class DownloadsScreen extends ConsumerWidget {
                 ).copyWith(top: 20, bottom: 40),
                 children: [
                   Text(
-                    'Downloads',
+                    tr.downloads.title,
                     style: TextStyle(
                       color: t.ink,
                       fontSize: RelayLayout.titleSize(f),
@@ -74,26 +77,46 @@ class DownloadsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${items.length} ${items.length == 1 ? 'item' : 'items'}'
-                    ' · ${formatBytes(used)} on this device',
+                    tr.downloads.summary(
+                      n: items.length,
+                      size: formatBytes(used),
+                    ),
                     style: TextStyle(
                       color: t.inkDim,
                       fontSize: RelayLayout.bodySize(f),
                     ),
                   ),
-                  if (unfinished) ...[
+                  if (pending > 0) ...[
                     const SizedBox(height: 6),
                     Text(
-                      // Honest about the limit (§18.3): there is no background
-                      // service, so closing the app stops them.
-                      'Downloads continue while the app is open. Closing it '
-                      'pauses them, and nothing already saved is lost.',
+                      // §18.6: watched offline, told to Plex on reconnect.
+                      tr.downloads.pendingWatches(n: pending),
                       style: TextStyle(
                         color: t.inkDim,
                         fontSize: RelayLayout.bodySize(f) - 1,
                         height: 1.5,
                       ),
                     ),
+                  ],
+                  if (unfinished) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      // Honest about the limit (§18.3): there is no background
+                      // service, so closing the app stops them.
+                      tr.downloads.foregroundOnly,
+                      style: TextStyle(
+                        color: t.inkDim,
+                        fontSize: RelayLayout.bodySize(f) - 1,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  if (rules.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    for (final rule in rules) ...[
+                      _RuleRow(rule: rule),
+                      const SizedBox(height: 10),
+                    ],
                   ],
                   const SizedBox(height: 18),
                   for (final (i, record) in items.indexed) ...[
@@ -103,6 +126,90 @@ class DownloadsScreen extends ConsumerWidget {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// A show being kept topped up (§18.7). Selecting it changes or stops it.
+class _RuleRow extends ConsumerWidget {
+  const _RuleRow({required this.rule});
+
+  final EpisodeRule rule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    return RelaySurface(
+      onTap: () => showEpisodeRuleSheet(
+        context,
+        ref,
+        serverId: rule.serverId,
+        showRatingKey: rule.showRatingKey,
+        showTitle: rule.showTitle,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.download_done_outlined, color: t.accent, size: 26),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rule.showTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: t.ink,
+                    fontSize: RelayLayout.bodySize(f) + 1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  describeRule(rule),
+                  style: TextStyle(
+                    color: t.inkDim,
+                    fontSize: RelayLayout.bodySize(f) - 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The poster saved with a download (§18.8), or the state icon when there is
+/// none: saved before posters were, or the server would not give one.
+class _Artwork extends ConsumerWidget {
+  const _Artwork({required this.record, required this.fallback});
+
+  final DownloadRecord record;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (record.artworkFile == null) return fallback;
+    return FutureBuilder(
+      future: ref.read(downloadsProvider.notifier).artworkFor(record),
+      builder: (context, snap) {
+        final file = snap.data;
+        if (file == null) return fallback;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.file(
+            file,
+            width: 40,
+            height: 60,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => fallback,
+          ),
+        );
+      },
     );
   }
 }
@@ -150,14 +257,22 @@ class _DownloadRow extends ConsumerWidget {
       ].where((s) => s.isNotEmpty).join(' · '),
       DownloadState.downloading =>
         percent == null
-            ? 'Downloading, ${formatBytes(record.receivedBytes)}'
-            : 'Downloading $percent% · ${formatBytes(record.receivedBytes)}'
-                  ' of ${formatBytes(size!)}',
-      DownloadState.queued => 'Waiting for its turn',
+            ? tr.downloads.downloadingBytes(
+                received: formatBytes(record.receivedBytes),
+              )
+            : tr.downloads.downloadingPercent(
+                percent: percent,
+                received: formatBytes(record.receivedBytes),
+                total: formatBytes(size!),
+              ),
+      DownloadState.queued => tr.downloads.queued,
       DownloadState.paused =>
-        percent == null ? 'Paused' : 'Paused at $percent% · select to resume',
-      DownloadState.failed =>
-        '${record.error ?? 'It did not finish.'} Select to try again.',
+        percent == null
+            ? tr.downloads.paused
+            : tr.downloads.pausedAt(percent: percent),
+      DownloadState.failed => tr.downloads.failed(
+        error: record.error ?? tr.downloads.failedUnknown,
+      ),
     };
 
     return RelaySurface(
@@ -171,10 +286,13 @@ class _DownloadRow extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                color: record.isComplete ? t.accent : t.inkDim,
-                size: 26,
+              _Artwork(
+                record: record,
+                fallback: Icon(
+                  icon,
+                  color: record.isComplete ? t.accent : t.inkDim,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -246,7 +364,9 @@ class _DownloadRow extends ConsumerWidget {
         backgroundColor: t.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(
-          record.isComplete ? 'Delete this download?' : 'Cancel this download?',
+          record.isComplete
+              ? tr.downloads.deleteTitle
+              : tr.downloads.cancelTitle,
           style: TextStyle(
             color: t.ink,
             fontSize: 18,
@@ -254,9 +374,12 @@ class _DownloadRow extends ConsumerWidget {
           ),
         ),
         content: Text(
-          '"${record.title}" will be removed from this device'
-          '${size > 0 ? ', freeing ${formatBytes(size)}' : ''}. It stays on '
-          'your Plex server.',
+          size > 0
+              ? tr.downloads.removeBodyFreeing(
+                  title: record.title,
+                  size: formatBytes(size),
+                )
+              : tr.downloads.removeBody(title: record.title),
           style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
         ),
         actions: [
@@ -266,7 +389,7 @@ class _DownloadRow extends ConsumerWidget {
             autofocus: true,
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(foregroundColor: t.inkDim),
-            child: const Text('Keep it'),
+            child: Text(tr.downloads.keepIt),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -274,7 +397,7 @@ class _DownloadRow extends ConsumerWidget {
               backgroundColor: t.accent,
               foregroundColor: t.accentInk,
             ),
-            child: const Text('Delete'),
+            child: Text(tr.downloads.delete),
           ),
         ],
       ),

@@ -6,9 +6,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../data/downloads/download_engine.dart';
 import '../../data/downloads/download_record.dart';
-import '../../data/plex/plex_service.dart';
-import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
 
 /// Where downloaded files live: the app's private storage, so they cannot be
 /// browsed, shared or picked up by a gallery. Overridden in tests.
@@ -27,7 +28,7 @@ final downloadEngineProvider = Provider<DownloadEngine>(
 
 /// Turns a server and an item into something to fetch. A seam for tests.
 typedef DownloadSourceResolver =
-    Future<PlexDownloadSource> Function(String serverId, String ratingKey);
+    Future<MediaDownloadSource> Function(String serverId, String ratingKey);
 
 final downloadSourceResolverProvider = Provider<DownloadSourceResolver>((ref) {
   return (serverId, ratingKey) {
@@ -36,11 +37,51 @@ final downloadSourceResolverProvider = Provider<DownloadSourceResolver>((ref) {
         .where((s) => s.id == serverId)
         .firstOrNull;
     if (server == null) {
-      throw const DownloadException(
-        'That server is not connected. Reconnect it in Settings, then resume.',
-      );
+      throw DownloadException(tr.downloads.errors.serverNotConnected);
     }
     return server.service.downloadSource(ratingKey);
+  };
+});
+
+/// Fetches a title's poster for keeping beside its file (§18.8): the stored,
+/// unsigned artwork path in, the image bytes out, or null when there is no
+/// server to ask or it would not say. A seam for tests.
+typedef ArtworkFetcher =
+    Future<List<int>?> Function(String serverId, String posterPath);
+
+/// Posters above this are not kept. A 320x480 transcode is tens of kilobytes;
+/// anything near this size is not the image that was asked for.
+const _maxArtworkBytes = 4 * 1024 * 1024;
+
+final artworkFetcherProvider = Provider<ArtworkFetcher>((ref) {
+  return (serverId, posterPath) async {
+    final server = ref
+        .read(connectedServersProvider)
+        .where((s) => s.id == serverId)
+        .firstOrNull;
+    // Signed fresh and used once: the URL carries the token (§3), so it is
+    // never stored, only the bytes it returns.
+    final url = server?.service.posterUrlForPath(posterPath);
+    if (url == null) return null;
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final response = await (await client.getUrl(Uri.parse(url))).close();
+      if (response.statusCode != HttpStatus.ok) {
+        await response.drain<void>();
+        return null;
+      }
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+        if (bytes.length > _maxArtworkBytes) return null;
+      }
+      return bytes;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
   };
 });
 
@@ -101,6 +142,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     required String ratingKey,
     required String title,
     bool isEpisode = false,
+    String? rule,
   }) async {
     final existing = find(serverId, ratingKey);
     if (existing != null) {
@@ -118,6 +160,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         title: title,
         isEpisode: isEpisode,
         addedAt: DateTime.now(),
+        rule: rule,
       ),
     ];
     await _persist();
@@ -171,6 +214,61 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     final dir = await ref.read(downloadsDirectoryProvider.future);
     final file = File('${dir.path}${Platform.pathSeparator}$name');
     return await file.exists() ? file : null;
+  }
+
+  /// The saved poster for [record], or null if there is none on disk.
+  Future<File?> artworkFor(DownloadRecord record) async {
+    final name = record.artworkFile;
+    if (name == null) return null;
+    final dir = await ref.read(downloadsDirectoryProvider.future);
+    final file = File('${dir.path}${Platform.pathSeparator}$name');
+    return await file.exists() ? file : null;
+  }
+
+  /// Fetches posters for finished downloads that have none: those saved
+  /// before §18.8, and any whose fetch failed because the server went away
+  /// as the file finished. Cheap when there is nothing to do, so it runs on
+  /// every sync.
+  Future<void> saveMissingArtwork() async {
+    for (final r in [...state]) {
+      if (r.isComplete && r.artworkFile == null && r.posterPath != null) {
+        await _saveArtwork(r.key);
+      }
+    }
+  }
+
+  Future<void> _saveArtwork(String key) async {
+    final record = state.where((r) => r.key == key).firstOrNull;
+    final poster = record?.posterPath;
+    final name = record?.fileName;
+    if (record == null || poster == null || name == null) return;
+    final bytes = await ref.read(artworkFetcherProvider)(
+      record.serverId,
+      poster,
+    );
+    // The controller can go while a poster is in flight (the app closing, a
+    // test ending); every read after an await has to ask first.
+    if (!ref.mounted || bytes == null || bytes.isEmpty) return;
+    // Still wanted? It may have been deleted while the poster was fetched.
+    if (find(record.serverId, record.ratingKey) == null) return;
+    final dir = await ref.read(downloadsDirectoryProvider.future);
+    if (!ref.mounted) return;
+    final artwork = '$name.poster';
+    final file = File('${dir.path}${Platform.pathSeparator}$artwork');
+    try {
+      await file.writeAsBytes(bytes, flush: true);
+    } on FileSystemException {
+      return;
+    }
+    if (!ref.mounted) return;
+    // Deleted while the poster was being written: the delete could not know
+    // about a file that did not exist yet, so this one has to go here.
+    if (find(record.serverId, record.ratingKey) == null) {
+      await _deleteQuietly(file);
+      return;
+    }
+    _update(key, (r) => r.copyWith(artworkFile: artwork));
+    await _persist();
   }
 
   // --- Running ---------------------------------------------------------
@@ -247,9 +345,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         // Longer or shorter than Plex said: not a file to trust. Dropped so the
         // retry starts clean rather than resuming into the same fault.
         await _deleteQuietly(part);
-        throw const DownloadException(
-          'The file did not match the size the server reported. Try again.',
-        );
+        throw DownloadException(tr.downloads.errors.sizeMismatch);
       }
 
       final finished = File(part.path.substring(0, part.path.length - 5));
@@ -262,6 +358,9 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
           receivedBytes: size,
         ),
       );
+      // Best effort and after the fact: a poster that will not come is no
+      // reason to fail a film that did.
+      unawaited(_saveArtwork(key));
     } on DownloadCancelled {
       _update(key, (r) => r.copyWith(state: DownloadState.paused));
     } on DownloadException catch (e) {
@@ -269,7 +368,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         key,
         (r) => r.copyWith(state: DownloadState.failed, error: e.message),
       );
-    } on PlexUnreachable catch (e) {
+    } on MediaServerUnreachable catch (e) {
       _update(
         key,
         (r) => r.copyWith(state: DownloadState.failed, error: e.message),
@@ -279,7 +378,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
         key,
         (r) => r.copyWith(
           state: DownloadState.failed,
-          error: 'Could not write the file. The device may be out of space.',
+          error: tr.downloads.errors.cannotWrite,
         ),
       );
     } catch (e) {
@@ -322,6 +421,10 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     await _deleteQuietly(
       File('${dir.path}${Platform.pathSeparator}$name.part'),
     );
+    final artwork = record?.artworkFile;
+    if (artwork != null) {
+      await _deleteQuietly(File('${dir.path}${Platform.pathSeparator}$artwork'));
+    }
   }
 
   static Future<void> _deleteQuietly(File file) async {

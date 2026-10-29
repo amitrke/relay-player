@@ -6,6 +6,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/ai/ai_provider.dart';
 import '../../data/ai/text_client.dart';
 import '../ai/ai_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Settings -> AI features: connect your own provider, and say what each
 /// feature may send it.
@@ -81,10 +82,7 @@ class _AiPaneState extends ConsumerState<AiPane> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connect your own provider and your own key. Requests go straight '
-          'from this device to the provider you chose, never through us, '
-          'because there is no server of ours in between. Nothing is sent '
-          'until you allow a feature below.',
+          tr.settings.ai.intro,
           style: TextStyle(color: t.inkDim, fontSize: 13.5, height: 1.6),
         ),
         const SizedBox(height: 18),
@@ -114,12 +112,16 @@ class _AiPaneState extends ConsumerState<AiPane> {
         ),
       ],
       const SizedBox(height: 16),
-      _field('Address', _baseUrl, onChanged: (_) => setState(() {})),
+      _field(
+        tr.settings.ai.address,
+        _baseUrl,
+        onChanged: (_) => setState(() {}),
+      ),
       const SizedBox(height: 12),
-      _field('Model', _model),
+      _field(tr.settings.ai.model, _model),
       const SizedBox(height: 12),
       _field(
-        local ? 'API key (optional for a local server)' : 'API key',
+        local ? tr.settings.ai.keyOptional : tr.settings.ai.key,
         _key,
         obscure: true,
         onSubmitted: (_) => _save(),
@@ -135,7 +137,7 @@ class _AiPaneState extends ConsumerState<AiPane> {
       Align(
         alignment: Alignment.centerLeft,
         child: RelayButton(
-          label: _busy ? 'Trying it...' : 'Test and save',
+          label: _busy ? tr.settings.ai.trying : tr.settings.ai.testAndSave,
           onPressed: _busy ? null : _save,
         ),
       ),
@@ -204,7 +206,9 @@ class _AiPaneState extends ConsumerState<AiPane> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  config.isLocal ? 'On your network' : 'Key saved',
+                  config.isLocal
+                      ? tr.settings.ai.onNetwork
+                      : tr.settings.ai.keySaved,
                   style: TextStyle(
                     color: config.isLocal ? t.inkDim : t.accent,
                     fontSize: 12,
@@ -228,13 +232,13 @@ class _AiPaneState extends ConsumerState<AiPane> {
       Align(
         alignment: Alignment.centerLeft,
         child: RelayButton(
-          label: 'Remove provider',
+          label: tr.settings.ai.remove,
           onPressed: () => ref.read(aiSetupProvider.notifier).remove(),
         ),
       ),
       const SizedBox(height: 26),
       Text(
-        'What it may send',
+        tr.settings.ai.maySend,
         style: TextStyle(
           color: t.ink,
           fontSize: 16,
@@ -244,8 +248,7 @@ class _AiPaneState extends ConsumerState<AiPane> {
       const SizedBox(height: 10),
       if (config.isLocal)
         Text(
-          'This provider is on your own network, so nothing reaches a third '
-          'party and no consent is needed.',
+          tr.settings.ai.localNoConsent,
           style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.55),
         )
       else
@@ -331,8 +334,13 @@ class _ConsentRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Sends to $providerName: ${feature.dataSent}'
-                  '${feature.timing == null ? '' : ' ${feature.timing}'}',
+                  [
+                    tr.settings.ai.sendsTo(
+                      provider: providerName,
+                      sends: feature.dataSent,
+                    ),
+                    ?feature.timing,
+                  ].join(' '),
                   style: TextStyle(
                     color: t.inkDim,
                     fontSize: 12.5,
@@ -342,8 +350,10 @@ class _ConsentRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   allowed
-                      ? 'Allowed on ${grantedAt!.toLocal().toString().substring(0, 10)}'
-                      : 'Not allowed yet. You will be asked the first time.',
+                      ? tr.settings.ai.allowedOn(
+                          date: grantedAt!.toLocal().toString().substring(0, 10),
+                        )
+                      : tr.settings.ai.notAllowed,
                   style: TextStyle(
                     color: allowed ? t.accent : t.inkDim,
                     fontSize: 12,
@@ -354,7 +364,7 @@ class _ConsentRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           _Pill(
-            label: allowed ? 'Switch off' : 'Allow',
+            label: allowed ? tr.settings.ai.switchOff : tr.settings.ai.allow,
             on: false,
             onTap: () => onChanged(!allowed),
           ),

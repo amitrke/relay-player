@@ -4,13 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/downloads/download_record.dart';
+import '../../data/downloads/offline_watch_queue.dart';
 import '../../data/local/favorites_store.dart';
 import '../../data/local/history_store.dart';
-import '../accounts/plex_session.dart';
 import '../downloads/downloads_controller.dart';
+import '../downloads/offline_sync.dart';
 import 'favorites_controller.dart';
 import 'history_controller.dart';
 import 'resume_entries.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import 'dart:async';
+import '../trackers/trackers_controller.dart';
 
 /// Watched / unwatched marks made in this session, by history key
 /// (`plex:<server>:<ratingKey>`).
@@ -44,14 +49,47 @@ class WatchOverrides extends Notifier<Map<String, bool>> {
       throw StateError('No connected Plex server with id "$serverId".');
     }
     await server.service.setWatched(ratingKey, watched: watched);
+    await _applyLocally(serverId, ratingKey, watched);
+    // A film or episode marked watched by hand is a watch the trackers
+    // should hear about (§19.4). The caller does not mark a whole show here.
+    if (watched) {
+      unawaited(ref.read(trackersProvider.notifier).finished(serverId, ratingKey));
+    }
+  }
 
-    final key = '${PlaybackKind.plex.wire}:$serverId:$ratingKey';
+  /// "Mark as watched" on a saved copy with no server to tell (§18.6): the
+  /// mark is kept, shown here at once, and delivered to Plex on reconnect.
+  /// Watched only. An unwatched mark is not queued: Plex's replay for it
+  /// would be an unscrobble, and undoing a play count from a stale device is
+  /// the one direction where being wrong loses something.
+  Future<void> markWatchedOffline({
+    required String serverId,
+    required String ratingKey,
+  }) async {
+    await ref.read(offlineWatchProvider.notifier).add(PendingWatch(
+          serverId: serverId,
+          ratingKey: ratingKey,
+          position: Duration.zero,
+          duration: Duration.zero,
+          at: DateTime.now(),
+          watched: true,
+        ));
+    await _applyLocally(serverId, ratingKey, true);
+    unawaited(ref.read(trackersProvider.notifier).finished(serverId, ratingKey));
+  }
+
+  Future<void> _applyLocally(
+    String serverId,
+    String ratingKey,
+    bool watched,
+  ) async {
+    final key = '${PlaybackKind.server.wire}:$serverId:$ratingKey';
     state = {...state, key: watched};
     // Either way the local position is now wrong: a watched title has nothing
     // to resume, and an unwatched one starts again. Leaving it would put the
     // title straight back in Continue watching.
     await ref.read(historyProvider.notifier).remove(key);
-    ref.invalidate(plexOnDeckProvider);
+    ref.invalidate(onDeckProvider);
   }
 }
 
@@ -139,7 +177,9 @@ Future<void> showWatchActions(
     builder: (context) {
       final t = RelayTheme.of(context);
       final f = RelayLayout.of(context);
-      final scope = target?.isShow ?? false ? ' (every episode)' : '';
+      final scope = target?.isShow ?? false
+          ? tr.watchActions.everyEpisode
+          : '';
 
       Widget option(String label, IconData icon, _Choice value, bool first) =>
           RelayTappable(
@@ -213,42 +253,46 @@ Future<void> showWatchActions(
                 ),
                 if (offerWatched)
                   option(
-                    'Mark as watched$scope',
+                    tr.watchActions.markWatched(scope: scope),
                     Icons.check_circle_outline,
                     _Choice.watched,
                     takeFirst(),
                   ),
                 if (offerUnwatched)
                   option(
-                    'Mark as unwatched$scope',
+                    tr.watchActions.markUnwatched(scope: scope),
                     Icons.radio_button_unchecked,
                     _Choice.unwatched,
                     takeFirst(),
                   ),
                 if (offerDownload)
                   option(
-                    'Download to this device',
+                    tr.watchActions.download,
                     Icons.download_outlined,
                     _Choice.download,
                     takeFirst(),
                   ),
                 if (offerRemove)
                   option(
-                    existing.isComplete ? 'Delete download' : 'Cancel download',
+                    existing.isComplete
+                        ? tr.watchActions.deleteDownload
+                        : tr.watchActions.cancelDownload,
                     Icons.delete_outline,
                     _Choice.removeDownload,
                     takeFirst(),
                   ),
                 if (favorite != null)
                   option(
-                    isFavorite ? 'Remove from favourites' : 'Add to favourites',
+                    isFavorite
+                        ? tr.watchActions.removeFavourite
+                        : tr.watchActions.addFavourite,
                     isFavorite ? Icons.star : Icons.star_border,
                     _Choice.favorite,
                     takeFirst(),
                   ),
                 if (resume != null)
                   option(
-                    'Remove from Continue watching',
+                    tr.watchActions.removeResume,
                     Icons.close,
                     _Choice.dismissResume,
                     takeFirst(),
@@ -285,7 +329,7 @@ Future<void> showWatchActions(
         isEpisode: plex.isEpisode,
       );
       messenger?.showSnackBar(
-        const SnackBar(content: Text('Downloading. See the Downloads tab.')),
+        SnackBar(content: Text(tr.watchActions.downloading)),
       );
     } else {
       await downloads.remove(plex.serverId, plex.ratingKey);
@@ -302,10 +346,20 @@ Future<void> showWatchActions(
           watched: choice == _Choice.watched,
         );
   } catch (_) {
+    if (choice == _Choice.watched && (existing?.isComplete ?? false)) {
+      await ref
+          .read(watchOverridesProvider.notifier)
+          .markWatchedOffline(
+            serverId: plex.serverId,
+            ratingKey: plex.ratingKey,
+          );
+      messenger?.showSnackBar(
+        SnackBar(content: Text(tr.watchActions.markedOffline)),
+      );
+      return;
+    }
     messenger?.showSnackBar(
-      const SnackBar(
-        content: Text("Plex didn't accept that. The server may be offline."),
-      ),
+      SnackBar(content: Text(tr.watchActions.plexRefused)),
     );
   }
 }

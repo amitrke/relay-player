@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'pairing.dart';
 import 'transfer_bundle.dart';
+import '../../i18n/strings.g.dart';
 
 /// A transfer that did not go through, with a message fit to show.
 class TransferException implements Exception {
@@ -17,9 +18,8 @@ class TransferException implements Exception {
 
 /// The person at the other device said no (or never answered).
 class TransferDeclined extends TransferException {
-  const TransferDeclined([
-    super.message = 'The other device did not accept the settings.',
-  ]);
+  TransferDeclined([String? message])
+    : super(message ?? tr.transfer.client.declined);
 }
 
 /// The sending end of a transfer (§17).
@@ -45,24 +45,19 @@ class TransferClient {
       case HttpStatus.ok:
         return;
       case HttpStatus.forbidden:
-        throw const TransferException(
-          'The code was not right. Check it against the other screen.',
-        );
+        throw TransferException(tr.transfer.client.wrongCode);
       case HttpStatus.conflict:
-        if (body == 'declined') throw const TransferDeclined();
-        throw const TransferException(
-          'The other device already received something. Open Receive again '
-          'there for a fresh code.',
-        );
+        if (body == 'declined') throw TransferDeclined();
+        throw TransferException(tr.transfer.client.used);
       case HttpStatus.requestEntityTooLarge:
-        throw const TransferException('That was too much to send.');
+        throw TransferException(tr.transfer.client.tooBig);
       case HttpStatus.badRequest:
         throw TransferException(
-          body.isEmpty ? 'The other device could not read that.' : body,
+          body.isEmpty ? tr.transfer.client.unreadable : body,
         );
       default:
         throw TransferException(
-          'The other device answered unexpectedly ($status).',
+          tr.transfer.client.unexpected(status: status),
         );
     }
   }
@@ -80,22 +75,15 @@ class TransferClient {
       case HttpStatus.ok:
         return;
       case HttpStatus.forbidden:
-        throw const TransferException(
-          'The code was not right. Check it against the other screen.',
-        );
+        throw TransferException(tr.transfer.client.wrongCode);
       case HttpStatus.conflict:
         if (body == 'declined') {
-          throw const TransferDeclined(
-            'The other device did not agree to send its settings.',
-          );
+          throw TransferDeclined(tr.transfer.client.refusedToSend);
         }
-        throw const TransferException(
-          'The other device is already answering someone else. Ask it for a '
-          'fresh code.',
-        );
+        throw TransferException(tr.transfer.client.busy);
       default:
         throw TransferException(
-          'The other device answered unexpectedly ($status).',
+          tr.transfer.client.unexpected(status: status),
         );
     }
   }
@@ -120,14 +108,13 @@ class TransferClient {
       return (response.statusCode, body);
     } on SocketException {
       throw TransferException(
-        'Could not reach ${to.address}. Both devices need to be on the '
-        'same Wi-Fi, and the other one has to still be showing its code.',
+        tr.transfer.client.unreachable(address: to.address),
       );
     } on HttpException {
-      throw const TransferException('The connection dropped part-way.');
+      throw TransferException(tr.transfer.client.dropped);
     } on TimeoutException {
       throw TransferException(
-        'No answer from ${to.address}. Check the other screen.',
+        tr.transfer.client.noAnswer(address: to.address),
       );
     } finally {
       client.close(force: true);

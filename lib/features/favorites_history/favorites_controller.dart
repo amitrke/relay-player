@@ -5,6 +5,7 @@ import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/local/favorites_store.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 final favoritesStoreProvider = Provider<FavoritesStore>((ref) {
   return FavoritesStore(ref.watch(appSettingsStoreProvider));
@@ -14,8 +15,7 @@ final favoritesStoreProvider = Provider<FavoritesStore>((ref) {
 ///
 /// A panel's channel list runs to thousands of rows even after category
 /// filtering, and every row asks "am I a favourite?" on every build.
-final favoritesProvider =
-    NotifierProvider<FavoritesController, Set<String>>(
+final favoritesProvider = NotifierProvider<FavoritesController, Set<String>>(
   FavoritesController.new,
 );
 
@@ -30,7 +30,10 @@ class FavoritesController extends Notifier<Set<String>> {
   Future<void> toggle(FavoriteItem item) async {
     final items = _store.all();
     final next = state.contains(item.key)
-        ? [for (final i in items) if (i.key != item.key) i]
+        ? [
+            for (final i in items)
+              if (i.key != item.key) i,
+          ]
         : [...items, item];
     state = {for (final i in next) i.key};
     await _store.write(next);
@@ -84,7 +87,9 @@ class FavoriteButton extends ConsumerWidget {
       child: IconButton(
         visualDensity: dense ? VisualDensity.compact : null,
         iconSize: size,
-        tooltip: isFavorite ? 'Remove from favourites' : 'Add to favourites',
+        tooltip: isFavorite
+            ? tr.watchActions.removeFavourite
+            : tr.watchActions.addFavourite,
         icon: Icon(
           isFavorite ? Icons.star : Icons.star_border,
           color: isFavorite ? t.accent : t.inkDim,

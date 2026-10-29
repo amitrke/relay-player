@@ -15,7 +15,7 @@ import 'package:relay_player/data/local/history_store.dart';
 /// a store-copy guarantee and not only a code preference.
 void main() {
   HistoryItem itemWith(String? poster) => HistoryItem(
-        kind: PlaybackKind.plex,
+        kind: PlaybackKind.server,
         sourceId: 'server-1',
         itemId: '1234',
         title: 'Big Buck Bunny',

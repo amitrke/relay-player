@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
 import 'hidden_words_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// The editor for the hidden words: add one, take one away.
 ///
@@ -69,7 +70,7 @@ class _HiddenWordsSheetState extends ConsumerState<_HiddenWordsSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hide words',
+                tr.xtream.hidden.title,
                 style: TextStyle(
                   color: t.ink,
                   fontSize: RelayLayout.bodySize(f) + 2,
@@ -78,10 +79,7 @@ class _HiddenWordsSheetState extends ConsumerState<_HiddenWordsSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                'A category or channel with any of these as a whole word is left '
-                'out of the lists. "UK" hides "UK News" and not "Ukraine". Add '
-                'a phrase such as "south indian" to hide it as one thing. Case '
-                'does not matter.',
+                tr.xtream.hidden.explain,
                 style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 14),
@@ -96,7 +94,7 @@ class _HiddenWordsSheetState extends ConsumerState<_HiddenWordsSheet> {
                         onSubmitted: (_) => _add(),
                         style: TextStyle(color: t.ink),
                         decoration: InputDecoration(
-                          hintText: 'A country, a language, a word',
+                          hintText: tr.xtream.hidden.hint,
                           hintStyle: TextStyle(color: t.inkDim),
                           filled: true,
                           fillColor: t.bg,
@@ -122,13 +120,13 @@ class _HiddenWordsSheetState extends ConsumerState<_HiddenWordsSheet> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  RelayButton(label: 'Add', onPressed: _add),
+                  RelayButton(label: tr.xtream.hidden.add, onPressed: _add),
                 ],
               ),
               const SizedBox(height: 16),
               if (words.isEmpty)
                 Text(
-                  'Nothing hidden yet.',
+                  tr.xtream.hidden.none,
                   style: TextStyle(color: t.inkDim, fontSize: 13),
                 )
               else
@@ -177,7 +175,7 @@ class _HiddenWordsSheetState extends ConsumerState<_HiddenWordsSheet> {
               if (words.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Select a word to stop hiding it.',
+                  tr.xtream.hidden.tapToRemove,
                   style: TextStyle(color: t.inkDim, fontSize: 12),
                 ),
               ],

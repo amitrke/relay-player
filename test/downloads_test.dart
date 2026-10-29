@@ -8,9 +8,13 @@ import 'package:hive_ce/hive.dart';
 import 'package:relay_player/data/downloads/download_engine.dart';
 import 'package:relay_player/data/downloads/download_record.dart';
 import 'package:relay_player/data/local/app_settings_store.dart';
-import 'package:relay_player/data/plex/plex_service.dart';
 import 'package:relay_player/features/downloads/downloads_controller.dart';
 import 'package:relay_player/features/settings/settings_controller.dart';
+import 'package:relay_player/domain/models/media_server.dart';
+
+/// What the fake server answers for a poster: a few bytes, not an image,
+/// because the controller stores whatever it is given.
+const _poster = <int>[0x89, 0x50, 0x4E, 0x47];
 
 /// A file server that behaves the way the downloader has to cope with.
 ///
@@ -285,12 +289,15 @@ void main() {
             final d = Directory('${dir.path}/downloads')..createSync();
             return d;
           }),
+          artworkFetcherProvider.overrideWithValue(
+            (serverId, posterPath) async => _poster,
+          ),
           downloadSourceResolverProvider.overrideWithValue((
             serverId,
             ratingKey,
           ) async {
             final s = servers[ratingKey]!;
-            return PlexDownloadSource(
+            return MediaDownloadSource(
               // A token in the URL, as the real one has. It must never reach
               // the stored record.
               url: '${s.url}?X-Plex-Token=secret-token',
@@ -344,6 +351,26 @@ void main() {
       expect(file.readAsBytesSync(), server.bytes);
       expect(file.path, endsWith('.mkv'));
       expect(File('${file.path}.part').existsSync(), isFalse);
+    });
+
+    test('keeps the poster beside the file, and deletes it with it', () async {
+      // §18.8: the Downloads list has artwork with no network.
+      final server = _FileServer(_bytes(40 * 1024));
+      await server.start();
+      addTearDown(server.stop);
+      final c = container({'1': server});
+      final downloads = c.read(downloadsProvider.notifier);
+
+      await downloads.enqueue(serverId: 'srv', ratingKey: '1', title: 'Film');
+      await until(() => rec(c, '1').artworkFile != null);
+
+      final poster = (await downloads.artworkFor(rec(c, '1')))!;
+      expect(poster.readAsBytesSync(), _poster);
+      expect(store.getString('downloads.items'), isNot(contains('http')),
+          reason: 'a file name is stored, never the signed URL');
+
+      await downloads.remove('srv', '1');
+      expect(poster.existsSync(), isFalse);
     });
 
     test('never stores the token', () async {
@@ -476,8 +503,11 @@ void main() {
           downloadsDirectoryProvider.overrideWith((ref) async {
             return Directory('${dir.path}/downloads')..createSync();
           }),
+          artworkFetcherProvider.overrideWithValue(
+            (serverId, posterPath) async => _poster,
+          ),
           downloadSourceResolverProvider.overrideWithValue(
-            (_, _) async => PlexDownloadSource(
+            (_, _) async => MediaDownloadSource(
               url: server.url.toString(),
               title: 'Film',
               duration: Duration.zero,

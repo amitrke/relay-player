@@ -6,7 +6,7 @@ import '../../domain/models/catalog_item.dart';
 String? historyKeyOf(CatalogItem item) {
   if (item.kind != CatalogKind.movie) return null;
   final kind = switch (item.source) {
-    CatalogSource.plex => PlaybackKind.plex,
+    CatalogSource.server => PlaybackKind.server,
     CatalogSource.xtream => PlaybackKind.xtreamVod,
   };
   return '${kind.wire}:${item.sourceId}:${item.id}';

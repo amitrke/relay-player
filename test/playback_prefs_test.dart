@@ -6,39 +6,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
+import 'package:relay_player/features/player/engine/media_kit_engine.dart';
+import 'package:relay_player/features/player/engine/playback_engine.dart';
 import 'package:relay_player/features/player/playback_prefs.dart';
 import 'package:relay_player/features/player/player_controls.dart';
 
 /// Track choice from the Playback and Subtitles settings, and the player's
 /// picker. Track fixtures are shaped like media_kit's, including its "auto"
-/// and "no" pseudo-tracks; real files' language tags are a device check.
-Tracks _tracks({
+/// and "no" pseudo-tracks, and go through the engine's own mapping, so that
+/// the pseudo-tracks never reaching the picker is tested too. Real files'
+/// language tags are a device check.
+TrackList _tracks({
   List<AudioTrack> audio = const [],
   List<SubtitleTrack> subtitle = const [],
 }) =>
-    Tracks(
+    trackListOf(Tracks(
       audio: [AudioTrack.auto(), AudioTrack.no(), ...audio],
       subtitle: [SubtitleTrack.auto(), SubtitleTrack.no(), ...subtitle],
-    );
+    ));
 
 class _Transport implements PlayerTransport {
   _Transport(this.tracks);
 
   @override
-  Tracks tracks;
+  TrackList tracks;
   @override
-  Track track = Track(subtitle: SubtitleTrack.no());
+  TrackSelection selection = const TrackSelection();
   final picked = <String>[];
 
   @override
-  Stream<Tracks> get tracksStream => const Stream.empty();
+  Stream<TrackList> get tracksStream => const Stream.empty();
   @override
-  Stream<Track> get trackStream => const Stream.empty();
+  Stream<TrackSelection> get selectionStream => const Stream.empty();
   @override
-  Future<void> setAudioTrack(AudioTrack t) async => picked.add('audio ${t.id}');
+  Future<void> setAudioTrack(MediaTrack t) async => picked.add('audio ${t.id}');
   @override
-  Future<void> setSubtitleTrack(SubtitleTrack t) async =>
-      picked.add('sub ${t.id}');
+  Future<void> setSubtitleTrack(MediaTrack? t) async =>
+      picked.add('sub ${t?.id ?? 'off'}');
 
   final seeks = <Duration>[];
   @override
@@ -92,7 +96,7 @@ void main() {
     test('defaults leave audio alone and turn subtitles off', () {
       final c = chooseTracks(tracks, const PlaybackPrefs());
       expect(c.audio, isNull);
-      expect(c.subtitle?.id, 'no');
+      expect(c.subtitle, isNull, reason: 'off');
     });
 
     test('a preferred audio language picks the matching track', () {
@@ -118,7 +122,7 @@ void main() {
       final c = chooseTracks(
           tracks,
           const PlaybackPrefs(subtitlesOn: true, subtitleLanguage: 'ja'));
-      expect(c.subtitle?.id, 'no');
+      expect(c.subtitle, isNull, reason: 'off');
     });
 
     test('subtitles on with no language prefers the default-flagged track',
@@ -129,7 +133,7 @@ void main() {
   });
 
   group('player', () {
-    Future<_Transport> pump(WidgetTester tester, Tracks tracks,
+    Future<_Transport> pump(WidgetTester tester, TrackList tracks,
         {Duration skip = const Duration(seconds: 10)}) async {
       final t = _Transport(tracks);
       // Theme above the navigator, as the app's MaterialApp.builder does, so

@@ -115,7 +115,7 @@ void main() {
           _server('alpha'),
         ],
         servers: [
-          ConnectedServer(
+          PlexConnection(
             stored: StoredPlexServer(
               id: connected.clientIdentifier,
               name: connected.name,

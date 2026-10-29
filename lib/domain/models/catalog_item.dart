@@ -1,5 +1,23 @@
 /// Which kind of source produced an item.
-enum CatalogSource { plex, xtream }
+///
+/// [server] is any personal media server, Plex, Jellyfin or Emby (§6.2); which
+/// one is the connected server's business, found by [CatalogItem.sourceId].
+/// It was `plex` until 2026-10-16, and [wire] keeps writing that, because the
+/// string is inside every stored favourite, dismissal and cached library.
+enum CatalogSource {
+  server,
+  xtream;
+
+  /// The stable name used in keys and on disk.
+  String get wire => this == server ? 'plex' : name;
+
+  static CatalogSource? fromWire(String? value) {
+    for (final s in values) {
+      if (s.wire == value) return s;
+    }
+    return null;
+  }
+}
 
 /// What the item is, which decides where tapping it goes.
 enum CatalogKind { movie, show }
@@ -105,7 +123,7 @@ class CatalogItem {
 
   /// Stable across rebuilds, unique across sources. [id] alone is not: a Plex
   /// `ratingKey` and a panel `stream_id` collide freely.
-  String get key => '${source.name}|$sourceId|$id';
+  String get key => '${source.wire}|$sourceId|$id';
 
   /// This item with its artwork URL replaced, for re-signing a cached Plex path.
   CatalogItem withPosterUrl(String? url) => CatalogItem(
@@ -160,8 +178,8 @@ class CatalogItem {
   /// A show has no file of its own and resolves to seasons and episodes; a movie
   /// resolves straight to a stream.
   String get route => switch ((source, kind)) {
-    (CatalogSource.plex, CatalogKind.show) => '/show/$sourceId/$id',
-    (CatalogSource.plex, CatalogKind.movie) => '/play/$sourceId/$id',
+    (CatalogSource.server, CatalogKind.show) => '/show/$sourceId/$id',
+    (CatalogSource.server, CatalogKind.movie) => '/play/$sourceId/$id',
     (CatalogSource.xtream, CatalogKind.show) =>
       '/advanced/xtream/$sourceId/series/$id',
     (CatalogSource.xtream, CatalogKind.movie) => '/vod/$sourceId/$id',

@@ -30,6 +30,10 @@ import '../../features/settings/settings_route.dart';
 import '../../features/transfer/receive_screen.dart';
 import '../../features/transfer/send_screen.dart';
 import '../theme/theme_controller.dart';
+import '../../i18n/strings.g.dart';
+import '../../features/accounts/media_browser_link_screen.dart';
+import '../../data/trackers/tracker.dart';
+import '../../features/trackers/tracker_sign_in_screen.dart';
 
 /// Routes, with sign-in state as the only gate for now.
 ///
@@ -80,6 +84,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingRoute()),
       GoRoute(path: '/add-source', builder: (_, _) => const AddSourceRoute()),
       GoRoute(path: '/link', builder: (_, _) => const PlexLinkScreen()),
+      GoRoute(
+        path: '/trackers/:kind',
+        builder: (_, state) => TrackerSignInScreen(
+          kind:
+              TrackerKind.fromName(state.pathParameters['kind']) ??
+              TrackerKind.trakt,
+        ),
+      ),
+      GoRoute(
+        path: '/link/jellyfin',
+        builder: (_, _) => const MediaBrowserLinkScreen(),
+      ),
       StatefulShellRoute(
         builder: (_, _, shell) => HomeShell(navigationShell: shell),
         // Not `.indexedStack` — its container keeps every branch's Focus
@@ -144,7 +160,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           categoryId: state.pathParameters['categoryId']!,
           args:
               state.extra as ChannelPickerArgs? ??
-              const ChannelPickerArgs(name: 'Channels', picked: []),
+              ChannelPickerArgs(
+                name: tr.xtream.picker.channels,
+                picked: const [],
+              ),
         ),
       ),
       GoRoute(

@@ -14,7 +14,7 @@ import 'package:relay_player/features/library/poster_tile.dart';
 
 CatalogItem _item(
   String title, {
-  CatalogSource source = CatalogSource.plex,
+  CatalogSource source = CatalogSource.server,
   DateTime? added,
   int? year,
 }) =>
@@ -191,7 +191,7 @@ void main() {
         (tester) async {
       await pumpGrid(tester, [
         CatalogItem(
-          source: CatalogSource.plex,
+          source: CatalogSource.server,
           sourceId: 'server',
           kind: CatalogKind.movie,
           id: 'watched',
@@ -199,7 +199,7 @@ void main() {
           viewCount: 1,
         ),
         CatalogItem(
-          source: CatalogSource.plex,
+          source: CatalogSource.server,
           sourceId: 'server',
           kind: CatalogKind.movie,
           id: 'halfway',
@@ -210,7 +210,7 @@ void main() {
         // A show never gets either: its state is an episode count we do not
         // parse, and a guess would be worse than nothing.
         CatalogItem(
-          source: CatalogSource.plex,
+          source: CatalogSource.server,
           sourceId: 'server',
           kind: CatalogKind.show,
           id: 'show',

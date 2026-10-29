@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +11,6 @@ import '../../data/local/library_loader.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../domain/models/catalog_item.dart';
 import '../advanced_sources/xtream_controller.dart';
-import '../accounts/plex_session.dart';
 import '../settings/settings_controller.dart';
 import '../favorites_history/continue_watching_row.dart';
 import '../live_tv/live_tv_tab.dart';
@@ -24,11 +22,14 @@ import 'library_shelves.dart';
 import 'library_sort.dart';
 import 'library_tab.dart';
 import 'poster_grid.dart';
+import '../../i18n/strings.g.dart';
+import '../accounts/media_servers.dart';
+import '../../domain/models/media_server.dart';
 
 /// One server's video libraries. Shared by the tabs and by Settings → Sources,
 /// so the mapping UI lists exactly what the tabs draw from.
-final plexSectionsProvider =
-    FutureProvider.family<List<PlexLibrarySection>, String>((
+final serverSectionsProvider =
+    FutureProvider.family<List<MediaSection>, String>((
       ref,
       serverId,
     ) async {
@@ -44,9 +45,10 @@ final plexSectionsProvider =
           return server.service.sections().timeout(
             _perServerTimeout,
             onTimeout: () => throw TimeoutException(
-              '${server.name} did not respond within '
-              '${_perServerTimeout.inSeconds} seconds. It may be asleep or off '
-              'the network.',
+              tr.library.serverTimeout(
+                server: server.name,
+                seconds: _perServerTimeout.inSeconds,
+              ),
             ),
           );
         }
@@ -121,7 +123,7 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
           },
           fetch: () async {
             final sections = await ref.read(
-              plexSectionsProvider(server.id).future,
+              serverSectionsProvider(server.id).future,
             );
             final wanted = mapping.sectionsFor(tab, server.id, sections);
             // Section by section, and not through `itemsFrom`, which merges
@@ -167,7 +169,7 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
     // AI index, release dates) sees one copy of a title; see dedupeLibrary.
     final localPlex = {
       for (final s in servers)
-        if (plexUrlIsLocal(s.stored.baseUrl)) s.id,
+        if (plexUrlIsLocal(s.service.baseUrl ?? '')) s.id,
     };
     final events = StreamIterator(
       loadLibrary(
@@ -255,10 +257,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final f = RelayLayout.of(context);
     final tabs = LibraryTab.visible(
       advancedSources: ref.watch(advancedSourcesEnabledProvider),
+      localNetwork: ref.watch(localNetworkTabProvider),
     );
 
     // The gate can retract the tab the user is standing on (toggling Advanced sources
-    // off while standing on it), so fall back rather than render a dead tab.
+    // off while standing on it, or hiding Local & Network in Settings), so fall
+    // back rather than render a dead tab.
     final requested = _tabFromQuery(context);
     final selected = tabs.contains(_selected ?? requested)
         ? (_selected ?? requested)!
@@ -290,7 +294,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(switch (ref.watch(_libraryProvider(selected))) {
                 AsyncData(:final value) =>
-                  '${value.length} ${selected.label.toLowerCase()}',
+                  selected.count(value.length),
                 _ => '',
               }, style: TextStyle(color: t.inkDim, fontSize: 12)),
             ),
@@ -452,8 +456,8 @@ class _TabBody extends ConsumerWidget {
         if (filtering && list.isEmpty && sorted.isNotEmpty) {
           return LibraryEmptyState(
             icon: Icons.check_circle_outline,
-            message: 'Everything in Movies is watched.',
-            actionLabel: 'Show all',
+            message: tr.library.allWatched,
+            actionLabel: tr.library.showAll,
             onAction: () =>
                 ref.read(libraryUnwatchedOnlyProvider.notifier).set(false),
           );
@@ -464,9 +468,9 @@ class _TabBody extends ConsumerWidget {
                 message:
                     ref.watch(connectedServersProvider).isEmpty &&
                         ref.watch(xtreamAccountsProvider).isEmpty
-                    ? 'No sources connected yet.'
-                    : 'Nothing in ${tab.label.toLowerCase()} yet.',
-                actionLabel: 'Add a source',
+                    ? tr.library.noSources
+                    : tr.library.nothingIn(tab: tab.label),
+                actionLabel: tr.library.addSource,
                 onAction: () => context.push('/add-source'),
               )
             // Films resume above Movies and episodes above Series. It was one
@@ -527,7 +531,7 @@ class LibrarySortButton extends ConsumerWidget {
             Icon(Icons.sort, size: size + 4, color: t.inkDim),
             const SizedBox(width: 4),
             Text(
-              filtered ? '${sort.label} · Unwatched' : sort.label,
+              filtered ? tr.library.sortFiltered(sort: sort.label) : sort.label,
               style: TextStyle(color: t.inkDim, fontSize: size),
             ),
           ],
@@ -563,7 +567,7 @@ class LibrarySortButton extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   child: Text(
-                    'Sort by',
+                    tr.library.sortBy,
                     style: TextStyle(
                       color: t.inkDim,
                       fontSize: RelayLayout.bodySize(f),
@@ -641,7 +645,7 @@ class _UnwatchedToggleRow extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                'Unwatched only',
+                tr.library.unwatchedOnly,
                 style: TextStyle(
                   color: t.ink,
                   fontSize: RelayLayout.bodySize(f) + 1,

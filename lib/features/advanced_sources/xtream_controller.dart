@@ -8,6 +8,7 @@ import '../../domain/models/catalog_item.dart';
 import '../library/library_cache_provider.dart';
 import '../settings/settings_controller.dart';
 import 'hidden_words_controller.dart';
+import '../../i18n/strings.g.dart';
 
 final xtreamAccountStoreProvider = Provider<XtreamAccountStore>((ref) {
   return XtreamAccountStore(settings: ref.watch(appSettingsStoreProvider));
@@ -70,9 +71,7 @@ final xtreamClientProvider = FutureProvider.family<XtreamClient, XtreamAccount>(
         .watch(xtreamAccountStoreProvider)
         .password(account.id);
     if (password == null) {
-      throw const XtreamException(
-        'That line has no stored password. Remove it and add it again.',
-      );
+      throw XtreamException(tr.xtream.errors.noPassword);
     }
     return XtreamClient(
       host: account.host,

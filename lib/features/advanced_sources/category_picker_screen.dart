@@ -13,6 +13,7 @@ import 'channel_picker_screen.dart';
 import 'hidden_words_controller.dart';
 import 'hidden_words_sheet.dart';
 import 'xtream_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// §4.1 — choose which categories to keep, before any stream list is fetched.
 ///
@@ -139,7 +140,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     }
     setState(() {
       _selected = next;
-      _patternError = hits == 0 ? 'That pattern matched nothing.' : null;
+      _patternError = hits == 0 ? tr.xtream.picker.patternNone : null;
     });
   }
 
@@ -243,7 +244,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
       return Scaffold(
         backgroundColor: t.bg,
         appBar: AppBar(backgroundColor: t.bg, foregroundColor: t.ink),
-        body: const Center(child: Text('That line is no longer configured.')),
+        body: Center(child: Text(tr.xtream.lineGone)),
       );
     }
 
@@ -275,11 +276,16 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           surfaceTintColor: Colors.transparent,
           foregroundColor: t.ink,
           toolbarHeight: f == RelayFormFactor.tv ? 48 : null,
-          title: Text('${widget.catalogue.label} categories'),
+          title: Text(
+            tr.xtream.picker.title(catalogue: widget.catalogue.label),
+          ),
           actions: [
             TextButton(
               onPressed: () => _save(categories.value),
-              child: Text('Save', style: TextStyle(color: t.accent)),
+              child: Text(
+                tr.xtream.picker.save,
+                style: TextStyle(color: t.accent),
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -327,12 +333,15 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
         for (final c in visible)
           if (c.name.toLowerCase().contains(needle)) c,
       ];
-      content = _categoryList(hits, empty: 'Nothing matches "$_query".');
+      content = _categoryList(
+        hits,
+        empty: tr.xtream.picker.noMatch(query: _query),
+      );
     } else if (_selectedOnly) {
       content = _categoryList([
         for (final c in list)
           if (chosen.contains(c.id)) c,
-      ], empty: 'Nothing chosen yet.');
+      ], empty: tr.xtream.picker.noneChosen);
     } else if (_open != null) {
       // A big group is browsed by letter: A to Z, with a chip per letter to
       // jump to. A small one keeps the panel's order, which usually means
@@ -371,7 +380,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                     style: TextStyle(color: t.ink),
                     decoration: _decoration(
                       t,
-                      'Search all categories',
+                      tr.xtream.picker.search,
                       icon: Icons.search,
                     ),
                   ),
@@ -379,7 +388,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
               ),
               const SizedBox(width: 10),
               _ModeChip(
-                label: 'Chosen ${chosen.length}',
+                label: tr.xtream.picker.chosen(n: chosen.length),
                 on: _selectedOnly,
                 onTap: () => setState(() {
                   _selectedOnly = !_selectedOnly;
@@ -388,7 +397,9 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
               ),
               const SizedBox(width: 8),
               _ModeChip(
-                label: words.isEmpty ? 'Hide words' : 'Hide ${words.length}',
+                label: words.isEmpty
+                    ? tr.xtream.picker.hideWords
+                    : tr.xtream.picker.hideCount(n: words.length),
                 on: words.isNotEmpty,
                 onTap: () => showHiddenWordsSheet(
                   context,
@@ -397,7 +408,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
               ),
               const SizedBox(width: 8),
               _ModeChip(
-                label: 'Pattern',
+                label: tr.xtream.picker.pattern,
                 on: _showPattern,
                 onTap: () => setState(() => _showPattern = !_showPattern),
               ),
@@ -432,8 +443,8 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             if (!ids.contains(e.key)) e.key: e.value,
         };
         _note = dropped.length == 1
-            ? 'Un-ticked "${dropped.first.name}", which "$word" hides. Save to keep that.'
-            : 'Un-ticked ${dropped.length} chosen categories that "$word" hides. Save to keep that.';
+            ? tr.xtream.picker.untickedOne(name: dropped.first.name, word: word)
+            : tr.xtream.picker.untickedMany(n: dropped.length, word: word);
       } else {
         _note = null;
       }
@@ -452,14 +463,16 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             child: Text(
               _note ??
                   (_showHidden
-                      ? 'Showing the categories your hidden words leave out.'
-                      : '$hiddenCount hidden by your words.'),
+                      ? tr.xtream.picker.showingHidden
+                      : tr.xtream.picker.hiddenCount(n: hiddenCount)),
               style: TextStyle(color: t.inkDim, fontSize: 12.5, height: 1.4),
             ),
           ),
           if (hiddenCount > 0 || _showHidden)
             _ModeChip(
-              label: _showHidden ? 'Hide again' : 'Show them',
+              label: _showHidden
+                  ? tr.xtream.picker.hideAgain
+                  : tr.xtream.picker.showThem,
               on: _showHidden,
               onTap: () => setState(() {
                 _showHidden = !_showHidden;
@@ -489,19 +502,19 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                     style: TextStyle(color: t.ink),
                     decoration: _decoration(
                       t,
-                      'Select or clear every category matching a word or pattern',
+                      tr.xtream.picker.patternHint,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                tooltip: 'Select matching',
+                tooltip: tr.xtream.picker.selectMatching,
                 icon: Icon(Icons.done_all, color: t.accent),
                 onPressed: () => _applyPattern(list, select: true),
               ),
               IconButton(
-                tooltip: 'Deselect matching',
+                tooltip: tr.xtream.picker.deselectMatching,
                 icon: Icon(Icons.remove_done, color: t.inkDim),
                 onPressed: () => _applyPattern(list, select: false),
               ),
@@ -547,7 +560,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
       child: Row(
         children: [
           _ModeChip(
-            label: 'Groups',
+            label: tr.xtream.picker.groups,
             icon: Icons.arrow_back,
             on: false,
             onTap: () => setState(() => _open = null),
@@ -566,7 +579,9 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             ),
           ),
           _ModeChip(
-            label: allOn ? 'Clear all' : 'Select all',
+            label: allOn
+                ? tr.xtream.picker.clearAll
+                : tr.xtream.picker.selectAll,
             on: false,
             onTap: () => _setAll(group.categories, on: !allOn),
           ),
@@ -649,7 +664,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           checked: chosen.contains(c.id),
           onTap: () => _toggle(c),
           note: picked > 0
-              ? '$picked ${picked == 1 ? "channel" : "channels"}'
+              ? tr.xtream.picker.channelsPicked(n: picked)
               : null,
           onChannels: _isLive ? () => _pickChannels(c) : null,
         );
@@ -774,13 +789,13 @@ class _GroupRow extends StatelessWidget {
               ),
               if (picked > 0) ...[
                 Text(
-                  '$picked chosen',
+                  tr.xtream.picker.pickedChosen(n: picked),
                   style: TextStyle(color: t.accent, fontSize: 13),
                 ),
                 const SizedBox(width: 14),
               ],
               Text(
-                count == 1 ? '1 category' : '$count categories',
+                tr.xtream.picker.categories(n: count),
                 style: TextStyle(color: t.inkDim, fontSize: 13),
               ),
               const SizedBox(width: 6),
@@ -877,7 +892,7 @@ class _CategoryRow extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Channels',
+                      tr.xtream.picker.channels,
                       style: TextStyle(
                         color: t.accent,
                         fontSize: 13.5,

@@ -6,6 +6,7 @@ import '../../data/tmdb/tmdb_enricher.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/watch_state.dart';
 import '../settings/settings_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// How Movies and Series are ordered.
 ///
@@ -13,18 +14,21 @@ import '../settings/settings_controller.dart';
 /// is the same question on either tab, and a second control to keep in sync
 /// is not worth it until someone asks for it.
 enum LibrarySort {
-  title('Title'),
-  recentlyAdded('Recently added'),
-  year('Year'),
+  title,
+  recentlyAdded,
+  year,
 
   /// Offered only once a TMDB key is saved (the sort sheet decides). Orders by
   /// the exact release date where TMDB has given one, and by year otherwise, so
   /// with nothing looked up it is the Year sort.
-  releaseDate('Release date');
+  releaseDate;
 
-  const LibrarySort(this.label);
-
-  final String label;
+  String get label => switch (this) {
+    title => tr.library.sort.title,
+    recentlyAdded => tr.library.sort.recentlyAdded,
+    year => tr.library.sort.year,
+    releaseDate => tr.library.sort.releaseDate,
+  };
 
   /// Recently added when nothing was ever chosen: each row opens on what is
   /// new in it, which is what a row is for. Someone who picked Title keeps it.

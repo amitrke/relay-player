@@ -7,6 +7,7 @@ import '../../core/theme/relay_widgets.dart';
 import '../../data/xtream/xtream_account_store.dart';
 import '../../data/xtream/xtream_client.dart';
 import 'xtream_controller.dart';
+import '../../i18n/strings.g.dart';
 
 /// Adds an Xtream line (§4), reachable only behind the Advanced Sources gate.
 ///
@@ -104,25 +105,25 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: t.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: Text('Discard this line?',
+        title: Text(tr.xtream.addLine.discardTitle,
             style: TextStyle(
                 color: t.ink, fontSize: 18, fontWeight: FontWeight.w700)),
         content: Text(
-          'What you typed here has not been saved.',
+          tr.xtream.addLine.discardBody,
           style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: t.inkDim),
-            child: const Text('Discard'),
+            child: Text(tr.xtream.addLine.discard),
           ),
           FilledButton(
             autofocus: true,
             onPressed: () => Navigator.pop(context, false),
             style: FilledButton.styleFrom(
                 backgroundColor: t.accent, foregroundColor: t.accentInk),
-            child: const Text('Keep editing'),
+            child: Text(tr.xtream.addLine.keepEditing),
           ),
         ],
       ),
@@ -164,7 +165,7 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
       if (!info.isActive) {
         setState(() {
           _busy = false;
-          _error = 'The panel says this line is "${info.status}".';
+          _error = tr.xtream.addLine.inactive(status: info.status);
         });
         _revealVerify();
         return;
@@ -220,30 +221,32 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
         backgroundColor: t.bg,
         surfaceTintColor: Colors.transparent,
         foregroundColor: t.ink,
-        title: const Text('Add a playlist or panel'),
+        title: Text(tr.xtream.add),
       ),
       body: ListView(
         padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 32),
         children: [
           Text(
-            'Subnext Player does not provide, host, or endorse any content or '
-            'provider. You supply the address and the login, and the app plays '
-            'whatever that address returns.',
+            tr.xtream.addLine.noContent,
             style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.55),
           ),
           const SizedBox(height: 22),
           _Field(
             controller: _host,
-            label: 'Server address',
+            label: tr.xtream.addLine.host,
             hint: 'host:port',
             keyboardType: TextInputType.url,
           ),
-          _Field(controller: _username, label: 'Username'),
-          _Field(controller: _password, label: 'Password', obscure: true),
+          _Field(controller: _username, label: tr.smb.username),
+          _Field(
+            controller: _password,
+            label: tr.smb.password,
+            obscure: true,
+          ),
           _Field(
             controller: _name,
-            label: 'Name (optional)',
-            hint: 'What you want to call this line',
+            label: tr.xtream.addLine.name,
+            hint: tr.xtream.addLine.nameHint,
             action: TextInputAction.done,
             onSubmitted: _toVerify,
           ),
@@ -283,15 +286,16 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
           // element and dropped its focus (seen on the TV emulator).
           RelayButton(
             key: const ValueKey('verify'),
-            label: _busy ? 'Checking…' : 'Verify and add',
+            label: _busy
+                ? tr.xtream.addLine.checking
+                : tr.xtream.addLine.verify,
             focusNode: _verifyFocus,
             onPressed: _busy ? () {} : _verifyAndSave,
           ),
           if (_info != null) ...[
             const SizedBox(height: 16),
             Text(
-              'Connected. ${_info!.maxConnections} concurrent stream'
-              '${_info!.maxConnections == 1 ? '' : 's'} allowed.',
+              tr.xtream.addLine.connected(n: _info!.maxConnections),
               style: TextStyle(color: t.inkDim, fontSize: 13),
             ),
           ],

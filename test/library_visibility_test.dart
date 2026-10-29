@@ -1,23 +1,14 @@
-import 'package:dart_plex/dart_plex.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/features/library/library_mapping.dart';
+import 'package:relay_player/domain/models/media_server.dart';
 
-PlexLibrarySection _section(String id, PlexLibraryType type) =>
-    PlexLibrarySection(
-      id: id,
-      title: 'Library $id',
-      type: type,
-      agent: '',
-      scanner: '',
-      language: 'en',
-      locations: const [],
-      raw: const {},
-    );
+MediaSection _section(String id, MediaSectionType type) =>
+    MediaSection(id: id, title: 'Library $id', type: type);
 
 void main() {
-  final films = _section('1', PlexLibraryType.movie);
-  final shows = _section('2', PlexLibraryType.show);
-  final courses = _section('3', PlexLibraryType.movie);
+  final films = _section('1', MediaSectionType.movies);
+  final shows = _section('2', MediaSectionType.shows);
+  final courses = _section('3', MediaSectionType.movies);
 
   test('search covers every library that is not hidden', () {
     final mapping = const LibraryMapping.empty()

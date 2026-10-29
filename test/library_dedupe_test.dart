@@ -6,7 +6,7 @@ CatalogItem _item(
   String sourceId,
   String title, {
   int? year = 2026,
-  CatalogSource source = CatalogSource.plex,
+  CatalogSource source = CatalogSource.server,
   CatalogKind kind = CatalogKind.movie,
 }) => CatalogItem(
   source: source,
@@ -45,7 +45,7 @@ void main() {
         _item('panel', 'Film A', source: CatalogSource.xtream),
         _item('remote', 'Film A'),
       ], localPlexServers: {});
-      expect(out.single.source, CatalogSource.plex);
+      expect(out.single.source, CatalogSource.server);
     });
 
     test('a different year is a different film (remakes)', () {

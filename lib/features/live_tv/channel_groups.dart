@@ -1,4 +1,5 @@
 import '../../data/xtream/xtream_client.dart';
+import '../../i18n/strings.g.dart';
 
 /// One heading in the Live TV tab: a chosen category, or Favourites.
 class ChannelGroup {
@@ -70,17 +71,17 @@ List<ChannelGroup> groupChannels({
     if (favourites.isNotEmpty)
       ChannelGroup(
         id: favouritesGroupId,
-        name: 'Favourites',
+        name: tr.liveTv.group.favourites,
         channels: favourites,
       ),
     for (final (i, id) in categoryOrder.indexed)
       if (byCategory[id] case final list? when list.isNotEmpty)
         ChannelGroup(
           id: id,
-          name: names[id] ?? 'Category ${i + 1}',
+          name: names[id] ?? tr.liveTv.group.numbered(n: i + 1),
           channels: list,
         ),
     if (other.isNotEmpty)
-      ChannelGroup(id: '', name: 'Other', channels: other),
+      ChannelGroup(id: '', name: tr.liveTv.group.other, channels: other),
   ];
 }
