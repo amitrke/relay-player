@@ -526,12 +526,18 @@ Differences from voice-notes, deliberate:
   add yourself as a required reviewer (leave "Prevent self-review" off, since
   you start the runs too), and limit it to the `main` branch. Every store job
   runs in it, so nothing reaches either store without an approval, and the
-  branch limit is why `check` also runs from `main` only. **Not done yet.**
-- **Play permissions.** `promote.yml` reuses `PLAY_SERVICE_ACCOUNT_JSON`. That
-  service account was granted internal-testing release on 2026-09-13 (step 4
-  above); promotion also needs "Release to production" and "Manage store
-  presence" for this app in Play Console → Users and permissions. **Not
-  checked.**
+  branch limit is why `check` also runs from `main` only. **Done 2026-10-29**
+  with `gh api`: reviewer `amitrke`, self-review allowed, a custom branch
+  policy of `main` only.
+- **Play permissions.** `promote.yml` reuses `PLAY_SERVICE_ACCOUNT_JSON`, the
+  `play-release` account in the `relay-player` Cloud project. Promotion needs
+  "Release to production" and "Manage store presence" for this app. **Checked
+  2026-10-29: it already has both**, because it holds **App admin (all
+  permissions)** on Subnext Player, not only the testing-track permission step
+  4 above describes. When that widened was not recorded. It is broader than
+  promotion needs (admin can also invite users to the app), and narrowing it to
+  the release, store-presence and testing permissions is worth doing, since its
+  key sits in a GitHub secret. Left as it is for now.
 - **App Store Connect.** Reuses `APP_STORE_CONNECT_API_KEY_P8` and its two
   variables. The key already has the Admin role for cloud-managed signing,
   which can also submit for review.
