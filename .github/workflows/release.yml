@@ -5,7 +5,10 @@ name: Release to testers
 # account, the App Store Connect API key, and the one manual upload each store
 # insists on first — is in docs/RELEASING.md.
 #
-# One workflow for both stores, not one each, so that one tag ships both and
+# Production is promote.yml, which builds nothing and moves one of these
+# builds onward.
+#
+# One workflow for both stores, not one each, so that one push ships both and
 # github.run_number is the build number on both: Play's versionCode and iOS's
 # CFBundleVersion stay the same number for the same commit. Renamed from
 # "Release to Play internal testing" when iOS joined (2026-09-23). Renaming is
@@ -36,18 +39,21 @@ on:
         type: choice
         options: [both, android, ios]
         default: both
-  # Two ways in, decided 2026-09-23 (RELEASING.md, "Test builds and
-  # releases"):
-  # - develop is the everyday test channel. Pushing to it is the deliberate
-  #   "testers should get this" signal that used to need a tag; builds are
-  #   named after pubspec.yaml's version, e.g. "1.0.4 (12)".
-  # - a v* tag is the release: it must match pubspec.yaml, and marks which of
-  #   those builds is the one that shipped.
-  # main still releases nothing on its own. Most merges there are not worth a
-  # tester's update prompt.
+  # develop is the everyday test channel (decided 2026-09-23, RELEASING.md,
+  # "Test builds and releases"). Pushing to it is the deliberate "testers
+  # should get this" signal; builds are named after pubspec.yaml's version,
+  # e.g. "1.0.4 (12)". main still releases nothing on its own. Most merges
+  # there are not worth a tester's update prompt.
+  #
+  # ~~A pushed v* tag was the release~~, from 2026-09-23 until 2026-10-29,
+  # when promote.yml took over production and started creating the tag
+  # itself. A tag no longer builds anything: a tag build would upload a new
+  # bundle over the tested one on Play's internal track, and promotion moves
+  # whatever build number it is given, so the tested build is what ships. The
+  # version step below still checks a tag ref, for a manual run started from
+  # one.
   push:
     branches: [develop]
-    tags: ['v*']
 
 concurrency:
   # Unlike build.yml, never cancel. A run killed mid-upload leaves an open Play

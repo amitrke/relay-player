@@ -347,8 +347,13 @@ than after a build:
   would be ambiguous on Play and rejected by Apple once 1.0.4 is live.
 - `0.0.0` and anything not `MAJOR.MINOR.PATCH` fail.
 
-A release is therefore: merge `develop` into `main`, tag that commit with the
-version in its pubspec, push the tag, then bump pubspec on `develop`.
+~~A release is therefore: merge `develop` into `main`, tag that commit with the
+version in its pubspec, push the tag, then bump pubspec on `develop`.~~
+**Superseded 2026-10-29** by [Production](#production-added-2026-10-29): the
+tag is now created by `promote.yml` once a tested build has reached both
+stores' production, and **a pushed tag no longer starts `release.yml`**. The
+rules above still hold, since the promote workflow checks the same pubspec
+version and refuses a tag that already names another commit.
 
 **Tradeoff, stated so it is not rediscovered.** A tester's build list now shows
 several `1.0.4 (n)` builds before the release, and only the tag says which one
@@ -431,6 +436,111 @@ prerequisites, which is a deliberate reordering: it is the largest remaining
 block of work and nothing about a store submission depends on it, whereas
 §12.1's About section does. (It also said §16's kill switch, since dropped, did, until that
 gate was withdrawn above.)
+
+## Production (added 2026-10-29)
+
+Ported from `amitrke/voice-notes`, whose own release workflow had been
+adapted from this one. Before this, production on both stores was done by hand
+in the consoles, and nobody recorded when (see the status note at the top).
+Written before the first run: everything below is **unverified** here until
+the first `check` and `release` have run, and should be updated with what
+actually happened.
+
+[`.github/workflows/promote.yml`](../.github/workflows/promote.yml) runs the
+lanes in [`fastlane/Fastfile`](../fastlane/Fastfile). It builds nothing. It
+moves a build testers already have, by its build number, which is the same on
+both stores because `release.yml` uses `github.run_number` for both.
+
+### To release
+
+1. Note the build number testers approved: the number in brackets in TestFlight
+   and Play Console, e.g. `45` in `1.0.6 (45)`.
+2. Write `fastlane/metadata/android/en-US/changelogs/v<version>.txt`, at most
+   500 characters. It is the only copy of the notes: `release.yml` sends it to
+   testers, and the promote lanes send it to Play production and to the App
+   Store as "What's New". A promotion without it is refused, because App Store
+   Connect requires notes on every update. The same §8.2 rule applies as for
+   the listing: nothing about Advanced sources.
+3. Merge `develop` into `main`.
+4. Run **Promote to production** from `main` with action `release` and that
+   build number, then approve it in the `production` environment. It:
+   - moves the build from Play internal testing to production at `rollout`
+     percent (100 is everyone), and uploads the Play listing and notes;
+   - submits the TestFlight build to App Review with the App Store listing and
+     notes, released automatically once Apple approves it;
+   - tags the commit `vX.Y.Z` once every store it covered has succeeded.
+5. Bump `pubspec.yaml` on `develop`, as before.
+
+Do not push the tag yourself. It no longer builds anything (the trigger was
+removed so it cannot upload a new bundle over the tested one), but the
+promote workflow is what says a version shipped.
+
+To widen a staged Play rollout, run again (`release`, same build, `android`)
+with a higher `rollout`. If one store fails, fix it and run again for that
+store only: the tag waits until both have succeeded, and a re-run accepts its
+own tag.
+
+### Store listings
+
+`fastlane/metadata/android` (Play) and `fastlane/metadata/ios` (App Store) hold
+the listing copy, which until now was pasted into the consoles by hand. The
+reasoning behind it is in `docs/STORE_LISTING.md`. **Every upload overwrites the
+console's text with the repository's**, so:
+
+- `check` downloads the live listings and writes the difference to the run's
+  summary. It changes nothing. **Run it before the first `release` or
+  `listing`**: the hand-pasted text may have drifted from these files, and the
+  first upload would silently replace whatever is live. App Review details and
+  the trade representative's contact are compared by file name only and never
+  printed, because the repository and its logs are public.
+- `listing` uploads the text alone. On Play it goes live once Google accepts
+  it; on the App Store most fields change only on a version being prepared,
+  so it creates or updates pubspec's version without submitting it.
+- `release` uploads the listings along with the build.
+
+Images and screenshots are not uploaded by any action. App Review notes are
+`fastlane/metadata/ios/review_information/notes.txt`; contact details are left
+out on purpose so App Store Connect keeps its own. Each iOS upload removes the
+App Review attachment unless `fastlane/review_attachment.mp4` exists, so the
+notes must not promise one that is not in the repository.
+
+Differences from voice-notes, deliberate:
+
+- **Notes are one file per version**, `changelogs/v<version>.txt`, which this
+  repository already had. voice-notes keeps `default.txt` and a separate
+  `release_notes.txt`; here the lanes copy the one file into a temporary copy
+  of the metadata where each tool looks for it.
+- **No content-rights answer is sent to App Review.** voice-notes declares no
+  third-party content, which is true of a notes app. This app exists to access
+  content on servers the user connects, and that declaration was made by hand
+  at the first submission as part of the §1 position. The lane leaves it alone
+  rather than overwriting it with a default.
+- **No reviewer key secret.** The review notes offer test access on request
+  instead (see the commit "Submit without a demo account").
+- **`copyright.txt` moved** from `ios/en-US/` to `ios/`, where deliver reads
+  it. In the locale folder it would have been ignored.
+
+### One-time setup
+
+- **The `production` environment.** Create it under Settings → Environments,
+  add yourself as a required reviewer (leave "Prevent self-review" off, since
+  you start the runs too), and limit it to the `main` branch. Every store job
+  runs in it, so nothing reaches either store without an approval, and the
+  branch limit is why `check` also runs from `main` only. **Not done yet.**
+- **Play permissions.** `promote.yml` reuses `PLAY_SERVICE_ACCOUNT_JSON`. That
+  service account was granted internal-testing release on 2026-09-13 (step 4
+  above); promotion also needs "Release to production" and "Manage store
+  presence" for this app in Play Console → Users and permissions. **Not
+  checked.**
+- **App Store Connect.** Reuses `APP_STORE_CONNECT_API_KEY_P8` and its two
+  variables. The key already has the Admin role for cloud-managed signing,
+  which can also submit for review.
+
+No new secrets. To run a lane locally (Ruby and Bundler needed): `bundle
+install`, then e.g. `bundle exec fastlane lanes`. The lanes read
+`PLAY_JSON_KEY_PATH`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_PATH`.
+`Gemfile.lock` was taken from voice-notes, so both repositories run the same
+fastlane.
 
 ## Tracker credentials (added 2026-10-16)
 

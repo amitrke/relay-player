@@ -87,3 +87,9 @@ app.*.map.json
 
 # Probe credentials are passed with --dart-define, never written to a file.
 .env
+
+# fastlane run output (fastlane/metadata is tracked). See docs/RELEASING.md.
+/fastlane/report.xml
+/fastlane/README.md
+/fastlane/test_output/
+/vendor/bundle/
