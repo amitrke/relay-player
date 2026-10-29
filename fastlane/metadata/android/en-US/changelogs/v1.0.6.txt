@@ -1,0 +1,7 @@
+Add a Jellyfin or Emby server beside Plex. On a TV, Jellyfin's Quick Connect signs you in with a code from your phone.
+
+Connect your own Overseerr or Jellyseerr to request titles your library is missing, from search.
+
+Downloads keep their posters, watches made offline reach Plex when you reconnect, and a show can keep its next few episodes downloaded.
+
+Add a source from Settings at any time. Local & Network appears once you use it.
