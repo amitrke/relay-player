@@ -129,6 +129,11 @@ abstract class PlaybackEngine implements PlayerTransport {
   Stream<EngineError> get errorStream;
   Stream<Duration> get durationStream;
 
+  /// Fires once each time the open file plays through to its end. Not on a
+  /// stop, an error or a seek near the end: only the decoder running out of
+  /// file. What the screen offers the next episode on (§12.5).
+  Stream<void> get completedStream;
+
   /// Queues [url] for playback. Returning means the command was accepted,
   /// **not** that anything opened (§10): failures arrive on [errorStream], and
   /// success is only ever the position advancing.

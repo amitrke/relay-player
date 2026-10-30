@@ -28,7 +28,12 @@
     "audio": "Audio",
     "subtitles": "Untertitel",
     "off": "Aus",
-    "trackNumber": "Spur {n}"
+    "trackNumber": "Spur {n}",
+    "upNext": {
+      "title": "Als Nächstes",
+      "playingIn": "Wiedergabe in {seconds} s",
+      "playNow": "Jetzt abspielen"
+    }
   },
   "languages(map)": {
     "en": "Englisch",
@@ -218,10 +223,10 @@
       "movie": "Film",
       "watched": "Gesehen",
       "percentWatched": "{percent} % gesehen",
-        "unwatchedEpisodes": {
-          "one": "{n} ungesehene Folge",
-          "other": "{n} ungesehene Folgen"
-        }
+      "unwatchedEpisodes": {
+        "one": "{n} ungesehene Folge",
+        "other": "{n} ungesehene Folgen"
+      }
     }
   },
   "liveTv": {

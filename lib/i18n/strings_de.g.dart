@@ -143,6 +143,7 @@ class _Translations$player$de extends Translations$player$en {
 	@override String get subtitles => 'Untertitel';
 	@override String get off => 'Aus';
 	@override String trackNumber({required Object n}) => 'Spur ${n}';
+	@override late final _Translations$player$upNext$de upNext = _Translations$player$upNext$de._(_root);
 }
 
 // Path: subtitleSize
@@ -645,6 +646,18 @@ class _Translations$seerr$de extends Translations$seerr$en {
 	@override String askShow({required Object server}) => 'Damit bittest du ${server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.';
 	@override String get request => 'Anfragen';
 	@override String sent({required Object title}) => '${title} angefragt.';
+}
+
+// Path: player.upNext
+class _Translations$player$upNext$de extends Translations$player$upNext$en {
+	_Translations$player$upNext$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Als Nächstes';
+	@override String playingIn({required Object seconds}) => 'Wiedergabe in ${seconds} s';
+	@override String get playNow => 'Jetzt abspielen';
 }
 
 // Path: downloads.errors
@@ -1498,6 +1511,9 @@ extension on TranslationsDe {
 			'player.subtitles' => 'Untertitel',
 			'player.off' => 'Aus',
 			'player.trackNumber' => ({required Object n}) => 'Spur ${n}',
+			'player.upNext.title' => 'Als Nächstes',
+			'player.upNext.playingIn' => ({required Object seconds}) => 'Wiedergabe in ${seconds} s',
+			'player.upNext.playNow' => 'Jetzt abspielen',
 			'languages.en' => 'Englisch',
 			'languages.es' => 'Spanisch',
 			'languages.fr' => 'Französisch',
@@ -1980,11 +1996,11 @@ extension on TranslationsDe {
 			'xtream.channels.whole' => 'Ganze Kategorie',
 			'xtream.channels.selectShown' => 'Angezeigte auswählen',
 			'xtream.channels.clear' => 'Abwählen',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.channels.clearShown' => 'Angezeigte abwählen',
 			'xtream.channels.none' => 'Das Panel listet in dieser Kategorie keine Sender.',
 			'xtream.hidden.title' => 'Wörter ausblenden',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
 			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
 			'xtream.hidden.add' => 'Hinzufügen',
