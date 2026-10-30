@@ -222,6 +222,8 @@ unsatisfiable case, HEAD, and path rejection — which is the first piece of thi
 app tested rather than demonstrated, and it paid for itself immediately by
 proving the bridge was correct while the Android path was still broken.
 
+**`downloads_test.dart` is flaky in a full run** (found 2026-10-30). Run alone it passes; in the whole suite, one to three of its controller tests fail on most runs, usually *removing a finished download deletes the file*, sometimes *a refusal fails with a reason, and a retry can succeed* or *runs one at a time, in order*. Reproduced three times out of three at 090c1a0, before that day's library and player work, so it is not from that work; earlier all-green runs were luck. Likely the poster write racing the delete again under load (see the 2026-10 poster fixes in git log). Open.
+
 **D-pad behaviour now has an automated audit** (added 2026-09-28).
 `test/dpad/` drives screens at TV size with arrow keys and checks four rules
 on each: focus after the first press, every control reachable, focus visible,

@@ -149,6 +149,12 @@ class _HomeShellState extends State<HomeShell> {
       // and opens over it, rather than beside it, when the remote reaches it.
       // Beside it would resize the grid on every visit to the rail. The
       // content is given the strip's width permanently, so nothing reflows.
+      //
+      // Since 2026-10-30 it opens the way Plex's TV app does (architecture.md
+      // §12.4): a bare strip of icons at rest, with no panel or divider of its
+      // own, and on arrival a wide drawer of icon-and-label rows over content
+      // that dims behind it. It used to grow from 64 to 104 dp with labels
+      // stacked under the icons, which never read as a menu opening.
       return Scaffold(
         backgroundColor: t.bg,
         body: RelayFocusBoundary(
@@ -157,19 +163,22 @@ class _HomeShellState extends State<HomeShell> {
           child: Stack(
             children: [
               Positioned.fill(
-                left: _Rail.collapsedWidth + 1,
+                left: _TvRail.collapsedWidth,
                 child: FocusScope(
                   node: _contentScope,
                   child: widget.navigationShell,
                 ),
               ),
-              // Under the rail, not over it: drawn last it ran through the
-              // labels whenever the rail opened across it.
-              Positioned(
-                left: _Rail.collapsedWidth,
-                top: 0,
-                bottom: 0,
-                child: VerticalDivider(width: 1, color: t.line),
+              // Says the content is not where the remote is while the drawer
+              // is open. Never takes a press: the remote is on the drawer.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _railFocused ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: ColoredBox(color: t.stage.withValues(alpha: 0.6)),
+                  ),
+                ),
               ),
               Positioned(
                 left: 0,
@@ -177,7 +186,7 @@ class _HomeShellState extends State<HomeShell> {
                 bottom: 0,
                 child: FocusScope(
                   node: _railScope,
-                  child: _Rail(
+                  child: _TvRail(
                     selected: widget.navigationShell.currentIndex,
                     onSelect: _go,
                     expanded: _railFocused,
@@ -252,32 +261,18 @@ class _HomeShellState extends State<HomeShell> {
 /// out of the same widget as everything else means focus looks the same here as
 /// it does on a poster (§11).
 class _Rail extends StatelessWidget {
-  const _Rail({
-    required this.selected,
-    required this.onSelect,
-    this.expanded = true,
-  });
-
-  /// Width of the TV rail while it is just icons.
-  static const double collapsedWidth = 64;
+  // Desktop only since 2026-10-30; a TV has _TvRail.
+  const _Rail({required this.selected, required this.onSelect});
 
   final int selected;
   final ValueChanged<int> onSelect;
 
-  /// Always true off-TV. On TV, false while the viewer is in the content: icons
-  /// only, no labels.
-  final bool expanded;
-
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
-    final f = RelayLayout.of(context);
-    final tv = f == RelayFormFactor.tv;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOutCubic,
-      width: !expanded ? collapsedWidth : (tv ? 104 : 88),
+    return Container(
+      width: 88,
       color: t.surface,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: ClipRect(
@@ -285,10 +280,7 @@ class _Rail extends StatelessWidget {
           children: [
             for (final (index, tab) in ShellTab.values.indexed)
               Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? 8 : 4,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: RelayTappable(
                   borderRadius: 14,
                   onTap: () => onSelect(index),
@@ -299,7 +291,7 @@ class _Rail extends StatelessWidget {
                         // The pill marks the selected destination, which is a
                         // different question from where focus is.
                         Container(
-                          width: expanded ? 56 : 40,
+                          width: 56,
                           height: 32,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
@@ -311,25 +303,123 @@ class _Rail extends StatelessWidget {
                           child: Icon(
                             index == selected ? tab.selectedIcon : tab.icon,
                             color: index == selected ? t.accent : t.inkDim,
-                            size: tv ? 26 : 24,
+                            size: 24,
                           ),
                         ),
-                        if (expanded) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            tab.label,
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                              color: index == selected ? t.ink : t.inkDim,
-                              fontSize: tv ? 14 : 12,
-                              fontWeight: index == selected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
+                        const SizedBox(height: 4),
+                        Text(
+                          tab.label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            color: index == selected ? t.ink : t.inkDim,
+                            fontSize: 12,
+                            fontWeight: index == selected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The TV rail: an icon strip at rest, a drawer when the remote is on it.
+///
+/// After Plex's TV app, compared on the same screen (architecture.md §12.4).
+/// At rest it has no panel of its own, so the library's backdrop runs behind
+/// it. Open, it is a panel of rows, each an icon and its label side by side,
+/// over content the shell dims. The rows keep one height either way, so
+/// opening it never moves anything vertically under the remote.
+class _TvRail extends StatelessWidget {
+  const _TvRail({
+    required this.selected,
+    required this.onSelect,
+    required this.expanded,
+  });
+
+  static const double collapsedWidth = 64;
+  static const double openWidth = 232;
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: expanded ? openWidth : collapsedWidth,
+      decoration: BoxDecoration(
+        color: expanded ? t.surface : t.surface.withValues(alpha: 0),
+        borderRadius: const BorderRadius.horizontal(right: Radius.circular(18)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: ClipRect(
+        child: Column(
+          children: [
+            for (final (index, tab) in ShellTab.values.indexed)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: RelayTappable(
+                  borderRadius: 24,
+                  onTap: () => onSelect(index),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      // Marks where you are, which is a different question
+                      // from where focus is: the ring answers that.
+                      color: index == selected && expanded
+                          ? t.ink.withValues(alpha: 0.12)
+                          : t.ink.withValues(alpha: 0),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    // Laid out at full width and clipped while the drawer
+                    // animates, so the label slides in rather than reflowing.
+                    child: OverflowBox(
+                      alignment: Alignment.centerLeft,
+                      minWidth: openWidth - 16,
+                      maxWidth: openWidth - 16,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Icon(
+                            index == selected ? tab.selectedIcon : tab.icon,
+                            color: index == selected ? t.accent : t.inkDim,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: AnimatedOpacity(
+                              opacity: expanded ? 1 : 0,
+                              duration: const Duration(milliseconds: 140),
+                              child: Text(
+                                tab.label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.fade,
+                                style: TextStyle(
+                                  color: index == selected ? t.ink : t.inkDim,
+                                  fontSize: 17,
+                                  fontWeight: index == selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),

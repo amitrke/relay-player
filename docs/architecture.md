@@ -1444,7 +1444,13 @@ want a real TV.
   *Difference kept, knowingly:* Plex's home row showed a count on one show
   only, while ours counts every show with unwatched episodes. Plex's rule was
   not worked out; it may count only shows not yet started. If the badges turn
-  out noisy on a large library, that is the first thing to try.
+  out noisy on a large library, that is the first thing to try. *They did,
+  on the tablet the same day:* with a second, larger server connected, most
+  shows on it carried "99+" or similar for series never started, which says
+  nothing useful. **Changed the same day:** only a show with at least one
+  episode watched gets a count (Plex `viewedLeafCount > 0`, Jellyfin/Emby
+  `PlayedPercentage > 0` or played), in the badge and the hero alike. A show
+  not yet started looks like any other poster.
 
 **Seen and still open:**
 
@@ -1465,8 +1471,12 @@ want a real TV.
   one row of films and episodes, most recent first, with show posters, which
   read from across a room where a cropped still does not. Two films with
   progress in Plex were missing from ours. Plex's menu lists a second server
-  on the same account that this install is not connected to, which is the
-  likelier home for them than a library set to Hidden; not confirmed.
+  on the same account that this install is not connected to. *Confirmed the
+  same day:* a fresh install on a tablet connected both servers and showed
+  both films. Not a bug, only a setup difference between the two installs.
+- **The same next episode twice in Continue watching** when two connected
+  servers both have the show (seen on the tablet: one show's "S2 E10 · Up
+  next" once per server). Predates this work; open.
 - **Plex's home carries more:** the server's own collections as rows, and a
   backdrop with year, runtime, rating, synopsis and cast for whatever has
   focus. The backdrop and details are done (below); collections and cast
@@ -1528,8 +1538,18 @@ focused title to describe):
 - **Pill tabs**, 15 sp, the selected one filled, in a 44 dp band (was 19 sp
   with an underline in 62 dp). Row titles 16 sp (was 20).
 
-Not done: the rail (already an icon strip that opens over the content; only
-the sizes differ from Plex's), the server's own collections as rows, cast in
+- **The rail opens like Plex's drawer** (`home_shell.dart`, `_TvRail`). At
+  rest a bare strip of icons with no panel or divider, so the backdrop is the
+  only thing on that side of the screen; when the remote reaches it, a 232 dp
+  panel of icon-and-label rows over content dimmed behind it. It used to
+  grow from 64 to 104 dp with labels stacked under the icons. The desktop rail
+  is unchanged.
+
+Phones and tablets keep their own layouts (a bottom bar on a phone, the
+desktop rail on a wide tablet, captions under posters); only the newest-episode
+order and the badges reach them. Seen on a Pixel Tablet emulator the same day.
+
+Not done: the server's own collections as rows, cast in
 the hero, Settings' wide section list, and any of this off TV. Pinned by
 `test/library_hero_test.dart`; seen on the Google TV emulator against a real
 Plex server, not on real TV hardware.

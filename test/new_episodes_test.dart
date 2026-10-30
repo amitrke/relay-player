@@ -39,6 +39,8 @@ class _FakePlex {
           _show('s-new', 'New Show', added: _day(20), leaves: 8, viewed: 8),
           _show('s-old', 'Old Show', added: _day(1), leaves: 62, viewed: 56),
           _show('s-quiet', 'Quiet Show', added: _day(5)),
+          // Ten episodes, none watched here: not started.
+          _show('s-fresh', 'Fresh Show', added: _day(2), leaves: 10, viewed: 0),
         ],
         // Episodes, newest first, as asked.
         '4' => [
@@ -51,9 +53,11 @@ class _FakePlex {
       req.response
         ..statusCode = status
         ..headers.contentType = ContentType.json
-        ..write(jsonEncode({
-          'MediaContainer': {'totalSize': items.length, 'Metadata': items},
-        }))
+        ..write(
+          jsonEncode({
+            'MediaContainer': {'totalSize': items.length, 'Metadata': items},
+          }),
+        )
         ..close();
     });
   }
@@ -120,7 +124,12 @@ void main() {
 
       final old = items.firstWhere((i) => i.id == 's-old');
       expect(old.addedAt, DateTime.utc(2026, 9, 29));
-      expect(recentlyAdded(s, items), ['Old Show', 'New Show', 'Quiet Show']);
+      expect(recentlyAdded(s, items), [
+        'Old Show',
+        'New Show',
+        'Quiet Show',
+        'Fresh Show',
+      ]);
 
       // What was asked: one page of the section's episodes, newest first.
       final ask = fake.requests.firstWhere(
@@ -134,72 +143,110 @@ void main() {
       );
     });
 
-    test('control: without the episode request, the old order comes back',
-        () async {
-      // The order this fixes, so the test above is shown to depend on the
-      // episodes rather than passing on the shows' own dates.
-      final (s, _) = await plex(episodesFail: true);
-      final items = await s.allItems(_shows);
-      expect(recentlyAdded(s, items), ['New Show', 'Quiet Show', 'Old Show']);
-    });
+    test(
+      'control: without the episode request, the old order comes back',
+      () async {
+        // The order this fixes, so the test above is shown to depend on the
+        // episodes rather than passing on the shows' own dates.
+        final (s, _) = await plex(episodesFail: true);
+        final items = await s.allItems(_shows);
+        expect(recentlyAdded(s, items), [
+          'New Show',
+          'Quiet Show',
+          'Fresh Show',
+          'Old Show',
+        ]);
+      },
+    );
 
     test('a failed episode request still loads every show', () async {
       final (s, _) = await plex(episodesFail: true);
-      expect(await s.allItems(_shows), hasLength(3));
+      expect(await s.allItems(_shows), hasLength(4));
     });
 
     test('a film library makes no episode request', () async {
       final (s, fake) = await plex();
-      await s.allItems(const MediaSection(
-        id: '1',
-        title: 'Films',
-        type: MediaSectionType.movies,
-        typeName: 'movie',
-      ));
+      await s.allItems(
+        const MediaSection(
+          id: '1',
+          title: 'Films',
+          type: MediaSectionType.movies,
+          typeName: 'movie',
+        ),
+      );
       expect(
         fake.requests.where((u) => u.queryParameters['type'] == '4'),
         isEmpty,
       );
     });
 
-    test('unwatched episodes come from leafCount and viewedLeafCount', () async {
-      final (s, _) = await plex();
-      final byId = {for (final i in await s.allItems(_shows)) i.id: i};
-      expect(byId['s-old']!.unwatchedEpisodes, 6);
-      expect(byId['s-new']!.unwatchedEpisodes, 0);
-      expect(byId['s-quiet']!.unwatchedEpisodes, isNull,
-          reason: 'no counts sent, so unknown rather than zero');
-    });
+    test(
+      'unwatched episodes come from leafCount and viewedLeafCount',
+      () async {
+        final (s, _) = await plex();
+        final byId = {for (final i in await s.allItems(_shows)) i.id: i};
+        expect(byId['s-old']!.unwatchedEpisodes, 6);
+        expect(byId['s-new']!.unwatchedEpisodes, 0);
+        expect(
+          byId['s-quiet']!.unwatchedEpisodes,
+          isNull,
+          reason: 'no counts sent, so unknown rather than zero',
+        );
+        expect(
+          byId['s-fresh']!.unwatchedEpisodes,
+          isNull,
+          reason: 'not started, so no count: it would only ever say 99+',
+        );
+      },
+    );
 
     test('a film never carries an unwatched count', () {
-      final film = PlexService.itemOf(PlexMetadata.fromJson(const {
-        'ratingKey': 'm1',
-        'key': '/library/metadata/m1',
-        'type': 'movie',
-        'title': 'Film',
-        'leafCount': 1,
-        'viewedLeafCount': 0,
-      }));
+      final film = PlexService.itemOf(
+        PlexMetadata.fromJson(const {
+          'ratingKey': 'm1',
+          'key': '/library/metadata/m1',
+          'type': 'movie',
+          'title': 'Film',
+          'leafCount': 1,
+          'viewedLeafCount': 0,
+        }),
+      );
       expect(film.unwatchedEpisodes, isNull);
     });
   });
 
   group('Jellyfin and Emby', () {
-    Map<String, dynamic> series({String? lastAdded, int? unplayed}) => {
+    Map<String, dynamic> series({
+      String? lastAdded,
+      int? unplayed,
+      num? playedPercentage,
+    }) => {
       'Id': 'show-1',
       'Name': 'The Show',
       'Type': 'Series',
       'DateCreated': '2024-01-01T00:00:00Z',
       'DateLastMediaAdded': ?lastAdded,
-      'UserData': {'UnplayedItemCount': ?unplayed},
+      'UserData': {
+        'UnplayedItemCount': ?unplayed,
+        'PlayedPercentage': ?playedPercentage,
+      },
     };
 
     test('a series is dated by DateLastMediaAdded', () {
       final i = MediaBrowserService.itemOf(
-        series(lastAdded: '2026-09-29T00:00:00Z', unplayed: 3),
+        series(
+          lastAdded: '2026-09-29T00:00:00Z',
+          unplayed: 3,
+          playedPercentage: 40,
+        ),
       );
       expect(i.addedAt, DateTime.utc(2026, 9, 29));
       expect(i.unwatchedEpisodes, 3);
+    });
+
+    test('a series not started has no count', () {
+      final i = MediaBrowserService.itemOf(series(unplayed: 120));
+      expect(i.unwatchedEpisodes, isNull);
     });
 
     test('without it, its own date, as before', () {

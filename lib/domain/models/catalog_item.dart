@@ -131,9 +131,10 @@ class CatalogItem {
   /// English has `originalLanguage` Korean and `language` English.
   final String? originalLanguage;
 
-  /// For a show from a media server, episodes this account has not watched.
-  /// Null when unknown, including every panel series, which keeps no watch
-  /// state; 0 means all watched. See MediaItem.unwatchedEpisodes.
+  /// For a show from a media server that this account has started, episodes
+  /// it has not watched. Null when unknown, for a show not started, and for
+  /// every panel series, which keeps no watch state; 0 means all watched. See
+  /// MediaItem.unwatchedEpisodes.
   final int? unwatchedEpisodes;
 
   /// The row this title sits in on Movies and Series: a Plex library's name

@@ -368,11 +368,14 @@ class PlexService extends MediaServer {
   /// A show's unwatched episodes from `leafCount` (its episodes) and
   /// `viewedLeafCount` (those this account has watched). dart_plex 0.1.2 does
   /// not parse either, so they come from the raw JSON. Null unless both are
-  /// there.
+  /// there, **and null for a show not yet started** (none watched): on a
+  /// server with years of series nobody here has begun, every one of them
+  /// carried "99+" or similar, which buried the few that mean "a show you
+  /// watch has something new" (tablet, 2026-10-30, MediaItem.unwatchedEpisodes).
   static int? unwatchedOf(Map<String, dynamic> raw) {
     final all = raw['leafCount'];
     final seen = raw['viewedLeafCount'];
-    if (all is! int || seen is! int) return null;
+    if (all is! int || seen is! int || seen == 0) return null;
     return all > seen ? all - seen : 0;
   }
 

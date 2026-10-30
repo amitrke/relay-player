@@ -133,7 +133,8 @@ class MediaBrowserService extends MediaServer {
   ///
   /// `DateLastMediaAdded` is a series' newest episode's arrival, which is what
   /// a show's "Recently added" date means here (CatalogItem.addedAt). A
-  /// series' `UnplayedItemCount` is in `UserData` and needs no field.
+  /// series' `UnplayedItemCount` and `PlayedPercentage` are in `UserData` and
+  /// need no field.
   static const _fields =
       'ProviderIds,Genres,Overview,DateCreated,DateLastMediaAdded,'
       'ProductionYear,CommunityRating,PrimaryImageAspectRatio,'
@@ -470,8 +471,14 @@ class MediaBrowserService extends MediaServer {
       parentId: (j['SeasonId'] ?? j['ParentId']) as String?,
       ids: _ids(j['ProviderIds']),
       rating: (j['CommunityRating'] as num?)?.toDouble(),
+      // Only for a series started here; see PlexService.unwatchedOf. Jellyfin
+      // says a series is partly watched through PlayedPercentage.
       unwatchedEpisodes:
-          type == MediaItemType.show && user['UnplayedItemCount'] is int
+          type == MediaItemType.show &&
+              user['UnplayedItemCount'] is int &&
+              (played ||
+                  (user['PlayedPercentage'] is num &&
+                      (user['PlayedPercentage'] as num) > 0))
           ? user['UnplayedItemCount'] as int
           : null,
     );

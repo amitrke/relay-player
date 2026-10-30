@@ -146,10 +146,12 @@ class MediaItem {
   /// Out of 10, when the server has one.
   final double? rating;
 
-  /// For a show, how many of its episodes this account has not watched; null
-  /// for anything else and when the server does not say. What lets a poster
-  /// say a show has something new, which Plex's own apps do with a count in
-  /// the corner (compared on a TV, 2026-10-30).
+  /// For a show this account has started, how many of its episodes it has
+  /// not watched; null for anything else, for a show not yet started, and
+  /// when the server does not say. What lets a poster say a show you watch
+  /// has something new, which Plex's own apps do with a count in the corner
+  /// (compared on a TV, 2026-10-30). Not-started shows were counted too until
+  /// the same day, and on a large server nearly every poster said "99+".
   final int? unwatchedEpisodes;
 
   bool get isWatched => (viewCount ?? 0) > 0;
