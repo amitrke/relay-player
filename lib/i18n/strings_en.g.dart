@@ -100,6 +100,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$mediaBrowser$en mediaBrowser = Translations$mediaBrowser$en.internal(_root);
 	late final Translations$trackers$en trackers = Translations$trackers$en.internal(_root);
 	late final Translations$seerr$en seerr = Translations$seerr$en.internal(_root);
+	late final Translations$film$en film = Translations$film$en.internal(_root);
 }
 
 // Path: common
@@ -360,6 +361,9 @@ class Translations$watchActions$en {
 
 	/// en: 'Plex didn't accept that. The server may be offline.'
 	String get plexRefused => 'Plex didn\'t accept that. The server may be offline.';
+
+	/// en: 'Details'
+	String get details => 'Details';
 }
 
 // Path: show
@@ -1214,6 +1218,27 @@ class Translations$seerr$en {
 
 	/// en: 'Requested {title}.'
 	String sent({required Object title}) => 'Requested ${title}.';
+}
+
+// Path: film
+class Translations$film$en {
+	Translations$film$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Play'
+	String get play => 'Play';
+
+	/// en: 'Resume from {time}'
+	String resume({required Object time}) => 'Resume from ${time}';
+
+	/// en: 'Play from start'
+	String get fromStart => 'Play from start';
+
+	/// en: 'This film is no longer on the server, or the server cannot be reached.'
+	String get gone => 'This film is no longer on the server, or the server cannot be reached.';
 }
 
 // Path: player.upNext
@@ -2938,6 +2963,7 @@ extension on Translations {
 			'watchActions.downloading' => 'Downloading. See the Downloads tab.',
 			'watchActions.markedOffline' => 'Marked as watched here. Plex will be told when it can be reached.',
 			'watchActions.plexRefused' => 'Plex didn\'t accept that. The server may be offline.',
+			'watchActions.details' => 'Details',
 			'show.noEpisodes' => 'This show has no episodes on the server.',
 			'shell.library' => 'Library',
 			'shell.search' => 'Search',
@@ -3334,9 +3360,9 @@ extension on Translations {
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} of ${total}',
 			'xtream.channels.whole' => 'Whole category',
 			'xtream.channels.selectShown' => 'Select shown',
-			'xtream.channels.clear' => 'Clear',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.clear' => 'Clear',
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'The panel lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
@@ -3521,6 +3547,10 @@ extension on Translations {
 			'seerr.askShow' => ({required Object server}) => 'This asks ${server} to add every season. Whoever runs it decides whether it does.',
 			'seerr.request' => 'Request',
 			'seerr.sent' => ({required Object title}) => 'Requested ${title}.',
+			'film.play' => 'Play',
+			'film.resume' => ({required Object time}) => 'Resume from ${time}',
+			'film.fromStart' => 'Play from start',
+			'film.gone' => 'This film is no longer on the server, or the server cannot be reached.',
 			_ => null,
 		};
 	}

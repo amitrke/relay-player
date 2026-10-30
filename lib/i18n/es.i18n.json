@@ -144,7 +144,8 @@
     "removeResume": "Quitar de Seguir viendo",
     "downloading": "Descargando. Consulta la pestaña Descargas.",
     "markedOffline": "Marcado como visto aquí. Se avisará a Plex cuando se pueda contactar con él.",
-    "plexRefused": "Plex no lo aceptó. Puede que el servidor esté desconectado."
+    "plexRefused": "Plex no lo aceptó. Puede que el servidor esté desconectado.",
+    "details": "Detalles"
   },
   "show": {
     "noEpisodes": "Esta serie no tiene episodios en el servidor."
@@ -889,5 +890,11 @@
     "askShow": "Esto pide a {server} que añada todas las temporadas. Quien lo administra decide si lo hace.",
     "request": "Solicitar",
     "sent": "Se solicitó {title}."
+  },
+  "film": {
+    "play": "Reproducir",
+    "resume": "Reanudar desde {time}",
+    "fromStart": "Reproducir desde el principio",
+    "gone": "Esta película ya no está en el servidor, o no se puede contactar con el servidor."
   }
 }

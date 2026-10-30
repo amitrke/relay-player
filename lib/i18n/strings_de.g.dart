@@ -98,6 +98,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$mediaBrowser$de mediaBrowser = _Translations$mediaBrowser$de._(_root);
 	@override late final _Translations$trackers$de trackers = _Translations$trackers$de._(_root);
 	@override late final _Translations$seerr$de seerr = _Translations$seerr$de._(_root);
+	@override late final _Translations$film$de film = _Translations$film$de._(_root);
 }
 
 // Path: common
@@ -226,6 +227,7 @@ class _Translations$watchActions$de extends Translations$watchActions$en {
 	@override String get downloading => 'Wird heruntergeladen. Siehe Tab Downloads.';
 	@override String get markedOffline => 'Hier als gesehen markiert. Plex erfährt es, sobald es erreichbar ist.';
 	@override String get plexRefused => 'Plex hat das nicht angenommen. Der Server ist vielleicht offline.';
+	@override String get details => 'Details';
 }
 
 // Path: show
@@ -646,6 +648,19 @@ class _Translations$seerr$de extends Translations$seerr$en {
 	@override String askShow({required Object server}) => 'Damit bittest du ${server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.';
 	@override String get request => 'Anfragen';
 	@override String sent({required Object title}) => '${title} angefragt.';
+}
+
+// Path: film
+class _Translations$film$de extends Translations$film$en {
+	_Translations$film$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get play => 'Abspielen';
+	@override String resume({required Object time}) => 'Fortsetzen ab ${time}';
+	@override String get fromStart => 'Von vorn abspielen';
+	@override String get gone => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.';
 }
 
 // Path: player.upNext
@@ -1599,6 +1614,7 @@ extension on TranslationsDe {
 			'watchActions.downloading' => 'Wird heruntergeladen. Siehe Tab Downloads.',
 			'watchActions.markedOffline' => 'Hier als gesehen markiert. Plex erfährt es, sobald es erreichbar ist.',
 			'watchActions.plexRefused' => 'Plex hat das nicht angenommen. Der Server ist vielleicht offline.',
+			'watchActions.details' => 'Details',
 			'show.noEpisodes' => 'Diese Serie hat keine Folgen auf dem Server.',
 			'shell.library' => 'Mediathek',
 			'shell.search' => 'Suche',
@@ -1995,9 +2011,9 @@ extension on TranslationsDe {
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} von ${total}',
 			'xtream.channels.whole' => 'Ganze Kategorie',
 			'xtream.channels.selectShown' => 'Angezeigte auswählen',
-			'xtream.channels.clear' => 'Abwählen',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.clear' => 'Abwählen',
 			'xtream.channels.clearShown' => 'Angezeigte abwählen',
 			'xtream.channels.none' => 'Das Panel listet in dieser Kategorie keine Sender.',
 			'xtream.hidden.title' => 'Wörter ausblenden',
@@ -2182,6 +2198,10 @@ extension on TranslationsDe {
 			'seerr.askShow' => ({required Object server}) => 'Damit bittest du ${server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.',
 			'seerr.request' => 'Anfragen',
 			'seerr.sent' => ({required Object title}) => '${title} angefragt.',
+			'film.play' => 'Abspielen',
+			'film.resume' => ({required Object time}) => 'Fortsetzen ab ${time}',
+			'film.fromStart' => 'Von vorn abspielen',
+			'film.gone' => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.',
 			_ => null,
 		};
 	}

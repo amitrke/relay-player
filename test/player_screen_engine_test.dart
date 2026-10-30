@@ -58,6 +58,9 @@ class _FakeEngine implements PlaybackEngine {
   @override
   Stream<EngineError> get errorStream => _errors.stream;
   @override
+  // Nothing: by the time the player listens, the duration is already known
+  // (see [duration]), which is the case that once left a resume waiting for
+  // ever on a stream that does not replay.
   Stream<Duration> get durationStream => const Stream.empty();
   @override
   Stream<void> get completedStream => _completed.stream;
@@ -137,6 +140,9 @@ class _Server extends PlexService {
   final reports = <String>[];
   final lookups = <String>[];
 
+  /// Where the server says the viewer got to, as Plex's `viewOffset` does.
+  Duration? resumeFrom;
+
   static MediaItem _ep(String id, int season, int number) => MediaItem(
         id: id,
         type: MediaItemType.episode,
@@ -172,6 +178,7 @@ class _Server extends PlexService {
       duration: const Duration(minutes: 1),
       isEpisode: item.type == MediaItemType.episode,
       item: item,
+      resumeFrom: resumeFrom,
     );
   }
 
@@ -306,9 +313,14 @@ void main() {
   group('when an episode ends', () {
     late _Server server;
 
-    Future<void> pumpServer(WidgetTester tester, String id) async {
+    Future<void> pumpServer(
+      WidgetTester tester,
+      String id, {
+      Duration? resumeFrom,
+      String query = '',
+    }) async {
       engines = [];
-      server = _Server();
+      server = _Server()..resumeFrom = resumeFrom;
       // The player is pushed over another page, as it always is in the app.
       // That matters: go_router gives a replacement a fresh page (and so a
       // fresh player) only when the page it replaces was itself pushed.
@@ -321,6 +333,7 @@ void main() {
             builder: (_, s) => PlayerScreen.plex(
               serverId: s.pathParameters['serverId']!,
               ratingKey: s.pathParameters['ratingKey']!,
+              fromStart: s.uri.queryParameters['start'] == '0',
             ),
           ),
         ],
@@ -350,7 +363,7 @@ void main() {
           ),
         ),
       ));
-      unawaited(router.push('/play/server/$id'));
+      unawaited(router.push('/play/server/$id$query'));
       for (var i = 0; i < 4; i++) {
         await tester.pump();
       }
@@ -372,6 +385,25 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 20));
     }
+
+    // The film page's two buttons (§12 screen 5): Resume uses the saved
+    // position, Play from start ignores it. The first is the control: it
+    // shows the seek happens at all, so its absence below means something.
+    testWidgets('a saved position is resumed from', (tester) async {
+      await pumpServer(tester, 'film',
+          resumeFrom: const Duration(minutes: 5));
+      await tester.pump();
+      expect(engines.single.calls, contains('seek 0:05:00.000000'));
+      await finish(tester);
+    });
+
+    testWidgets('Play from start ignores it', (tester) async {
+      await pumpServer(tester, 'film',
+          resumeFrom: const Duration(minutes: 5), query: '?start=0');
+      await tester.pump();
+      expect(engines.single.calls.where((c) => c.startsWith('seek')), isEmpty);
+      await finish(tester);
+    });
 
     testWidgets('reports the episode, offers the next season, and plays it '
         'when the countdown runs out', (tester) async {

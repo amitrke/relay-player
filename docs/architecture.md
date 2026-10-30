@@ -1107,6 +1107,22 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > added row. No toggle back to the single grid was built (decided not
    > wanted, 2026-10-10). Pinned by `test/library_shelves_test.dart`.
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
+   > **Films get a page, 2026-10-30.** Until then a film poster went straight
+   > to the player while a show opened `ShowDetailScreen`, so one stray OK
+   > started a two-hour film and nothing said where it would start. A server
+   > film now opens `FilmDetailScreen` (`/film/:server/:id`): its art behind
+   > the page (a band across the top on a phone or tablet), title, facts, plot,
+   > and buttons for *Resume from 6:16* or *Play* (focused), *Play from start*
+   > (`/play/...?start=0`, which skips the saved position), watched, download
+   > and favourite, which were only in the long-press sheet before. Posters in
+   > rows and grids, search and the AI picks all open it, through
+   > `CatalogItem.route`. **Continue watching still plays at once**, since
+   > picking up where you were is that row's whole job; its long-press sheet
+   > gains *Details*, first. Downloads and episodes play directly as before.
+   > Panel films keep their own route. Pinned by
+   > `test/film_detail_screen_test.dart`, including a phone-size render that
+   > caught action labels overflowing; seen on the Google TV and Pixel Tablet
+   > emulators against a real Plex server.
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)

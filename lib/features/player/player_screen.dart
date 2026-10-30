@@ -92,6 +92,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     super.key,
     required String this.serverId,
     required String this.ratingKey,
+    this.fromStart = false,
   })  : accountId = null,
         streamId = null,
         kind = XtreamStreamKind.live,
@@ -113,6 +114,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
+        fromStart = false,
         kind = XtreamStreamKind.live,
         assetId = null,
         safUri = null,
@@ -129,6 +131,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
+        fromStart = false,
         kind = XtreamStreamKind.vod,
         assetId = null,
         safUri = null,
@@ -145,6 +148,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.streamId,
   })  : serverId = null,
         ratingKey = null,
+        fromStart = false,
         kind = XtreamStreamKind.episode,
         assetId = null,
         safUri = null,
@@ -161,6 +165,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen.device({super.key, required String this.assetId})
       : serverId = null,
         ratingKey = null,
+        fromStart = false,
         accountId = null,
         streamId = null,
         safUri = null,
@@ -179,6 +184,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.smbPath,
   })  : serverId = null,
         ratingKey = null,
+        fromStart = false,
         accountId = null,
         streamId = null,
         assetId = null,
@@ -198,6 +204,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
         smbPath = null,
         serverId = null,
         ratingKey = null,
+        fromStart = false,
         accountId = null,
         streamId = null,
         assetId = null,
@@ -205,6 +212,10 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
   final String? serverId;
   final String? ratingKey;
+
+  /// Ignore any saved position and play from 0:00: the film page's *Play from
+  /// start* (§12 screen 5). Only a Plex-style server title offers it.
+  final bool fromStart;
   final String? accountId;
   final String? streamId;
   final String? assetId;
@@ -658,7 +669,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (resume != null) {
         // Seek after opening: libmpv needs the stream long enough to know it is
         // seekable, and a seek issued before that is silently dropped.
-        await _engine.durationStream.firstWhere((d) => d > Duration.zero);
+        //
+        // The duration may already be known: media_kit's duration stream is
+        // a broadcast stream and does not replay, so if it fired while `open`
+        // was still returning, waiting on it waited for ever. Then there was
+        // no seek, no progress timer, and leaving reported a position near
+        // 0:00, which wiped the server's saved place. Seen three times out of
+        // three on the TV emulator, 2026-10-30 (MANUAL_TESTING.md §4).
+        if (_engine.duration <= Duration.zero) {
+          await _engine.durationStream.firstWhere((d) => d > Duration.zero);
+        }
         await _engine.seek(resume);
       }
       _progressTimer?.cancel();
@@ -677,6 +697,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// Where to pick up, preferring the source's own answer over ours.
   Duration? _resumePoint(_Playable playable) {
     if (playable.live || playable.historyKind == null) return null;
+    if (widget.fromStart) return null;
     final fromSource = playable.resumeFrom;
     if (fromSource != null && fromSource > const Duration(seconds: 60)) {
       return fromSource;

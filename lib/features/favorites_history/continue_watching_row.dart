@@ -182,6 +182,10 @@ class _ResumeTile extends ConsumerWidget {
               : null,
           title: item.title,
           resume: item,
+          // A film's page; an entry does not know an episode's show.
+          details: item.kind == PlaybackKind.server && item.episode == false
+              ? '/film/${item.sourceId}/${item.itemId}'
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

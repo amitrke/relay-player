@@ -144,7 +144,8 @@
     "removeResume": "Retirer de Reprendre la lecture",
     "downloading": "Téléchargement en cours. Voir l'onglet Téléchargements.",
     "markedOffline": "Marqué comme vu ici. Plex en sera informé dès qu'il sera joignable.",
-    "plexRefused": "Plex ne l'a pas accepté. Le serveur est peut-être hors ligne."
+    "plexRefused": "Plex ne l'a pas accepté. Le serveur est peut-être hors ligne.",
+    "details": "Détails"
   },
   "show": {
     "noEpisodes": "Cette série n'a aucun épisode sur le serveur."
@@ -889,5 +890,11 @@
     "askShow": "Cela demande à {server} d'ajouter toutes les saisons. Son administrateur décide s'il le fait.",
     "request": "Demander",
     "sent": "{title} demandé."
+  },
+  "film": {
+    "play": "Lire",
+    "resume": "Reprendre à {time}",
+    "fromStart": "Lire depuis le début",
+    "gone": "Ce film n'est plus sur le serveur, ou le serveur est injoignable."
   }
 }

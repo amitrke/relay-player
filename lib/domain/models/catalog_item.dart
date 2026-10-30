@@ -209,7 +209,10 @@ class CatalogItem {
   /// resolves straight to a stream.
   String get route => switch ((source, kind)) {
     (CatalogSource.server, CatalogKind.show) => '/show/$sourceId/$id',
-    (CatalogSource.server, CatalogKind.movie) => '/play/$sourceId/$id',
+    // Its page, not the player, since 2026-10-30 (§12 screen 5,
+    // film_detail_screen.dart). Continue watching keeps going straight to
+    // the player through its own route.
+    (CatalogSource.server, CatalogKind.movie) => '/film/$sourceId/$id',
     (CatalogSource.xtream, CatalogKind.show) =>
       '/advanced/xtream/$sourceId/series/$id',
     (CatalogSource.xtream, CatalogKind.movie) => '/vod/$sourceId/$id',

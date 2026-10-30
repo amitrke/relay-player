@@ -98,6 +98,7 @@ class TranslationsFr extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$mediaBrowser$fr mediaBrowser = _Translations$mediaBrowser$fr._(_root);
 	@override late final _Translations$trackers$fr trackers = _Translations$trackers$fr._(_root);
 	@override late final _Translations$seerr$fr seerr = _Translations$seerr$fr._(_root);
+	@override late final _Translations$film$fr film = _Translations$film$fr._(_root);
 }
 
 // Path: common
@@ -226,6 +227,7 @@ class _Translations$watchActions$fr extends Translations$watchActions$en {
 	@override String get downloading => 'Téléchargement en cours. Voir l\'onglet Téléchargements.';
 	@override String get markedOffline => 'Marqué comme vu ici. Plex en sera informé dès qu\'il sera joignable.';
 	@override String get plexRefused => 'Plex ne l\'a pas accepté. Le serveur est peut-être hors ligne.';
+	@override String get details => 'Détails';
 }
 
 // Path: show
@@ -646,6 +648,19 @@ class _Translations$seerr$fr extends Translations$seerr$en {
 	@override String askShow({required Object server}) => 'Cela demande à ${server} d\'ajouter toutes les saisons. Son administrateur décide s\'il le fait.';
 	@override String get request => 'Demander';
 	@override String sent({required Object title}) => '${title} demandé.';
+}
+
+// Path: film
+class _Translations$film$fr extends Translations$film$en {
+	_Translations$film$fr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get play => 'Lire';
+	@override String resume({required Object time}) => 'Reprendre à ${time}';
+	@override String get fromStart => 'Lire depuis le début';
+	@override String get gone => 'Ce film n\'est plus sur le serveur, ou le serveur est injoignable.';
 }
 
 // Path: player.upNext
@@ -1599,6 +1614,7 @@ extension on TranslationsFr {
 			'watchActions.downloading' => 'Téléchargement en cours. Voir l\'onglet Téléchargements.',
 			'watchActions.markedOffline' => 'Marqué comme vu ici. Plex en sera informé dès qu\'il sera joignable.',
 			'watchActions.plexRefused' => 'Plex ne l\'a pas accepté. Le serveur est peut-être hors ligne.',
+			'watchActions.details' => 'Détails',
 			'show.noEpisodes' => 'Cette série n\'a aucun épisode sur le serveur.',
 			'shell.library' => 'Bibliothèque',
 			'shell.search' => 'Recherche',
@@ -1995,9 +2011,9 @@ extension on TranslationsFr {
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} sur ${total}',
 			'xtream.channels.whole' => 'Toute la catégorie',
 			'xtream.channels.selectShown' => 'Cocher celles affichées',
-			'xtream.channels.clear' => 'Décocher',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.clear' => 'Décocher',
 			'xtream.channels.clearShown' => 'Décocher celles affichées',
 			'xtream.channels.none' => 'Le panel ne liste aucune chaîne dans cette catégorie.',
 			'xtream.hidden.title' => 'Masquer des mots',
@@ -2182,6 +2198,10 @@ extension on TranslationsFr {
 			'seerr.askShow' => ({required Object server}) => 'Cela demande à ${server} d\'ajouter toutes les saisons. Son administrateur décide s\'il le fait.',
 			'seerr.request' => 'Demander',
 			'seerr.sent' => ({required Object title}) => '${title} demandé.',
+			'film.play' => 'Lire',
+			'film.resume' => ({required Object time}) => 'Reprendre à ${time}',
+			'film.fromStart' => 'Lire depuis le début',
+			'film.gone' => 'Ce film n\'est plus sur le serveur, ou le serveur est injoignable.',
 			_ => null,
 		};
 	}

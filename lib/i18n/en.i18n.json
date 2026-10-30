@@ -144,7 +144,8 @@
     "removeResume": "Remove from Continue watching",
     "downloading": "Downloading. See the Downloads tab.",
     "markedOffline": "Marked as watched here. Plex will be told when it can be reached.",
-    "plexRefused": "Plex didn't accept that. The server may be offline."
+    "plexRefused": "Plex didn't accept that. The server may be offline.",
+    "details": "Details"
   },
   "show": {
     "noEpisodes": "This show has no episodes on the server."
@@ -889,5 +890,11 @@
     "askShow": "This asks {server} to add every season. Whoever runs it decides whether it does.",
     "request": "Request",
     "sent": "Requested {title}."
+  },
+  "film": {
+    "play": "Play",
+    "resume": "Resume from {time}",
+    "fromStart": "Play from start",
+    "gone": "This film is no longer on the server, or the server cannot be reached."
   }
 }
