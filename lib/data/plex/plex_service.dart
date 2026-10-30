@@ -268,43 +268,115 @@ class PlexService extends MediaServer {
   /// searching for them by name, and absent from every list built on this one:
   /// found when "James Bond movies" found no Bond film that the Continue
   /// watching row was showing.
+  ///
+  /// A show library also asks for its newest episodes, so each show carries
+  /// when its latest episode arrived rather than when the show itself was
+  /// first added (see [CatalogItem.addedAt]).
   @override
-  Future<List<MediaItem>> allItems(MediaSection section) async => [
-    for (final m in await readAllPages<PlexMetadata>((start, size) async {
-      final page = await _page(section, start, size);
-      return (total: page.totalSize, items: page.items);
-    }))
-      itemOf(m),
-  ];
+  Future<List<MediaItem>> allItems(MediaSection section) async {
+    final (titles, newest) = await (
+      readAllPages<PlexMetadata>((start, size) async {
+        final page = await _page(section, start, size);
+        return (total: page.totalSize, items: page.items);
+      }),
+      section.type == MediaSectionType.shows
+          ? newestEpisodes(section)
+          : Future.value(const <String, DateTime>{}),
+    ).wait;
+    return [
+      for (final m in titles) itemOf(m, newestEpisodeAt: newest[m.ratingKey]),
+    ];
+  }
+
+  /// How many recent episodes [newestEpisodes] reads. Enough for every show
+  /// with an episode in roughly the last few months on a busy server.
+  static const newestEpisodeWindow = 500;
+
+  /// When each show's newest episode arrived, for the shows among a library's
+  /// latest [newestEpisodeWindow] episodes, keyed by the show's `ratingKey`.
+  ///
+  /// A show's own metadata has no such date: `addedAt` is when the show was
+  /// first added, and `updatedAt` moves on any metadata refresh. Plex's own
+  /// "Recently Added in TV Shows" row is built from episodes, so this is too:
+  /// one request for the section's episodes, newest first.
+  ///
+  /// A show outside the window keeps its own date. That is never later than
+  /// its true newest episode, which is older than everything in the window,
+  /// so every show inside still sorts above every show outside, which is the
+  /// part a person sees. Failure leaves every show on its own date rather
+  /// than failing the library: worse ordering, nothing missing.
+  Future<Map<String, DateTime>> newestEpisodes(MediaSection section) async {
+    try {
+      final page = await _client.library.allByType(
+        sectionId: section.id,
+        type: PlexMetadataType.episode,
+        size: newestEpisodeWindow,
+        sort: 'addedAt:desc',
+      );
+      final newest = <String, DateTime>{};
+      for (final e in page.items) {
+        final show = e.grandparentRatingKey;
+        final added = e.addedAt;
+        if (show == null || added == null) continue;
+        // Asked for newest first, but kept as a max, not first-seen, so a
+        // server that ignores `sort` still gives the right answer.
+        final seen = newest[show];
+        if (seen == null || added.isAfter(seen)) newest[show] = added;
+      }
+      return newest;
+    } catch (_) {
+      return const {};
+    }
+  }
 
   /// Plex metadata in the neutral shape every screen reads (§6.2).
-  static MediaItem itemOf(PlexMetadata m) => MediaItem(
-    id: m.ratingKey,
-    type: switch (m.type) {
-      PlexMetadataType.movie => MediaItemType.movie,
-      PlexMetadataType.show => MediaItemType.show,
-      PlexMetadataType.season => MediaItemType.season,
-      PlexMetadataType.episode => MediaItemType.episode,
-      _ => MediaItemType.other,
-    },
-    title: m.title,
-    year: m.year,
-    summary: m.summary,
-    genres: m.genres,
-    posterPath: posterPathOf(m),
-    duration: _ms(m.durationMs),
-    viewCount: m.viewCount,
-    viewOffset: _ms(m.viewOffsetMs),
-    lastViewedAt: m.lastViewedAt,
-    addedAt: m.addedAt,
-    index: m.index,
-    parentIndex: m.parentIndex,
-    showTitle: m.grandparentTitle ?? m.parentTitle,
-    showId: m.grandparentRatingKey ?? m.parentRatingKey,
-    parentId: m.parentRatingKey,
-    ids: idsOf(m.raw),
-    rating: m.rating ?? m.userRating,
-  );
+  ///
+  /// [newestEpisodeAt], for a show, replaces its `addedAt` when later.
+  static MediaItem itemOf(PlexMetadata m, {DateTime? newestEpisodeAt}) =>
+      MediaItem(
+        id: m.ratingKey,
+        type: switch (m.type) {
+          PlexMetadataType.movie => MediaItemType.movie,
+          PlexMetadataType.show => MediaItemType.show,
+          PlexMetadataType.season => MediaItemType.season,
+          PlexMetadataType.episode => MediaItemType.episode,
+          _ => MediaItemType.other,
+        },
+        title: m.title,
+        year: m.year,
+        summary: m.summary,
+        genres: m.genres,
+        posterPath: posterPathOf(m),
+        duration: _ms(m.durationMs),
+        viewCount: m.viewCount,
+        viewOffset: _ms(m.viewOffsetMs),
+        lastViewedAt: m.lastViewedAt,
+        addedAt: _later(m.addedAt, newestEpisodeAt),
+        index: m.index,
+        parentIndex: m.parentIndex,
+        showTitle: m.grandparentTitle ?? m.parentTitle,
+        showId: m.grandparentRatingKey ?? m.parentRatingKey,
+        parentId: m.parentRatingKey,
+        ids: idsOf(m.raw),
+        rating: m.rating ?? m.userRating,
+        unwatchedEpisodes: m.type == PlexMetadataType.show
+            ? unwatchedOf(m.raw)
+            : null,
+      );
+
+  /// A show's unwatched episodes from `leafCount` (its episodes) and
+  /// `viewedLeafCount` (those this account has watched). dart_plex 0.1.2 does
+  /// not parse either, so they come from the raw JSON. Null unless both are
+  /// there.
+  static int? unwatchedOf(Map<String, dynamic> raw) {
+    final all = raw['leafCount'];
+    final seen = raw['viewedLeafCount'];
+    if (all is! int || seen is! int) return null;
+    return all > seen ? all - seen : 0;
+  }
+
+  static DateTime? _later(DateTime? a, DateTime? b) =>
+      a == null ? b : (b == null || a.isAfter(b) ? a : b);
 
   /// External IDs from Plex's `Guid` tags (`imdb://tt0111161`, `tmdb://278`,
   /// `tvdb://81189`). The new Plex agents put these on an item's own
@@ -345,9 +417,8 @@ class PlexService extends MediaServer {
   /// `/:/unscrobble`). On a show or season Plex applies it to every episode
   /// beneath, and unwatched also clears the resume position.
   @override
-  Future<void> setWatched(String id, {required bool watched}) => watched
-      ? _client.playback.scrobble(id)
-      : _client.playback.unscrobble(id);
+  Future<void> setWatched(String id, {required bool watched}) =>
+      watched ? _client.playback.scrobble(id) : _client.playback.unscrobble(id);
 
   /// What Plex thinks this account is in the middle of, across [sections].
   ///
@@ -557,7 +628,9 @@ class PlexService extends MediaServer {
       url: '$base${part.key}?X-Plex-Token=$token',
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
-      extension: container.isNotEmpty ? container : (fromKey?.group(1) ?? 'mkv'),
+      extension: container.isNotEmpty
+          ? container
+          : (fromKey?.group(1) ?? 'mkv'),
       isEpisode: item.type == PlexMetadataType.episode,
       sizeBytes: part.size,
       posterPath: posterPathOf(item),

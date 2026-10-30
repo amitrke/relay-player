@@ -1422,6 +1422,74 @@ while moving (the onboarding blurb, the Add a source privacy line, the SAF
 error, the Advanced sources confirm button now "I understand, turn on"). The
 meaning is unchanged. Store copy that quotes the old wording should be checked.
 
+### 12.4 Beside Plex's own TV app (added 2026-10-30)
+
+Both apps on the Google TV emulator, signed in to the same Plex server, the
+same screens compared one by one. Listings and layout only: playback on the
+emulator is not comparable (CLAUDE.md, §10), and remote-focus findings still
+want a real TV.
+
+**Fixed the same day:**
+
+- **New episodes were impossible to spot.** Series "Recently added" sorted a
+  show by when the *show* was first added, so one with an episode out last
+  night stayed wherever it had landed years ago, and posters said nothing
+  about unwatched episodes. Plex orders its "Recently Added in TV Shows" row
+  by each show's newest episode and puts a count on the poster. Now a show's
+  `CatalogItem.addedAt` is its newest episode's arrival (Plex: one extra
+  request per show library for its newest 500 episodes; Jellyfin/Emby:
+  `DateLastMediaAdded`), and `UnwatchedBadge` shows `leafCount −
+  viewedLeafCount` (Jellyfin/Emby: `UnplayedItemCount`). After the change the
+  order on the emulator matched Plex's row exactly.
+  *Difference kept, knowingly:* Plex's home row showed a count on one show
+  only, while ours counts every show with unwatched episodes. Plex's rule was
+  not worked out; it may count only shows not yet started. If the badges turn
+  out noisy on a large library, that is the first thing to try.
+
+**Seen and still open:**
+
+- **The tab strip runs into the sort control** on a 1080p TV: "Live TV"
+  clips to "Live T'" and touches "Recently added".
+- **Continue watching stays pinned while the library rows scroll under
+  it**, so the focused row's title and the top of its posters are hidden, and
+  moving focus back up does not bring them back. On a TV that is most of the
+  screen spent on one row.
+- **The search field cannot be reached with the remote** from "What should I
+  watch?": Up goes nowhere and typed text is lost. That contradicts the 1.0.4
+  notes, so it may be a regression; check on a real remote first.
+- **Continue watching is split by tab and uses episode stills.** Plex has
+  one row of films and episodes, most recent first, with show posters, which
+  read from across a room where a cropped still does not. Two films with
+  progress in Plex were missing from ours. Plex's menu lists a second server
+  on the same account that this install is not connected to, which is the
+  likelier home for them than a library set to Hidden; not confirmed.
+- **Plex's home carries more:** the server's own collections as rows, and a
+  backdrop with year, runtime, rating, synopsis and cast for whatever has
+  focus. Ours has neither.
+- **"Recently added" for films already matched** Plex title for title.
+- **No next episode when one ends.** The player stops at the end of an
+  episode; nothing offers or counts down to the next, which Plex does. Found
+  watching, not on the emulator.
+
+**Use of space, measured on the 1080p screenshots.** Plex does not fit more
+posters on a screen than we do (both show about seven across); it spends
+less on chrome and puts what it saves into information:
+
+| | Plex | Subnext Player |
+|---|---|---|
+| Side navigation, at rest | icons only, about 100px, small glyphs | 128px rail, 40px icons, a tall labelled pill on the current one |
+| Side navigation, open | a 385px drawer *over* the content, which stays put | always reserved; Settings adds a 650px section list (a third of the width) |
+| Top band | 24px pill tabs plus a clock, about 90px | 36px tabs, sort control and count, about 135px, and it overflows (above) |
+| Under each poster | nothing; the focused title's details go in the backdrop area | title (26px) and a second line, about 85px per row |
+| Row pitch | about 470px | about 570px |
+| Row title | about 30px, server name small beside it | about 40px |
+
+So the direction is not "smaller posters" but: hide navigation until it is
+asked for, drop per-poster captions in favour of one detail area for the
+focused item, and shrink the type that is chrome (tabs, row titles, menu
+items) while keeping titles and synopsis large. None of it is started; it is
+§12 work and wants its own design pass rather than piecemeal edits.
+
 ## 13. Phased roadmap
 
 **Timeline caveat — read before planning against these numbers.** The per-phase estimates below describe focused engineering time for someone already fluent in Flutter, and they sum to roughly 11–14 weeks. They do **not** include: the rework implied if a Phase 0 spike comes back negative (a hand-rolled Plex client, or the SMB proxy bridge, each add ~1 week); the rejection-and-resubmit cycle Phase 5 itself predicts; Amazon Appstore submission (§11); or the ordinary drag of TV focus-traversal debugging on real hardware. **If this is solo or part-time work, plan for roughly double the stated figures** and treat the phase boundaries — not the day counts — as the useful structure.

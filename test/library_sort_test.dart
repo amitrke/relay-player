@@ -207,8 +207,8 @@ void main() {
           viewOffset: const Duration(minutes: 50),
           duration: const Duration(minutes: 100),
         ),
-        // A show never gets either: its state is an episode count we do not
-        // parse, and a guess would be worse than nothing.
+        // A show never gets either: its state is an episode count, shown as
+        // UnwatchedBadge instead (see the test below).
         CatalogItem(
           source: CatalogSource.server,
           sourceId: 'server',
@@ -220,6 +220,43 @@ void main() {
       ]);
       expect(find.byType(WatchedTick), findsOneWidget);
       expect(find.byType(WatchProgressBar), findsOneWidget);
+    });
+
+    testWidgets('a show with unwatched episodes shows how many', (tester) async {
+      CatalogItem show(String id, int? unwatched) => CatalogItem(
+            source: CatalogSource.server,
+            sourceId: 'server',
+            kind: CatalogKind.show,
+            id: id,
+            title: id,
+            unwatchedEpisodes: unwatched,
+          );
+      await pumpGrid(tester, [
+        show('six new', 6),
+        show('caught up', 0),
+        show('unknown', null),
+        show('long runner', 340),
+      ]);
+      expect(find.byType(UnwatchedBadge), findsNWidgets(2));
+      expect(find.text('6'), findsOneWidget);
+      expect(find.text('99+'), findsOneWidget);
+    });
+
+    testWidgets('a film never gets the badge, whatever it carries',
+        (tester) async {
+      await pumpGrid(tester, [
+        const CatalogItem(
+          source: CatalogSource.server,
+          sourceId: 'server',
+          kind: CatalogKind.movie,
+          id: 'film',
+          title: 'film',
+          unwatchedEpisodes: 3,
+        ),
+      ]);
+      // Control: the tile rendered.
+      expect(find.byType(PosterTile), findsOneWidget);
+      expect(find.byType(UnwatchedBadge), findsNothing);
     });
 
     testWidgets('stays off when everything is from one kind of source',

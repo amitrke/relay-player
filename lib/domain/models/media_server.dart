@@ -93,6 +93,7 @@ class MediaItem {
     this.ids = ExternalIds.none,
     this.showIds = ExternalIds.none,
     this.rating,
+    this.unwatchedEpisodes,
   });
 
   final String id;
@@ -137,6 +138,12 @@ class MediaItem {
 
   /// Out of 10, when the server has one.
   final double? rating;
+
+  /// For a show, how many of its episodes this account has not watched; null
+  /// for anything else and when the server does not say. What lets a poster
+  /// say a show has something new, which Plex's own apps do with a count in
+  /// the corner (compared on a TV, 2026-10-30).
+  final int? unwatchedEpisodes;
 
   bool get isWatched => (viewCount ?? 0) > 0;
 }
@@ -277,7 +284,9 @@ abstract class MediaServer {
   CatalogItem toCatalogItem(MediaItem item, {String? shelf}) => CatalogItem(
     source: CatalogSource.server,
     sourceId: id,
-    kind: item.type == MediaItemType.show ? CatalogKind.show : CatalogKind.movie,
+    kind: item.type == MediaItemType.show
+        ? CatalogKind.show
+        : CatalogKind.movie,
     id: item.id,
     title: item.title,
     year: item.year,
@@ -288,6 +297,7 @@ abstract class MediaServer {
     viewOffset: item.viewOffset,
     duration: item.duration,
     lastViewedAt: item.lastViewedAt,
+    unwatchedEpisodes: item.unwatchedEpisodes,
     shelf: shelf,
   );
 }

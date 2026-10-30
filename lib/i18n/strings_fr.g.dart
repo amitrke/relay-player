@@ -769,6 +769,10 @@ class _Translations$library$tile$fr extends Translations$library$tile$en {
 	@override String get movie => 'Film';
 	@override String get watched => 'Vu';
 	@override String percentWatched({required Object percent}) => 'Vu à ${percent} %';
+	@override String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(n,
+		one: '${n} épisode non vu',
+		other: '${n} épisodes non vus',
+	);
 }
 
 // Path: liveTv.group
@@ -1625,6 +1629,7 @@ extension on TranslationsFr {
 			'library.tile.movie' => 'Film',
 			'library.tile.watched' => 'Vu',
 			'library.tile.percentWatched' => ({required Object percent}) => 'Vu à ${percent} %',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(n, one: '${n} épisode non vu', other: '${n} épisodes non vus', ), 
 			'liveTv.group.favourites' => 'Favoris',
 			'liveTv.group.numbered' => ({required Object n}) => 'Catégorie ${n}',
 			'liveTv.group.other' => 'Autres',
@@ -1978,9 +1983,9 @@ extension on TranslationsFr {
 			'xtream.channels.clearShown' => 'Décocher celles affichées',
 			'xtream.channels.none' => 'Le panel ne liste aucune chaîne dans cette catégorie.',
 			'xtream.hidden.title' => 'Masquer des mots',
-			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
 			'xtream.hidden.hint' => 'Un pays, une langue, un mot',
 			'xtream.hidden.add' => 'Ajouter',
 			'xtream.hidden.none' => 'Rien n\'est masqué pour l\'instant.',

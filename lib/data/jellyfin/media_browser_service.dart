@@ -130,10 +130,14 @@ class MediaBrowserService extends MediaServer {
   String get _user => auth.userId;
 
   /// The fields every item request asks for, so one parse serves all of them.
+  ///
+  /// `DateLastMediaAdded` is a series' newest episode's arrival, which is what
+  /// a show's "Recently added" date means here (CatalogItem.addedAt). A
+  /// series' `UnplayedItemCount` is in `UserData` and needs no field.
   static const _fields =
-      'ProviderIds,Genres,Overview,DateCreated,ProductionYear,'
-      'CommunityRating,PrimaryImageAspectRatio,SeriesPrimaryImageTag,'
-      'ParentId';
+      'ProviderIds,Genres,Overview,DateCreated,DateLastMediaAdded,'
+      'ProductionYear,CommunityRating,PrimaryImageAspectRatio,'
+      'SeriesPrimaryImageTag,ParentId';
 
   Map<String, String> get _headers =>
       authHeaders(kind: kind, client: client, token: auth.token);
@@ -451,7 +455,11 @@ class MediaBrowserService extends MediaServer {
           : 0,
       viewOffset: _ticks(user['PlaybackPositionTicks']),
       lastViewedAt: DateTime.tryParse('${user['LastPlayedDate'] ?? ''}'),
-      addedAt: DateTime.tryParse('${j['DateCreated'] ?? ''}'),
+      // A series' newest episode when the server says, else its own date.
+      addedAt: type == MediaItemType.show
+          ? DateTime.tryParse('${j['DateLastMediaAdded'] ?? ''}') ??
+                DateTime.tryParse('${j['DateCreated'] ?? ''}')
+          : DateTime.tryParse('${j['DateCreated'] ?? ''}'),
       index: j['IndexNumber'] is int ? j['IndexNumber'] as int : null,
       parentIndex: j['ParentIndexNumber'] is int
           ? j['ParentIndexNumber'] as int
@@ -461,6 +469,10 @@ class MediaBrowserService extends MediaServer {
       parentId: (j['SeasonId'] ?? j['ParentId']) as String?,
       ids: _ids(j['ProviderIds']),
       rating: (j['CommunityRating'] as num?)?.toDouble(),
+      unwatchedEpisodes:
+          type == MediaItemType.show && user['UnplayedItemCount'] is int
+          ? user['UnplayedItemCount'] as int
+          : null,
     );
   }
 

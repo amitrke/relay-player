@@ -217,7 +217,11 @@
       "series": "Series",
       "movie": "Movie",
       "watched": "Watched",
-      "percentWatched": "{percent}% watched"
+      "percentWatched": "{percent}% watched",
+        "unwatchedEpisodes": {
+          "one": "{n} unwatched episode",
+          "other": "{n} unwatched episodes"
+        }
     }
   },
   "liveTv": {

@@ -105,6 +105,15 @@ class PosterTile extends ConsumerWidget {
                 ),
                 if (watch.watched)
                   const Positioned(top: 6, left: 6, child: WatchedTick()),
+                // Shows never get the tick (no viewCount), so the corner is
+                // free for them.
+                if (item.kind == CatalogKind.show &&
+                    (item.unwatchedEpisodes ?? 0) > 0)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: UnwatchedBadge(count: item.unwatchedEpisodes!),
+                  ),
                 if (watch.progress case final progress?)
                   Positioned(
                     left: 6,
@@ -221,6 +230,51 @@ class WatchedTick extends StatelessWidget {
   }
 }
 
+/// How many episodes of a show this account has not watched, in the corner of
+/// its poster.
+///
+/// Plex's own TV app does this, and beside it on the same server (compared on
+/// a TV emulator, 2026-10-30) it was the difference between seeing at a glance
+/// which shows had something new and not being able to tell at all. Drawn
+/// like [WatchedTick], accent on any artwork, so the two read as one family.
+class UnwatchedBadge extends StatelessWidget {
+  const UnwatchedBadge({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
+    return Semantics(
+      label: tr.library.tile.unwatchedEpisodes(n: count),
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: t.accent,
+          borderRadius: BorderRadius.circular(tv ? 6 : 5),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: tv ? 8 : 6,
+            vertical: tv ? 3 : 2,
+          ),
+          child: Text(
+            // A long-running show can have hundreds; past 99 the number stops
+            // telling anyone anything a "99+" does not.
+            count > 99 ? '99+' : '$count',
+            style: TextStyle(
+              color: t.accentInk,
+              fontSize: tv ? 16 : 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// How far through something is, drawn the way the continue-watching row
 /// draws it.
 class WatchProgressBar extends StatelessWidget {
@@ -232,9 +286,7 @@ class WatchProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     return Semantics(
-      label: tr.library.tile.percentWatched(
-        percent: (progress * 100).round(),
-      ),
+      label: tr.library.tile.percentWatched(percent: (progress * 100).round()),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(2),
         child: LinearProgressIndicator(

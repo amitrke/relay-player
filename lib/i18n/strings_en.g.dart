@@ -1416,6 +1416,12 @@ class Translations$library$tile$en {
 
 	/// en: '{percent}% watched'
 	String percentWatched({required Object percent}) => '${percent}% watched';
+
+	/// en: '(one) {{n} unwatched episode} (other) {{n} unwatched episodes}'
+	String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} unwatched episode',
+		other: '${n} unwatched episodes',
+	);
 }
 
 // Path: liveTv.group
@@ -2955,6 +2961,7 @@ extension on Translations {
 			'library.tile.movie' => 'Movie',
 			'library.tile.watched' => 'Watched',
 			'library.tile.percentWatched' => ({required Object percent}) => '${percent}% watched',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} unwatched episode', other: '${n} unwatched episodes', ), 
 			'liveTv.group.favourites' => 'Favourites',
 			'liveTv.group.numbered' => ({required Object n}) => 'Category ${n}',
 			'liveTv.group.other' => 'Other',
@@ -3308,9 +3315,9 @@ extension on Translations {
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'The panel lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
-			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',
 			'xtream.hidden.none' => 'Nothing hidden yet.',

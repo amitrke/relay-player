@@ -51,6 +51,7 @@ class CatalogItem {
     this.genres = const [],
     this.rating,
     this.originalLanguage,
+    this.unwatchedEpisodes,
     this.shelf,
   });
 
@@ -75,11 +76,16 @@ class CatalogItem {
   /// [posterUrl] is an absolute address with no credential in it.
   final String? posterPath;
 
-  /// When the item arrived in its source, for "Recently added". Plex reports
-  /// it per item. Panels report `added` for films and only `last_modified` for
-  /// series, which moves when an episode is added: close enough for sorting,
-  /// and the nearest thing a panel offers. Null when a source says nothing,
-  /// and such items sort last.
+  /// When the item arrived in its source, for "Recently added". For a film,
+  /// when the film did. **For a show, when its newest episode did**, from
+  /// every source: a show with an episode out last night belongs at the top,
+  /// not wherever the show itself was first added years ago. Plex and
+  /// Jellyfin/Emby report that separately from the show's own date, and the
+  /// server clients read it (MediaServer.allItems); panels report only
+  /// `last_modified` for series, which moves when an episode is added, so
+  /// they always meant this. Until 2026-10-30 Plex and Jellyfin shows carried
+  /// the show's own date here, which is why new episodes were hard to find.
+  /// Null when a source says nothing, and such items sort last.
   final DateTime? addedAt;
 
   /// Plex's per-account watch state, as the library fetch saw it. Null for
@@ -113,6 +119,11 @@ class CatalogItem {
   /// English has `originalLanguage` Korean and `language` English.
   final String? originalLanguage;
 
+  /// For a show from a media server, episodes this account has not watched.
+  /// Null when unknown, including every panel series, which keeps no watch
+  /// state; 0 means all watched. See MediaItem.unwatchedEpisodes.
+  final int? unwatchedEpisodes;
+
   /// The row this title sits in on Movies and Series: a Plex library's name
   /// (prefixed with the server's when more than one is connected) or a panel
   /// category's. Set by the source that fetched it, because that is the only
@@ -144,6 +155,7 @@ class CatalogItem {
         genres: genres,
         rating: rating,
         originalLanguage: originalLanguage,
+        unwatchedEpisodes: unwatchedEpisodes,
         shelf: shelf,
       );
 
@@ -170,6 +182,7 @@ class CatalogItem {
         genres: genres,
         rating: rating,
         originalLanguage: originalLanguage,
+        unwatchedEpisodes: unwatchedEpisodes,
         shelf: shelf,
       );
 

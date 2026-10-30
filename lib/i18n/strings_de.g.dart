@@ -769,6 +769,10 @@ class _Translations$library$tile$de extends Translations$library$tile$en {
 	@override String get movie => 'Film';
 	@override String get watched => 'Gesehen';
 	@override String percentWatched({required Object percent}) => '${percent} % gesehen';
+	@override String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n,
+		one: '${n} ungesehene Folge',
+		other: '${n} ungesehene Folgen',
+	);
 }
 
 // Path: liveTv.group
@@ -1625,6 +1629,7 @@ extension on TranslationsDe {
 			'library.tile.movie' => 'Film',
 			'library.tile.watched' => 'Gesehen',
 			'library.tile.percentWatched' => ({required Object percent}) => '${percent} % gesehen',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '${n} ungesehene Folge', other: '${n} ungesehene Folgen', ), 
 			'liveTv.group.favourites' => 'Favoriten',
 			'liveTv.group.numbered' => ({required Object n}) => 'Kategorie ${n}',
 			'liveTv.group.other' => 'Sonstige',
@@ -1978,9 +1983,9 @@ extension on TranslationsDe {
 			'xtream.channels.clearShown' => 'Angezeigte abwählen',
 			'xtream.channels.none' => 'Das Panel listet in dieser Kategorie keine Sender.',
 			'xtream.hidden.title' => 'Wörter ausblenden',
-			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
 			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',
 			'xtream.hidden.add' => 'Hinzufügen',
 			'xtream.hidden.none' => 'Noch nichts ausgeblendet.',

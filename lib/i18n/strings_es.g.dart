@@ -769,6 +769,10 @@ class _Translations$library$tile$es extends Translations$library$tile$en {
 	@override String get movie => 'Película';
 	@override String get watched => 'Visto';
 	@override String percentWatched({required Object percent}) => '${percent} % visto';
+	@override String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '${n} episodio sin ver',
+		other: '${n} episodios sin ver',
+	);
 }
 
 // Path: liveTv.group
@@ -1625,6 +1629,7 @@ extension on TranslationsEs {
 			'library.tile.movie' => 'Película',
 			'library.tile.watched' => 'Visto',
 			'library.tile.percentWatched' => ({required Object percent}) => '${percent} % visto',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} episodio sin ver', other: '${n} episodios sin ver', ), 
 			'liveTv.group.favourites' => 'Favoritos',
 			'liveTv.group.numbered' => ({required Object n}) => 'Categoría ${n}',
 			'liveTv.group.other' => 'Otros',
@@ -1978,9 +1983,9 @@ extension on TranslationsEs {
 			'xtream.channels.clearShown' => 'Desmarcar los mostrados',
 			'xtream.channels.none' => 'El panel no tiene canales en esta categoría.',
 			'xtream.hidden.title' => 'Ocultar palabras',
-			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
 			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
 			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
