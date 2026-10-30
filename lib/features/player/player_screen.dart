@@ -24,6 +24,7 @@ import 'engine/playback_engine.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
+import 'up_next.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
 import '../trackers/trackers_controller.dart';
@@ -43,6 +44,7 @@ class _Playable {
     this.resumeFrom,
     this.episode,
     this.savedCopy = false,
+    this.item,
   });
 
   final String url;
@@ -68,6 +70,11 @@ class _Playable {
   /// Playing a file saved on this device (§18.4). Its progress is queued for
   /// Plex when Plex cannot be told (§18.6).
   final bool savedCopy;
+
+  /// The server's own record of the title, for working out what comes after
+  /// it (§12.5). Null for anything not from a media server, and for a saved
+  /// copy played while the server could not be asked.
+  final MediaItem? item;
 }
 
 /// Playback surface (§6, §10).
@@ -307,6 +314,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// reason as [_history]: `ref` is unusable in `dispose`.
   ProviderContainer? _container;
 
+  /// The episode after this one, asked for as soon as the title resolves so
+  /// the card is ready the moment the file ends (§12.5). Null when this is
+  /// not a server episode: a film, a panel item, a local or SMB file.
+  Future<MediaItem?>? _nextEpisode;
+
+  /// The file played through to its end and its final position has been
+  /// reported. Keeps `dispose` from reporting `stopped` a second time, which
+  /// on Jellyfin and Emby would open a new playback session just to close it.
+  bool _ended = false;
+
+  /// What the Up next card is offering, while it is up.
+  MediaItem? _upNext;
+
   /// Torn down with the player. Left running it would keep a port open and hold
   /// the SAF read handle for a file nobody is watching.
   LoopbackBridge? _bridge;
@@ -338,6 +358,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _subs.add(_engine.errorStream.listen(_onEngineError));
     _subs.add(_engine.positionStream.listen(_onPosition));
     _subs.add(_engine.tracksStream.listen(_onTracks));
+    _subs.add(_engine.completedStream.listen((_) => unawaited(_onCompleted())));
     // Focus is asked for whenever playback starts, not once: after a permanent
     // loss, pressing play is the viewer taking it back from the other app.
     _subs.add(_engine.playingStream.listen((playing) {
@@ -405,8 +426,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _progressTimer?.cancel();
     // Record where they actually got to before tearing down. Without this the
     // last up-to-ten-seconds is lost on every exit, which is exactly the moment
-    // the position matters most.
-    _recordProgress(state: 'stopped');
+    // the position matters most. Not again once the end has been reported.
+    if (!_ended) _recordProgress(state: 'stopped');
     // Plex has just been told where this stopped, so its On Deck has moved:
     // the next episode may now be up. Deferred a microtask because
     // invalidating while the tree is being torn down is exactly the kind of
@@ -547,15 +568,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           .read(downloadsProvider.notifier)
           .find(widget.serverId!, widget.ratingKey!)!;
       Duration? resumeFrom;
+      MediaItem? item;
       try {
         // Where Plex last saw this title, if it can be asked quickly. Another
         // device may have watched on since. Offline this just fails, and the
         // position kept on this device is used instead.
-        resumeFrom = (await mediaServerFor(
+        final fromServer = await mediaServerFor(
           ref,
           widget.serverId!,
-        ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3)))
-            .resumeFrom;
+        ).directPlay(widget.ratingKey!).timeout(const Duration(seconds: 3));
+        resumeFrom = fromServer.resumeFrom;
+        item = fromServer.item;
       } catch (_) {}
       return _Playable(
         url: saved.path,
@@ -567,6 +590,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         resumeFrom: resumeFrom,
         episode: record.isEpisode,
         savedCopy: true,
+        item: item,
       );
     }
 
@@ -581,6 +605,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       historyId: widget.ratingKey,
       resumeFrom: playable.resumeFrom,
       episode: playable.isEpisode,
+      item: playable.item,
     );
   }
 
@@ -606,6 +631,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
         _container = ProviderScope.containerOf(context, listen: false);
       }
+      _ended = false;
+      final service = _plexService;
+      final item = playable.item;
+      _nextEpisode = service != null && item != null && playable.episode == true
+          ? findNextEpisode(service, item)
+          : null;
       setState(() {
         _playable = playable;
         _title = playable.title;
@@ -737,6 +768,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _lastPosition = position;
       _lastAdvance = DateTime.now();
     }
+    // Watching again after the end (the card cancelled, then a seek back and
+    // play): this is a play like any other again, and its progress counts.
+    if (_ended &&
+        _engine.playing &&
+        position < _engine.duration - const Duration(seconds: 5)) {
+      _ended = false;
+      if (_upNext != null && mounted) setState(() => _upNext = null);
+      _progressTimer?.cancel();
+      _progressTimer =
+          Timer.periodic(_progressInterval, (_) => _recordProgress());
+    }
     if (_started || position <= Duration.zero) return;
     _stallTimer?.cancel();
     _playingSince = DateTime.now();
@@ -746,6 +788,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
     if (mounted) setState(() => _started = true);
     if (_engine.hasCompatibleFallback) unawaited(_checkVideoOutput());
+  }
+
+  /// The file played to its end (§12.5).
+  ///
+  /// The finished episode is reported first, exactly as leaving the player
+  /// reports it: the server marks it watched from this (by its own rule), and
+  /// the trackers hear about it through the same path (§19). Only then is the
+  /// next episode offered, so opening it can never race ahead of the report
+  /// that says this one is done.
+  Future<void> _onCompleted() async {
+    if (_live || _ended || !_started || _error != null) return;
+    _ended = true;
+    _progressTimer?.cancel();
+    _recordProgress(state: 'stopped');
+    final next = await _nextEpisode;
+    if (!mounted || next == null || !_ended) return;
+    setState(() => _upNext = next);
+  }
+
+  /// Opens [next] in place of this player, as a fresh route, the way
+  /// [_reopenCompatible] does: stopped first, so §4's one-connection rule
+  /// holds even for a source that has it, and replaced rather than pushed, so
+  /// Back from the next episode goes where Back from this one would have.
+  Future<void> _playNext(MediaItem next) async {
+    final router = GoRouter.of(context);
+    setState(() => _upNext = null);
+    await _engine.stop();
+    if (!mounted) return;
+    router.pushReplacement(
+      '/play/${Uri.encodeComponent(widget.serverId!)}/'
+      '${Uri.encodeComponent(next.id)}',
+    );
+  }
+
+  void _cancelUpNext() {
+    if (_upNext != null && mounted) setState(() => _upNext = null);
   }
 
   /// Once playing on a fast output path, gives the engine a moment and asks
@@ -877,34 +955,70 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final t = RelayTheme.of(context);
     final prefs = ref.watch(playbackPrefsProvider);
 
-    return Scaffold(
-      backgroundColor: t.stage,
-      body: PlayerChrome(
-        transport: _engine,
-        title: _title,
-        live: _live,
-        enabled: _started && _error == null,
-        onBack: () => Navigator.of(context).maybePop(),
-        skip: prefs.skip,
-        child: Stack(
+    final upNext = _upNext;
+    // While the card is up, Back cancels it rather than leaving (§20's rule:
+    // one stray press must not commit to anything, and leaving the player is
+    // a commitment too). The card handles Back that arrives as a key; this is
+    // for the system's own Back.
+    return PopScope(
+      canPop: upNext == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _cancelUpNext();
+      },
+      child: Scaffold(
+        backgroundColor: t.stage,
+        body: Stack(
           fit: StackFit.expand,
           children: [
-            Center(
-              child: _engine.buildView(
-                subtitleScale: prefs.subtitleSize.scale,
+            PlayerChrome(
+              transport: _engine,
+              title: _title,
+              live: _live,
+              enabled: _started && _error == null,
+              onBack: () => Navigator.of(context).maybePop(),
+              skip: prefs.skip,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Center(
+                    child: _engine.buildView(
+                      subtitleScale: prefs.subtitleSize.scale,
+                    ),
+                  ),
+                  if (_released)
+                    _PlaybackError(
+                      title: _title,
+                      message: tr.player.released,
+                      icon: Icons.pause_circle_outline,
+                      action: (tr.player.rejoin, _rejoin),
+                    )
+                  else if (_error != null)
+                    _PlaybackError(message: _error!, title: _title)
+                  else if (!_started)
+                    Center(child: CircularProgressIndicator(color: t.accent)),
+                ],
               ),
             ),
-            if (_released)
-              _PlaybackError(
-                title: _title,
-                message: tr.player.released,
-                icon: Icons.pause_circle_outline,
-                action: (tr.player.rejoin, _rejoin),
-              )
-            else if (_error != null)
-              _PlaybackError(message: _error!, title: _title)
-            else if (!_started)
-              Center(child: CircularProgressIndicator(color: t.accent)),
+            // Over the chrome rather than inside it: at the end the player is
+            // paused, so the controls are up, and the card must not sit under
+            // them.
+            if (upNext != null)
+              Positioned(
+                right: 24,
+                bottom: 24,
+                left: 24,
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: UpNextCard(
+                      key: ValueKey(upNext.id),
+                      next: upNext,
+                      onPlay: () => unawaited(_playNext(upNext)),
+                      onCancel: _cancelUpNext,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -1474,7 +1474,8 @@ want a real TV.
 - **"Recently added" for films already matched** Plex title for title.
 - **No next episode when one ends.** The player stops at the end of an
   episode; nothing offers or counts down to the next, which Plex does. Found
-  watching, not on the emulator.
+  watching, not on the emulator. *Built the same day, see §12.5; not yet
+  seen on a TV.*
 
 **Use of space, measured on the 1080p screenshots.** Plex does not fit more
 posters on a screen than we do (both show about seven across); it spends
@@ -1532,6 +1533,82 @@ the sizes differ from Plex's), the server's own collections as rows, cast in
 the hero, Settings' wide section list, and any of this off TV. Pinned by
 `test/library_hero_test.dart`; seen on the Google TV emulator against a real
 Plex server, not on real TV hardware.
+
+### 12.5 Up next: offering the next episode (added 2026-10-30)
+
+When a server episode plays to its end, the player reports it finished and
+then shows a card over the last frame: the next episode's show, number and
+title, "Playing in 10 s", *Play now* and *Cancel*. If nothing is pressed it
+opens the next episode. Code in `lib/features/player/up_next.dart` (the
+lookup and the card) and `player_screen.dart` (`_onCompleted`, `_playNext`).
+
+- **The end is the engine's end of file, not the credits.**
+  `PlaybackEngine.completedStream` is new on the seam (§10.2); media_kit's
+  `completed` flag going true is the only source. Plex has `credits` markers
+  and Jellyfin 10.10+ has Outro media segments (Emby is understood to mark
+  credits as a chapter; not checked), but no client here fetches any of them: `dart_plex` 0.1.2 does not
+  parse `Marker` at all, so it would mean a raw request with
+  `includeMarkers=1`, and a second Jellyfin request per episode. Showing the
+  card at the credits is the obvious next step, and it is what Plex does;
+  ending at end of file first was the part that could be verified without a
+  real server's markers.
+- **"Next" is worked out from `episodesOf`, not On Deck or Next Up.** Those
+  answer "what has this person not watched", which after a rewatch is
+  somewhere else entirely, and they only move once the server has taken in
+  the report for the episode just finished, which is a race with the lookup.
+  "The one after this" is a fact about the show, asked for when the episode
+  starts so the card is ready at the end. The list is sorted by season and
+  episode here (Plex's `allLeaves` puts specials first; Jellyfin's order
+  follows its display settings), so a season finale leads to the next
+  season's first episode. One interface, so Plex, Jellyfin and Emby behave
+  alike (§6.2).
+- **Specials are left out both ways.** A special is never offered, and
+  finishing one shows no card: where it sits among the episodes is
+  `airsBeforeSeason` territory that none of our lists carry.
+- **No card** for films, panel (IPTV) items, local, SAF and SMB files, the
+  last episode, or when the lookup fails (a saved copy played offline,
+  §18.4). The film rule is enforced twice, in the screen (`playable.episode`)
+  and in `findNextEpisode` (the item's type); the test catches only the
+  removal of both, which is recorded here so nobody reads the test as
+  pinning either one alone.
+- **Report first, then offer.** The finished episode gets its `stopped`
+  report (and history, and the tracker's finish, §19) the moment the file
+  ends, exactly as leaving the player would send it; the card only appears
+  after. `dispose` then skips its own final report, because a second
+  `stopped` on Jellyfin and Emby would open a playback session just to close
+  it. Seeking back and playing after cancelling makes it an ordinary play
+  again.
+- **Cancel has focus, Back cancels** (§20's rule: one press on a remote must
+  not commit to anything). The countdown already plays on by itself, so the
+  only press worth making easy is the one that stops it. Back as a key
+  (Escape, the remote's Back) is handled by the card; the system's Back goes
+  through a `PopScope` that stays shut while the card is up. After *Cancel*
+  the player stays on the last frame with its controls.
+- **The next episode is a fresh player**, `pushReplacement` to its
+  `/play/...` route, after stopping this one, the same way the compatible
+  output fallback reopens (§10.2). Back from it goes where Back from the
+  finished one would have. A test found that go_router 18 gives a
+  replacement a fresh page (and so a fresh `State` and engine) only when the
+  page being replaced was itself pushed; replacing a root page reuses the
+  state. The player is always pushed in the app, so this holds there, but a
+  deep link that opens a player as the first page would not get a fresh one.
+
+**Verified against a fake engine and a fake server only**
+(`player_screen_engine_test.dart`: end, report, card, countdown, next opened
+after a stop; Cancel focused and pressed; Back; last episode; film;
+`up_next_test.dart` for the ordering). Each was run with the feature taken
+out (end ignored, Play now focused, Back allowed to leave, the film guards
+removed) and failed. Not yet seen on a TV or with real playback, which the
+emulator cannot do (CLAUDE.md); see MANUAL_TESTING.md.
+
+**Open:**
+
+- **Start at the credits** where the server has a marker (above).
+- **A setting to turn autoplay off.** Plex has one ("Auto play next"); ours
+  always counts down. Cheap to add to Playback once someone asks.
+- **Plex's "Still watching?"** prompt after several episodes in a row is not
+  copied; whether a TV left on all night should stop is worth deciding.
+- **The countdown length** (10 s) is a guess at Plex's, not measured.
 
 ## 13. Phased roadmap
 

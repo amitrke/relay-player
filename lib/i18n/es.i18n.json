@@ -28,7 +28,12 @@
     "audio": "Audio",
     "subtitles": "Subtítulos",
     "off": "Desactivados",
-    "trackNumber": "Pista {n}"
+    "trackNumber": "Pista {n}",
+    "upNext": {
+      "title": "A continuación",
+      "playingIn": "Se reproduce en {seconds} s",
+      "playNow": "Reproducir ahora"
+    }
   },
   "languages(map)": {
     "en": "Inglés",
@@ -218,10 +223,10 @@
       "movie": "Película",
       "watched": "Visto",
       "percentWatched": "{percent} % visto",
-        "unwatchedEpisodes": {
-          "one": "{n} episodio sin ver",
-          "other": "{n} episodios sin ver"
-        }
+      "unwatchedEpisodes": {
+        "one": "{n} episodio sin ver",
+        "other": "{n} episodios sin ver"
+      }
     }
   },
   "liveTv": {

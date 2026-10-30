@@ -199,6 +199,8 @@ class Translations$player$en {
 
 	/// en: 'Track {n}'
 	String trackNumber({required Object n}) => 'Track ${n}';
+
+	late final Translations$player$upNext$en upNext = Translations$player$upNext$en.internal(_root);
 }
 
 // Path: subtitleSize
@@ -1212,6 +1214,24 @@ class Translations$seerr$en {
 
 	/// en: 'Requested {title}.'
 	String sent({required Object title}) => 'Requested ${title}.';
+}
+
+// Path: player.upNext
+class Translations$player$upNext$en {
+	Translations$player$upNext$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Up next'
+	String get title => 'Up next';
+
+	/// en: 'Playing in {seconds} s'
+	String playingIn({required Object seconds}) => 'Playing in ${seconds} s';
+
+	/// en: 'Play now'
+	String get playNow => 'Play now';
 }
 
 // Path: downloads.errors
@@ -2830,6 +2850,9 @@ extension on Translations {
 			'player.subtitles' => 'Subtitles',
 			'player.off' => 'Off',
 			'player.trackNumber' => ({required Object n}) => 'Track ${n}',
+			'player.upNext.title' => 'Up next',
+			'player.upNext.playingIn' => ({required Object seconds}) => 'Playing in ${seconds} s',
+			'player.upNext.playNow' => 'Play now',
 			'languages.en' => 'English',
 			'languages.es' => 'Spanish',
 			'languages.fr' => 'French',
@@ -3312,11 +3335,11 @@ extension on Translations {
 			'xtream.channels.whole' => 'Whole category',
 			'xtream.channels.selectShown' => 'Select shown',
 			'xtream.channels.clear' => 'Clear',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'The panel lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',

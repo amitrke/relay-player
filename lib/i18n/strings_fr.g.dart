@@ -143,6 +143,7 @@ class _Translations$player$fr extends Translations$player$en {
 	@override String get subtitles => 'Sous-titres';
 	@override String get off => 'Désactivés';
 	@override String trackNumber({required Object n}) => 'Piste ${n}';
+	@override late final _Translations$player$upNext$fr upNext = _Translations$player$upNext$fr._(_root);
 }
 
 // Path: subtitleSize
@@ -645,6 +646,18 @@ class _Translations$seerr$fr extends Translations$seerr$en {
 	@override String askShow({required Object server}) => 'Cela demande à ${server} d\'ajouter toutes les saisons. Son administrateur décide s\'il le fait.';
 	@override String get request => 'Demander';
 	@override String sent({required Object title}) => '${title} demandé.';
+}
+
+// Path: player.upNext
+class _Translations$player$upNext$fr extends Translations$player$upNext$en {
+	_Translations$player$upNext$fr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'À suivre';
+	@override String playingIn({required Object seconds}) => 'Lecture dans ${seconds} s';
+	@override String get playNow => 'Lire maintenant';
 }
 
 // Path: downloads.errors
@@ -1498,6 +1511,9 @@ extension on TranslationsFr {
 			'player.subtitles' => 'Sous-titres',
 			'player.off' => 'Désactivés',
 			'player.trackNumber' => ({required Object n}) => 'Piste ${n}',
+			'player.upNext.title' => 'À suivre',
+			'player.upNext.playingIn' => ({required Object seconds}) => 'Lecture dans ${seconds} s',
+			'player.upNext.playNow' => 'Lire maintenant',
 			'languages.en' => 'Anglais',
 			'languages.es' => 'Espagnol',
 			'languages.fr' => 'Français',
@@ -1980,11 +1996,11 @@ extension on TranslationsFr {
 			'xtream.channels.whole' => 'Toute la catégorie',
 			'xtream.channels.selectShown' => 'Cocher celles affichées',
 			'xtream.channels.clear' => 'Décocher',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.channels.clearShown' => 'Décocher celles affichées',
 			'xtream.channels.none' => 'Le panel ne liste aucune chaîne dans cette catégorie.',
 			'xtream.hidden.title' => 'Masquer des mots',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
 			'xtream.hidden.hint' => 'Un pays, une langue, un mot',
 			'xtream.hidden.add' => 'Ajouter',
