@@ -1448,12 +1448,16 @@ want a real TV.
 
 **Seen and still open:**
 
-- **The tab strip runs into the sort control** on a 1080p TV: "Live TV"
-  clips to "Live T'" and touches "Recently added".
-- **Continue watching stays pinned while the library rows scroll under
+- ~~**The tab strip runs into the sort control** on a 1080p TV: "Live TV"
+  clips to "Live T'" and touches "Recently added".~~ **Fixed 2026-10-30** by
+  the TV layout below (pill tabs).
+- ~~**Continue watching stays pinned while the library rows scroll under
   it**, so the focused row's title and the top of its posters are hidden, and
-  moving focus back up does not bring them back. On a TV that is most of the
-  screen spent on one row.
+  moving focus back up does not bring them back.~~ **Fixed 2026-10-30.** It
+  was not pinned: Continue watching plus the tabs took about 230 dp of the
+  540, a shelf row was about 320 dp, and the shelves had less than that, so
+  the focused row was always cropped. Continue watching now scrolls with the
+  rows, and rows are shorter (below).
 - **The search field cannot be reached with the remote** from "What should I
   watch?": Up goes nowhere and typed text is lost. That contradicts the 1.0.4
   notes, so it may be a regression; check on a real remote first.
@@ -1465,7 +1469,8 @@ want a real TV.
   likelier home for them than a library set to Hidden; not confirmed.
 - **Plex's home carries more:** the server's own collections as rows, and a
   backdrop with year, runtime, rating, synopsis and cast for whatever has
-  focus. Ours has neither.
+  focus. The backdrop and details are done (below); collections and cast
+  are not.
 - **"Recently added" for films already matched** Plex title for title.
 - **No next episode when one ends.** The player stops at the end of an
   episode; nothing offers or counts down to the next, which Plex does. Found
@@ -1487,8 +1492,46 @@ less on chrome and puts what it saves into information:
 So the direction is not "smaller posters" but: hide navigation until it is
 asked for, drop per-poster captions in favour of one detail area for the
 focused item, and shrink the type that is chrome (tabs, row titles, menu
-items) while keeping titles and synopsis large. None of it is started; it is
-§12 work and wants its own design pass rather than piecemeal edits.
+items) while keeping titles and synopsis large.
+
+**Done for the TV library, 2026-10-30** (Movies and Series; phone, tablet
+and desktop unchanged, since with a finger or a mouse there is no single
+focused title to describe):
+
+- **A hero and a backdrop** (`library_hero.dart`). Whatever has focus is
+  described once at the top: title, then year, runtime, unwatched count,
+  rating and genres, then three lines of plot, in a fixed 150 dp block so
+  moving along a row never moves the rows. Behind it, the title's landscape
+  art fades into the page on the left and at the top and bottom, so the text,
+  the sort control and the rows stay readable on any art and in every palette.
+  The art is Plex `art` (an episode or season falls back to its show's) through
+  the same photo transcoder as posters, at 1280×720, or a Jellyfin/Emby
+  backdrop. `CatalogItem` gained `artPath` and `summary`, kept in the
+  library cache; the art path is unsigned like the poster path (§3). A title
+  with no art gets its poster, blurred. A Continue watching entry is looked up
+  in the library for its plot and art; an episode is not a library title and
+  gets its name and "S2 E10 · Up next" over the blurred poster.
+  *The "art renders empty" finding in MANUAL_TESTING.md §4* did not reproduce:
+  through the transcoder, `art` drew on every title tried.
+- **Posters without captions**, 120×180 dp (was 132 wide with two lines of
+  title and a year under it). One row is now about 215 dp, not 320.
+- **Continue watching scrolls with the rows**, with the same captionless
+  tiles, instead of sitting above them.
+- **The focused row snaps to the top of the rows area**, with the next one
+  peeking below, as on Plex. Flutter's traversal only scrolls as far as it
+  must, which left the focused row at the bottom with the one above cut in
+  half. *Pitfall, recorded so it is not repeated:* the `context` a
+  `ListView.builder` item callback receives is the list's, not the row's, so
+  `Scrollable.ensureVisible` on it scrolled the whole list to the top; each row
+  is its own widget for that reason (`_SnapToTop`).
+- **Pill tabs**, 15 sp, the selected one filled, in a 44 dp band (was 19 sp
+  with an underline in 62 dp). Row titles 16 sp (was 20).
+
+Not done: the rail (already an icon strip that opens over the content; only
+the sizes differ from Plex's), the server's own collections as rows, cast in
+the hero, Settings' wide section list, and any of this off TV. Pinned by
+`test/library_hero_test.dart`; seen on the Google TV emulator against a real
+Plex server, not on real TV hardware.
 
 ## 13. Phased roadmap
 

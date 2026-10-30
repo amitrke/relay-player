@@ -80,6 +80,7 @@ class MediaItem {
     this.summary,
     this.genres = const [],
     this.posterPath,
+    this.artPath,
     this.duration,
     this.viewCount,
     this.viewOffset,
@@ -106,6 +107,12 @@ class MediaItem {
   /// Server-relative artwork reference, safe to persist (§3). Signed or made
   /// absolute by `MediaServer.posterUrlForPath` when shown.
   final String? posterPath;
+
+  /// Server-relative landscape artwork (Plex `art`, a Jellyfin backdrop), for
+  /// the TV library's backdrop (§12.4). Safe to persist for the same reason
+  /// as [posterPath]; signed by `MediaServer.posterUrlForPath` at a landscape
+  /// size when shown. An episode falls back to its show's.
+  final String? artPath;
 
   final Duration? duration;
 
@@ -292,6 +299,8 @@ abstract class MediaServer {
     year: item.year,
     posterUrl: posterUrl(item),
     posterPath: item.posterPath,
+    artPath: item.artPath,
+    summary: item.summary,
     addedAt: item.addedAt,
     viewCount: item.viewCount,
     viewOffset: item.viewOffset,

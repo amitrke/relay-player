@@ -42,6 +42,8 @@ class CatalogItem {
     this.year,
     this.posterUrl,
     this.posterPath,
+    this.artPath,
+    this.summary,
     this.addedAt,
     this.viewCount,
     this.viewOffset,
@@ -75,6 +77,16 @@ class CatalogItem {
   /// stores this and signs it again when it reads. Null for a panel, whose
   /// [posterUrl] is an absolute address with no credential in it.
   final String? posterPath;
+
+  /// Landscape artwork for the TV backdrop, unsigned like [posterPath]: a
+  /// server-relative path, signed against the live connection when drawn.
+  /// Null for panels, which offer none, and for anything kept before the field
+  /// existed (2026-10-30) until the next refresh.
+  final String? artPath;
+
+  /// The plot, from the server, for the TV library's detail area. Kept so the
+  /// hero can describe whatever has focus without a request per poster.
+  final String? summary;
 
   /// When the item arrived in its source, for "Recently added". For a film,
   /// when the film did. **For a show, when its newest episode did**, from
@@ -146,6 +158,8 @@ class CatalogItem {
         year: year,
         posterUrl: url,
         posterPath: posterPath,
+        artPath: artPath,
+        summary: summary,
         addedAt: addedAt,
         viewCount: viewCount,
         viewOffset: viewOffset,
@@ -173,6 +187,8 @@ class CatalogItem {
         year: year,
         posterUrl: posterUrl,
         posterPath: posterPath,
+        artPath: artPath,
+        summary: summary,
         addedAt: addedAt,
         viewCount: viewCount,
         viewOffset: viewOffset,

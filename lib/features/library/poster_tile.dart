@@ -13,6 +13,7 @@ import '../favorites_history/watch_state.dart';
 import '../../i18n/strings.g.dart';
 import '../../domain/models/media_server.dart';
 import '../accounts/media_servers.dart';
+import 'library_hero.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
@@ -23,6 +24,7 @@ class PosterTile extends ConsumerWidget {
     this.showSource = false,
     this.showKind = false,
     this.focusNode,
+    this.caption = true,
   });
 
   final CatalogItem item;
@@ -44,6 +46,10 @@ class PosterTile extends ConsumerWidget {
   /// Lets [PosterGrid] move focus to a neighbour by index.
   final FocusNode? focusNode;
 
+  /// Title and year under the poster. Off in the TV library rows, where the
+  /// focused title is described once in the hero instead (library_hero.dart).
+  final bool caption;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
@@ -58,7 +64,7 @@ class PosterTile extends ConsumerWidget {
       itemId: item.id,
     );
 
-    return RelayTappable(
+    final tile = RelayTappable(
       autofocus: autofocus,
       focusNode: focusNode,
       borderRadius: 10,
@@ -159,20 +165,21 @@ class PosterTile extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: t.ink,
-              // 12.5 is a phone caption and unreadable across a room.
-              fontSize: f == RelayFormFactor.tv ? 18 : 12.5,
-              height: 1.3,
-              fontWeight: FontWeight.w600,
+          if (caption) const SizedBox(height: 8),
+          if (caption)
+            Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: t.ink,
+                // 12.5 is a phone caption and unreadable across a room.
+                fontSize: f == RelayFormFactor.tv ? 18 : 12.5,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          if (item.year != null || showKind)
+          if (caption && (item.year != null || showKind))
             Text(
               [
                 if (item.year != null) '${item.year}',
@@ -188,6 +195,21 @@ class PosterTile extends ConsumerWidget {
             ),
         ],
       ),
+    );
+
+    // On a TV the remote is always on exactly one title, and the hero above
+    // the rows describes it. A wrapper that never takes focus itself, the same
+    // way ShelvesView learns which row has focus.
+    if (f != RelayFormFactor.tv) return tile;
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (focused) {
+          ref.read(focusedTitleProvider.notifier).show(HeroInfo.ofItem(item));
+        }
+      },
+      child: tile,
     );
   }
 }

@@ -347,6 +347,7 @@ class PlexService extends MediaServer {
         summary: m.summary,
         genres: m.genres,
         posterPath: posterPathOf(m),
+        artPath: artPathOf(m),
         duration: _ms(m.durationMs),
         viewCount: m.viewCount,
         viewOffset: _ms(m.viewOffsetMs),
@@ -539,6 +540,19 @@ class PlexService extends MediaServer {
   /// particular — stores what this returns and re-signs on read. Storing the
   /// signed URL instead put a live token in the unencrypted Hive box, which is
   /// the defect STORE_LISTING.md's §15 check was written to catch.
+  /// Landscape art, an episode's or season's falling back to its show's.
+  /// dart_plex parses `art` only, so the parents' come from the raw JSON.
+  static String? artPathOf(PlexMetadata item) {
+    for (final a in [
+      item.art,
+      item.raw['grandparentArt'],
+      item.raw['parentArt'],
+    ]) {
+      if (a is String && a.isNotEmpty) return a;
+    }
+    return null;
+  }
+
   static String? posterPathOf(PlexMetadata item) {
     final thumb = item.thumb ?? item.parentThumb ?? item.grandparentThumb;
     return (thumb == null || thumb.isEmpty) ? null : thumb;

@@ -449,6 +449,7 @@ class MediaBrowserService extends MediaServer {
         for (final g in (j['Genres'] as List?) ?? const []) '$g',
       ],
       posterPath: posterOf == null ? null : '/Items/$posterOf/Images/Primary',
+      artPath: _backdropOf(j, id),
       duration: _ticks(j['RunTimeTicks']),
       viewCount: played
           ? (playCount is int && playCount > 0 ? playCount : 1)
@@ -474,6 +475,18 @@ class MediaBrowserService extends MediaServer {
           ? user['UnplayedItemCount'] as int
           : null,
     );
+  }
+
+  /// The item's own backdrop, else the one it inherits (an episode's series).
+  static String? _backdropOf(Map<String, dynamic> j, String id) {
+    final own = j['BackdropImageTags'];
+    if (own is List && own.isNotEmpty) return '/Items/$id/Images/Backdrop';
+    final parent = j['ParentBackdropItemId'];
+    final tags = j['ParentBackdropImageTags'];
+    if (parent is String && tags is List && tags.isNotEmpty) {
+      return '/Items/$parent/Images/Backdrop';
+    }
+    return null;
   }
 
   static ExternalIds _ids(Object? raw) {

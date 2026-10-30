@@ -18,6 +18,7 @@ import '../metadata/tmdb_controller.dart';
 import '../local_network/local_network_tab.dart';
 import 'library_cache_provider.dart';
 import 'library_dedupe.dart';
+import 'library_hero.dart';
 import 'library_shelves.dart';
 import 'library_sort.dart';
 import 'library_tab.dart';
@@ -226,19 +227,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   /// overwritten by a default.
   LibraryTab? _selected;
 
-  /// True while a remote is browsing below the first row of a poster grid.
-  ///
-  /// On a TV the page title, tab strip and continue-watching row together took
-  /// so much of the 540 dp height that fewer than two rows of posters showed.
-  /// They fold away once focus is past row 0 and return when it comes back, so
-  /// pressing Up from the first row still reaches them. TV only: a phone
-  /// scrolls with a finger and has no such problem.
-  bool _browsing = false;
-
-  void _onRowFocused(int row) {
-    final browsing = row > 0;
-    if (browsing != _browsing) setState(() => _browsing = browsing);
-  }
+  // Until 2026-10-30 a TV folded the tab strip and Continue watching away once
+  // focus went below the first row, because together they left room for less
+  // than two rows. Continue watching now scrolls with the rows and the TV
+  // layout has a fixed hero instead (_tvLayout), so nothing folds.
 
   static LibraryTab? _tabFromQuery(BuildContext context) {
     final name = GoRouterState.of(context).uri.queryParameters['tab'];
@@ -268,15 +260,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ? (_selected ?? requested)!
         : LibraryTab.movies;
 
-    final folded = f == RelayFormFactor.tv && _browsing;
-
     final tabBar = _TabBar(
       tabs: tabs,
       selected: selected,
-      onSelect: (tab) => setState(() {
-        _selected = tab;
-        _browsing = false;
-      }),
+      onSelect: (tab) => setState(() => _selected = tab),
     );
 
     // A count, not a source name. Titles here are merged across Plex servers,
@@ -303,6 +290,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ],
     );
 
+    // No "Library" heading on any form factor: the rail, or the phone's
+    // bottom bar, already says where you are and the tabs say what you are
+    // looking at. On a 540 dp TV it cost ~65 dp for nothing. Sort and count
+    // ride on the tab row instead.
+    final header = Padding(
+      padding: EdgeInsets.only(top: f == RelayFormFactor.phone ? 4 : 8),
+      child: Row(
+        children: [
+          Expanded(child: tabBar),
+          if (selected.drawsFromPlex)
+            Padding(
+              padding: EdgeInsets.only(
+                right: f == RelayFormFactor.phone
+                    ? 12
+                    : RelayLayout.pagePadding(f).right,
+              ),
+              child: trailing,
+            ),
+        ],
+      ),
+    );
+
+    if (f == RelayFormFactor.tv) return _tvLayout(selected, header);
+
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
@@ -310,41 +321,37 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            RelayCollapsible(
-              collapsed: folded,
-              // No "Library" heading on any form factor: the rail, or the phone's
-              // bottom bar, already says where you are and the tabs say what you
-              // are looking at. On a 540 dp TV it cost ~65 dp for nothing. Sort
-              // and count ride on the tab row instead.
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: f == RelayFormFactor.phone ? 4 : 8,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: tabBar),
-                    if (selected.drawsFromPlex)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          right: f == RelayFormFactor.phone
-                              ? 12
-                              : RelayLayout.pagePadding(f).right,
-                        ),
-                        child: trailing,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: _TabBody(
-                tab: selected,
-                folded: folded,
-                onRowFocused: f == RelayFormFactor.tv ? _onRowFocused : null,
-              ),
-            ),
+            header,
+            Expanded(child: _TabBody(tab: selected)),
           ],
         ),
+      ),
+    );
+  }
+
+  /// The 10-foot library, after Plex's own TV app (architecture.md §12.4):
+  /// the focused title's art behind the top of the screen, its title, facts
+  /// and plot in a fixed hero, then one scroll of captionless rows with
+  /// Continue watching first. Movies and Series only; Local & Network and Live
+  /// TV have no single title to describe and keep the plain page.
+  Widget _tvLayout(LibraryTab selected, Widget header) {
+    final t = RelayTheme.of(context);
+    final described =
+        selected == LibraryTab.movies || selected == LibraryTab.series;
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: Stack(
+        children: [
+          if (described) const Positioned.fill(child: LibraryBackdrop()),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              header,
+              if (described) const LibraryHero(),
+              Expanded(child: _TabBody(tab: selected)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -366,9 +373,10 @@ class _TabBar extends StatelessWidget {
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
 
+    if (f == RelayFormFactor.tv) return _pills(context);
+
     return SizedBox(
-      // The 10-foot row needs the height; 46 is a phone tab strip.
-      height: f == RelayFormFactor.tv ? 62 : 46,
+      height: 46,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
@@ -415,16 +423,60 @@ class _TabBar extends StatelessWidget {
       ),
     );
   }
+
+  /// The TV tabs as small pills, as on Plex's TV app (§12.4). They were 19 sp
+  /// text in a 62 dp band with an underline, and on a 1080p TV ran into the
+  /// sort control ("Live TV" clipped). The type is chrome here, so it is the
+  /// size of a caption, and the selected tab is a filled pill, which reads
+  /// from across a room where a 2 dp underline does not.
+  Widget _pills(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: RelayLayout.pagePadding(
+          RelayFormFactor.tv,
+        ).copyWith(top: 4, bottom: 4),
+        children: [
+          for (final tab in tabs)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: RelayTappable(
+                borderRadius: 18,
+                onTap: () => onSelect(tab),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tab == selected
+                        ? t.ink.withValues(alpha: 0.14)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    tab.label,
+                    style: TextStyle(
+                      color: tab == selected ? t.ink : t.inkDim,
+                      fontSize: 15,
+                      fontWeight: tab == selected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TabBody extends ConsumerWidget {
-  const _TabBody({required this.tab, this.folded = false, this.onRowFocused});
+  const _TabBody({required this.tab});
 
   final LibraryTab tab;
-
-  /// Folds the continue-watching row away; see [_LibraryScreenState._browsing].
-  final bool folded;
-  final ValueChanged<int>? onRowFocused;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -476,23 +528,29 @@ class _TabBody extends ConsumerWidget {
             // Films resume above Movies and episodes above Series. It was one
             // mixed row above Movies until 2026-09-28; see ContinueWatchingRow.
             : tab == LibraryTab.movies || tab == LibraryTab.series
-            ? Column(
-                children: [
-                  RelayCollapsible(
-                    collapsed: folded,
-                    child: ContinueWatchingRow(
-                      episodes: tab == LibraryTab.series,
-                    ),
-                  ),
-                  Expanded(
-                    child: ShelvesView(
+            // On a TV, Continue watching scrolls with the rows; held above
+            // them it kept its height and cut the focused row off (§12.4).
+            ? RelayLayout.of(context) == RelayFormFactor.tv
+                  ? ShelvesView(
                       tab: tab,
                       shelves: groupIntoShelves(list),
-                      onRowFocused: onRowFocused,
-                    ),
-                  ),
-                ],
-              )
+                      leading: ContinueWatchingRow(
+                        episodes: tab == LibraryTab.series,
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        ContinueWatchingRow(
+                          episodes: tab == LibraryTab.series,
+                        ),
+                        Expanded(
+                          child: ShelvesView(
+                            tab: tab,
+                            shelves: groupIntoShelves(list),
+                          ),
+                        ),
+                      ],
+                    )
             : PosterGrid(items: list);
       },
     );
