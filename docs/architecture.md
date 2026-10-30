@@ -1450,7 +1450,14 @@ want a real TV.
   nothing useful. **Changed the same day:** only a show with at least one
   episode watched gets a count (Plex `viewedLeafCount > 0`, Jellyfin/Emby
   `PlayedPercentage > 0` or played), in the badge and the hero alike. A show
-  not yet started looks like any other poster.
+  not yet started looks like any other poster. *Where it now differs from
+  Plex, seen on the TV right after:* Plex put a count on a show nobody had
+  started, which ours no longer does, and ours gives none to a show whose
+  only progress is one episode part-watched, because Plex counts only
+  finished episodes in `viewedLeafCount`. Plex's home-row number may instead
+  be how many episodes arrived recently, which would explain both; not worked
+  out. Counting a show with any progress (the show's own `lastViewedAt`) is the
+  likely next step if part-watched shows should count.
 
 **Seen and still open:**
 
