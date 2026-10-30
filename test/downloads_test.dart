@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -280,8 +281,12 @@ void main() {
       addTearDown(Hive.close);
     });
 
-    /// [servers] maps a rating key to the server that serves it.
-    ProviderContainer container(Map<String, _FileServer> servers) {
+    /// [servers] maps a rating key to the server that serves it. [artwork]
+    /// replaces the poster fetch, which otherwise answers at once.
+    ProviderContainer container(
+      Map<String, _FileServer> servers, {
+      ArtworkFetcher? artwork,
+    }) {
       final c = ProviderContainer(
         overrides: [
           appSettingsStoreProvider.overrideWithValue(store),
@@ -290,7 +295,7 @@ void main() {
             return d;
           }),
           artworkFetcherProvider.overrideWithValue(
-            (serverId, posterPath) async => _poster,
+            artwork ?? (serverId, posterPath) async => _poster,
           ),
           downloadSourceResolverProvider.overrideWithValue((
             serverId,
@@ -473,6 +478,70 @@ void main() {
       expect(c.read(downloadsProvider), isEmpty);
       expect(Directory('${dir.path}/downloads').listSync(), isEmpty);
       expect(await n.fileFor('srv', '1'), isNull);
+    });
+
+    test('removing a download while its poster is being written leaves nothing',
+        () async {
+      // The window the 2026-10-15 fix left open: the poster write deleted its
+      // own file if the download had gone meanwhile, but remove() did not wait
+      // for that, so it returned with the .poster still on disk. Found as this
+      // file's flake in a full run on 2026-10-30.
+      final server = _FileServer(_bytes(30 * 1024));
+      await server.start();
+      addTearDown(server.stop);
+      final asked = Completer<void>();
+      final answer = Completer<List<int>?>();
+      final c = container(
+        {'1': server},
+        artwork: (serverId, posterPath) {
+          asked.complete();
+          return answer.future;
+        },
+      );
+      final n = c.read(downloadsProvider.notifier);
+
+      await n.enqueue(serverId: 'srv', ratingKey: '1', title: 'Film');
+      await asked.future;
+      answer.complete(_poster);
+      // Lets the poster past its "still wanted?" check and into the write, but
+      // not through it: the write is file I/O, and this only drains microtasks.
+      await Future<void>.delayed(Duration.zero);
+      await n.remove('srv', '1');
+
+      expect(c.read(downloadsProvider), isEmpty);
+      expect(Directory('${dir.path}/downloads').listSync(), isEmpty);
+    });
+
+    test('a download finishing as the controller goes does not touch it',
+        () async {
+      // The other half of the 2026-10-30 flake: a test ends (or the app
+      // closes) once a download reads as complete, but its run is still
+      // tidying up, and each step of that tidy-up read the disposed Ref. The
+      // error surfaced in whichever download test happened to be running.
+      final server = _FileServer(_bytes(30 * 1024));
+      await server.start();
+      addTearDown(server.stop);
+      final c = container({'1': server});
+      final gone = Completer<void>();
+      c.listen(downloadsProvider, (_, next) {
+        if (!gone.isCompleted && next.any((r) => r.isComplete)) {
+          // Disposed before the run's finally gets past its first file check,
+          // which is real I/O and so always slower than a microtask.
+          scheduleMicrotask(() {
+            c.dispose();
+            gone.complete();
+          });
+        }
+      });
+
+      await c
+          .read(downloadsProvider.notifier)
+          .enqueue(serverId: 'srv', ratingKey: '1', title: 'Film');
+      await gone.future;
+      // Room for the tidy-up and the poster write to run against the disposed
+      // controller. An error they throw is reported against this test while it
+      // is still running; it is not a wait for anything to succeed.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
     });
 
     test('a refusal fails with a reason, and a retry can succeed', () async {

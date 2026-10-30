@@ -100,6 +100,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$mediaBrowser$en mediaBrowser = Translations$mediaBrowser$en.internal(_root);
 	late final Translations$trackers$en trackers = Translations$trackers$en.internal(_root);
 	late final Translations$seerr$en seerr = Translations$seerr$en.internal(_root);
+	late final Translations$film$en film = Translations$film$en.internal(_root);
 }
 
 // Path: common
@@ -199,6 +200,8 @@ class Translations$player$en {
 
 	/// en: 'Track {n}'
 	String trackNumber({required Object n}) => 'Track ${n}';
+
+	late final Translations$player$upNext$en upNext = Translations$player$upNext$en.internal(_root);
 }
 
 // Path: subtitleSize
@@ -358,6 +361,9 @@ class Translations$watchActions$en {
 
 	/// en: 'Plex didn't accept that. The server may be offline.'
 	String get plexRefused => 'Plex didn\'t accept that. The server may be offline.';
+
+	/// en: 'Details'
+	String get details => 'Details';
 }
 
 // Path: show
@@ -1214,6 +1220,45 @@ class Translations$seerr$en {
 	String sent({required Object title}) => 'Requested ${title}.';
 }
 
+// Path: film
+class Translations$film$en {
+	Translations$film$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Play'
+	String get play => 'Play';
+
+	/// en: 'Resume from {time}'
+	String resume({required Object time}) => 'Resume from ${time}';
+
+	/// en: 'Play from start'
+	String get fromStart => 'Play from start';
+
+	/// en: 'This film is no longer on the server, or the server cannot be reached.'
+	String get gone => 'This film is no longer on the server, or the server cannot be reached.';
+}
+
+// Path: player.upNext
+class Translations$player$upNext$en {
+	Translations$player$upNext$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Up next'
+	String get title => 'Up next';
+
+	/// en: 'Playing in {seconds} s'
+	String playingIn({required Object seconds}) => 'Playing in ${seconds} s';
+
+	/// en: 'Play now'
+	String get playNow => 'Play now';
+}
+
 // Path: downloads.errors
 class Translations$downloads$errors$en {
 	Translations$downloads$errors$en.internal(this._root);
@@ -1416,6 +1461,12 @@ class Translations$library$tile$en {
 
 	/// en: '{percent}% watched'
 	String percentWatched({required Object percent}) => '${percent}% watched';
+
+	/// en: '(one) {{n} unwatched episode} (other) {{n} unwatched episodes}'
+	String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} unwatched episode',
+		other: '${n} unwatched episodes',
+	);
 }
 
 // Path: liveTv.group
@@ -2824,6 +2875,9 @@ extension on Translations {
 			'player.subtitles' => 'Subtitles',
 			'player.off' => 'Off',
 			'player.trackNumber' => ({required Object n}) => 'Track ${n}',
+			'player.upNext.title' => 'Up next',
+			'player.upNext.playingIn' => ({required Object seconds}) => 'Playing in ${seconds} s',
+			'player.upNext.playNow' => 'Play now',
 			'languages.en' => 'English',
 			'languages.es' => 'Spanish',
 			'languages.fr' => 'French',
@@ -2909,6 +2963,7 @@ extension on Translations {
 			'watchActions.downloading' => 'Downloading. See the Downloads tab.',
 			'watchActions.markedOffline' => 'Marked as watched here. Plex will be told when it can be reached.',
 			'watchActions.plexRefused' => 'Plex didn\'t accept that. The server may be offline.',
+			'watchActions.details' => 'Details',
 			'show.noEpisodes' => 'This show has no episodes on the server.',
 			'shell.library' => 'Library',
 			'shell.search' => 'Search',
@@ -2955,6 +3010,7 @@ extension on Translations {
 			'library.tile.movie' => 'Movie',
 			'library.tile.watched' => 'Watched',
 			'library.tile.percentWatched' => ({required Object percent}) => '${percent}% watched',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} unwatched episode', other: '${n} unwatched episodes', ), 
 			'liveTv.group.favourites' => 'Favourites',
 			'liveTv.group.numbered' => ({required Object n}) => 'Category ${n}',
 			'liveTv.group.other' => 'Other',
@@ -3304,13 +3360,13 @@ extension on Translations {
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} of ${total}',
 			'xtream.channels.whole' => 'Whole category',
 			'xtream.channels.selectShown' => 'Select shown',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.channels.clear' => 'Clear',
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'The panel lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',
 			'xtream.hidden.none' => 'Nothing hidden yet.',
@@ -3491,6 +3547,10 @@ extension on Translations {
 			'seerr.askShow' => ({required Object server}) => 'This asks ${server} to add every season. Whoever runs it decides whether it does.',
 			'seerr.request' => 'Request',
 			'seerr.sent' => ({required Object title}) => 'Requested ${title}.',
+			'film.play' => 'Play',
+			'film.resume' => ({required Object time}) => 'Resume from ${time}',
+			'film.fromStart' => 'Play from start',
+			'film.gone' => 'This film is no longer on the server, or the server cannot be reached.',
 			_ => null,
 		};
 	}

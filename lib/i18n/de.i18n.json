@@ -28,7 +28,12 @@
     "audio": "Audio",
     "subtitles": "Untertitel",
     "off": "Aus",
-    "trackNumber": "Spur {n}"
+    "trackNumber": "Spur {n}",
+    "upNext": {
+      "title": "Als Nächstes",
+      "playingIn": "Wiedergabe in {seconds} s",
+      "playNow": "Jetzt abspielen"
+    }
   },
   "languages(map)": {
     "en": "Englisch",
@@ -139,7 +144,8 @@
     "removeResume": "Aus Weiterschauen entfernen",
     "downloading": "Wird heruntergeladen. Siehe Tab Downloads.",
     "markedOffline": "Hier als gesehen markiert. Plex erfährt es, sobald es erreichbar ist.",
-    "plexRefused": "Plex hat das nicht angenommen. Der Server ist vielleicht offline."
+    "plexRefused": "Plex hat das nicht angenommen. Der Server ist vielleicht offline.",
+    "details": "Details"
   },
   "show": {
     "noEpisodes": "Diese Serie hat keine Folgen auf dem Server."
@@ -217,7 +223,11 @@
       "series": "Serie",
       "movie": "Film",
       "watched": "Gesehen",
-      "percentWatched": "{percent} % gesehen"
+      "percentWatched": "{percent} % gesehen",
+      "unwatchedEpisodes": {
+        "one": "{n} ungesehene Folge",
+        "other": "{n} ungesehene Folgen"
+      }
     }
   },
   "liveTv": {
@@ -880,5 +890,11 @@
     "askShow": "Damit bittest du {server}, alle Staffeln hinzuzufügen. Wer ihn betreibt, entscheidet darüber.",
     "request": "Anfragen",
     "sent": "{title} angefragt."
+  },
+  "film": {
+    "play": "Abspielen",
+    "resume": "Fortsetzen ab {time}",
+    "fromStart": "Von vorn abspielen",
+    "gone": "Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar."
   }
 }

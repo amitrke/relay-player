@@ -116,7 +116,10 @@ double _tileWidth(RelayFormFactor f) => switch (f) {
   RelayFormFactor.phone => 108,
   RelayFormFactor.tablet => 130,
   RelayFormFactor.desktop => 140,
-  RelayFormFactor.tv => 132,
+  // 120 since 2026-10-30, with no caption beneath: Plex's own TV posters,
+  // measured beside ours on the same screen (§12.4). Was 132 with two lines of
+  // title and a year under it, which made one row taller than half the screen.
+  RelayFormFactor.tv => 120,
 };
 
 /// Height of one poster tile in a row: a portrait poster, then the title (two
@@ -126,7 +129,11 @@ double _tileWidth(RelayFormFactor f) => switch (f) {
 /// tiles, because a horizontal list needs a bounded height and a flat guess
 /// clips the text at any scale above 1.0. The poster is `Expanded` inside the
 /// tile, so an estimate that is a few pixels off costs artwork, not text.
+///
+/// On a TV there is no caption (the hero describes the focused title), so the
+/// row is exactly the poster.
 double _rowHeight(BuildContext context, double width, bool tv) {
+  if (tv) return width * 1.5;
   final scaler = MediaQuery.textScalerOf(context);
   final title = scaler.scale(tv ? 18 : 12.5) * 1.3 * 2;
   final year = scaler.scale(tv ? 15 : 11) * 1.4;
@@ -146,6 +153,7 @@ class ShelvesView extends ConsumerWidget {
     required this.tab,
     required this.shelves,
     this.onRowFocused,
+    this.leading,
   });
 
   final LibraryTab tab;
@@ -154,6 +162,12 @@ class ShelvesView extends ConsumerWidget {
   /// Told which row took focus, so the screen can fold its own chrome away once
   /// the viewer is below the first row and bring it back on row 0.
   final ValueChanged<int>? onRowFocused;
+
+  /// Drawn above the first shelf and scrolled with the rows: the TV library's
+  /// Continue watching. Held outside the list until 2026-10-30, where on a TV
+  /// it kept its height while the rows scrolled in what was left, so the
+  /// focused row's title and the top of its posters were cut off.
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -164,17 +178,23 @@ class ShelvesView extends ConsumerWidget {
     final width = _tileWidth(f);
     final height = _rowHeight(context, width, tv);
 
+    final lead = leading;
+    final offset = lead == null ? 0 : 1;
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 28),
-      itemCount: shelves.length,
-      itemBuilder: (context, row) {
+      itemCount: shelves.length + offset,
+      itemBuilder: (context, index) {
+        if (lead != null && index == 0) {
+          return tv ? _SnapToTop(child: lead) : lead;
+        }
+        final row = index - offset;
         final shelf = shelves[row];
         final ordered = favouritesFirst(shelf.items, favourites, _favoriteOf);
         final shown = ordered.take(shelfPreviewCount).toList();
         final more = ordered.length > shown.length;
         final count = shown.length + 1; // The See all tile ends every row.
 
-        return Focus(
+        final Widget body = Focus(
           canRequestFocus: false,
           skipTraversal: true,
           onFocusChange: onRowFocused == null
@@ -187,7 +207,7 @@ class ShelvesView extends ConsumerWidget {
             children: [
               Padding(
                 padding: RelayLayout.pagePadding(f)
-                    .copyWith(top: 14, bottom: 10),
+                    .copyWith(top: tv ? 10 : 14, bottom: tv ? 8 : 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
@@ -199,7 +219,9 @@ class ShelvesView extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: t.ink,
-                          fontSize: RelayLayout.bodySize(f) + 2,
+                          // Chrome, not content: 16 on a TV, where it was 20
+                          // and outweighed the titles it labels (§12.4).
+                          fontSize: tv ? 16 : RelayLayout.bodySize(f) + 2,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -209,7 +231,7 @@ class ShelvesView extends ConsumerWidget {
                       '${ordered.length}',
                       style: TextStyle(
                         color: t.inkDim,
-                        fontSize: RelayLayout.bodySize(f) - 1,
+                        fontSize: tv ? 13 : RelayLayout.bodySize(f) - 1,
                       ),
                     ),
                   ],
@@ -227,6 +249,7 @@ class ShelvesView extends ConsumerWidget {
                     final Widget tile = i < shown.length
                         ? PosterTile(
                             item: shown[i],
+                            caption: !tv,
                             // The first poster of the first row takes focus on
                             // a TV so a remote starts on content.
                             autofocus: tv && row == 0 && i == 0,
@@ -261,9 +284,46 @@ class ShelvesView extends ConsumerWidget {
             ],
           ),
         );
+        // Its own widget, for its own context: the `context` this builder is
+        // handed belongs to the list, so snapping to it scrolled the whole list
+        // back to the top whichever row had focus (seen on the emulator).
+        return tv ? _SnapToTop(child: body) : body;
       },
     );
   }
+}
+
+/// On a TV, brings a row to the top of the rows area when focus enters it,
+/// as Plex's TV app does. Flutter's own traversal scrolls only as far as it
+/// must, which left the focused row at the bottom edge with the row above it
+/// cut through the middle under the hero (seen on the emulator, 2026-10-30).
+class _SnapToTop extends StatelessWidget {
+  const _SnapToTop({required this.child});
+
+  final Widget child;
+
+  // After the frame, so it runs after the traversal's own minimal scroll,
+  // which otherwise starts later and wins.
+  static void snap(BuildContext context) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      });
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onFocusChange: (focused) {
+      if (focused) snap(context);
+    },
+    child: child,
+  );
 }
 
 class _SeeAllTile extends StatelessWidget {

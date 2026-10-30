@@ -498,6 +498,27 @@ console's text with the repository's**, so:
   so it creates or updates pubspec's version without submitting it.
 - `release` uploads the listings along with the build.
 
+**First `check`, 2026-10-30** (run 40937801757, from `main` at `44b758a`):
+
+- **Play: the listing text matches.** Title, short and full description are
+  identical. The diff shows only what fastlane never uploads: this README,
+  the `changelogs/v*.txt` files (Play names the live one after its
+  versionCode), the screenshots, and an empty `video.txt`. **Play production
+  is on 1.0.4 (18)**; 1.0.5 never left testing there.
+- **App Store: the listing text matches except promotional text**, which is
+  empty live and filled in the repository, so the first upload adds it.
+  Categories are `PHOTO_AND_VIDEO` and `ENTERTAINMENT` live and absent here,
+  which deliver leaves alone.
+- **The live App Store "What's New"** (a version this repository has no
+  `v1.0.5.txt` for) ends with a TV fix where "a live channel that freezes
+  reconnects". That names a Live TV behaviour, which is Advanced sources, in
+  store copy, the thing §8.2 keeps out. Apple does not let the notes of a live
+  version change, and the next release replaces them, so nothing to do now
+  beyond not writing it again.
+- **App Review notes were compared by name only**, by design, so whether the
+  live notes match `notes.txt` is not known. Live also has contact name, email
+  and phone, which stay in App Store Connect since the repository has none.
+
 Images and screenshots are not uploaded by any action. App Review notes are
 `fastlane/metadata/ios/review_information/notes.txt`; contact details are left
 out on purpose so App Store Connect keeps its own. Each iOS upload removes the

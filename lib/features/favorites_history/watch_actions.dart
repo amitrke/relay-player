@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
@@ -125,6 +126,7 @@ class WatchTarget {
 
 /// What was picked in the sheet.
 enum _Choice {
+  details,
   watched,
   unwatched,
   download,
@@ -143,6 +145,9 @@ enum _Choice {
 /// [target] is the Plex part and is null for a panel title, which has no
 /// watched state and nothing to download; [title] names the sheet then.
 /// [favorite] and [resume] add the star and the Continue watching dismissal.
+/// [details] is the route of the title's own page, offered first: Continue
+/// watching plays at once, so its sheet is how to reach a film's page from
+/// there (§12 screen 5, 2026-10-30).
 /// Until 2026-10-10 those two were only small icon buttons on the poster, and
 /// on a TV that made each tile two or three focus stops instead of one: the
 /// star has no focus ring (the theme sets no `focusColor`, §11), so Down from
@@ -157,6 +162,7 @@ Future<void> showWatchActions(
   String? title,
   FavoriteItem? favorite,
   ResumeEntry? resume,
+  String? details,
 }) async {
   assert(target != null || title != null, 'The sheet needs a title.');
   final heading = target?.title ?? title ?? '';
@@ -251,6 +257,13 @@ Future<void> showWatchActions(
                     ),
                   ),
                 ),
+                if (details != null)
+                  option(
+                    tr.watchActions.details,
+                    Icons.info_outline,
+                    _Choice.details,
+                    takeFirst(),
+                  ),
                 if (offerWatched)
                   option(
                     tr.watchActions.markWatched(scope: scope),
@@ -308,6 +321,10 @@ Future<void> showWatchActions(
 
   final messenger = ScaffoldMessenger.maybeOf(context);
 
+  if (choice == _Choice.details) {
+    await context.push(details!);
+    return;
+  }
   if (choice == _Choice.favorite) {
     await ref.read(favoritesProvider.notifier).toggle(favorite!);
     return;

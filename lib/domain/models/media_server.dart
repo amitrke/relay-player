@@ -80,6 +80,7 @@ class MediaItem {
     this.summary,
     this.genres = const [],
     this.posterPath,
+    this.artPath,
     this.duration,
     this.viewCount,
     this.viewOffset,
@@ -93,6 +94,7 @@ class MediaItem {
     this.ids = ExternalIds.none,
     this.showIds = ExternalIds.none,
     this.rating,
+    this.unwatchedEpisodes,
   });
 
   final String id;
@@ -105,6 +107,12 @@ class MediaItem {
   /// Server-relative artwork reference, safe to persist (§3). Signed or made
   /// absolute by `MediaServer.posterUrlForPath` when shown.
   final String? posterPath;
+
+  /// Server-relative landscape artwork (Plex `art`, a Jellyfin backdrop), for
+  /// the TV library's backdrop (§12.4). Safe to persist for the same reason
+  /// as [posterPath]; signed by `MediaServer.posterUrlForPath` at a landscape
+  /// size when shown. An episode falls back to its show's.
+  final String? artPath;
 
   final Duration? duration;
 
@@ -137,6 +145,14 @@ class MediaItem {
 
   /// Out of 10, when the server has one.
   final double? rating;
+
+  /// For a show this account has started, how many of its episodes it has
+  /// not watched; null for anything else, for a show not yet started, and
+  /// when the server does not say. What lets a poster say a show you watch
+  /// has something new, which Plex's own apps do with a count in the corner
+  /// (compared on a TV, 2026-10-30). Not-started shows were counted too until
+  /// the same day, and on a large server nearly every poster said "99+".
+  final int? unwatchedEpisodes;
 
   bool get isWatched => (viewCount ?? 0) > 0;
 }
@@ -277,17 +293,22 @@ abstract class MediaServer {
   CatalogItem toCatalogItem(MediaItem item, {String? shelf}) => CatalogItem(
     source: CatalogSource.server,
     sourceId: id,
-    kind: item.type == MediaItemType.show ? CatalogKind.show : CatalogKind.movie,
+    kind: item.type == MediaItemType.show
+        ? CatalogKind.show
+        : CatalogKind.movie,
     id: item.id,
     title: item.title,
     year: item.year,
     posterUrl: posterUrl(item),
     posterPath: item.posterPath,
+    artPath: item.artPath,
+    summary: item.summary,
     addedAt: item.addedAt,
     viewCount: item.viewCount,
     viewOffset: item.viewOffset,
     duration: item.duration,
     lastViewedAt: item.lastViewedAt,
+    unwatchedEpisodes: item.unwatchedEpisodes,
     shelf: shelf,
   );
 }

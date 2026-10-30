@@ -98,6 +98,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$mediaBrowser$es mediaBrowser = _Translations$mediaBrowser$es._(_root);
 	@override late final _Translations$trackers$es trackers = _Translations$trackers$es._(_root);
 	@override late final _Translations$seerr$es seerr = _Translations$seerr$es._(_root);
+	@override late final _Translations$film$es film = _Translations$film$es._(_root);
 }
 
 // Path: common
@@ -143,6 +144,7 @@ class _Translations$player$es extends Translations$player$en {
 	@override String get subtitles => 'Subtítulos';
 	@override String get off => 'Desactivados';
 	@override String trackNumber({required Object n}) => 'Pista ${n}';
+	@override late final _Translations$player$upNext$es upNext = _Translations$player$upNext$es._(_root);
 }
 
 // Path: subtitleSize
@@ -225,6 +227,7 @@ class _Translations$watchActions$es extends Translations$watchActions$en {
 	@override String get downloading => 'Descargando. Consulta la pestaña Descargas.';
 	@override String get markedOffline => 'Marcado como visto aquí. Se avisará a Plex cuando se pueda contactar con él.';
 	@override String get plexRefused => 'Plex no lo aceptó. Puede que el servidor esté desconectado.';
+	@override String get details => 'Detalles';
 }
 
 // Path: show
@@ -647,6 +650,31 @@ class _Translations$seerr$es extends Translations$seerr$en {
 	@override String sent({required Object title}) => 'Se solicitó ${title}.';
 }
 
+// Path: film
+class _Translations$film$es extends Translations$film$en {
+	_Translations$film$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get play => 'Reproducir';
+	@override String resume({required Object time}) => 'Reanudar desde ${time}';
+	@override String get fromStart => 'Reproducir desde el principio';
+	@override String get gone => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.';
+}
+
+// Path: player.upNext
+class _Translations$player$upNext$es extends Translations$player$upNext$en {
+	_Translations$player$upNext$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'A continuación';
+	@override String playingIn({required Object seconds}) => 'Se reproduce en ${seconds} s';
+	@override String get playNow => 'Reproducir ahora';
+}
+
 // Path: downloads.errors
 class _Translations$downloads$errors$es extends Translations$downloads$errors$en {
 	_Translations$downloads$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -769,6 +797,10 @@ class _Translations$library$tile$es extends Translations$library$tile$en {
 	@override String get movie => 'Película';
 	@override String get watched => 'Visto';
 	@override String percentWatched({required Object percent}) => '${percent} % visto';
+	@override String unwatchedEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '${n} episodio sin ver',
+		other: '${n} episodios sin ver',
+	);
 }
 
 // Path: liveTv.group
@@ -1494,6 +1526,9 @@ extension on TranslationsEs {
 			'player.subtitles' => 'Subtítulos',
 			'player.off' => 'Desactivados',
 			'player.trackNumber' => ({required Object n}) => 'Pista ${n}',
+			'player.upNext.title' => 'A continuación',
+			'player.upNext.playingIn' => ({required Object seconds}) => 'Se reproduce en ${seconds} s',
+			'player.upNext.playNow' => 'Reproducir ahora',
 			'languages.en' => 'Inglés',
 			'languages.es' => 'Español',
 			'languages.fr' => 'Francés',
@@ -1579,6 +1614,7 @@ extension on TranslationsEs {
 			'watchActions.downloading' => 'Descargando. Consulta la pestaña Descargas.',
 			'watchActions.markedOffline' => 'Marcado como visto aquí. Se avisará a Plex cuando se pueda contactar con él.',
 			'watchActions.plexRefused' => 'Plex no lo aceptó. Puede que el servidor esté desconectado.',
+			'watchActions.details' => 'Detalles',
 			'show.noEpisodes' => 'Esta serie no tiene episodios en el servidor.',
 			'shell.library' => 'Biblioteca',
 			'shell.search' => 'Buscar',
@@ -1625,6 +1661,7 @@ extension on TranslationsEs {
 			'library.tile.movie' => 'Película',
 			'library.tile.watched' => 'Visto',
 			'library.tile.percentWatched' => ({required Object percent}) => '${percent} % visto',
+			'library.tile.unwatchedEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} episodio sin ver', other: '${n} episodios sin ver', ), 
 			'liveTv.group.favourites' => 'Favoritos',
 			'liveTv.group.numbered' => ({required Object n}) => 'Categoría ${n}',
 			'liveTv.group.other' => 'Otros',
@@ -1974,13 +2011,13 @@ extension on TranslationsEs {
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} de ${total}',
 			'xtream.channels.whole' => 'Toda la categoría',
 			'xtream.channels.selectShown' => 'Marcar los mostrados',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.channels.clear' => 'Desmarcar',
 			'xtream.channels.clearShown' => 'Desmarcar los mostrados',
 			'xtream.channels.none' => 'El panel no tiene canales en esta categoría.',
 			'xtream.hidden.title' => 'Ocultar palabras',
 			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
 			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
@@ -2161,6 +2198,10 @@ extension on TranslationsEs {
 			'seerr.askShow' => ({required Object server}) => 'Esto pide a ${server} que añada todas las temporadas. Quien lo administra decide si lo hace.',
 			'seerr.request' => 'Solicitar',
 			'seerr.sent' => ({required Object title}) => 'Se solicitó ${title}.',
+			'film.play' => 'Reproducir',
+			'film.resume' => ({required Object time}) => 'Reanudar desde ${time}',
+			'film.fromStart' => 'Reproducir desde el principio',
+			'film.gone' => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.',
 			_ => null,
 		};
 	}

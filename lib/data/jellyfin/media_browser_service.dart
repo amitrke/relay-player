@@ -130,10 +130,15 @@ class MediaBrowserService extends MediaServer {
   String get _user => auth.userId;
 
   /// The fields every item request asks for, so one parse serves all of them.
+  ///
+  /// `DateLastMediaAdded` is a series' newest episode's arrival, which is what
+  /// a show's "Recently added" date means here (CatalogItem.addedAt). A
+  /// series' `UnplayedItemCount` and `PlayedPercentage` are in `UserData` and
+  /// need no field.
   static const _fields =
-      'ProviderIds,Genres,Overview,DateCreated,ProductionYear,'
-      'CommunityRating,PrimaryImageAspectRatio,SeriesPrimaryImageTag,'
-      'ParentId';
+      'ProviderIds,Genres,Overview,DateCreated,DateLastMediaAdded,'
+      'ProductionYear,CommunityRating,PrimaryImageAspectRatio,'
+      'SeriesPrimaryImageTag,ParentId';
 
   Map<String, String> get _headers =>
       authHeaders(kind: kind, client: client, token: auth.token);
@@ -445,13 +450,18 @@ class MediaBrowserService extends MediaServer {
         for (final g in (j['Genres'] as List?) ?? const []) '$g',
       ],
       posterPath: posterOf == null ? null : '/Items/$posterOf/Images/Primary',
+      artPath: _backdropOf(j, id),
       duration: _ticks(j['RunTimeTicks']),
       viewCount: played
           ? (playCount is int && playCount > 0 ? playCount : 1)
           : 0,
       viewOffset: _ticks(user['PlaybackPositionTicks']),
       lastViewedAt: DateTime.tryParse('${user['LastPlayedDate'] ?? ''}'),
-      addedAt: DateTime.tryParse('${j['DateCreated'] ?? ''}'),
+      // A series' newest episode when the server says, else its own date.
+      addedAt: type == MediaItemType.show
+          ? DateTime.tryParse('${j['DateLastMediaAdded'] ?? ''}') ??
+                DateTime.tryParse('${j['DateCreated'] ?? ''}')
+          : DateTime.tryParse('${j['DateCreated'] ?? ''}'),
       index: j['IndexNumber'] is int ? j['IndexNumber'] as int : null,
       parentIndex: j['ParentIndexNumber'] is int
           ? j['ParentIndexNumber'] as int
@@ -461,7 +471,29 @@ class MediaBrowserService extends MediaServer {
       parentId: (j['SeasonId'] ?? j['ParentId']) as String?,
       ids: _ids(j['ProviderIds']),
       rating: (j['CommunityRating'] as num?)?.toDouble(),
+      // Only for a series started here; see PlexService.unwatchedOf. Jellyfin
+      // says a series is partly watched through PlayedPercentage.
+      unwatchedEpisodes:
+          type == MediaItemType.show &&
+              user['UnplayedItemCount'] is int &&
+              (played ||
+                  (user['PlayedPercentage'] is num &&
+                      (user['PlayedPercentage'] as num) > 0))
+          ? user['UnplayedItemCount'] as int
+          : null,
     );
+  }
+
+  /// The item's own backdrop, else the one it inherits (an episode's series).
+  static String? _backdropOf(Map<String, dynamic> j, String id) {
+    final own = j['BackdropImageTags'];
+    if (own is List && own.isNotEmpty) return '/Items/$id/Images/Backdrop';
+    final parent = j['ParentBackdropItemId'];
+    final tags = j['ParentBackdropImageTags'];
+    if (parent is String && tags is List && tags.isNotEmpty) {
+      return '/Items/$parent/Images/Backdrop';
+    }
+    return null;
   }
 
   static ExternalIds _ids(Object? raw) {

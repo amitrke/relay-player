@@ -40,6 +40,12 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Stream<Duration> get durationStream => _player.stream.duration;
 
+  /// media_kit reports `completed` as a flag that goes true at end of file and
+  /// back to false on the next open or seek; only the rising edge is an end.
+  @override
+  Stream<void> get completedStream =>
+      _player.stream.completed.where((done) => done);
+
   @override
   Future<void> open(String url) => _player.open(Media(url));
 

@@ -8,6 +8,7 @@ import '../../data/local/history_store.dart';
 import 'resume_entries.dart';
 import 'watch_actions.dart';
 import '../../i18n/strings.g.dart';
+import '../library/library_hero.dart';
 import '../accounts/media_servers.dart';
 
 // Type sizes for the two lines under a resume tile's poster, and the gaps
@@ -84,24 +85,34 @@ class ContinueWatchingRow extends ConsumerWidget {
     ];
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final tileWidth = f == RelayFormFactor.phone ? 104.0 : 128.0;
+    final tv = f == RelayFormFactor.tv;
+    // On a TV the same size as the library posters below and, like them, with
+    // no caption: the hero above describes the focused entry (§12.4).
+    final tileWidth = switch (f) {
+      RelayFormFactor.phone => 104.0,
+      RelayFormFactor.tv => 120.0,
+      _ => 128.0,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: RelayLayout.pagePadding(f).copyWith(top: 14, bottom: 10),
+          padding: RelayLayout.pagePadding(f)
+              .copyWith(top: tv ? 10 : 14, bottom: tv ? 8 : 10),
           child: Text(
             tr.resume.title,
             style: TextStyle(
               color: t.ink,
-              fontSize: RelayLayout.bodySize(f) + 2,
+              fontSize: tv ? 16 : RelayLayout.bodySize(f) + 2,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
         SizedBox(
-          height: _tileHeight(context, tileWidth),
+          height: tv
+              ? tileWidth * _posterAspect
+              : _tileHeight(context, tileWidth),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: RelayLayout.pagePadding(f).copyWith(top: 0, bottom: 0),
@@ -143,7 +154,7 @@ class _ResumeTile extends ConsumerWidget {
     final poster = _poster(ref);
     final tv = RelayLayout.of(context) == RelayFormFactor.tv;
 
-    return SizedBox(
+    final tile = SizedBox(
       width: width,
       child: RelayTappable(
         borderRadius: 10,
@@ -171,6 +182,10 @@ class _ResumeTile extends ConsumerWidget {
               : null,
           title: item.title,
           resume: item,
+          // A film's page; an entry does not know an episode's show.
+          details: item.kind == PlaybackKind.server && item.episode == false
+              ? '/film/${item.sourceId}/${item.itemId}'
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,32 +262,60 @@ class _ResumeTile extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: _gapAbovePoster),
-            Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: t.ink,
-                fontSize: _titleSize,
-                height: _lineFactor,
-                fontWeight: FontWeight.w500,
+            if (!tv) ...[
+              const SizedBox(height: _gapAbovePoster),
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: t.ink,
+                  fontSize: _titleSize,
+                  height: _lineFactor,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(height: _gapBetweenLines),
-            Text(
-              item.detail,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: t.inkDim,
-                fontSize: _metaSize,
-                height: _lineFactor,
+              const SizedBox(height: _gapBetweenLines),
+              Text(
+                item.detail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: t.inkDim,
+                  fontSize: _metaSize,
+                  height: _lineFactor,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
+    );
+
+    if (!tv) return tile;
+    // The hero says what the caption said, larger. An entry keeps no
+    // landscape art, so the backdrop falls back to the poster, blurred.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (focused) {
+          ref
+              .read(focusedTitleProvider.notifier)
+              .show(
+                HeroInfo.forResume(
+                  ref,
+                  title: item.title,
+                  detail: item.detail,
+                  sourceId: item.sourceId,
+                  itemId: item.itemId,
+                  fromServer: item.kind == PlaybackKind.server,
+                  posterUrl: poster,
+                ),
+              );
+        }
+      },
+      child: tile,
     );
   }
 }

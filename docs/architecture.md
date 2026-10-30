@@ -1107,6 +1107,22 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > added row. No toggle back to the single grid was built (decided not
    > wanted, 2026-10-10). Pinned by `test/library_shelves_test.dart`.
 5. Detail (movie/series: poster, plot, seasons/episodes — richer metadata when sourced from Plex; live: EPG strip, Advanced Sources only; local/SMB file: filename, size, format, no metadata lookup by default; "Generate subtitles" / "Translate subtitles" actions appear when a capable AI provider is configured)
+   > **Films get a page, 2026-10-30.** Until then a film poster went straight
+   > to the player while a show opened `ShowDetailScreen`, so one stray OK
+   > started a two-hour film and nothing said where it would start. A server
+   > film now opens `FilmDetailScreen` (`/film/:server/:id`): its art behind
+   > the page (a band across the top on a phone or tablet), title, facts, plot,
+   > and buttons for *Resume from 6:16* or *Play* (focused), *Play from start*
+   > (`/play/...?start=0`, which skips the saved position), watched, download
+   > and favourite, which were only in the long-press sheet before. Posters in
+   > rows and grids, search and the AI picks all open it, through
+   > `CatalogItem.route`. **Continue watching still plays at once**, since
+   > picking up where you were is that row's whole job; its long-press sheet
+   > gains *Details*, first. Downloads and episodes play directly as before.
+   > Panel films keep their own route. Pinned by
+   > `test/film_detail_screen_test.dart`, including a phone-size render that
+   > caught action labels overflowing; seen on the Google TV and Pixel Tablet
+   > emulators against a real Plex server.
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)
@@ -1421,6 +1437,221 @@ check was shown to fail on an injected fault before being trusted.
 while moving (the onboarding blurb, the Add a source privacy line, the SAF
 error, the Advanced sources confirm button now "I understand, turn on"). The
 meaning is unchanged. Store copy that quotes the old wording should be checked.
+
+### 12.4 Beside Plex's own TV app (added 2026-10-30)
+
+Both apps on the Google TV emulator, signed in to the same Plex server, the
+same screens compared one by one. Listings and layout only: playback on the
+emulator is not comparable (CLAUDE.md, §10), and remote-focus findings still
+want a real TV.
+
+**Fixed the same day:**
+
+- **New episodes were impossible to spot.** Series "Recently added" sorted a
+  show by when the *show* was first added, so one with an episode out last
+  night stayed wherever it had landed years ago, and posters said nothing
+  about unwatched episodes. Plex orders its "Recently Added in TV Shows" row
+  by each show's newest episode and puts a count on the poster. Now a show's
+  `CatalogItem.addedAt` is its newest episode's arrival (Plex: one extra
+  request per show library for its newest 500 episodes; Jellyfin/Emby:
+  `DateLastMediaAdded`), and `UnwatchedBadge` shows `leafCount −
+  viewedLeafCount` (Jellyfin/Emby: `UnplayedItemCount`). After the change the
+  order on the emulator matched Plex's row exactly.
+  *Difference kept, knowingly:* Plex's home row showed a count on one show
+  only, while ours counts every show with unwatched episodes. Plex's rule was
+  not worked out; it may count only shows not yet started. If the badges turn
+  out noisy on a large library, that is the first thing to try. *They did,
+  on the tablet the same day:* with a second, larger server connected, most
+  shows on it carried "99+" or similar for series never started, which says
+  nothing useful. **Changed the same day:** only a show with at least one
+  episode watched gets a count (Plex `viewedLeafCount > 0`, Jellyfin/Emby
+  `PlayedPercentage > 0` or played), in the badge and the hero alike. A show
+  not yet started looks like any other poster. *Where it now differs from
+  Plex, seen on the TV right after:* Plex put a count on a show nobody had
+  started, which ours no longer does, and ours gives none to a show whose
+  only progress is one episode part-watched, because Plex counts only
+  finished episodes in `viewedLeafCount`. Plex's home-row number may instead
+  be how many episodes arrived recently, which would explain both; not worked
+  out. Counting a show with any progress (the show's own `lastViewedAt`) is the
+  likely next step if part-watched shows should count.
+
+**Seen and still open:**
+
+- ~~**The tab strip runs into the sort control** on a 1080p TV: "Live TV"
+  clips to "Live T'" and touches "Recently added".~~ **Fixed 2026-10-30** by
+  the TV layout below (pill tabs).
+- ~~**Continue watching stays pinned while the library rows scroll under
+  it**, so the focused row's title and the top of its posters are hidden, and
+  moving focus back up does not bring them back.~~ **Fixed 2026-10-30.** It
+  was not pinned: Continue watching plus the tabs took about 230 dp of the
+  540, a shelf row was about 320 dp, and the shelves had less than that, so
+  the focused row was always cropped. Continue watching now scrolls with the
+  rows, and rows are shorter (below).
+- **The search field cannot be reached with the remote** from "What should I
+  watch?": Up goes nowhere and typed text is lost. That contradicts the 1.0.4
+  notes, so it may be a regression; check on a real remote first.
+- **Continue watching is split by tab and uses episode stills.** Plex has
+  one row of films and episodes, most recent first, with show posters, which
+  read from across a room where a cropped still does not. Two films with
+  progress in Plex were missing from ours. Plex's menu lists a second server
+  on the same account that this install is not connected to. *Confirmed the
+  same day:* a fresh install on a tablet connected both servers and showed
+  both films. Not a bug, only a setup difference between the two installs.
+- **The same next episode twice in Continue watching** when two connected
+  servers both have the show (seen on the tablet: one show's "S2 E10 · Up
+  next" once per server). Predates this work; open.
+- **Plex's home carries more:** the server's own collections as rows, and a
+  backdrop with year, runtime, rating, synopsis and cast for whatever has
+  focus. The backdrop and details are done (below); collections and cast
+  are not.
+- **"Recently added" for films already matched** Plex title for title.
+- **No next episode when one ends.** The player stops at the end of an
+  episode; nothing offers or counts down to the next, which Plex does. Found
+  watching, not on the emulator. *Built the same day, see §12.5; not yet
+  seen on a TV.*
+
+**Use of space, measured on the 1080p screenshots.** Plex does not fit more
+posters on a screen than we do (both show about seven across); it spends
+less on chrome and puts what it saves into information:
+
+| | Plex | Subnext Player |
+|---|---|---|
+| Side navigation, at rest | icons only, about 100px, small glyphs | 128px rail, 40px icons, a tall labelled pill on the current one |
+| Side navigation, open | a 385px drawer *over* the content, which stays put | always reserved; Settings adds a 650px section list (a third of the width) |
+| Top band | 24px pill tabs plus a clock, about 90px | 36px tabs, sort control and count, about 135px, and it overflows (above) |
+| Under each poster | nothing; the focused title's details go in the backdrop area | title (26px) and a second line, about 85px per row |
+| Row pitch | about 470px | about 570px |
+| Row title | about 30px, server name small beside it | about 40px |
+
+So the direction is not "smaller posters" but: hide navigation until it is
+asked for, drop per-poster captions in favour of one detail area for the
+focused item, and shrink the type that is chrome (tabs, row titles, menu
+items) while keeping titles and synopsis large.
+
+**Done for the TV library, 2026-10-30** (Movies and Series; phone, tablet
+and desktop unchanged, since with a finger or a mouse there is no single
+focused title to describe):
+
+- **A hero and a backdrop** (`library_hero.dart`). Whatever has focus is
+  described once at the top: title, then year, runtime, unwatched count,
+  rating and genres, then three lines of plot, in a fixed 150 dp block so
+  moving along a row never moves the rows. Behind it, the title's landscape
+  art fades into the page on the left and at the top and bottom, so the text,
+  the sort control and the rows stay readable on any art and in every palette.
+  The art is Plex `art` (an episode or season falls back to its show's) through
+  the same photo transcoder as posters, at 1280×720, or a Jellyfin/Emby
+  backdrop. `CatalogItem` gained `artPath` and `summary`, kept in the
+  library cache; the art path is unsigned like the poster path (§3). A title
+  with no art gets its poster, blurred. A Continue watching entry is looked up
+  in the library for its plot and art; an episode is not a library title and
+  gets its name and "S2 E10 · Up next" over the blurred poster.
+  *The "art renders empty" finding in MANUAL_TESTING.md §4* did not reproduce:
+  through the transcoder, `art` drew on every title tried.
+- **Posters without captions**, 120×180 dp (was 132 wide with two lines of
+  title and a year under it). One row is now about 215 dp, not 320.
+- **Continue watching scrolls with the rows**, with the same captionless
+  tiles, instead of sitting above them.
+- **The focused row snaps to the top of the rows area**, with the next one
+  peeking below, as on Plex. Flutter's traversal only scrolls as far as it
+  must, which left the focused row at the bottom with the one above cut in
+  half. *Pitfall, recorded so it is not repeated:* the `context` a
+  `ListView.builder` item callback receives is the list's, not the row's, so
+  `Scrollable.ensureVisible` on it scrolled the whole list to the top; each row
+  is its own widget for that reason (`_SnapToTop`).
+- **Pill tabs**, 15 sp, the selected one filled, in a 44 dp band (was 19 sp
+  with an underline in 62 dp). Row titles 16 sp (was 20).
+
+- **The rail opens like Plex's drawer** (`home_shell.dart`, `_TvRail`). At
+  rest a bare strip of icons with no panel or divider, so the backdrop is the
+  only thing on that side of the screen; when the remote reaches it, a 232 dp
+  panel of icon-and-label rows over content dimmed behind it. It used to
+  grow from 64 to 104 dp with labels stacked under the icons. The desktop rail
+  is unchanged.
+
+Phones and tablets keep their own layouts (a bottom bar on a phone, the
+desktop rail on a wide tablet, captions under posters); only the newest-episode
+order and the badges reach them. Seen on a Pixel Tablet emulator the same day.
+
+Not done: the server's own collections as rows, cast in
+the hero, Settings' wide section list, and any of this off TV. Pinned by
+`test/library_hero_test.dart`; seen on the Google TV emulator against a real
+Plex server, not on real TV hardware.
+
+### 12.5 Up next: offering the next episode (added 2026-10-30)
+
+When a server episode plays to its end, the player reports it finished and
+then shows a card over the last frame: the next episode's show, number and
+title, "Playing in 10 s", *Play now* and *Cancel*. If nothing is pressed it
+opens the next episode. Code in `lib/features/player/up_next.dart` (the
+lookup and the card) and `player_screen.dart` (`_onCompleted`, `_playNext`).
+
+- **The end is the engine's end of file, not the credits.**
+  `PlaybackEngine.completedStream` is new on the seam (§10.2); media_kit's
+  `completed` flag going true is the only source. Plex has `credits` markers
+  and Jellyfin 10.10+ has Outro media segments (Emby is understood to mark
+  credits as a chapter; not checked), but no client here fetches any of them: `dart_plex` 0.1.2 does not
+  parse `Marker` at all, so it would mean a raw request with
+  `includeMarkers=1`, and a second Jellyfin request per episode. Showing the
+  card at the credits is the obvious next step, and it is what Plex does;
+  ending at end of file first was the part that could be verified without a
+  real server's markers.
+- **"Next" is worked out from `episodesOf`, not On Deck or Next Up.** Those
+  answer "what has this person not watched", which after a rewatch is
+  somewhere else entirely, and they only move once the server has taken in
+  the report for the episode just finished, which is a race with the lookup.
+  "The one after this" is a fact about the show, asked for when the episode
+  starts so the card is ready at the end. The list is sorted by season and
+  episode here (Plex's `allLeaves` puts specials first; Jellyfin's order
+  follows its display settings), so a season finale leads to the next
+  season's first episode. One interface, so Plex, Jellyfin and Emby behave
+  alike (§6.2).
+- **Specials are left out both ways.** A special is never offered, and
+  finishing one shows no card: where it sits among the episodes is
+  `airsBeforeSeason` territory that none of our lists carry.
+- **No card** for films, panel (IPTV) items, local, SAF and SMB files, the
+  last episode, or when the lookup fails (a saved copy played offline,
+  §18.4). The film rule is enforced twice, in the screen (`playable.episode`)
+  and in `findNextEpisode` (the item's type); the test catches only the
+  removal of both, which is recorded here so nobody reads the test as
+  pinning either one alone.
+- **Report first, then offer.** The finished episode gets its `stopped`
+  report (and history, and the tracker's finish, §19) the moment the file
+  ends, exactly as leaving the player would send it; the card only appears
+  after. `dispose` then skips its own final report, because a second
+  `stopped` on Jellyfin and Emby would open a playback session just to close
+  it. Seeking back and playing after cancelling makes it an ordinary play
+  again.
+- **Cancel has focus, Back cancels** (§20's rule: one press on a remote must
+  not commit to anything). The countdown already plays on by itself, so the
+  only press worth making easy is the one that stops it. Back as a key
+  (Escape, the remote's Back) is handled by the card; the system's Back goes
+  through a `PopScope` that stays shut while the card is up. After *Cancel*
+  the player stays on the last frame with its controls.
+- **The next episode is a fresh player**, `pushReplacement` to its
+  `/play/...` route, after stopping this one, the same way the compatible
+  output fallback reopens (§10.2). Back from it goes where Back from the
+  finished one would have. A test found that go_router 18 gives a
+  replacement a fresh page (and so a fresh `State` and engine) only when the
+  page being replaced was itself pushed; replacing a root page reuses the
+  state. The player is always pushed in the app, so this holds there, but a
+  deep link that opens a player as the first page would not get a fresh one.
+
+**Verified against a fake engine and a fake server only**
+(`player_screen_engine_test.dart`: end, report, card, countdown, next opened
+after a stop; Cancel focused and pressed; Back; last episode; film;
+`up_next_test.dart` for the ordering). Each was run with the feature taken
+out (end ignored, Play now focused, Back allowed to leave, the film guards
+removed) and failed. Not yet seen on a TV or with real playback, which the
+emulator cannot do (CLAUDE.md); see MANUAL_TESTING.md.
+
+**Open:**
+
+- **Start at the credits** where the server has a marker (above).
+- **A setting to turn autoplay off.** Plex has one ("Auto play next"); ours
+  always counts down. Cheap to add to Playback once someone asks.
+- **Plex's "Still watching?"** prompt after several episodes in a row is not
+  copied; whether a TV left on all night should stop is worth deciding.
+- **The countdown length** (10 s) is a guess at Plex's, not measured.
 
 ## 13. Phased roadmap
 

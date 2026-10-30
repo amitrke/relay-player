@@ -13,6 +13,7 @@ import '../favorites_history/watch_state.dart';
 import '../../i18n/strings.g.dart';
 import '../../domain/models/media_server.dart';
 import '../accounts/media_servers.dart';
+import 'library_hero.dart';
 
 /// One catalogue item: poster, title, year, favourite star.
 class PosterTile extends ConsumerWidget {
@@ -23,6 +24,7 @@ class PosterTile extends ConsumerWidget {
     this.showSource = false,
     this.showKind = false,
     this.focusNode,
+    this.caption = true,
   });
 
   final CatalogItem item;
@@ -44,6 +46,10 @@ class PosterTile extends ConsumerWidget {
   /// Lets [PosterGrid] move focus to a neighbour by index.
   final FocusNode? focusNode;
 
+  /// Title and year under the poster. Off in the TV library rows, where the
+  /// focused title is described once in the hero instead (library_hero.dart).
+  final bool caption;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = RelayTheme.of(context);
@@ -58,7 +64,7 @@ class PosterTile extends ConsumerWidget {
       itemId: item.id,
     );
 
-    return RelayTappable(
+    final tile = RelayTappable(
       autofocus: autofocus,
       focusNode: focusNode,
       borderRadius: 10,
@@ -105,6 +111,15 @@ class PosterTile extends ConsumerWidget {
                 ),
                 if (watch.watched)
                   const Positioned(top: 6, left: 6, child: WatchedTick()),
+                // Shows never get the tick (no viewCount), so the corner is
+                // free for them.
+                if (item.kind == CatalogKind.show &&
+                    (item.unwatchedEpisodes ?? 0) > 0)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: UnwatchedBadge(count: item.unwatchedEpisodes!),
+                  ),
                 if (watch.progress case final progress?)
                   Positioned(
                     left: 6,
@@ -150,20 +165,21 @@ class PosterTile extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: t.ink,
-              // 12.5 is a phone caption and unreadable across a room.
-              fontSize: f == RelayFormFactor.tv ? 18 : 12.5,
-              height: 1.3,
-              fontWeight: FontWeight.w600,
+          if (caption) const SizedBox(height: 8),
+          if (caption)
+            Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: t.ink,
+                // 12.5 is a phone caption and unreadable across a room.
+                fontSize: f == RelayFormFactor.tv ? 18 : 12.5,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          if (item.year != null || showKind)
+          if (caption && (item.year != null || showKind))
             Text(
               [
                 if (item.year != null) '${item.year}',
@@ -179,6 +195,21 @@ class PosterTile extends ConsumerWidget {
             ),
         ],
       ),
+    );
+
+    // On a TV the remote is always on exactly one title, and the hero above
+    // the rows describes it. A wrapper that never takes focus itself, the same
+    // way ShelvesView learns which row has focus.
+    if (f != RelayFormFactor.tv) return tile;
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (focused) {
+          ref.read(focusedTitleProvider.notifier).show(HeroInfo.ofItem(item));
+        }
+      },
+      child: tile,
     );
   }
 }
@@ -221,6 +252,51 @@ class WatchedTick extends StatelessWidget {
   }
 }
 
+/// How many episodes of a show this account has not watched, in the corner of
+/// its poster.
+///
+/// Plex's own TV app does this, and beside it on the same server (compared on
+/// a TV emulator, 2026-10-30) it was the difference between seeing at a glance
+/// which shows had something new and not being able to tell at all. Drawn
+/// like [WatchedTick], accent on any artwork, so the two read as one family.
+class UnwatchedBadge extends StatelessWidget {
+  const UnwatchedBadge({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final tv = RelayLayout.of(context) == RelayFormFactor.tv;
+    return Semantics(
+      label: tr.library.tile.unwatchedEpisodes(n: count),
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: t.accent,
+          borderRadius: BorderRadius.circular(tv ? 6 : 5),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: tv ? 8 : 6,
+            vertical: tv ? 3 : 2,
+          ),
+          child: Text(
+            // A long-running show can have hundreds; past 99 the number stops
+            // telling anyone anything a "99+" does not.
+            count > 99 ? '99+' : '$count',
+            style: TextStyle(
+              color: t.accentInk,
+              fontSize: tv ? 16 : 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// How far through something is, drawn the way the continue-watching row
 /// draws it.
 class WatchProgressBar extends StatelessWidget {
@@ -232,9 +308,7 @@ class WatchProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     return Semantics(
-      label: tr.library.tile.percentWatched(
-        percent: (progress * 100).round(),
-      ),
+      label: tr.library.tile.percentWatched(percent: (progress * 100).round()),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(2),
         child: LinearProgressIndicator(

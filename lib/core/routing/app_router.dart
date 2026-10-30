@@ -26,6 +26,7 @@ import '../../features/local_network/smb_screens.dart';
 import '../../features/player/player_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/series/show_detail_screen.dart';
+import '../../features/library/film_detail_screen.dart';
 import '../../features/settings/settings_route.dart';
 import '../../features/transfer/receive_screen.dart';
 import '../../features/transfer/send_screen.dart';
@@ -272,10 +273,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/film/:serverId/:ratingKey',
+        builder: (_, state) => FilmDetailScreen(
+          serverId: state.pathParameters['serverId']!,
+          ratingKey: state.pathParameters['ratingKey']!,
+        ),
+      ),
+      GoRoute(
         path: '/play/:serverId/:ratingKey',
         builder: (_, state) => PlayerScreen.plex(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
+          // `?start=0`: the film page's Play from start.
+          fromStart: state.uri.queryParameters['start'] == '0',
         ),
       ),
       // Never registered in a release build, so neither screen can be reached

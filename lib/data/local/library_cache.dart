@@ -175,6 +175,8 @@ Map<String, dynamic> catalogItemToJson(CatalogItem i) {
     't': i.title,
     if (i.year != null) 'y': i.year,
     if (plex && i.posterPath != null) 'pp': i.posterPath,
+    if (plex && i.artPath != null) 'ap': i.artPath,
+    if (i.summary != null) 'su': i.summary,
     if (url != null && !url.toLowerCase().contains('x-plex-token')) 'pu': url,
     if (i.addedAt != null) 'a': i.addedAt!.millisecondsSinceEpoch,
     if (i.viewCount != null) 'vc': i.viewCount,
@@ -182,6 +184,7 @@ Map<String, dynamic> catalogItemToJson(CatalogItem i) {
     if (i.duration != null) 'd': i.duration!.inMilliseconds,
     if (i.lastViewedAt != null) 'lv': i.lastViewedAt!.millisecondsSinceEpoch,
     if (i.language != null) 'l': i.language,
+    if (i.unwatchedEpisodes != null) 'ue': i.unwatchedEpisodes,
     if (i.shelf != null) 'sh': i.shelf,
   };
 }
@@ -217,12 +220,15 @@ CatalogItem? catalogItemFromJson(Object? json) {
     year: json['y'] as int?,
     posterUrl: json['pu'] as String?,
     posterPath: json['pp'] as String?,
+    artPath: json['ap'] as String?,
+    summary: json['su'] as String?,
     addedAt: date(json['a']),
     viewCount: json['vc'] as int?,
     viewOffset: span(json['vo']),
     duration: span(json['d']),
     lastViewedAt: date(json['lv']),
     language: json['l'] as String?,
+    unwatchedEpisodes: json['ue'] as int?,
     shelf: json['sh'] as String?,
   );
 }
