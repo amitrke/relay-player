@@ -110,8 +110,18 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
   bool _cancel = false;
   String? _removeWhenStopped;
 
+  /// Poster files being written now, by download key. [_discard] waits on
+  /// these before it returns, so "removed" means the poster is gone too and not
+  /// merely about to be (§18.8).
+  final _posterWrites = <String, Future<void>>{};
+
   @override
   List<DownloadRecord> build() {
+    // Going with a download running (the app closing, a test ending): stop the
+    // fetch at its next chunk rather than let it stream into a controller that
+    // is no longer there. The run then settles as a pause would, and the store
+    // already holds it as running, which build() reads back as paused (§18.3).
+    ref.onDispose(() => _cancel = true);
     return [
       for (final r in _store.load())
         // Nothing runs while the app is closed, so a record still marked as
@@ -251,6 +261,25 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     if (!ref.mounted || bytes == null || bytes.isEmpty) return;
     // Still wanted? It may have been deleted while the poster was fetched.
     if (find(record.serverId, record.ratingKey) == null) return;
+    // Registered in the same synchronous step as the check above, so a remove
+    // either ran before it (and nothing is written) or finds this and waits.
+    // Only the write is tracked, not the fetch: a remove should not hang on a
+    // slow server for a poster it is about to throw away.
+    final write = _writePoster(key, record, name, bytes);
+    _posterWrites[key] = write;
+    try {
+      await write;
+    } finally {
+      if (identical(_posterWrites[key], write)) _posterWrites.remove(key);
+    }
+  }
+
+  Future<void> _writePoster(
+    String key,
+    DownloadRecord record,
+    String name,
+    List<int> bytes,
+  ) async {
     final dir = await ref.read(downloadsDirectoryProvider.future);
     if (!ref.mounted) return;
     final artwork = '$name.poster';
@@ -262,7 +291,10 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     }
     if (!ref.mounted) return;
     // Deleted while the poster was being written: the delete could not know
-    // about a file that did not exist yet, so this one has to go here.
+    // about a file that did not exist yet, so this one has to go here. The
+    // delete waits for this (see _posterWrites), so it is gone by the time
+    // remove() returns rather than a moment after, which is what
+    // downloads_test caught under load on 2026-10-30.
     if (find(record.serverId, record.ratingKey) == null) {
       await _deleteQuietly(file);
       return;
@@ -274,7 +306,7 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
   // --- Running ---------------------------------------------------------
 
   Future<void> _pump() async {
-    if (_active != null) return;
+    if (!ref.mounted || _active != null) return;
     final next = state
         .where((r) => r.state == DownloadState.queued)
         .firstOrNull;
@@ -408,14 +440,21 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
   }
 
   Future<void> _discard(String key) async {
+    // A remove deferred to a run's tidy-up, when the controller went first.
+    // Nothing is deleted then; the stored record still names the files, and
+    // the person can remove it again next time.
+    if (!ref.mounted) return;
     final record = state.where((r) => r.key == key).firstOrNull;
     state = [
       for (final r in state)
         if (r.key != key) r,
     ];
     await _persist();
+    // A poster mid-write sees the record gone and deletes its own file; this
+    // waits for that, so nothing is left once remove() has returned.
+    await _posterWrites[key];
     final name = record?.fileName;
-    if (name == null) return;
+    if (name == null || !ref.mounted) return;
     final dir = await ref.read(downloadsDirectoryProvider.future);
     await _deleteQuietly(File('${dir.path}${Platform.pathSeparator}$name'));
     await _deleteQuietly(
@@ -433,14 +472,25 @@ class DownloadsController extends Notifier<List<DownloadRecord>> {
     } catch (_) {}
   }
 
+  // _update and _persist are the steps a run takes after its awaits, in its
+  // catch blocks and its finally. A controller disposed meanwhile has no state
+  // to change and no Ref to reach the store with, and reading either throws;
+  // 9975a7c guarded the poster write against that, but not the run, whose
+  // tidy-up after a download reads as complete was still in flight when a test
+  // ended. That was the 2026-10-30 flake. Dropping the write is right, not just
+  // quiet: what the store last held is what build() recovers from (§18.3).
   void _update(String key, DownloadRecord Function(DownloadRecord) change) {
+    if (!ref.mounted) return;
     state = [
       for (final r in state)
         if (r.key == key) change(r) else r,
     ];
   }
 
-  Future<void> _persist() => _store.save(state);
+  Future<void> _persist() async {
+    if (!ref.mounted) return;
+    await _store.save(state);
+  }
 
   /// A file name from an id: letters, digits, dash and underscore only. Plex
   /// ids are numbers and hex, but this names a file on disk from server input.
