@@ -135,6 +135,19 @@ Stream URLs are constructed client-side, not returned by the API:
 - VOD: `{host}/movie/{username}/{password}/{stream_id}.{ext}`
 - Series episode: `{host}/series/{username}/{password}/{episode_id}.{ext}`
 
+> **These URLs never reach a screen or a log, 2026-10-31.** A channel that
+> would not open showed libmpv's error as is, and libmpv names the address it
+> failed on: the whole URL above, line password included, on a TV's error
+> screen, found while testing the live reconnect on the emulator. dio's errors
+> carry the API's `username` and `password` query parameters the same way, and
+> library and source error screens printed them raw. `redactAddresses`
+> (`lib/core/redact.dart`) now replaces any `scheme://` address with "(address
+> hidden)" wherever such text is shown (the player's error, the shared empty
+> state, the network tab) and in the player's log lines. Whole addresses, not
+> only the credentials: the host names the provider (§1). Pinned by
+> `test/redact_test.dart` and a player test that fails without it. Any new
+> place that shows a source's raw error must go through it too.
+
 Wrap all of this in `XtreamClient` with typed response models (`json_serializable` or manual `fromJson`), timeouts, and retry-once-on-5xx logic — IPTV panels are frequently flaky. This entire client is only reachable through the Advanced Sources gate (§8).
 
 ### 4.1 Catalogue scale and category filtering
