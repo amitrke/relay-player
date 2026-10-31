@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/redact.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/catalog_item.dart';
 import '../favorites_history/favorites_controller.dart';
@@ -181,7 +182,9 @@ class LibraryEmptyState extends StatelessWidget {
             Icon(icon, color: t.inkDim, size: 34),
             const SizedBox(height: 14),
             Text(
-              message,
+              // Messages here are often a source's own error text, which can
+              // name a panel's address and line password (core/redact.dart).
+              redactAddresses(message),
               textAlign: TextAlign.center,
               style: TextStyle(color: t.inkDim, height: 1.5),
             ),

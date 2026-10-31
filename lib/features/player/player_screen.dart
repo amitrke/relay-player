@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/redact.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/media_server.dart';
 import '../../data/local/history_store.dart';
@@ -560,8 +561,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final channels = await ref.read(xtreamChannelsProvider(account).future);
       final channel =
           channels.where((c) => c.streamId == widget.streamId).firstOrNull;
+      final format = await ref.read(xtreamLiveFormatProvider(account).future);
       return _Playable(
-        url: client.liveStreamUrl(widget.streamId!),
+        url: client.liveStreamUrl(widget.streamId!, ext: format),
         title: channel?.name ?? tr.player.untitledLive,
         live: true,
       );
@@ -819,13 +821,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// next episode offered, so opening it can never race ahead of the report
   /// that says this one is done.
   Future<void> _onCompleted() async {
-    if (_live || _ended || !_started || _error != null) return;
+    if (_live) {
+      _onLiveEnded();
+      return;
+    }
+    if (_ended || !_started || _error != null) return;
     _ended = true;
     _progressTimer?.cancel();
     _recordProgress(state: 'stopped');
     final next = await _nextEpisode;
     if (!mounted || next == null || !_ended) return;
     setState(() => _upNext = next);
+  }
+
+  /// A live channel has no end, so a live stream that "ends" was dropped, and
+  /// gets the same stop-wait-reopen as a freeze (§10, "Live reconnect").
+  ///
+  /// Found 2026-10-31 (§10, "Live end of file"): this was the freeze users
+  /// saw. media_kit runs mpv with `keep-open=yes`, so when the panel closes
+  /// the connection, or sends nothing for longer than media_kit's
+  /// `network-timeout=5`, mpv does not go idle: it reaches end of file and
+  /// *pauses* on the last frame. The engine then reports completed and not
+  /// playing, and nothing on the error stream. Before this, the screen
+  /// ignored a live completion (that path is the Up next card's), and
+  /// [_watch] took the stopped clock of a non-playing engine for a viewer's
+  /// pause, so the picture sat still under a play button for good.
+  ///
+  /// Like a fatal error, this reconnects for a stream that has played or a
+  /// reconnect still trying. A first open that ends before its first frame is
+  /// left to the startup guard, which fails it as a dead channel.
+  void _onLiveEnded() {
+    if (_released || _error != null || !(_started || _reconnects > 0)) return;
+    _reconnect(tr.player.channelFroze, why: 'end of file');
   }
 
   /// Opens [next] in place of this player, as a fresh route, the way
@@ -870,7 +897,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _reopenCompatible(String why) async {
     if (_fellBack || !mounted) return;
     _fellBack = true;
-    debugPrint('Player: reopening on compatible output: $why');
+    debugPrint(
+      'Player: reopening on compatible output: ${redactAddresses(why)}',
+    );
     final route = _route;
     final router = GoRouter.of(context);
     _compatibleRoutes.add(route);
@@ -884,6 +913,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// Catches a live channel that froze *after* it started, which neither the
   /// startup guard nor mpv's error stream sees. A viewer-paused stream is left
   /// alone: its clock is meant to stand still.
+  ///
+  /// "Not playing" is not only a viewer's pause: mpv pauses itself at end of
+  /// file. That case arrives as a completion and is [_onLiveEnded]'s, not
+  /// this check's; what is left here is a clock that stopped while mpv still
+  /// says it is playing.
   void _watch() {
     if (!_live || !_started || _released || _error != null) return;
     final now = DateTime.now();
@@ -900,8 +934,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// `max_connections: 1` means the old one has to be released before the new
   /// one is asked for, and the wait gives the panel time to notice it is gone.
   ///
-  /// Returns false when the budget is spent, after showing [giveUp].
-  bool _reconnect(String giveUp) {
+  /// Returns false when the budget is spent, after showing [giveUp]. [why] is
+  /// for the log only.
+  bool _reconnect(String giveUp, {String why = 'stalled'}) {
     if (_reconnectTimer?.isActive ?? false) return true;
     if (_reconnects >= _maxReconnects) {
       _freezeWatch?.cancel();
@@ -910,7 +945,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return false;
     }
     _reconnects++;
-    debugPrint('Player: live stream stalled, reconnect $_reconnects of '
+    debugPrint('Player: live stream $why, reconnect $_reconnects of '
         '$_maxReconnects');
     _freezeWatch?.cancel();
     _stallTimer?.cancel();
@@ -962,13 +997,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _fail(message);
     } else {
       debugPrint('Player: continuing past non-fatal ${_engine.name} error: '
-          '$message');
+          '${redactAddresses(message)}');
     }
   }
 
   void _fail(Object message) {
     _stallTimer?.cancel();
-    if (mounted && _error == null) setState(() => _error = '$message');
+    // libmpv names the address it failed to open, and a panel's address holds
+    // the line's password (§4): never on screen (core/redact.dart).
+    if (mounted && _error == null) {
+      setState(() => _error = redactAddresses('$message'));
+    }
   }
 
   @override

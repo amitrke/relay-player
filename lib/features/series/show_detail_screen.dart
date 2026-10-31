@@ -198,6 +198,14 @@ class _ShowHeader extends ConsumerWidget {
                   style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.55),
                 ),
               ],
+              // Leading actors, as under a film's plot (§12 screen 5).
+              if (item.cast.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  item.cast.join(', '),
+                  style: TextStyle(color: t.inkDim, fontSize: 12.5),
+                ),
+              ],
             ],
           ),
         ),

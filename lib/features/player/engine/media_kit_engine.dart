@@ -42,6 +42,13 @@ class MediaKitEngine implements PlaybackEngine {
 
   /// media_kit reports `completed` as a flag that goes true at end of file and
   /// back to false on the next open or seek; only the rising edge is an end.
+  ///
+  /// media_kit runs mpv with `keep-open=yes` and `network-timeout=5`, so a
+  /// live stream whose connection closes, or which sends nothing for about
+  /// five seconds, rises this too, with mpv paused on the last frame and
+  /// nothing on [errorStream] (measured against a local server, 2026-10-31,
+  /// §10 "Live end of file"). The ffmpeg-prefixed "Stream ends prematurely"
+  /// line that comes with a dropped connection is not one media_kit forwards.
   @override
   Stream<void> get completedStream =>
       _player.stream.completed.where((done) => done);

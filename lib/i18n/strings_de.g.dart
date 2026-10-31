@@ -99,6 +99,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$trackers$de trackers = _Translations$trackers$de._(_root);
 	@override late final _Translations$seerr$de seerr = _Translations$seerr$de._(_root);
 	@override late final _Translations$film$de film = _Translations$film$de._(_root);
+	@override late final _Translations$errors$de errors = _Translations$errors$de._(_root);
 }
 
 // Path: common
@@ -661,6 +662,16 @@ class _Translations$film$de extends Translations$film$en {
 	@override String resume({required Object time}) => 'Fortsetzen ab ${time}';
 	@override String get fromStart => 'Von vorn abspielen';
 	@override String get gone => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.';
+}
+
+// Path: errors
+class _Translations$errors$de extends Translations$errors$en {
+	_Translations$errors$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get addressHidden => '(Adresse verborgen)';
 }
 
 // Path: player.upNext
@@ -2202,6 +2213,7 @@ extension on TranslationsDe {
 			'film.resume' => ({required Object time}) => 'Fortsetzen ab ${time}',
 			'film.fromStart' => 'Von vorn abspielen',
 			'film.gone' => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.',
+			'errors.addressHidden' => '(Adresse verborgen)',
 			_ => null,
 		};
 	}

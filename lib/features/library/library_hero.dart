@@ -32,6 +32,7 @@ class HeroInfo {
     this.serverId,
     this.artPath,
     this.posterUrl,
+    this.cast = const [],
   });
 
   /// From a poster in a library row.
@@ -49,6 +50,7 @@ class HeroInfo {
     serverId: item.source == CatalogSource.server ? item.sourceId : null,
     artPath: item.artPath,
     posterUrl: item.posterUrl,
+    cast: item.cast,
   );
 
   /// For a Continue watching entry: the whole library title when it is one
@@ -107,6 +109,9 @@ class HeroInfo {
   /// screen rather than leaving it bare.
   final String? posterUrl;
 
+  /// Leading actors, when the library listing carried them (CatalogItem.cast).
+  final List<String> cast;
+
   static String runtimeOf(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
@@ -150,6 +155,10 @@ class FocusedTitle extends Notifier<HeroInfo?> {
   void show(HeroInfo info) {
     if (state != info) state = info;
   }
+
+  /// Empty again, for a tab change: Series went on describing the film last
+  /// focused on Movies until something on Series took focus.
+  void clear() => state = null;
 }
 
 /// Height of the TV hero's text block, in dp. With the tab row above it this
@@ -206,13 +215,24 @@ class LibraryHero extends ConsumerWidget {
                       const SizedBox(height: 10),
                       Text(
                         s.trim(),
-                        maxLines: 3,
+                        // Two lines when the cast needs the third, so the
+                        // block keeps its fixed height.
+                        maxLines: info.cast.isEmpty ? 3 : 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: t.ink.withValues(alpha: 0.85),
                           fontSize: 14,
                           height: 1.4,
                         ),
+                      ),
+                    ],
+                    if (info.cast.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        info.cast.take(4).join(', '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: t.inkDim, fontSize: 13),
                       ),
                     ],
                   ],

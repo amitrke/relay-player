@@ -199,6 +199,13 @@ class _FilmPage extends ConsumerWidget {
             ),
           ),
         ],
+        if (item.cast.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            item.cast.join(', '),
+            style: TextStyle(color: t.inkDim, fontSize: tv ? 14 : 13),
+          ),
+        ],
       ],
     );
 

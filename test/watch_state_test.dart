@@ -32,6 +32,7 @@ PlexMetadata _deck(
   PlexMetadataType type = PlexMetadataType.movie,
   int? offsetMin,
   DateTime? viewed,
+  int episode = 3,
 }) =>
     PlexMetadata.fromJson({
       'ratingKey': id,
@@ -40,7 +41,7 @@ PlexMetadata _deck(
       'title': 'plex $id',
       'grandparentTitle': 'The Show',
       'parentIndex': 2,
-      'index': 3,
+      'index': episode,
       'duration': 100 * 60000,
       'viewOffset': ?(offsetMin == null ? null : offsetMin * 60000),
       'lastViewedAt': ?(viewed == null
@@ -48,8 +49,8 @@ PlexMetadata _deck(
           : viewed.millisecondsSinceEpoch ~/ 1000),
     });
 
-ResumeEntry _entry(PlexMetadata m) =>
-    ResumeEntry.fromServer('server', PlexService.itemOf(m))!;
+ResumeEntry _entry(PlexMetadata m, {String server = 'server'}) =>
+    ResumeEntry.fromServer(server, PlexService.itemOf(m))!;
 
 void main() {
   final earlier = DateTime.utc(2026, 9, 1);
@@ -160,10 +161,50 @@ void main() {
         plexDeck: [
           _entry(_deck('next1', type: PlexMetadataType.episode)),
           _entry(_deck('recent', offsetMin: 10, viewed: later)),
-          _entry(_deck('next2', type: PlexMetadataType.episode)),
+          _entry(_deck('next2', type: PlexMetadataType.episode, episode: 4)),
         ],
       );
       expect(merged.map((e) => e.itemId), ['recent', 'local', 'next1', 'next2']);
+    });
+
+    // Two connected servers that both hold a show each put its next episode
+    // in On Deck (seen on a tablet, 2026-10-30).
+    test('the same episode from two servers appears once', () {
+      final merged = mergeResume(
+        history: const [],
+        plexDeck: [
+          _entry(_deck('a1', type: PlexMetadataType.episode), server: 'a'),
+          _entry(_deck('b1', type: PlexMetadataType.episode), server: 'b'),
+        ],
+      );
+      expect(merged.map((e) => '${e.sourceId}:${e.itemId}'), ['a:a1']);
+    });
+
+    test('one started beats one not yet begun, whichever came first', () {
+      final merged = mergeResume(
+        history: const [],
+        plexDeck: [
+          _entry(_deck('a1', type: PlexMetadataType.episode), server: 'a'),
+          _entry(
+            _deck('b1',
+                type: PlexMetadataType.episode, offsetMin: 10, viewed: later),
+            server: 'b',
+          ),
+        ],
+      );
+      expect(merged.map((e) => '${e.sourceId}:${e.itemId}'), ['b:b1']);
+    });
+
+    test('control: different episodes of the same show both stay', () {
+      final merged = mergeResume(
+        history: const [],
+        plexDeck: [
+          _entry(_deck('a1', type: PlexMetadataType.episode), server: 'a'),
+          _entry(_deck('b2', type: PlexMetadataType.episode, episode: 4),
+              server: 'b'),
+        ],
+      );
+      expect(merged, hasLength(2));
     });
   });
 

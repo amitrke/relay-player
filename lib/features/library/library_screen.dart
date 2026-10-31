@@ -203,6 +203,56 @@ class LibraryController extends AsyncNotifier<List<CatalogItem>> {
 /// Everything a tab shows, for screens that need to look titles up in it.
 final libraryItemsProvider = _libraryProvider;
 
+/// Rows the connected servers feature for [tab]'s libraries, drawn before
+/// the library's own rows (architecture.md §12.4). Plex's home shows its
+/// owner's pinned collections ("Deleting Soon", a seasonal pick); beside it on
+/// a TV, ours had nothing of the kind.
+///
+/// Only titles of the tab's kind: a featured row of episodes ("TV Episodes
+/// Deleting Soon") is left out, since an episode tile here would open as a
+/// film. A server that fails or has none adds nothing, and the library shows
+/// as before.
+final featuredShelvesProvider = FutureProvider.family<List<Shelf>, LibraryTab>(
+  (ref, tab) async {
+    if (tab != LibraryTab.movies && tab != LibraryTab.series) return const [];
+    final servers = ref.watch(connectedServersProvider);
+    final mapping = ref.watch(libraryMappingProvider);
+    final kind = tab == LibraryTab.series
+        ? MediaItemType.show
+        : MediaItemType.movie;
+    final out = <Shelf>[];
+    for (final server in servers) {
+      try {
+        final sections = await ref.read(
+          serverSectionsProvider(server.id).future,
+        );
+        for (final section in mapping.sectionsFor(tab, server.id, sections)) {
+          for (final row in await server.service.featuredRows(section)) {
+            final items = [
+              for (final m in row.items)
+                if (m.type == kind) server.service.toCatalogItem(m),
+            ];
+            if (items.isEmpty) continue;
+            out.add(
+              Shelf(
+                title: servers.length > 1
+                    ? '${server.name} · ${row.title}'
+                    : row.title,
+                source: CatalogSource.server,
+                items: items,
+                seeAll: false,
+              ),
+            );
+          }
+        }
+      } catch (_) {
+        // This server's rows are left out; the library itself is unaffected.
+      }
+    }
+    return out;
+  },
+);
+
 XtreamCatalogue? _catalogueFor(LibraryTab tab) => switch (tab) {
   LibraryTab.movies => XtreamCatalogue.vod,
   LibraryTab.series => XtreamCatalogue.series,
@@ -263,7 +313,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final tabBar = _TabBar(
       tabs: tabs,
       selected: selected,
-      onSelect: (tab) => setState(() => _selected = tab),
+      onSelect: (tab) {
+        ref.read(focusedTitleProvider.notifier).clear();
+        setState(() => _selected = tab);
+      },
     );
 
     // A count, not a source name. Titles here are merged across Plex servers,
@@ -499,6 +552,9 @@ class _TabBody extends ConsumerWidget {
       ),
       data: (unsorted) {
         final arranged = arrangeLibrary(ref, tab, unsorted);
+        // Featured rows first, as they arrive; never a reason to wait.
+        final featured =
+            ref.watch(featuredShelvesProvider(tab)).value ?? const <Shelf>[];
         final sorted = arranged.sorted;
         final list = arranged.list;
         final filtering =
@@ -533,7 +589,7 @@ class _TabBody extends ConsumerWidget {
             ? RelayLayout.of(context) == RelayFormFactor.tv
                   ? ShelvesView(
                       tab: tab,
-                      shelves: groupIntoShelves(list),
+                      shelves: [...featured, ...groupIntoShelves(list)],
                       leading: ContinueWatchingRow(
                         episodes: tab == LibraryTab.series,
                       ),
@@ -546,7 +602,7 @@ class _TabBody extends ConsumerWidget {
                         Expanded(
                           child: ShelvesView(
                             tab: tab,
-                            shelves: groupIntoShelves(list),
+                            shelves: [...featured, ...groupIntoShelves(list)],
                           ),
                         ),
                       ],

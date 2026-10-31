@@ -135,6 +135,19 @@ Stream URLs are constructed client-side, not returned by the API:
 - VOD: `{host}/movie/{username}/{password}/{stream_id}.{ext}`
 - Series episode: `{host}/series/{username}/{password}/{episode_id}.{ext}`
 
+> **These URLs never reach a screen or a log, 2026-10-31.** A channel that
+> would not open showed libmpv's error as is, and libmpv names the address it
+> failed on: the whole URL above, line password included, on a TV's error
+> screen, found while testing the live reconnect on the emulator. dio's errors
+> carry the API's `username` and `password` query parameters the same way, and
+> library and source error screens printed them raw. `redactAddresses`
+> (`lib/core/redact.dart`) now replaces any `scheme://` address with "(address
+> hidden)" wherever such text is shown (the player's error, the shared empty
+> state, the network tab) and in the player's log lines. Whole addresses, not
+> only the credentials: the host names the provider (§1). Pinned by
+> `test/redact_test.dart` and a player test that fails without it. Any new
+> place that shows a source's raw error must go through it too.
+
 Wrap all of this in `XtreamClient` with typed response models (`json_serializable` or manual `fromJson`), timeouts, and retry-once-on-5xx logic — IPTV panels are frequently flaky. This entire client is only reachable through the Advanced Sources gate (§8).
 
 ### 4.1 Catalogue scale and category filtering
@@ -663,6 +676,116 @@ the same position-clock rule as above:
 - **Not verified on a device.** The 10s threshold and the backoff are
   untested guesses, and nobody has yet reproduced a mid-stream freeze to watch
   it recover. Add it to `MANUAL_TESTING.md` once exercised.
+- **Incomplete, found 2026-10-31:** "started and not paused" let the commonest
+  drop through. When the connection ends, mpv pauses itself, so this watch
+  read it as the viewer's pause and never fired. See the next entry.
+
+**Live end of file (found and fixed 2026-10-31).** Reported on every device
+tried: a live channel froze after a few minutes, the picture stopped and the
+play button showed, as if paused, and it never came back. The same channel
+plays for long stretches in an ExoPlayer-based IPTV app on the same devices.
+
+- **Cause, reproduced against real libmpv.** media_kit 1.2.6 starts mpv with
+  `keep-open=yes` and `network-timeout=5` (`real.dart`). With `keep-open`, a
+  stream that runs out does not go idle: mpv reaches end of file and *pauses
+  on the last frame*. So the engine reports `completed` and not playing, the
+  clock stops, and the error stream says nothing. The player screen ignored a
+  live completion (that path was only the Up next card's) and the freeze
+  watch skips a paused engine, so nothing reconnected. That is exactly the
+  reported picture: still frame, play button, for good.
+- **How it was measured.** Windows, the bundled `libmpv-2.dll`, a scratch
+  `flutter test` driving media_kit's `Player` (`vo=null`, muted) against a
+  local Python server pacing a generated MPEG-TS at wall-clock rate, as a
+  panel does. Not committed: the server and probe are throwaway, and the
+  numbers are the part worth keeping.
+  - *Server closes the connection* after 12s: ffmpeg logs "http: Stream ends
+    prematurely" (an `ffmpeg`-prefixed line, which media_kit does not forward
+    to its error stream), mpv plays out the ~2s it had buffered, then
+    `playing=false, completed=true`, position frozen. Still frozen 11s later
+    when the probe ended.
+  - *Server stalls* for 9s without closing, after 8s: mpv shows buffering at
+    the buffer's end, and about 5s after the last byte (`network-timeout`)
+    gives up with the same `playing=false, completed=true`. No error line at
+    all. So a panel that only hiccups for more than ~5s ends the stream too.
+    The old socket was still open server-side 17s later, until the player
+    was disposed: a frozen-at-end player may still hold the connection.
+  - Which of the two the user's panel does after "a few minutes" is not
+    known; both arrive as the same event, so the fix does not depend on it.
+- **Fix:** a live completion is a drop, and takes the same path as a freeze
+  or a fatal error (stop, wait 2/4/6s, reopen, budget 3, reset after 30s of
+  play). Measured with real libmpv the same way: stop then open after a
+  `keep-open` end plays again, clock moving ~0.5s after the reopen, and the
+  server saw one connection at a time. `player_screen_engine_test.dart` pins
+  the screen's side against a fake engine that does what mpv was measured
+  doing; both end-of-file tests fail without the fix, and a viewer's pause
+  (left alone either way) is the control.
+- **Rejected: ffmpeg's own `reconnect` (`stream-lavf-o=reconnect=1,
+  reconnect_streamed=1`).** Measured: on a server close it reconnects inside
+  ffmpeg with no visible interruption, which is what makes it tempting. But
+  on a *stall* it opened the new connection while the old one was still open
+  on the server, and the two overlapped for ~4s. On a `max_connections: 1`
+  line that is the §4 failure exactly: the reconnect is refused, or the panel
+  counts the user over their limit. The app-level path stops before it opens
+  by construction. Revisit only with a way to restrict ffmpeg's reconnect to
+  server-closed connections, tested on a one-connection line.
+- **Not changed, considered:** the cache. media_kit already sets `cache=yes`
+  and a 32 MB demuxer cache; a live stream arrives at real-time pace, so a
+  bigger cache does not fill and would not have stopped either case. Raising
+  `network-timeout` would ride out a stall longer, but the 10s freeze watch
+  would reconnect at 10s anyway, so it only moves the drop around.
+- **What the user sees now** is a spinner for a few seconds on each drop, not
+  a seamless recovery: ExoPlayer retries a failed load underneath its buffer,
+  which this does not. If drops turn out to be frequent on real panels, that
+  gap is the next thing to close, not the cache.
+- **Not seen on a device or a real panel.** Recorded in `MANUAL_TESTING.md`
+  with what to look for. **Seen on a real panel 2026-10-31**, on the TV
+  emulator: see "Live over HLS" next, which it led to.
+
+**Live over HLS (decided 2026-10-31, not yet seen on a device).** The
+end-of-file fix above, run against a real panel on the Android TV emulator
+on a news channel the user had reported freezing:
+
+- **Measured.** Over `.ts` the channel reached end of file after ~80s,
+  ~75s and ~87s of play, three times in five minutes. Each time, all three
+  reconnects (2, 4 and 6s after the stop) stalled with no first frame. The
+  first time, the channel was opened again by hand from the list about a
+  minute after the last attempt, and it played at once. So the drop
+  is recovered from, just not within 12s. The likeliest reading is §4's
+  one-connection rule: the panel still counts the dropped connection for
+  longer than our waits, and refuses its replacement until it lets go. That
+  is inferred from the timing, not measured on the panel; a hold test from a
+  PC with the same line, to tell a panel cut from the emulator's network,
+  was not run because the spike config takes the line's details at build
+  time and they were not taken off the device for it.
+- **Why another app does not freeze on the same channels.** Unknown from
+  outside it. The plausible reason is the format: Phase 0 found this panel
+  allows `m3u8` beside `ts` (`PHASE0_FINDINGS.md`, `allowed_output_formats`),
+  and an HLS player fetches the channel as a playlist of short segments,
+  each its own request, so a cut connection costs one segment request and
+  never ends the stream.
+- **Decision:** a live channel opens as `.m3u8` when the line's
+  `allowed_output_formats` lists it, `.ts` otherwise
+  (`XtreamAccountInfo.liveFormat`). The formats are asked once per session
+  (`xtreamLiveFormatProvider`), not stored with the account, since a
+  provider can change them; a panel that cannot be asked gets `.ts`. libmpv
+  plays HLS, and Plex transcodes already arrive as HLS through it (§10).
+  The reconnect path is unchanged and still catches an HLS stream that does
+  end.
+- **Open, to be checked on devices:** whether the drop goes away, whether
+  HLS starts slower (a playlist and a first segment before the first frame),
+  how far behind live it plays (a few segments, typically 10 to 30s), and
+  whether segment requests count against `max_connections` on this panel.
+  **Emulator, same channel, same line, over HLS:** 10 minutes with no end
+  of file and no reconnect (the `.ts` run had three drops in five), with the
+  app's audio track started and ~9 Mbit/s still arriving at the end, so it
+  was playing rather than quietly stuck. One run on one channel, through the
+  emulator's network, on a picture that stays black there. **First device,
+  2026-10-31:** an iPad on 1.0.7 (45) played the channel without a freeze,
+  as reported by the user; Android devices are still to check
+  (MANUAL_TESTING.md). If HLS does not close it,
+  the next candidates are a longer first reconnect wait (the hand reopen
+  that worked came about a minute later) and the ExoPlayer-style retry
+  under a buffer noted above.
 
 **Audio focus and going to the background (#17, decided 2026-09-22).** Before
 this there was no audio focus handling and no lifecycle observer: another app's
@@ -1473,7 +1596,12 @@ want a real TV.
   finished episodes in `viewedLeafCount`. Plex's home-row number may instead
   be how many episodes arrived recently, which would explain both; not worked
   out. Counting a show with any progress (the show's own `lastViewedAt`) is the
-  likely next step if part-watched shows should count.
+  likely next step if part-watched shows should count. **Done 2026-10-31:** a
+  show counts as started if any episode is finished *or* the show has a
+  `lastViewedAt` (Jellyfin/Emby: `LastPlayedDate`). On the TV that gave the
+  part-watched show its count (3) and a second show its 17, while shows
+  nobody had begun stayed bare, which also confirmed that Plex sets the
+  show's `lastViewedAt` for half an episode.
 
 **Seen and still open:**
 
@@ -1487,9 +1615,13 @@ want a real TV.
   540, a shelf row was about 320 dp, and the shelves had less than that, so
   the focused row was always cropped. Continue watching now scrolls with the
   rows, and rows are shorter (below).
-- **The search field cannot be reached with the remote** from "What should I
-  watch?": Up goes nowhere and typed text is lost. That contradicts the 1.0.4
-  notes, so it may be a regression; check on a real remote first.
+- ~~**The search field cannot be reached with the remote** from "What should
+  I watch?": Up goes nowhere and typed text is lost.~~ **Fixed 2026-10-31.**
+  Directional traversal did not find the field from inside the scrolling
+  content below it. Up there now tries the ordinary move first and, only
+  when it goes nowhere, focuses the field (`_upToField` in
+  `search_screen.dart`, the same shape as `RelayFocusBoundary`). Seen on the
+  emulator: Up lands in the field and typing searches.
 - **Continue watching is split by tab and uses episode stills.** Plex has
   one row of films and episodes, most recent first, with show posters, which
   read from across a room where a cropped still does not. Two films with
@@ -1497,9 +1629,11 @@ want a real TV.
   on the same account that this install is not connected to. *Confirmed the
   same day:* a fresh install on a tablet connected both servers and showed
   both films. Not a bug, only a setup difference between the two installs.
-- **The same next episode twice in Continue watching** when two connected
-  servers both have the show (seen on the tablet: one show's "S2 E10 · Up
-  next" once per server). Predates this work; open.
+- ~~**The same next episode twice in Continue watching** when two connected
+  servers both have the show.~~ **Fixed 2026-10-31.** Each server entry
+  carries `sameAs` (show, season and episode, or a film's title and year)
+  and `onePerTitle` keeps the most recent, preferring one already started
+  over an unstarted *Up next*. Seen on the tablet: the show appears once.
 - **Plex's home carries more:** the server's own collections as rows, and a
   backdrop with year, runtime, rating, synopsis and cast for whatever has
   focus. The backdrop and details are done (below); collections and cast
@@ -1572,8 +1706,24 @@ Phones and tablets keep their own layouts (a bottom bar on a phone, the
 desktop rail on a wide tablet, captions under posters); only the newest-episode
 order and the badges reach them. Seen on a Pixel Tablet emulator the same day.
 
-Not done: the server's own collections as rows, cast in
-the hero, Settings' wide section list, and any of this off TV. Pinned by
+**Added 2026-10-31:**
+
+- **The server's own collections as rows.** `MediaServer.featuredRows`; Plex
+  answers from `/hubs/sections/{id}`, keeping only hubs whose identifier
+  starts `custom.collection.` (what an owner pins, such as "Deleting
+  Soon"), since its other hubs repeat rows this app already draws. They come
+  after Continue watching, in the server's order, with no *See all*, on every
+  form factor. Rows of episodes are left out of Series, since an episode
+  tile would open as a film. Jellyfin and Emby have none yet.
+- **Cast.** Plex's `Role` tags (Jellyfin's `People`, fetched only for a
+  title's own page) give up to six names, shown under the plot on the film
+  and show pages, and in the hero when the listing carried them.
+- **Settings' section list: tried and reverted.** Narrowing it from 260 to
+  220 dp on a TV wrapped the longest label onto two lines at a larger text
+  size (the settings test's wide font showed it) and pushed the last section
+  out of reach. 40 dp was not worth that; it stays at 260.
+
+Not done: any of the TV-only layout off TV. Pinned by
 `test/library_hero_test.dart`; seen on the Google TV emulator against a real
 Plex server, not on real TV hardware.
 

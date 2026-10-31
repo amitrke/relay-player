@@ -30,6 +30,46 @@ class _FakePlex {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server.listen((req) {
       requests.add(req.uri);
+      // A library's hubs: one pinned collection, and two rows this app
+      // already draws itself, which featuredRows must leave out.
+      if (req.uri.path == '/hubs/sections/2') {
+        req.response
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({
+            'MediaContainer': {
+              'Hub': [
+                {
+                  'key': '/k1',
+                  'hubKey': '/k1',
+                  'hubIdentifier': 'custom.collection.2.900',
+                  'title': 'Deleting Soon',
+                  'type': 'show',
+                  'size': 1,
+                  'Metadata': [_show('s-old', 'Old Show', added: _day(1))],
+                },
+                {
+                  'key': '/k2',
+                  'hubKey': '/k2',
+                  'hubIdentifier': 'tv.recentlyadded',
+                  'title': 'Recently Added',
+                  'type': 'show',
+                  'size': 1,
+                  'Metadata': [_show('s-new', 'New Show', added: _day(20))],
+                },
+                {
+                  'key': '/k3',
+                  'hubKey': '/k3',
+                  'hubIdentifier': 'custom.collection.2.901',
+                  'title': 'Empty pick',
+                  'type': 'show',
+                  'size': 0,
+                },
+              ],
+            },
+          }))
+          ..close();
+        return;
+      }
       final type = req.uri.queryParameters['type'];
       final status = type == '4' && episodesFail ? 500 : 200;
       final items = switch (type) {
@@ -41,6 +81,11 @@ class _FakePlex {
           _show('s-quiet', 'Quiet Show', added: _day(5)),
           // Ten episodes, none watched here: not started.
           _show('s-fresh', 'Fresh Show', added: _day(2), leaves: 10, viewed: 0),
+          // None finished, but half of one watched: started.
+          {
+            ..._show('s-half', 'Half Show', added: _day(3), leaves: 4, viewed: 0),
+            'lastViewedAt': _day(4),
+          },
         ],
         // Episodes, newest first, as asked.
         '4' => [
@@ -128,6 +173,7 @@ void main() {
         'Old Show',
         'New Show',
         'Quiet Show',
+        'Half Show',
         'Fresh Show',
       ]);
 
@@ -153,6 +199,7 @@ void main() {
         expect(recentlyAdded(s, items), [
           'New Show',
           'Quiet Show',
+          'Half Show',
           'Fresh Show',
           'Old Show',
         ]);
@@ -161,7 +208,7 @@ void main() {
 
     test('a failed episode request still loads every show', () async {
       final (s, _) = await plex(episodesFail: true);
-      expect(await s.allItems(_shows), hasLength(4));
+      expect(await s.allItems(_shows), hasLength(5));
     });
 
     test('a film library makes no episode request', () async {
@@ -197,8 +244,38 @@ void main() {
           isNull,
           reason: 'not started, so no count: it would only ever say 99+',
         );
+        expect(
+          byId['s-half']!.unwatchedEpisodes,
+          4,
+          reason: 'half an episode watched is started',
+        );
       },
     );
+
+    // The owner's pinned collections, as Plex's own home draws them (§12.4).
+    test('featured rows are the pinned collections only', () async {
+      final (s, _) = await plex();
+      final rows = await s.featuredRows(_shows);
+      expect([for (final r in rows) r.title], ['Deleting Soon']);
+      expect(rows.single.items.single.id, 's-old');
+    });
+
+    test('a server whose hubs fail features nothing', () async {
+      final s = PlexService(clientId: 'test')
+        ..reconnect(baseUrl: 'http://127.0.0.1:1', token: '<redacted>');
+      expect(await s.featuredRows(_shows), isEmpty);
+    });
+
+    test('cast comes from Role tags, billing order, six at most', () {
+      final m = PlexService.itemOf(PlexMetadata.fromJson({
+        'ratingKey': 'm',
+        'key': '/library/metadata/m',
+        'type': 'movie',
+        'title': 'Film',
+        'Role': [for (var i = 1; i <= 8; i++) {'tag': 'Actor $i'}],
+      }));
+      expect(m.cast, [for (var i = 1; i <= 6; i++) 'Actor $i']);
+    });
 
     test('a film never carries an unwatched count', () {
       final film = PlexService.itemOf(

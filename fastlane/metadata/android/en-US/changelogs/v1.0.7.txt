@@ -1,0 +1,7 @@
+On a TV, the remote now reaches the search field.
+
+A show you have started shows how many episodes are left. When two servers have the same show, its next episode appears once in Continue watching.
+
+Your server's own collections appear as rows, and title pages list the cast.
+
+Error screens no longer show server addresses, and playback recovers from a dropped connection instead of stopping.

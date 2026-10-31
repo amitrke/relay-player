@@ -8,11 +8,14 @@ import 'package:go_router/go_router.dart';
 import 'package:relay_player/core/theme/relay_theme.dart';
 import 'package:relay_player/core/theme/relay_tokens.dart';
 import 'package:relay_player/data/downloads/download_record.dart';
+import 'package:relay_player/data/xtream/xtream_account_store.dart';
+import 'package:relay_player/data/xtream/xtream_client.dart';
 import 'package:relay_player/data/filesystem/device_video_source.dart';
 import 'package:relay_player/data/local/history_store.dart';
 import 'package:relay_player/data/plex/plex_service.dart';
 import 'package:relay_player/domain/models/media_server.dart';
 import 'package:relay_player/features/accounts/media_servers.dart';
+import 'package:relay_player/features/advanced_sources/xtream_controller.dart';
 import 'package:relay_player/features/downloads/downloads_controller.dart';
 import 'package:relay_player/features/favorites_history/resume_entries.dart';
 import 'package:relay_player/features/favorites_history/history_controller.dart';
@@ -41,6 +44,16 @@ class _FakeEngine implements PlaybackEngine {
   void complete() {
     playing = false;
     emitPosition(duration);
+    _completed.add(null);
+  }
+
+  /// What media_kit was measured doing when a live stream's connection
+  /// closed or stalled past its `network-timeout` (architecture.md §10, "Live
+  /// end of file", 2026-10-31): mpv pauses on the last frame, so playing goes
+  /// false and completed rises, the clock stays where it was, and no error
+  /// arrives.
+  void endOfFile() {
+    playing = false;
     _completed.add(null);
   }
 
@@ -210,6 +223,13 @@ class _NoTrackers extends TrackersController {
   Future<void> finished(String serverId, String itemId, {DateTime? at}) async {}
 }
 
+class _Accounts extends XtreamAccountsController {
+  _Accounts(this._accounts);
+  final List<XtreamAccount> _accounts;
+  @override
+  List<XtreamAccount> build() => _accounts;
+}
+
 void main() {
   late List<_FakeEngine> engines;
 
@@ -302,6 +322,21 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('demuxer died'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 20));
+  });
+
+  // A panel's stream URL holds the line's password (§4), and libmpv puts the
+  // address it failed on into its error (seen on a TV, 2026-10-31).
+  testWidgets('an error screen never shows the stream address', (tester) async {
+    await pump(tester);
+    engines.single.emitError(const EngineError(
+        'Failed to open http://<panel-host>/live/user1/pass1/1.ts.',
+        fatal: true));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Failed to open (address hidden)'), findsOneWidget);
+    expect(find.textContaining('pass1'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 20));
   });
@@ -483,6 +518,171 @@ void main() {
       expect(find.text('Up next'), findsNothing);
       await tester.pump(const Duration(seconds: 15));
       expect(engines, hasLength(1));
+      await finish(tester);
+    });
+  });
+
+  /// A live channel after it has started (architecture.md §10, "Live
+  /// reconnect" and "Live end of file"). The end-of-file cases were run
+  /// against the screen without `_onLiveEnded` and failed: the engine was
+  /// never stopped or reopened, and the 30 s pump shows the freeze watch did
+  /// not catch it either. The viewer's pause is the control that shows the
+  /// pass is not just a timer reconnecting anything that stands still.
+  group('a live channel', () {
+    const account = XtreamAccount(
+      id: 'a',
+      name: 'Line',
+      host: 'http://panel-host.example.invalid',
+      username: 'u',
+      liveCategoryIds: ['1'],
+    );
+    const url = 'http://panel-host.example.invalid/live/u/p/7.ts';
+
+    Future<void> pumpLive(WidgetTester tester, {String format = 'ts'}) async {
+      engines = [];
+      final router = GoRouter(
+        initialLocation: '/live/7',
+        routes: [
+          GoRoute(
+            path: '/live/:id',
+            builder: (_, s) => PlayerScreen.live(
+              accountId: 'a',
+              streamId: s.pathParameters['id']!,
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          xtreamAccountsProvider.overrideWith(() => _Accounts([account])),
+          xtreamClientProvider.overrideWith((ref, _) async => XtreamClient(
+                host: account.host,
+                username: 'u',
+                password: 'p',
+              )),
+          xtreamLiveFormatProvider.overrideWith((ref, _) async => format),
+          xtreamChannelsProvider.overrideWith((ref, _) async => const [
+                XtreamChannel(streamId: '7', name: 'Channel', categoryId: '1'),
+              ]),
+          playbackPrefsProvider.overrideWith(_Prefs.new),
+          historyProvider.overrideWith(_NoHistory.new),
+          playbackEngineFactoryProvider.overrideWithValue((output) {
+            final e = _FakeEngine(output);
+            engines.add(e);
+            return e;
+          }),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+          builder: (context, child) => RelayTheme(
+            tokens: RelayPalettes.midnight,
+            palette: RelayPalette.midnight,
+            child: child!,
+          ),
+        ),
+      ));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+    }
+
+    /// The clock moving, which is what counts as playing (§10).
+    Future<void> play(WidgetTester tester, Duration at) async {
+      engines.single
+        ..playing = true
+        ..emitPosition(at);
+      await tester.pump();
+    }
+
+    int opens() =>
+        engines.single.calls.where((c) => c == 'open $url').length;
+
+    Future<void> finish(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 20));
+    }
+
+    testWidgets('opens the channel', (tester) async {
+      await pumpLive(tester);
+      expect(engines.single.calls, ['stop', 'open $url']);
+      await finish(tester);
+    });
+
+    // §10, "Live over HLS": the line's own allowed formats decide.
+    testWidgets('opens the channel over HLS when the line allows it',
+        (tester) async {
+      await pumpLive(tester, format: 'm3u8');
+      expect(engines.single.calls, [
+        'stop',
+        'open http://panel-host.example.invalid/live/u/p/7.m3u8',
+      ]);
+      await finish(tester);
+    });
+
+    testWidgets('a stream that reaches end of file is stopped and reopened',
+        (tester) async {
+      await pumpLive(tester);
+      await play(tester, const Duration(seconds: 1));
+      await play(tester, const Duration(minutes: 3));
+
+      engines.single.endOfFile();
+      // One pump delivers the event and schedules the rebuild; the next draws.
+      await tester.pump();
+      await tester.pump();
+      expect(engines.single.calls.last, 'stop',
+          reason: 'released before the wait, so the panel sees it go (§4)');
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(opens(), 2);
+      expect(engines.single.calls.sublist(2), ['stop', 'stop', 'open $url'],
+          reason: 'stop before open, never open beside');
+
+      await play(tester, const Duration(seconds: 1));
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.textContaining('did not come back'), findsNothing);
+
+      // Nothing else fires: this was one drop, not a loop.
+      await tester.pump(const Duration(seconds: 30));
+      expect(opens(), 2);
+      await finish(tester);
+    });
+
+    testWidgets('a viewer pause is left alone', (tester) async {
+      await pumpLive(tester);
+      await play(tester, const Duration(seconds: 1));
+      engines.single.playing = false;
+      await tester.pump(const Duration(seconds: 30));
+      expect(opens(), 1);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await finish(tester);
+    });
+
+    // The 10 s freeze watch itself is not pinned here: it measures stillness
+    // with `DateTime.now()`, which a widget test's fake clock does not move.
+
+    testWidgets('a stream that keeps ending gives up after three tries',
+        (tester) async {
+      await pumpLive(tester);
+      await play(tester, const Duration(seconds: 1));
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        engines.single.endOfFile();
+        await tester.pump();
+        await tester.pump(Duration(seconds: 2 * attempt));
+        await tester.pump();
+        expect(opens(), attempt + 1);
+        await play(tester, const Duration(seconds: 1));
+      }
+      engines.single.endOfFile();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('This channel stopped and did not come back.'),
+          findsOneWidget);
+      expect(engines.single.calls.last, 'stop',
+          reason: 'the connection is released on giving up');
+      await tester.pump(const Duration(seconds: 20));
+      expect(opens(), 4);
       await finish(tester);
     });
   });

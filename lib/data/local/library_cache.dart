@@ -185,6 +185,7 @@ Map<String, dynamic> catalogItemToJson(CatalogItem i) {
     if (i.lastViewedAt != null) 'lv': i.lastViewedAt!.millisecondsSinceEpoch,
     if (i.language != null) 'l': i.language,
     if (i.unwatchedEpisodes != null) 'ue': i.unwatchedEpisodes,
+    if (i.cast.isNotEmpty) 'ca': i.cast,
     if (i.shelf != null) 'sh': i.shelf,
   };
 }
@@ -229,6 +230,11 @@ CatalogItem? catalogItemFromJson(Object? json) {
     lastViewedAt: date(json['lv']),
     language: json['l'] as String?,
     unwatchedEpisodes: json['ue'] as int?,
+    cast: [
+      if (json['ca'] case final List<Object?> names)
+        for (final n in names)
+          if (n is String) n,
+    ],
     shelf: json['sh'] as String?,
   );
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -168,13 +169,38 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  final _fieldFocus = FocusNode(debugLabel: 'search field');
   Timer? _debounce;
 
   @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _fieldFocus.dispose();
     super.dispose();
+  }
+
+  /// Up from the top of whatever is under the field goes to the field.
+  ///
+  /// On the Google TV emulator, 2026-10-30, Up from *What should I watch?*
+  /// went nowhere: directional traversal did not find the field from inside
+  /// the scrolling content below it, so search could not be typed into by
+  /// remote at all, and typed text went nowhere. The ordinary move is tried
+  /// first, as RelayFocusBoundary does, so moving up within the content is
+  /// untouched; only when it has nowhere to go does the field take focus.
+  KeyEventResult _upToField(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.arrowUp) {
+      return KeyEventResult.ignored;
+    }
+    final focused = FocusManager.instance.primaryFocus;
+    if (focused == null || focused == _fieldFocus || focused.context == null) {
+      return KeyEventResult.ignored;
+    }
+    if (!focused.focusInDirection(TraversalDirection.up)) {
+      _fieldFocus.requestFocus();
+    }
+    return KeyEventResult.handled;
   }
 
   /// Each keystroke is a round trip to the server, so wait for a pause. Without
@@ -218,6 +244,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: RelayFieldTraversal(
                 child: TextField(
                   controller: _controller,
+                  focusNode: _fieldFocus,
                   onChanged: _onChanged,
                   autocorrect: false,
                   textInputAction: TextInputAction.search,
@@ -287,71 +314,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             Expanded(
-              child: aiOn
-                  ? AiResultsView(query: query.trim())
-                  : switch (query.trim().length) {
-                      // Suggestions when there are honest ones, else the plain prompt.
-                      // While they load, or if they fail, the prompt shows: nothing
-                      // here is worth a spinner or an error.
-                      // With an AI provider the AI section leads, even when there
-                      // are no TMDB rows: it is the one thing here that can run
-                      // with no TMDB key and no history of its own.
-                      0 => switch (ref.watch(suggestionsProvider).value) {
-                        final rows? when rows.isNotEmpty || hasAi =>
-                          SuggestionsView(
-                            rows: rows,
-                            leading: hasAi
-                                ? const AiRecommendationsSection()
-                                : null,
+              child: Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: _upToField,
+                child: aiOn
+                    ? AiResultsView(query: query.trim())
+                    : switch (query.trim().length) {
+                        // Suggestions when there are honest ones, else the plain prompt.
+                        // While they load, or if they fail, the prompt shows: nothing
+                        // here is worth a spinner or an error.
+                        // With an AI provider the AI section leads, even when there
+                        // are no TMDB rows: it is the one thing here that can run
+                        // with no TMDB key and no history of its own.
+                        0 => switch (ref.watch(suggestionsProvider).value) {
+                          final rows? when rows.isNotEmpty || hasAi =>
+                            SuggestionsView(
+                              rows: rows,
+                              leading: hasAi
+                                  ? const AiRecommendationsSection()
+                                  : null,
+                            ),
+                          null when hasAi => const SuggestionsView(
+                            rows: [],
+                            leading: AiRecommendationsSection(),
                           ),
-                        null when hasAi => const SuggestionsView(
-                          rows: [],
-                          leading: AiRecommendationsSection(),
-                        ),
-                        _ => LibraryEmptyState(
+                          _ => LibraryEmptyState(
+                            icon: Icons.search,
+                            message: tr.search.prompt,
+                          ),
+                        },
+                        1 => LibraryEmptyState(
                           icon: Icons.search,
-                          message: tr.search.prompt,
+                          message: tr.search.keepTyping,
+                        ),
+                        // What the request server could add sits above the
+                        // results, and stays when the library has nothing (§20).
+                        _ => Column(
+                          children: [
+                            SeerrSearchRow(query: query.trim()),
+                            Expanded(
+                              child: results.when(
+                                loading: () => Center(
+                                  child: CircularProgressIndicator(
+                                    color: t.accent,
+                                  ),
+                                ),
+                                error: (e, _) => LibraryEmptyState(
+                                  icon: Icons.cloud_off_outlined,
+                                  message: '$e',
+                                  onRetry: () =>
+                                      ref.invalidate(_resultsProvider),
+                                ),
+                                data: (list) => list.isEmpty
+                                    ? LibraryEmptyState(
+                                        icon: Icons.search_off,
+                                        message: tr.search.noMatch(
+                                          query: query,
+                                        ),
+                                      )
+                                    : SearchResultsView(
+                                        all: enriched ?? list,
+                                        filters: filters,
+                                        sourceNames: sourceNames,
+                                        onFilters: (v) => ref
+                                            .read(_filtersProvider.notifier)
+                                            .set(v),
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       },
-                      1 => LibraryEmptyState(
-                        icon: Icons.search,
-                        message: tr.search.keepTyping,
-                      ),
-                      // What the request server could add sits above the
-                      // results, and stays when the library has nothing (§20).
-                      _ => Column(
-                        children: [
-                          SeerrSearchRow(query: query.trim()),
-                          Expanded(
-                            child: results.when(
-                              loading: () => Center(
-                                child: CircularProgressIndicator(
-                                  color: t.accent,
-                                ),
-                              ),
-                              error: (e, _) => LibraryEmptyState(
-                                icon: Icons.cloud_off_outlined,
-                                message: '$e',
-                                onRetry: () => ref.invalidate(_resultsProvider),
-                              ),
-                              data: (list) => list.isEmpty
-                                  ? LibraryEmptyState(
-                                      icon: Icons.search_off,
-                                      message: tr.search.noMatch(query: query),
-                                    )
-                                  : SearchResultsView(
-                                      all: enriched ?? list,
-                                      filters: filters,
-                                      sourceNames: sourceNames,
-                                      onFilters: (v) => ref
-                                          .read(_filtersProvider.notifier)
-                                          .set(v),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    },
+              ),
             ),
           ],
         ),

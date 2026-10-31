@@ -54,6 +54,7 @@ class CatalogItem {
     this.rating,
     this.originalLanguage,
     this.unwatchedEpisodes,
+    this.cast = const [],
     this.shelf,
   });
 
@@ -137,6 +138,9 @@ class CatalogItem {
   /// MediaItem.unwatchedEpisodes.
   final int? unwatchedEpisodes;
 
+  /// Leading actors, when the server listed them; see MediaItem.cast.
+  final List<String> cast;
+
   /// The row this title sits in on Movies and Series: a Plex library's name
   /// (prefixed with the server's when more than one is connected) or a panel
   /// category's. Set by the source that fetched it, because that is the only
@@ -171,6 +175,7 @@ class CatalogItem {
         rating: rating,
         originalLanguage: originalLanguage,
         unwatchedEpisodes: unwatchedEpisodes,
+        cast: cast,
         shelf: shelf,
       );
 
@@ -200,6 +205,7 @@ class CatalogItem {
         rating: rating,
         originalLanguage: originalLanguage,
         unwatchedEpisodes: unwatchedEpisodes,
+        cast: cast,
         shelf: shelf,
       );
 

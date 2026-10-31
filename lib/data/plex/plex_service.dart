@@ -329,6 +329,33 @@ class PlexService extends MediaServer {
     }
   }
 
+  /// The collections the owner has pinned to [section]'s recommendations,
+  /// which Plex's own home draws as rows (seen beside it on a TV,
+  /// architecture.md §12.4). Plex's per-section hubs also carry "Recently
+  /// added", "On deck" and genre rows; those duplicate rows this app already
+  /// has, so only collections are kept, by their `custom.collection.` hub
+  /// identifier. Failure gives no rows rather than an error: they are extra.
+  @override
+  Future<List<MediaRow>> featuredRows(MediaSection section) async {
+    try {
+      final hubs = await _client.hubs.forSection(
+        sectionId: section.id,
+        count: 30,
+      );
+      return [
+        for (final hub in hubs)
+          if (hub.hubIdentifier.startsWith('custom.collection.') &&
+              hub.items.isNotEmpty)
+            MediaRow(
+              title: hub.title,
+              items: [for (final m in hub.items) itemOf(m)],
+            ),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Plex metadata in the neutral shape every screen reads (§6.2).
   ///
   /// [newestEpisodeAt], for a show, replaces its `addedAt` when later.
@@ -363,7 +390,20 @@ class PlexService extends MediaServer {
         unwatchedEpisodes: m.type == PlexMetadataType.show
             ? unwatchedOf(m.raw)
             : null,
+        cast: castOf(m.raw),
       );
+
+  /// Actors from Plex's `Role` tags, in billing order, at most six.
+  /// dart_plex 0.1.2 does not parse them.
+  static List<String> castOf(Map<String, dynamic> raw) {
+    final roles = raw['Role'];
+    if (roles is! List) return const [];
+    return [
+      for (final r in roles)
+        if (r is Map && r['tag'] is String && (r['tag'] as String).isNotEmpty)
+          r['tag'] as String,
+    ].take(6).toList();
+  }
 
   /// A show's unwatched episodes from `leafCount` (its episodes) and
   /// `viewedLeafCount` (those this account has watched). dart_plex 0.1.2 does
@@ -372,10 +412,16 @@ class PlexService extends MediaServer {
   /// server with years of series nobody here has begun, every one of them
   /// carried "99+" or similar, which buried the few that mean "a show you
   /// watch has something new" (tablet, 2026-10-30, MediaItem.unwatchedEpisodes).
+  ///
+  /// *Started* is any episode finished **or** a `lastViewedAt` on the show.
+  /// `viewedLeafCount` counts finished episodes only, so a show whose sole
+  /// progress was half an episode looked unstarted and lost its count (seen
+  /// the same day on the TV, with a show sitting in Continue watching).
   static int? unwatchedOf(Map<String, dynamic> raw) {
     final all = raw['leafCount'];
     final seen = raw['viewedLeafCount'];
-    if (all is! int || seen is! int || seen == 0) return null;
+    if (all is! int || seen is! int) return null;
+    if (seen == 0 && raw['lastViewedAt'] == null) return null;
     return all > seen ? all - seen : 0;
   }
 

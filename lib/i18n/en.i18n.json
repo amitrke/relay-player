@@ -896,5 +896,8 @@
     "resume": "Resume from {time}",
     "fromStart": "Play from start",
     "gone": "This film is no longer on the server, or the server cannot be reached."
+  },
+  "errors": {
+    "addressHidden": "(address hidden)"
   }
 }

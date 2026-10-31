@@ -472,11 +472,18 @@ class MediaBrowserService extends MediaServer {
       ids: _ids(j['ProviderIds']),
       rating: (j['CommunityRating'] as num?)?.toDouble(),
       // Only for a series started here; see PlexService.unwatchedOf. Jellyfin
-      // says a series is partly watched through PlayedPercentage.
+      // says a series is partly watched through PlayedPercentage, and that it
+      // was played at all, half an episode included, through LastPlayedDate.
+      cast: [
+        for (final p in (j['People'] as List?) ?? const [])
+          if (p is Map && p['Type'] == 'Actor' && p['Name'] is String)
+            p['Name'] as String,
+      ].take(6).toList(),
       unwatchedEpisodes:
           type == MediaItemType.show &&
               user['UnplayedItemCount'] is int &&
               (played ||
+                  user['LastPlayedDate'] != null ||
                   (user['PlayedPercentage'] is num &&
                       (user['PlayedPercentage'] as num) > 0))
           ? user['UnplayedItemCount'] as int
@@ -550,7 +557,11 @@ class MediaBrowserService extends MediaServer {
   @override
   Future<MediaItem?> item(String id) async {
     try {
-      final data = await _get('/Users/$_user/Items/$id', {'Fields': _fields});
+      // People only here, for a title's page: on every library item it would
+      // be the largest field in the response for a line nobody sees there.
+      final data = await _get('/Users/$_user/Items/$id', {
+        'Fields': '$_fields,People',
+      });
       return data is Map<String, dynamic> ? itemOf(data) : null;
     } on MediaServerUnreachable {
       return null;
