@@ -31,6 +31,7 @@ class ResumeEntry {
     this.posterPath,
     this.signature = '',
     this.episode = false,
+    this.sameAs,
   });
 
   final PlaybackKind kind;
@@ -56,6 +57,13 @@ class ResumeEntry {
   /// Whether this tile belongs above Series rather than Movies.
   final bool episode;
 
+  /// The same thing on another server: the show, season and episode number
+  /// for an episode, the title and year for a film. Two connected servers
+  /// that both hold a show each put its next episode in On Deck, so the row
+  /// showed it twice (seen on a tablet, 2026-10-30); [mergeResume] keeps one.
+  /// Null when there is not enough to tell, and for this device's history.
+  final String? sameAs;
+
   ResumeEntry _asEpisode(bool value) => ResumeEntry(
         kind: kind,
         sourceId: sourceId,
@@ -67,6 +75,7 @@ class ResumeEntry {
         posterPath: posterPath,
         signature: signature,
         episode: value,
+        sameAs: sameAs,
       );
 
   String get key => '${kind.wire}:$sourceId:$itemId';
@@ -123,6 +132,12 @@ class ResumeEntry {
       lastActivity: m.lastViewedAt,
       signature: 'plex:$offset:${m.lastViewedAt?.millisecondsSinceEpoch}',
       episode: episode,
+      sameAs: episode
+          ? (m.showTitle != null && m.parentIndex != null && m.index != null
+                ? 'episode|${m.showTitle!.toLowerCase()}|'
+                      '${m.parentIndex}|${m.index}'
+                : null)
+          : 'film|${m.title.toLowerCase()}|${m.year ?? ''}',
     );
   }
 
@@ -183,7 +198,34 @@ List<ResumeEntry> mergeResume({
   // Stable, so undated entries keep Plex's own order at the end.
   final dated = [for (final e in visible) if (e.lastActivity != null) e]
     ..sort((a, b) => b.lastActivity!.compareTo(a.lastActivity!));
-  return [...dated, for (final e in visible) if (e.lastActivity == null) e];
+  return onePerTitle([
+    ...dated,
+    for (final e in visible) if (e.lastActivity == null) e,
+  ]);
+}
+
+/// [ordered] with only one entry for the same title on different servers
+/// (see [ResumeEntry.sameAs]). The first wins, which in the merged order is
+/// the most recently active, except that one already started beats one not
+/// yet begun: a place to resume is worth more than an offer to start.
+List<ResumeEntry> onePerTitle(List<ResumeEntry> ordered) {
+  final at = <String, int>{};
+  final out = <ResumeEntry>[];
+  for (final e in ordered) {
+    final same = e.sameAs;
+    if (same == null) {
+      out.add(e);
+      continue;
+    }
+    final i = at[same];
+    if (i == null) {
+      at[same] = out.length;
+      out.add(e);
+    } else if (out[i].progress == null && e.progress != null) {
+      out[i] = e;
+    }
+  }
+  return out;
 }
 
 /// On Deck across every connected server, from the libraries that feed Movies
