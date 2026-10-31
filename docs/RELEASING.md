@@ -480,6 +480,26 @@ with a higher `rollout`. If one store fails, fix it and run again for that
 store only: the tag waits until both have succeeded, and a re-run accepts its
 own tag.
 
+**First `release`, 2026-10-31 (run 41169012510, 1.0.7 build 45): both stores
+refused, nothing changed live.**
+
+- **Play: "Track 'internal' doesn't have any releases".** The build tested
+  was 45, but three later pushes to `develop` (two docs commits and the
+  notes rewrite) built 46 and 47, and Play's internal track holds only its
+  latest release. 45 was no longer on it, and supply looks the release up
+  by version code there. **So: promote the build that is on the internal
+  track now, and push nothing to `develop` between testing a build and
+  promoting it.** A later build that differs only in docs or notes is the
+  same app (`git diff` between the two commits says so); a later build with
+  code in it needs testing again.
+- **App Store: "The specified pre-release build could not be added"**
+  (`/data/relationships/build`), when deliver attached 1.0.7 (45) to the
+  1.0.7 version it had just created and filled in. The metadata and review
+  information uploaded before it. The build had installed from TestFlight,
+  `ITSAppUsesNonExemptEncryption` is set in `Info.plist`, and the export is
+  `app-store-connect`, so the usual causes do not obviously apply. Cause not
+  known yet; see what the re-run with the current build does.
+
 ### Store listings
 
 `fastlane/metadata/android` (Play) and `fastlane/metadata/ios` (App Store) hold
