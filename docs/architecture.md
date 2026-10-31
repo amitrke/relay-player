@@ -564,7 +564,7 @@ A convenience for adding a provider without hand-typing host/username/password: 
 
 Regardless of the toggle, Apple's App Review Information must disclose the IPTV feature in full: what it is, that it is off by default, the acknowledgement it sits behind, and that the app supplies no provider (§1.3). The notes live in `fastlane/metadata/ios/review_information/notes.txt`.
 
-No demo account is supplied. The app has no sign-in of its own, and reviewers test it the way users do, with their own media; the notes offer test access for Advanced Sources on request. If a reviewer asks, credentials go into App Store Connect only, typed by the account owner, never into this repo. (Until 2026-09-23 this section required a standing demo Xtream account under Guideline 2.1; the account owner decided against it that day.)
+No demo account is supplied. The app has no sign-in of its own, and reviewers test it the way users do, with their own media; the notes offer test access for Advanced Sources on request. If a reviewer asks, credentials go into App Store Connect only, typed by the account owner, never into this repo. (Until 2026-09-23 this section required a standing demo Xtream account under Guideline 2.1; the account owner decided against it that day.) On Play, "no sign-in" is declared as "some functionality is restricted" with instructions and no credentials, since 2026-10-31, when a reviewer read the optional SMB form as a login wall; the reasoning is in `docs/STORE_LISTING.md`.
 
 ## 9. AI Features (bring-your-own AI provider key)
 

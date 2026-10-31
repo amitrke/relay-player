@@ -524,6 +524,17 @@ showed 1.0.7 Waiting for Review with build 47. 47 is 45's code (only docs
 and the notes differ), and 45 is what was tested on an iPad. The first
 end-to-end run of this workflow.
 
+**Play rejected that production release the same day**, under "Play Console
+Requirements": no demo account or credentials. The evidence was one
+screenshot, the "Add a network share" form, which a reviewer read as a login
+wall. Sign in details had said nothing is restricted, which left no field to
+say the form is optional and connects to the user's own NAS. The previous
+version stayed live. Fixed in the console rather than in code, and 47 was
+sent for review again unchanged; the new declaration and its reasoning are in
+`docs/STORE_LISTING.md` (Sign in details). The workflow itself did nothing
+wrong, but a green `release` run only means Play *accepted the upload*; the
+review outcome arrives later, in Policy status.
+
 ### Store listings
 
 `fastlane/metadata/android` (Play) and `fastlane/metadata/ios` (App Store) hold
