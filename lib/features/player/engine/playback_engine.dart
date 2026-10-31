@@ -132,6 +132,13 @@ abstract class PlaybackEngine implements PlayerTransport {
   /// Fires once each time the open file plays through to its end. Not on a
   /// stop, an error or a seek near the end: only the decoder running out of
   /// file. What the screen offers the next episode on (§12.5).
+  ///
+  /// For a live stream, which has no end, this is the source going away: the
+  /// panel closing the connection, or a read stall the engine gave up on.
+  /// The screen reconnects on it (§10, "Live end of file", 2026-10-31). An
+  /// engine must report that case here, or as a fatal error, and not only by
+  /// stopping: a stream that silently stops playing looks to the screen like
+  /// a viewer's pause.
   Stream<void> get completedStream;
 
   /// Queues [url] for playback. Returning means the command was accepted,

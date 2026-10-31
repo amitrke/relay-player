@@ -663,6 +663,69 @@ the same position-clock rule as above:
 - **Not verified on a device.** The 10s threshold and the backoff are
   untested guesses, and nobody has yet reproduced a mid-stream freeze to watch
   it recover. Add it to `MANUAL_TESTING.md` once exercised.
+- **Incomplete, found 2026-10-31:** "started and not paused" let the commonest
+  drop through. When the connection ends, mpv pauses itself, so this watch
+  read it as the viewer's pause and never fired. See the next entry.
+
+**Live end of file (found and fixed 2026-10-31).** Reported on every device
+tried: a live channel froze after a few minutes, the picture stopped and the
+play button showed, as if paused, and it never came back. The same channel
+plays for long stretches in an ExoPlayer-based IPTV app on the same devices.
+
+- **Cause, reproduced against real libmpv.** media_kit 1.2.6 starts mpv with
+  `keep-open=yes` and `network-timeout=5` (`real.dart`). With `keep-open`, a
+  stream that runs out does not go idle: mpv reaches end of file and *pauses
+  on the last frame*. So the engine reports `completed` and not playing, the
+  clock stops, and the error stream says nothing. The player screen ignored a
+  live completion (that path was only the Up next card's) and the freeze
+  watch skips a paused engine, so nothing reconnected. That is exactly the
+  reported picture: still frame, play button, for good.
+- **How it was measured.** Windows, the bundled `libmpv-2.dll`, a scratch
+  `flutter test` driving media_kit's `Player` (`vo=null`, muted) against a
+  local Python server pacing a generated MPEG-TS at wall-clock rate, as a
+  panel does. Not committed: the server and probe are throwaway, and the
+  numbers are the part worth keeping.
+  - *Server closes the connection* after 12s: ffmpeg logs "http: Stream ends
+    prematurely" (an `ffmpeg`-prefixed line, which media_kit does not forward
+    to its error stream), mpv plays out the ~2s it had buffered, then
+    `playing=false, completed=true`, position frozen. Still frozen 11s later
+    when the probe ended.
+  - *Server stalls* for 9s without closing, after 8s: mpv shows buffering at
+    the buffer's end, and about 5s after the last byte (`network-timeout`)
+    gives up with the same `playing=false, completed=true`. No error line at
+    all. So a panel that only hiccups for more than ~5s ends the stream too.
+    The old socket was still open server-side 17s later, until the player
+    was disposed: a frozen-at-end player may still hold the connection.
+  - Which of the two the user's panel does after "a few minutes" is not
+    known; both arrive as the same event, so the fix does not depend on it.
+- **Fix:** a live completion is a drop, and takes the same path as a freeze
+  or a fatal error (stop, wait 2/4/6s, reopen, budget 3, reset after 30s of
+  play). Measured with real libmpv the same way: stop then open after a
+  `keep-open` end plays again, clock moving ~0.5s after the reopen, and the
+  server saw one connection at a time. `player_screen_engine_test.dart` pins
+  the screen's side against a fake engine that does what mpv was measured
+  doing; both end-of-file tests fail without the fix, and a viewer's pause
+  (left alone either way) is the control.
+- **Rejected: ffmpeg's own `reconnect` (`stream-lavf-o=reconnect=1,
+  reconnect_streamed=1`).** Measured: on a server close it reconnects inside
+  ffmpeg with no visible interruption, which is what makes it tempting. But
+  on a *stall* it opened the new connection while the old one was still open
+  on the server, and the two overlapped for ~4s. On a `max_connections: 1`
+  line that is the §4 failure exactly: the reconnect is refused, or the panel
+  counts the user over their limit. The app-level path stops before it opens
+  by construction. Revisit only with a way to restrict ffmpeg's reconnect to
+  server-closed connections, tested on a one-connection line.
+- **Not changed, considered:** the cache. media_kit already sets `cache=yes`
+  and a 32 MB demuxer cache; a live stream arrives at real-time pace, so a
+  bigger cache does not fill and would not have stopped either case. Raising
+  `network-timeout` would ride out a stall longer, but the 10s freeze watch
+  would reconnect at 10s anyway, so it only moves the drop around.
+- **What the user sees now** is a spinner for a few seconds on each drop, not
+  a seamless recovery: ExoPlayer retries a failed load underneath its buffer,
+  which this does not. If drops turn out to be frequent on real panels, that
+  gap is the next thing to close, not the cache.
+- **Not seen on a device or a real panel.** Recorded in `MANUAL_TESTING.md`
+  with what to look for.
 
 **Audio focus and going to the background (#17, decided 2026-09-22).** Before
 this there was no audio focus handling and no lifecycle observer: another app's
