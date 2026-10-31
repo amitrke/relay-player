@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/redact.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../data/filesystem/device_video_source.dart';
 import '../../data/filesystem/saf_folder_source.dart';
@@ -199,7 +200,10 @@ class LocalNetworkTab extends ConsumerWidget {
                   ),
               ],
             AsyncError(:final error) => [
-                Text('$error', style: TextStyle(color: t.inkDim)),
+                Text(
+                  redactAddresses('$error'),
+                  style: TextStyle(color: t.inkDim),
+                ),
               ],
             _ => [
                 Padding(

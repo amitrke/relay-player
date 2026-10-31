@@ -896,5 +896,8 @@
     "resume": "Reanudar desde {time}",
     "fromStart": "Reproducir desde el principio",
     "gone": "Esta película ya no está en el servidor, o no se puede contactar con el servidor."
+  },
+  "errors": {
+    "addressHidden": "(dirección oculta)"
   }
 }

@@ -99,6 +99,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$trackers$es trackers = _Translations$trackers$es._(_root);
 	@override late final _Translations$seerr$es seerr = _Translations$seerr$es._(_root);
 	@override late final _Translations$film$es film = _Translations$film$es._(_root);
+	@override late final _Translations$errors$es errors = _Translations$errors$es._(_root);
 }
 
 // Path: common
@@ -661,6 +662,16 @@ class _Translations$film$es extends Translations$film$en {
 	@override String resume({required Object time}) => 'Reanudar desde ${time}';
 	@override String get fromStart => 'Reproducir desde el principio';
 	@override String get gone => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.';
+}
+
+// Path: errors
+class _Translations$errors$es extends Translations$errors$en {
+	_Translations$errors$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get addressHidden => '(dirección oculta)';
 }
 
 // Path: player.upNext
@@ -2202,6 +2213,7 @@ extension on TranslationsEs {
 			'film.resume' => ({required Object time}) => 'Reanudar desde ${time}',
 			'film.fromStart' => 'Reproducir desde el principio',
 			'film.gone' => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.',
+			'errors.addressHidden' => '(dirección oculta)',
 			_ => null,
 		};
 	}

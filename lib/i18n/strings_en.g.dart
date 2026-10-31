@@ -101,6 +101,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$trackers$en trackers = Translations$trackers$en.internal(_root);
 	late final Translations$seerr$en seerr = Translations$seerr$en.internal(_root);
 	late final Translations$film$en film = Translations$film$en.internal(_root);
+	late final Translations$errors$en errors = Translations$errors$en.internal(_root);
 }
 
 // Path: common
@@ -1239,6 +1240,18 @@ class Translations$film$en {
 
 	/// en: 'This film is no longer on the server, or the server cannot be reached.'
 	String get gone => 'This film is no longer on the server, or the server cannot be reached.';
+}
+
+// Path: errors
+class Translations$errors$en {
+	Translations$errors$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '(address hidden)'
+	String get addressHidden => '(address hidden)';
 }
 
 // Path: player.upNext
@@ -3551,6 +3564,7 @@ extension on Translations {
 			'film.resume' => ({required Object time}) => 'Resume from ${time}',
 			'film.fromStart' => 'Play from start',
 			'film.gone' => 'This film is no longer on the server, or the server cannot be reached.',
+			'errors.addressHidden' => '(address hidden)',
 			_ => null,
 		};
 	}

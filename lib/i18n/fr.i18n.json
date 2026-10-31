@@ -896,5 +896,8 @@
     "resume": "Reprendre à {time}",
     "fromStart": "Lire depuis le début",
     "gone": "Ce film n'est plus sur le serveur, ou le serveur est injoignable."
+  },
+  "errors": {
+    "addressHidden": "(adresse masquée)"
   }
 }

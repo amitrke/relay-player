@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/relay_theme.dart';
+import '../../core/redact.dart';
 import '../../core/theme/relay_widgets.dart';
 import '../../domain/models/media_server.dart';
 import '../../data/local/history_store.dart';
@@ -895,7 +896,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _reopenCompatible(String why) async {
     if (_fellBack || !mounted) return;
     _fellBack = true;
-    debugPrint('Player: reopening on compatible output: $why');
+    debugPrint(
+      'Player: reopening on compatible output: ${redactAddresses(why)}',
+    );
     final route = _route;
     final router = GoRouter.of(context);
     _compatibleRoutes.add(route);
@@ -993,13 +996,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _fail(message);
     } else {
       debugPrint('Player: continuing past non-fatal ${_engine.name} error: '
-          '$message');
+          '${redactAddresses(message)}');
     }
   }
 
   void _fail(Object message) {
     _stallTimer?.cancel();
-    if (mounted && _error == null) setState(() => _error = '$message');
+    // libmpv names the address it failed to open, and a panel's address holds
+    // the line's password (§4): never on screen (core/redact.dart).
+    if (mounted && _error == null) {
+      setState(() => _error = redactAddresses('$message'));
+    }
   }
 
   @override

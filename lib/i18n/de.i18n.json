@@ -896,5 +896,8 @@
     "resume": "Fortsetzen ab {time}",
     "fromStart": "Von vorn abspielen",
     "gone": "Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar."
+  },
+  "errors": {
+    "addressHidden": "(Adresse verborgen)"
   }
 }

@@ -326,6 +326,21 @@ void main() {
     await tester.pump(const Duration(seconds: 20));
   });
 
+  // A panel's stream URL holds the line's password (§4), and libmpv puts the
+  // address it failed on into its error (seen on a TV, 2026-10-31).
+  testWidgets('an error screen never shows the stream address', (tester) async {
+    await pump(tester);
+    engines.single.emitError(const EngineError(
+        'Failed to open http://<panel-host>/live/user1/pass1/1.ts.',
+        fatal: true));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Failed to open (address hidden)'), findsOneWidget);
+    expect(find.textContaining('pass1'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 20));
+  });
+
   /// Up next (architecture.md §12.5). Each of these was run against the
   /// screen with the feature taken out (the end ignored, the film guard
   /// removed, Play now given focus, Back left to leave) and failed, so
