@@ -20,10 +20,20 @@ import '../../i18n/strings.g.dart';
 
 /// One titled row of Movies or Series: a Plex library, or a panel category.
 class Shelf {
-  const Shelf({required this.title, required this.source, required this.items});
+  const Shelf({
+    required this.title,
+    required this.source,
+    required this.items,
+    this.seeAll = true,
+  });
 
   final String title;
   final CatalogSource source;
+
+  /// Whether the row ends in a *See all* tile. False for a row the server
+  /// features (featuredShelvesProvider), which is short and has no page of
+  /// its own: See all opens a row by finding it among the library's rows.
+  final bool seeAll;
 
   /// In the order the caller sorted them; grouping never reorders within a row.
   final List<CatalogItem> items;
@@ -192,7 +202,8 @@ class ShelvesView extends ConsumerWidget {
         final ordered = favouritesFirst(shelf.items, favourites, _favoriteOf);
         final shown = ordered.take(shelfPreviewCount).toList();
         final more = ordered.length > shown.length;
-        final count = shown.length + 1; // The See all tile ends every row.
+        // The See all tile ends every library row.
+        final count = shown.length + (shelf.seeAll ? 1 : 0);
 
         final Widget body = Focus(
           canRequestFocus: false,

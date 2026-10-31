@@ -1473,7 +1473,12 @@ want a real TV.
   finished episodes in `viewedLeafCount`. Plex's home-row number may instead
   be how many episodes arrived recently, which would explain both; not worked
   out. Counting a show with any progress (the show's own `lastViewedAt`) is the
-  likely next step if part-watched shows should count.
+  likely next step if part-watched shows should count. **Done 2026-10-31:** a
+  show counts as started if any episode is finished *or* the show has a
+  `lastViewedAt` (Jellyfin/Emby: `LastPlayedDate`). On the TV that gave the
+  part-watched show its count (3) and a second show its 17, while shows
+  nobody had begun stayed bare, which also confirmed that Plex sets the
+  show's `lastViewedAt` for half an episode.
 
 **Seen and still open:**
 
@@ -1487,9 +1492,13 @@ want a real TV.
   540, a shelf row was about 320 dp, and the shelves had less than that, so
   the focused row was always cropped. Continue watching now scrolls with the
   rows, and rows are shorter (below).
-- **The search field cannot be reached with the remote** from "What should I
-  watch?": Up goes nowhere and typed text is lost. That contradicts the 1.0.4
-  notes, so it may be a regression; check on a real remote first.
+- ~~**The search field cannot be reached with the remote** from "What should
+  I watch?": Up goes nowhere and typed text is lost.~~ **Fixed 2026-10-31.**
+  Directional traversal did not find the field from inside the scrolling
+  content below it. Up there now tries the ordinary move first and, only
+  when it goes nowhere, focuses the field (`_upToField` in
+  `search_screen.dart`, the same shape as `RelayFocusBoundary`). Seen on the
+  emulator: Up lands in the field and typing searches.
 - **Continue watching is split by tab and uses episode stills.** Plex has
   one row of films and episodes, most recent first, with show posters, which
   read from across a room where a cropped still does not. Two films with
@@ -1497,9 +1506,11 @@ want a real TV.
   on the same account that this install is not connected to. *Confirmed the
   same day:* a fresh install on a tablet connected both servers and showed
   both films. Not a bug, only a setup difference between the two installs.
-- **The same next episode twice in Continue watching** when two connected
-  servers both have the show (seen on the tablet: one show's "S2 E10 · Up
-  next" once per server). Predates this work; open.
+- ~~**The same next episode twice in Continue watching** when two connected
+  servers both have the show.~~ **Fixed 2026-10-31.** Each server entry
+  carries `sameAs` (show, season and episode, or a film's title and year)
+  and `onePerTitle` keeps the most recent, preferring one already started
+  over an unstarted *Up next*. Seen on the tablet: the show appears once.
 - **Plex's home carries more:** the server's own collections as rows, and a
   backdrop with year, runtime, rating, synopsis and cast for whatever has
   focus. The backdrop and details are done (below); collections and cast
@@ -1572,8 +1583,24 @@ Phones and tablets keep their own layouts (a bottom bar on a phone, the
 desktop rail on a wide tablet, captions under posters); only the newest-episode
 order and the badges reach them. Seen on a Pixel Tablet emulator the same day.
 
-Not done: the server's own collections as rows, cast in
-the hero, Settings' wide section list, and any of this off TV. Pinned by
+**Added 2026-10-31:**
+
+- **The server's own collections as rows.** `MediaServer.featuredRows`; Plex
+  answers from `/hubs/sections/{id}`, keeping only hubs whose identifier
+  starts `custom.collection.` (what an owner pins, such as "Deleting
+  Soon"), since its other hubs repeat rows this app already draws. They come
+  after Continue watching, in the server's order, with no *See all*, on every
+  form factor. Rows of episodes are left out of Series, since an episode
+  tile would open as a film. Jellyfin and Emby have none yet.
+- **Cast.** Plex's `Role` tags (Jellyfin's `People`, fetched only for a
+  title's own page) give up to six names, shown under the plot on the film
+  and show pages, and in the hero when the listing carried them.
+- **Settings' section list: tried and reverted.** Narrowing it from 260 to
+  220 dp on a TV wrapped the longest label onto two lines at a larger text
+  size (the settings test's wide font showed it) and pushed the last section
+  out of reach. 40 dp was not worth that; it stays at 260.
+
+Not done: any of the TV-only layout off TV. Pinned by
 `test/library_hero_test.dart`; seen on the Google TV emulator against a real
 Plex server, not on real TV hardware.
 

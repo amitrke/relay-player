@@ -66,6 +66,14 @@ class ExternalIds {
   static const none = ExternalIds();
 }
 
+/// A titled row the server features, from [MediaServer.featuredRows].
+class MediaRow {
+  const MediaRow({required this.title, required this.items});
+
+  final String title;
+  final List<MediaItem> items;
+}
+
 /// One film, show, season or episode, whatever server it came from.
 ///
 /// The neutral form of `PlexMetadata` and Jellyfin's `BaseItemDto`. Only what
@@ -95,6 +103,7 @@ class MediaItem {
     this.showIds = ExternalIds.none,
     this.rating,
     this.unwatchedEpisodes,
+    this.cast = const [],
   });
 
   final String id;
@@ -153,6 +162,11 @@ class MediaItem {
   /// (compared on a TV, 2026-10-30). Not-started shows were counted too until
   /// the same day, and on a large server nearly every poster said "99+".
   final int? unwatchedEpisodes;
+
+  /// Leading actors, billing order, at most six: what Plex's own TV app shows
+  /// under a title's plot (§12.4). Empty when the server sent none, which a
+  /// library listing often does; a title's own fetch carries them.
+  final List<String> cast;
 
   bool get isWatched => (viewCount ?? 0) > 0;
 }
@@ -267,6 +281,12 @@ abstract class MediaServer {
   /// Part-watched titles and next episodes, across [sections].
   Future<List<MediaItem>> onDeck(List<MediaSection> sections);
 
+  /// Rows the server's owner has chosen to feature for [section], such as a
+  /// collection pinned to the library's recommendations ("Deleting Soon",
+  /// a seasonal pick), in the server's order. Empty when the server has no
+  /// such idea, which is the default; Plex implements it (§12.4).
+  Future<List<MediaRow>> featuredRows(MediaSection section) async => const [];
+
   Future<void> setWatched(String id, {required bool watched});
 
   /// [state] is `playing`, `paused` or `stopped`.
@@ -309,6 +329,7 @@ abstract class MediaServer {
     duration: item.duration,
     lastViewedAt: item.lastViewedAt,
     unwatchedEpisodes: item.unwatchedEpisodes,
+    cast: item.cast,
     shelf: shelf,
   );
 }
