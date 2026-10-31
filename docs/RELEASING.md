@@ -516,6 +516,14 @@ refused, nothing changed live.**
   fastlane 2.241.2's source; not yet run, since it needs the App Store
   Connect key, so the next release is its first real test.
 
+**Second `release`, 2026-10-31 (run 41170545239, 1.0.7 build 47): both
+stores succeeded and `v1.0.7` was tagged.** Play moved 47 from internal
+testing to production at 100%. On the App Store, 47 replaced build 39 on
+the Developer Rejected 1.0.7 and was submitted; App Store Connect then
+showed 1.0.7 Waiting for Review with build 47. 47 is 45's code (only docs
+and the notes differ), and 45 is what was tested on an iPad. The first
+end-to-end run of this workflow.
+
 ### Store listings
 
 `fastlane/metadata/android` (Play) and `fastlane/metadata/ios` (App Store) hold
