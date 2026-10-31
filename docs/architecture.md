@@ -779,8 +779,10 @@ on a news channel the user had reported freezing:
   of file and no reconnect (the `.ts` run had three drops in five), with the
   app's audio track started and ~9 Mbit/s still arriving at the end, so it
   was playing rather than quietly stuck. One run on one channel, through the
-  emulator's network, on a picture that stays black there; MANUAL_TESTING.md
-  has the device checks. If HLS does not close it,
+  emulator's network, on a picture that stays black there. **First device,
+  2026-10-31:** an iPad on 1.0.7 (45) played the channel without a freeze,
+  as reported by the user; Android devices are still to check
+  (MANUAL_TESTING.md). If HLS does not close it,
   the next candidates are a longer first reconnect wait (the hand reopen
   that worked came about a minute later) and the ExoPlayer-style retry
   under a buffer noted above.
