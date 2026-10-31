@@ -1,0 +1,5 @@
+Live TV no longer freezes after a few minutes: channels play over HLS where your provider allows it, and a dropped stream reconnects instead of sitting paused.
+
+A channel that fails to open no longer shows its address on screen.
+
+On a TV, the remote reaches the search field. A show you have started shows how many episodes are left, the same next episode appears once across two servers, your server's collections appear as rows, and title pages list the cast.
