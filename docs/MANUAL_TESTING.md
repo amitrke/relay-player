@@ -7,7 +7,11 @@ but not yet proven to work**, and why.
 Most of it has one cause. The Android emulator cannot render video at all —
 media_kit obtains its surface and then fails `eglCreateContext` with
 `EGL_BAD_ATTRIBUTE`, a known upstream bug reported as not affecting real
-devices (see [PHASE0_FINDINGS.md](PHASE0_FINDINGS.md) Q1). Everything downstream
+devices (see [PHASE0_FINDINGS.md](PHASE0_FINDINGS.md) Q1). **Narrowed 2026-10-31:** on the Android TV emulator a Plex
+title did render, while live channels from a panel stayed black. So the
+emulator does not fail every video; which streams it fails, and why, is not
+known yet. Until it is, treat a black live picture there as not evidence
+either way. Everything downstream
 of "a frame reaches the screen" is therefore unverified, no matter how much of
 it is written.
 
@@ -111,6 +115,7 @@ this code.
 | ⬜ | A full episode without the connection dropping | Phase 0 listed this explicitly and it is still open |
 | ⬜ | **Live channel freezes mid-watch, then recovers** | Written 2026-10-06 (§10 "Live reconnect"): 10s of no position movement stops and reopens, 3 tries at 2/4/6s. Untested. Needs a real freeze, e.g. Wi-Fi off for 15s mid-channel, then on. Check the spinner shows, picture returns, and that a one-connection line is not refused on reopen. **2026-10-31: that watch missed the commonest freeze**, see the next row |
 | 🟡 | **Live channel stops after a few minutes, play button showing** (reported on every device tried; found and fixed 2026-10-31, §10 "Live end of file"). Cause: when a panel closes the connection, or sends nothing for ~5s, mpv reaches end of file and pauses on the last frame, and the player took that for the viewer's pause. **Reproduced on Windows against real libmpv** with a local server that closes or stalls a paced TS stream, and the fix seen working there (stop, wait, reopen, one connection at a time); pinned against a fake engine in `player_screen_engine_test.dart`, which fails without the fix. **Not seen on a device or a real panel.** Check on the Chromecast or a phone, on a channel that froze before: leave it playing 20 to 30 minutes. Each former freeze should now be a spinner for a few seconds, then the picture back. `adb logcat \| grep "Player:"` should show `live stream end of file, reconnect 1 of 3` at that moment; if it shows nothing while the picture is frozen with the play button up, this was not the cause on that panel. Also check the panel's connection count stays at one across a reconnect, and how often it happens: frequent drops (every few minutes) would make the spinner the next problem (§10 says what would close it) |
+| ⬜ | **Live channels over HLS** (§10 "Live over HLS", 2026-10-31). The end-of-file fix ran against the real panel on the TV emulator: over `.ts` a news channel dropped every 75 to 90s and all three quick reconnects stalled, while opening it again by hand a minute later worked. Live now opens as `.m3u8` when the line allows it. Check on a phone and the Chromecast, on the channel that froze: (1) it plays 20 to 30 minutes with no spinner; `adb logcat \| grep "Player:"` should show no `reconnect` lines; (2) how long it takes to start compared with before; (3) how far behind live it is, against another app on the same channel; (4) zapping between channels still works on a one-connection line. If it still drops, note how often, and whether a hand reopen a minute later works |
 
 ## 6. Not started at all
 

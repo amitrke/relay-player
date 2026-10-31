@@ -28,8 +28,16 @@ class XtreamAccountInfo {
 
   bool get isActive => status.toLowerCase() == 'active';
 
-  String get preferredFormat =>
-      outputFormats.contains('ts') ? 'ts' : (outputFormats.firstOrNull ?? 'ts');
+  /// The live format to ask for: HLS when the line allows it, MPEG-TS
+  /// otherwise, including when the panel lists no formats at all.
+  ///
+  /// HLS since 2026-10-31 (architecture.md §10, "Live over HLS"). One `.ts`
+  /// request is the whole channel on one connection, and on the TV emulator
+  /// that connection ended every 80 to 90 s; reopening it at once stalled,
+  /// because a one-connection line still counted the dropped one. HLS fetches
+  /// the channel as a playlist of short segments, each its own request, so a
+  /// cut connection costs one segment request rather than the stream.
+  String get liveFormat => outputFormats.contains('m3u8') ? 'm3u8' : 'ts';
 }
 
 class XtreamCategory {

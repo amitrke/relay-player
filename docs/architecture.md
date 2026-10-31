@@ -738,7 +738,48 @@ plays for long stretches in an ExoPlayer-based IPTV app on the same devices.
   which this does not. If drops turn out to be frequent on real panels, that
   gap is the next thing to close, not the cache.
 - **Not seen on a device or a real panel.** Recorded in `MANUAL_TESTING.md`
-  with what to look for.
+  with what to look for. **Seen on a real panel 2026-10-31**, on the TV
+  emulator: see "Live over HLS" next, which it led to.
+
+**Live over HLS (decided 2026-10-31, not yet seen on a device).** The
+end-of-file fix above, run against a real panel on the Android TV emulator
+on a news channel the user had reported freezing:
+
+- **Measured.** Over `.ts` the channel reached end of file after ~80s,
+  ~75s and ~87s of play, three times in five minutes. Each time, all three
+  reconnects (2, 4 and 6s after the stop) stalled with no first frame. The
+  first time, the channel was opened again by hand from the list about a
+  minute after the last attempt, and it played at once. So the drop
+  is recovered from, just not within 12s. The likeliest reading is §4's
+  one-connection rule: the panel still counts the dropped connection for
+  longer than our waits, and refuses its replacement until it lets go. That
+  is inferred from the timing, not measured on the panel; a hold test from a
+  PC with the same line, to tell a panel cut from the emulator's network,
+  was not run because the spike config takes the line's details at build
+  time and they were not taken off the device for it.
+- **Why another app does not freeze on the same channels.** Unknown from
+  outside it. The plausible reason is the format: Phase 0 found this panel
+  allows `m3u8` beside `ts` (`PHASE0_FINDINGS.md`, `allowed_output_formats`),
+  and an HLS player fetches the channel as a playlist of short segments,
+  each its own request, so a cut connection costs one segment request and
+  never ends the stream.
+- **Decision:** a live channel opens as `.m3u8` when the line's
+  `allowed_output_formats` lists it, `.ts` otherwise
+  (`XtreamAccountInfo.liveFormat`). The formats are asked once per session
+  (`xtreamLiveFormatProvider`), not stored with the account, since a
+  provider can change them; a panel that cannot be asked gets `.ts`. libmpv
+  plays HLS, and Plex transcodes already arrive as HLS through it (§10).
+  The reconnect path is unchanged and still catches an HLS stream that does
+  end.
+- **Open, to be checked on devices:** whether the drop goes away, whether
+  HLS starts slower (a playlist and a first segment before the first frame),
+  how far behind live it plays (a few segments, typically 10 to 30s), and
+  whether segment requests count against `max_connections` on this panel.
+  The emulator run on HLS was started but not finished when the build went
+  to testers; MANUAL_TESTING.md has the checks. If HLS does not close it,
+  the next candidates are a longer first reconnect wait (the hand reopen
+  that worked came about a minute later) and the ExoPlayer-style retry
+  under a buffer noted above.
 
 **Audio focus and going to the background (#17, decided 2026-09-22).** Before
 this there was no audio focus handling and no lifecycle observer: another app's

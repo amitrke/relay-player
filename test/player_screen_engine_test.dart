@@ -538,7 +538,7 @@ void main() {
     );
     const url = 'http://panel-host.example.invalid/live/u/p/7.ts';
 
-    Future<void> pumpLive(WidgetTester tester) async {
+    Future<void> pumpLive(WidgetTester tester, {String format = 'ts'}) async {
       engines = [];
       final router = GoRouter(
         initialLocation: '/live/7',
@@ -560,6 +560,7 @@ void main() {
                 username: 'u',
                 password: 'p',
               )),
+          xtreamLiveFormatProvider.overrideWith((ref, _) async => format),
           xtreamChannelsProvider.overrideWith((ref, _) async => const [
                 XtreamChannel(streamId: '7', name: 'Channel', categoryId: '1'),
               ]),
@@ -604,6 +605,17 @@ void main() {
     testWidgets('opens the channel', (tester) async {
       await pumpLive(tester);
       expect(engines.single.calls, ['stop', 'open $url']);
+      await finish(tester);
+    });
+
+    // §10, "Live over HLS": the line's own allowed formats decide.
+    testWidgets('opens the channel over HLS when the line allows it',
+        (tester) async {
+      await pumpLive(tester, format: 'm3u8');
+      expect(engines.single.calls, [
+        'stop',
+        'open http://panel-host.example.invalid/live/u/p/7.m3u8',
+      ]);
       await finish(tester);
     });
 

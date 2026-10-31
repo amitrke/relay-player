@@ -561,8 +561,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final channels = await ref.read(xtreamChannelsProvider(account).future);
       final channel =
           channels.where((c) => c.streamId == widget.streamId).firstOrNull;
+      final format = await ref.read(xtreamLiveFormatProvider(account).future);
       return _Playable(
-        url: client.liveStreamUrl(widget.streamId!),
+        url: client.liveStreamUrl(widget.streamId!, ext: format),
         title: channel?.name ?? tr.player.untitledLive,
         live: true,
       );

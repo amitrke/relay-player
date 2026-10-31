@@ -81,6 +81,22 @@ final xtreamClientProvider = FutureProvider.family<XtreamClient, XtreamAccount>(
   },
 );
 
+/// The format live channels are opened in, from the line's own
+/// `allowed_output_formats` ([XtreamAccountInfo.liveFormat]). Asked once per
+/// session rather than stored with the account: a provider can change what a
+/// line allows, and a stale answer would open every channel in a format the
+/// panel refuses. If the panel cannot be asked, `.ts`, which is what every
+/// line allowed before this existed.
+final xtreamLiveFormatProvider =
+    FutureProvider.family<String, XtreamAccount>((ref, account) async {
+      try {
+        final client = await ref.watch(xtreamClientProvider(account).future);
+        return (await client.authenticate()).liveFormat;
+      } catch (_) {
+        return 'ts';
+      }
+    });
+
 /// (account, catalogue) — Riverpod families take one argument.
 typedef XtreamScope = (XtreamAccount, XtreamCatalogue);
 
