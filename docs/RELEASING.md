@@ -497,8 +497,24 @@ refused, nothing changed live.**
   1.0.7 version it had just created and filled in. The metadata and review
   information uploaded before it. The build had installed from TestFlight,
   `ITSAppUsesNonExemptEncryption` is set in `Info.plist`, and the export is
-  `app-store-connect`, so the usual causes do not obviously apply. Cause not
-  known yet; see what the re-run with the current build does.
+  `app-store-connect`, so the usual causes do not obviously apply. **Cause,
+  found in App Store Connect the same day:** the version deliver "created"
+  was not new. 1.0.6 (build 39) had been submitted for review and was still
+  Waiting for Review, and deliver counts that state as editable
+  (`get_edit_app_store_version` in fastlane 2.241.2 lists
+  `WAITING_FOR_REVIEW` beside `PREPARE_FOR_SUBMISSION`). It renamed that
+  version to 1.0.7 and replaced its notes and listing, and then Apple refused
+  the build swap, since a version in review keeps its build. So Apple was
+  about to review 1.0.6 code under 1.0.7's name and notes. Fixed by hand:
+  "Remove from review" in App Store Connect, which left 1.0.7 as Developer
+  Rejected, editable again with build 39 still attached, ready for the re-run
+  to attach the new build. 1.0.6 never shipped on iOS as a result; 1.0.7
+  contains it.
+- **Now guarded:** the iOS `promote` lane first asks App Store Connect for
+  any version Waiting for Review or In Review, and stops before changing
+  anything if there is one (`refuse_while_in_review`). Written against
+  fastlane 2.241.2's source; not yet run, since it needs the App Store
+  Connect key, so the next release is its first real test.
 
 ### Store listings
 
