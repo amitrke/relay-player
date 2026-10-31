@@ -775,8 +775,12 @@ on a news channel the user had reported freezing:
   HLS starts slower (a playlist and a first segment before the first frame),
   how far behind live it plays (a few segments, typically 10 to 30s), and
   whether segment requests count against `max_connections` on this panel.
-  The emulator run on HLS was started but not finished when the build went
-  to testers; MANUAL_TESTING.md has the checks. If HLS does not close it,
+  **Emulator, same channel, same line, over HLS:** 10 minutes with no end
+  of file and no reconnect (the `.ts` run had three drops in five), with the
+  app's audio track started and ~9 Mbit/s still arriving at the end, so it
+  was playing rather than quietly stuck. One run on one channel, through the
+  emulator's network, on a picture that stays black there; MANUAL_TESTING.md
+  has the device checks. If HLS does not close it,
   the next candidates are a longer first reconnect wait (the hand reopen
   that worked came about a minute later) and the ExoPlayer-style retry
   under a buffer noted above.
