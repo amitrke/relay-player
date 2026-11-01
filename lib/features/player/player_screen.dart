@@ -94,6 +94,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required String this.serverId,
     required String this.ratingKey,
     this.fromStart = false,
+    this.trailer = false,
   })  : accountId = null,
         streamId = null,
         kind = XtreamStreamKind.live,
@@ -116,6 +117,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         kind = XtreamStreamKind.live,
         assetId = null,
         safUri = null,
@@ -133,6 +135,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         kind = XtreamStreamKind.vod,
         assetId = null,
         safUri = null,
@@ -150,6 +153,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         kind = XtreamStreamKind.episode,
         assetId = null,
         safUri = null,
@@ -167,6 +171,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
       : serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         accountId = null,
         streamId = null,
         safUri = null,
@@ -186,6 +191,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   })  : serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         accountId = null,
         streamId = null,
         assetId = null,
@@ -206,6 +212,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
         serverId = null,
         ratingKey = null,
         fromStart = false,
+        trailer = false,
         accountId = null,
         streamId = null,
         assetId = null,
@@ -217,6 +224,13 @@ class PlayerScreen extends ConsumerStatefulWidget {
   /// Ignore any saved position and play from 0:00: the film page's *Play from
   /// start* (§12 screen 5). Only a Plex-style server title offers it.
   final bool fromStart;
+
+  /// A trailer from the title's page: [ratingKey] is the trailer's own id.
+  /// It plays from the start and leaves no trace: no history, no resume
+  /// point, nothing reported to the server or the trackers, no up next. A
+  /// trailer in Continue watching, or "watched" on the server, would be
+  /// noise the person never asked for.
+  final bool trailer;
   final String? accountId;
   final String? streamId;
   final String? assetId;
@@ -567,6 +581,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title: channel?.name ?? tr.player.untitledLive,
         live: true,
       );
+    }
+
+    if (widget.trailer) {
+      // Never a saved copy (trailers are not downloaded), and no history
+      // kind, which is what turns off resume and every report below.
+      final playable = await mediaServerFor(ref, widget.serverId!)
+          .directPlay(widget.ratingKey!);
+      return _Playable(url: playable.url, title: playable.title, live: false);
     }
 
     // A saved copy is played in preference to the server's, online or not

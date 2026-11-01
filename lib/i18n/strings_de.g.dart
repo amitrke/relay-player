@@ -662,6 +662,9 @@ class _Translations$film$de extends Translations$film$en {
 	@override String resume({required Object time}) => 'Fortsetzen ab ${time}';
 	@override String get fromStart => 'Von vorn abspielen';
 	@override String get gone => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.';
+	@override String get trailer => 'Trailer';
+	@override String get trailerNoApp => 'Auf diesem Gerät kann nichts den Trailer öffnen.';
+	@override String rtAudience({required Object pct}) => 'RT Publikum ${pct}%';
 }
 
 // Path: errors
@@ -2213,6 +2216,9 @@ extension on TranslationsDe {
 			'film.resume' => ({required Object time}) => 'Fortsetzen ab ${time}',
 			'film.fromStart' => 'Von vorn abspielen',
 			'film.gone' => 'Dieser Film ist nicht mehr auf dem Server, oder der Server ist nicht erreichbar.',
+			'film.trailer' => 'Trailer',
+			'film.trailerNoApp' => 'Auf diesem Gerät kann nichts den Trailer öffnen.',
+			'film.rtAudience' => ({required Object pct}) => 'RT Publikum ${pct}%',
 			'errors.addressHidden' => '(Adresse verborgen)',
 			_ => null,
 		};

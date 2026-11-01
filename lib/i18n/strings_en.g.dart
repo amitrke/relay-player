@@ -1240,6 +1240,15 @@ class Translations$film$en {
 
 	/// en: 'This film is no longer on the server, or the server cannot be reached.'
 	String get gone => 'This film is no longer on the server, or the server cannot be reached.';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Nothing on this device can open the trailer.'
+	String get trailerNoApp => 'Nothing on this device can open the trailer.';
+
+	/// en: 'RT audience {pct}%'
+	String rtAudience({required Object pct}) => 'RT audience ${pct}%';
 }
 
 // Path: errors
@@ -3564,6 +3573,9 @@ extension on Translations {
 			'film.resume' => ({required Object time}) => 'Resume from ${time}',
 			'film.fromStart' => 'Play from start',
 			'film.gone' => 'This film is no longer on the server, or the server cannot be reached.',
+			'film.trailer' => 'Trailer',
+			'film.trailerNoApp' => 'Nothing on this device can open the trailer.',
+			'film.rtAudience' => ({required Object pct}) => 'RT audience ${pct}%',
 			'errors.addressHidden' => '(address hidden)',
 			_ => null,
 		};

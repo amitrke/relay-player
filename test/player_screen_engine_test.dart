@@ -369,6 +369,7 @@ void main() {
               serverId: s.pathParameters['serverId']!,
               ratingKey: s.pathParameters['ratingKey']!,
               fromStart: s.uri.queryParameters['start'] == '0',
+              trailer: s.uri.queryParameters['trailer'] == '1',
             ),
           ),
         ],
@@ -438,6 +439,23 @@ void main() {
       await tester.pump();
       expect(engines.single.calls.where((c) => c.startsWith('seek')), isEmpty);
       await finish(tester);
+    });
+
+    // A title page's Trailer (2026-11-01). The control is the episode test
+    // below, which shows the same play-to-end reports and looks up the next
+    // episode; a trailer must do neither, and must not resume.
+    testWidgets('a trailer starts at 0, reports nothing, offers nothing',
+        (tester) async {
+      await pumpServer(tester, 'e11',
+          resumeFrom: const Duration(minutes: 5), query: '?trailer=1');
+      await tester.pump();
+      expect(engines.single.calls, contains('open http://server/e11'));
+      expect(engines.single.calls.where((c) => c.startsWith('seek')), isEmpty);
+      await playToEnd(tester);
+      expect(server.reports, isEmpty);
+      expect(server.lookups, isEmpty);
+      await finish(tester);
+      expect(server.reports, isEmpty);
     });
 
     testWidgets('reports the episode, offers the next season, and plays it '

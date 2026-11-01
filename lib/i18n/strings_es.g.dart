@@ -662,6 +662,9 @@ class _Translations$film$es extends Translations$film$en {
 	@override String resume({required Object time}) => 'Reanudar desde ${time}';
 	@override String get fromStart => 'Reproducir desde el principio';
 	@override String get gone => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.';
+	@override String get trailer => 'Tráiler';
+	@override String get trailerNoApp => 'Nada en este dispositivo puede abrir el tráiler.';
+	@override String rtAudience({required Object pct}) => 'RT público ${pct} %';
 }
 
 // Path: errors
@@ -2213,6 +2216,9 @@ extension on TranslationsEs {
 			'film.resume' => ({required Object time}) => 'Reanudar desde ${time}',
 			'film.fromStart' => 'Reproducir desde el principio',
 			'film.gone' => 'Esta película ya no está en el servidor, o no se puede contactar con el servidor.',
+			'film.trailer' => 'Tráiler',
+			'film.trailerNoApp' => 'Nada en este dispositivo puede abrir el tráiler.',
+			'film.rtAudience' => ({required Object pct}) => 'RT público ${pct} %',
 			'errors.addressHidden' => '(dirección oculta)',
 			_ => null,
 		};

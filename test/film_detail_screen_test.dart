@@ -21,12 +21,17 @@ import 'package:relay_player/features/library/film_detail_screen.dart';
 /// the player, which names where it will start and offers to start over.
 
 class _Server extends PlexService {
-  _Server(this.film) : super(clientId: 'test', serverId: 'srv');
+  _Server(this.film, {this.trailerList = const []})
+    : super(clientId: 'test', serverId: 'srv');
 
   final MediaItem film;
+  final List<MediaTrailer> trailerList;
 
   @override
   Future<MediaItem?> item(String id) async => id == film.id ? film : null;
+
+  @override
+  Future<List<MediaTrailer>> trailers(String id) async => trailerList;
 }
 
 class _NoDownloads extends DownloadsController {
@@ -58,7 +63,11 @@ MediaItem _film({Duration? offset}) => MediaItem(
 void main() {
   late List<String> pushed;
 
-  Future<void> pump(WidgetTester tester, MediaItem film) async {
+  Future<void> pump(
+    WidgetTester tester,
+    MediaItem film, {
+    List<MediaTrailer> trailers = const [],
+  }) async {
     pushed = [];
     final router = GoRouter(
       initialLocation: '/film/srv/f1',
@@ -83,7 +92,7 @@ void main() {
       ProviderScope(
         overrides: [
           connectedServersProvider.overrideWithValue([
-            ConnectedServer(service: _Server(film)),
+            ConnectedServer(service: _Server(film, trailerList: trailers)),
           ]),
           downloadsProvider.overrideWith(_NoDownloads.new),
           favoritesProvider.overrideWith(_NoFavourites.new),
@@ -173,6 +182,40 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
+  });
+
+  testWidgets('scores are named by their source (2026-11-01)', (tester) async {
+    await pump(
+      tester,
+      MediaItem(
+        id: 'f1',
+        type: MediaItemType.movie,
+        title: 'A Film',
+        ratings: const [
+          SourcedRating(source: RatingSource.imdb, value: 7.8),
+          SourcedRating(
+            source: RatingSource.rottenTomatoes,
+            value: 9.1,
+            critic: true,
+          ),
+        ],
+      ),
+    );
+    expect(find.text('IMDb 7.8  ·  Rotten Tomatoes 91%'), findsOneWidget);
+  });
+
+  testWidgets('no trailer, no Trailer button', (tester) async {
+    await pump(tester, _film());
+    expect(find.text('Trailer'), findsNothing);
+  });
+
+  testWidgets('a trailer on the server plays in the player, leaving no trace', (
+    tester,
+  ) async {
+    await pump(tester, _film(), trailers: const [MediaTrailer.onServer('t1')]);
+    await tester.tap(find.text('Trailer'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/play/srv/t1?trailer=1']);
   });
 
   testWidgets('a film the server no longer has says so', (tester) async {

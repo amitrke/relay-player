@@ -10,7 +10,9 @@ import '../../data/local/history_store.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
+import '../library/film_detail_screen.dart' show TitlePillButton;
 import '../library/poster_grid.dart';
+import '../library/title_extras.dart';
 import '../library/poster_tile.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
@@ -146,6 +148,17 @@ class _ShowHeader extends ConsumerWidget {
     final item = show;
     if (item == null) return const SizedBox.shrink();
     final poster = mediaServerFor(ref, serverId).posterUrl(item);
+    final trailer = ref
+        .watch(
+          trailersProvider((
+            serverId: serverId,
+            itemId: item.id,
+            tmdbId: item.ids.tmdb,
+            tv: true,
+          )),
+        )
+        .value
+        ?.firstOrNull;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,11 +198,36 @@ class _ShowHeader extends ConsumerWidget {
                 ].join(' · '),
                 style: TextStyle(color: t.inkDim, fontSize: 13),
               ),
+              // As on a film's page: each score named by its source.
+              if (item.ratings.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  ratingLabels(item.ratings).join(' · '),
+                  style: TextStyle(
+                    color: t.ink.withValues(alpha: 0.85),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const SizedBox(height: 6),
-              EpisodeRuleButton(
-                serverId: serverId,
-                showRatingKey: item.id,
-                showTitle: item.title,
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  EpisodeRuleButton(
+                    serverId: serverId,
+                    showRatingKey: item.id,
+                    showTitle: item.title,
+                  ),
+                  if (trailer != null)
+                    TitlePillButton(
+                      icon: Icons.movie_creation_outlined,
+                      label: tr.film.trailer,
+                      onTap: () => openTrailer(context, serverId, trailer),
+                    ),
+                ],
               ),
               if ((item.summary ?? '').isNotEmpty) ...[
                 const SizedBox(height: 12),

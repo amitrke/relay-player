@@ -895,7 +895,10 @@
     "play": "Reproducir",
     "resume": "Reanudar desde {time}",
     "fromStart": "Reproducir desde el principio",
-    "gone": "Esta película ya no está en el servidor, o no se puede contactar con el servidor."
+    "gone": "Esta película ya no está en el servidor, o no se puede contactar con el servidor.",
+    "trailer": "Tráiler",
+    "trailerNoApp": "Nada en este dispositivo puede abrir el tráiler.",
+    "rtAudience": "RT público {pct} %"
   },
   "errors": {
     "addressHidden": "(dirección oculta)"

@@ -1277,6 +1277,48 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > `test/film_detail_screen_test.dart`, including a phone-size render that
    > caught action labels overflowing; seen on the Google TV and Pixel Tablet
    > emulators against a real Plex server.
+   >
+   > **Ratings by source and a Trailer button, 2026-11-01.** Both title
+   > pages (film and show) gained a line of scores, each named by its source
+   > ("IMDb 6.8 · Rotten Tomatoes 60% · RT audience 86% · TMDB 7.5"), and a
+   > *Trailer* button beside Play, drawn only once a trailer is known to
+   > exist. Decisions, and why (`title_extras.dart`):
+   > - **Scores are the server's own, never fetched.** There is no IMDb API;
+   >   IMDb's datasets and OMDb's data are both licensed for non-commercial
+   >   use only, and OMDb would be another key and another place titles go.
+   >   Plex says whose each score is (a `Rating` tag per source, and
+   >   `ratingImage`/`audienceRatingImage` on listings), so IMDb shows exactly
+   >   when the library's agent fetched it. Jellyfin's `CommunityRating` does
+   >   not say (TMDB's or IMDb's, depending on fetcher order), so it is a
+   >   plain "★ 8.7"; its `CriticRating` is Rotten Tomatoes'. A bare number
+   >   with no source was rejected: a film is a 6.8 on IMDb and a 7.5 on TMDB.
+   > - **Trailers come from the server first and play in our player.** Plex
+   >   lists them as extras (`extraType` 1). On a real Plex Pass server none
+   >   were files: all three for a new film were trailers Plex supplies,
+   >   relayed by the server from `/services/iva/assets/...video.mp4?fmt=4&...`.
+   >   They play like any file, with the server's token, which had to be
+   >   joined with `&` because that part key already has a query. Jellyfin's
+   >   local trailers play the same way.
+   > - **Otherwise a YouTube link, opened outside the app.** Jellyfin's
+   >   `RemoteTrailers`, or, with the person's TMDB key saved and nothing from
+   >   the server, TMDB's official YouTube trailer (only the TMDB id is sent,
+   >   on page open). The link is handed to the YouTube app or a browser
+   >   (`url_launcher`). Pulling the stream out of YouTube to play in-app was
+   >   ruled out: against YouTube's terms and Play's policy.
+   > - **A trailer leaves no trace.** `/play/...?trailer=1` starts at 0 and
+   >   writes no history, reports nothing to the server or the trackers, and
+   >   offers no up next; otherwise a trailer would sit in Continue watching.
+   >
+   > Seen on the Google TV emulator against a real Plex server: the four
+   > scores above, two (IMDb, TMDB) on a smaller film, none on a home video;
+   > a Plex-relayed trailer playing (clock moving; the emulator shows no
+   > picture, as CLAUDE.md's Commands section warns), and absent from Continue watching afterwards.
+   > **Not seen:** the YouTube hand-off. The emulator has no YouTube app or
+   > browser, and Android TV's stub claims every web link with its own
+   > notice, so `launchUrl` reports success and our "nothing can open" note
+   > never shows there. Jellyfin's ratings and trailers are unit tested only
+   > (`/Items/{id}` with `userId`, a newer route than the rest of that
+   > client uses). The show page's line and button were not looked at.
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)

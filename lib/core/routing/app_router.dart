@@ -286,6 +286,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ratingKey: state.pathParameters['ratingKey']!,
           // `?start=0`: the film page's Play from start.
           fromStart: state.uri.queryParameters['start'] == '0',
+          // `?trailer=1`: a title page's Trailer, played and forgotten.
+          trailer: state.uri.queryParameters['trailer'] == '1',
         ),
       ),
       // Never registered in a release build, so neither screen can be reached

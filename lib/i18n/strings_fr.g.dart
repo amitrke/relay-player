@@ -662,6 +662,9 @@ class _Translations$film$fr extends Translations$film$en {
 	@override String resume({required Object time}) => 'Reprendre à ${time}';
 	@override String get fromStart => 'Lire depuis le début';
 	@override String get gone => 'Ce film n\'est plus sur le serveur, ou le serveur est injoignable.';
+	@override String get trailer => 'Bande-annonce';
+	@override String get trailerNoApp => 'Rien sur cet appareil ne peut ouvrir la bande-annonce.';
+	@override String rtAudience({required Object pct}) => 'RT public ${pct} %';
 }
 
 // Path: errors
@@ -2213,6 +2216,9 @@ extension on TranslationsFr {
 			'film.resume' => ({required Object time}) => 'Reprendre à ${time}',
 			'film.fromStart' => 'Lire depuis le début',
 			'film.gone' => 'Ce film n\'est plus sur le serveur, ou le serveur est injoignable.',
+			'film.trailer' => 'Bande-annonce',
+			'film.trailerNoApp' => 'Rien sur cet appareil ne peut ouvrir la bande-annonce.',
+			'film.rtAudience' => ({required Object pct}) => 'RT public ${pct} %',
 			'errors.addressHidden' => '(adresse masquée)',
 			_ => null,
 		};
