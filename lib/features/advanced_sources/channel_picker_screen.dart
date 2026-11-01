@@ -158,8 +158,10 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: RelayFieldTraversal(
-                        child: TextField(
+                      child: RelayTypeOnSelect(
+                        builder: (context, readOnly, onTap) => TextField(
+                          readOnly: readOnly,
+                          onTap: onTap,
                           controller: _search,
                           onChanged: (v) => setState(() => _query = v),
                           style: TextStyle(color: t.ink),

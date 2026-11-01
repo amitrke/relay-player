@@ -541,6 +541,80 @@ class RelayFieldTraversal extends StatelessWidget {
       Shortcuts(shortcuts: _shortcuts, child: child);
 }
 
+/// On a TV, a search field the remote only passes through opens no keyboard:
+/// it is read-only until OK is pressed on it, as a TV's own search boxes are.
+///
+/// Reported 2026-11-01: Live TV's search box sits above the channels, and the
+/// category and channel pickers' above their lists, so walking from the tabs
+/// to the items with the D-pad landed on the field and Flutter opened the
+/// keyboard over the screen. A field opens its input connection, and so the
+/// keyboard, the moment it is focused, and on a remote focus arrives by
+/// passing, not by choosing. A read-only field opens none
+/// (`EditableText._shouldCreateInputConnection`), so this keeps the field
+/// read-only until OK or a tap, then lets go; when focus leaves, it is
+/// read-only again. OK on a field already typing, with its keyboard put away
+/// by Back, brings the keyboard back: while the keyboard is up it takes OK
+/// itself (TvImeProxyView), so OK reaching here means it is closed.
+///
+/// Off a TV it changes nothing: a touch or a click is already a choice. It
+/// includes [RelayFieldTraversal], so it replaces that around a search field.
+/// The builder passes [readOnly] and [onTap] to the `TextField`.
+///
+/// Not for forms a person opens to type into (the Xtream form, a sign-in):
+/// there the keyboard on arrival is what they came for.
+class RelayTypeOnSelect extends StatefulWidget {
+  const RelayTypeOnSelect({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, bool readOnly, VoidCallback onTap)
+  builder;
+
+  @override
+  State<RelayTypeOnSelect> createState() => _RelayTypeOnSelectState();
+}
+
+class _RelayTypeOnSelectState extends State<RelayTypeOnSelect> {
+  bool _typing = false;
+
+  void _start() {
+    if (_typing) {
+      // Typing, but the keyboard was put away: bring it back.
+      SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+      return;
+    }
+    setState(() => _typing = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (RelayLayout.of(context) != RelayFormFactor.tv) {
+      return RelayFieldTraversal(child: widget.builder(context, false, () {}));
+    }
+    return Focus(
+      // Not a stop of its own: it only watches the field inside it.
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (!focused && _typing) setState(() => _typing = false);
+      },
+      onKeyEvent: (_, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.select ||
+            key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.gameButtonA) {
+          _start();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: RelayFieldTraversal(
+        child: widget.builder(context, !_typing, _start),
+      ),
+    );
+  }
+}
+
 /// Carries D-pad focus across a boundary that directional traversal cannot.
 ///
 /// Wrap the two sides in `FocusScope`s of their own, pass their nodes here, and

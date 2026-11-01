@@ -373,8 +373,10 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           child: Row(
             children: [
               Expanded(
-                child: RelayFieldTraversal(
-                  child: TextField(
+                child: RelayTypeOnSelect(
+                  builder: (context, readOnly, onTap) => TextField(
+                    readOnly: readOnly,
+                    onTap: onTap,
                     controller: _search,
                     onChanged: (v) => setState(() => _query = v),
                     style: TextStyle(color: t.ink),
@@ -496,8 +498,10 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           Row(
             children: [
               Expanded(
-                child: RelayFieldTraversal(
-                  child: TextField(
+                child: RelayTypeOnSelect(
+                  builder: (context, readOnly, onTap) => TextField(
+                    readOnly: readOnly,
+                    onTap: onTap,
                     controller: _pattern,
                     style: TextStyle(color: t.ink),
                     decoration: _decoration(

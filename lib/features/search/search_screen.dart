@@ -241,8 +241,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           children: [
             Padding(
               padding: RelayLayout.pagePadding(f).copyWith(top: 16, bottom: 8),
-              child: RelayFieldTraversal(
-                child: TextField(
+              child: RelayTypeOnSelect(
+                builder: (context, readOnly, onTap) => TextField(
+                  readOnly: readOnly,
+                  onTap: onTap,
                   controller: _controller,
                   focusNode: _fieldFocus,
                   onChanged: _onChanged,

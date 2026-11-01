@@ -1167,6 +1167,25 @@ check lives; play a Plex title on the Chromecast before trusting it
 > is now pinned. It still passes without the key, so the key rests on the
 > emulator runs alone.
 >
+> **A search box the remote passes over opened the keyboard, 2026-11-01.**
+> Reported on Live TV, whose search box sits between the tabs and the
+> channels: walking down to the channels landed on it, and the keyboard came
+> up over the screen. The category and channel pickers have the same shape. A
+> Flutter text field opens its input connection, and with it the keyboard, the
+> moment it is focused, and with a remote focus arrives by passing, not by
+> choosing. `RelayTypeOnSelect` keeps such a field read-only on a TV, which
+> opens no connection, until OK or a tap; when focus leaves it is read-only
+> again, and OK on it with the keyboard put away brings the keyboard back.
+> Off a TV it changes nothing. It is on the search fields a remote walks past:
+> Live TV, Search, and the category and channel pickers (the picker's pattern
+> field too). Not on forms opened to be typed into, such as the Xtream form or
+> a sign-in, where the keyboard on arrival is the point. **One cost:** on
+> Search, which focuses its field on arrival, typing now takes one OK first.
+> `test/type_on_select_test.dart` pins it, and fails with the gate open; on
+> the Google TV emulator, Down from the tabs crossed Live TV's search box with
+> `mInputShown=false`, OK opened the keyboard, typing filtered, Back closed it
+> and Down went on to the list. The pickers and Search were not looked at.
+>
 > **The D-pad audit, `test/dpad/`, 2026-09-28.** Every defect above was a rule
 > a test could have stated once for every screen, so `DpadAudit` states them
 > and drives each screen at TV size with arrow keys: something is focused
