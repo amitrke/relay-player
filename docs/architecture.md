@@ -296,6 +296,37 @@ the app owns the consequence:
   work in §13.
 - Also gated behind Advanced Sources (§8).
 
+> **Re-checked 2026-11-01, and the per-channel endpoints too** (PHASE0_FINDINGS.md,
+> Q6): `get_simple_data_table` and `get_short_epg` are empty for every sampled
+> channel, with or without an id, and the XMLTV export still has no programmes.
+> So on a panel like this, guide data can only come from outside it. Proposed
+> design, not built:
+>
+> - **Guide URLs the person adds**, several per account in priority order
+>   (`Account.epgUrl` becomes a list). Plain XMLTV, parsed like the panel's own.
+>   The app ships no URL, no list of suggested guides and no named project,
+>   for the same reason it ships no provider directory (§8.3).
+> - **Automatic matching, as suggestions.** In order: an exact id match, but
+>   ignoring any id the panel gives to more than one or two streams (the
+>   `AMC.us` case); then a normalised name match against every
+>   `<display-name>`, with country prefixes (`UK:`, `US |`), quality tags
+>   (`FHD`, `4K`, `HEVC`, `50fps`) and brackets stripped, but **time-shift tags
+>   such as `+1` kept**, since a `+1` channel's schedule is an hour later;
+>   then a fuzzy score with the category or prefix as a country hint and an
+>   identical logo URL as a bonus. High scores apply automatically, a middle
+>   band is offered to confirm, and when the top two candidates are close
+>   nothing is chosen automatically. Numbered event channels (`EVENT 00`) are
+>   skipped: no guide describes them.
+> - **Manual mapping wins.** "Guide channel…" on a channel searches the
+>   guide's channel list; "accept suggestions" works per category. The
+>   person's choices are kept apart from the automatic ones so a re-match
+>   never overwrites them, keyed by account and stream id with the normalised
+>   name as a fallback for panels that renumber.
+> - **Cost.** 16k channels against a guide of 10k or more is too many pairs to
+>   score naively: block candidates on shared tokens first, run it in the
+>   long-lived isolate writing straight to the cache (the Q4 lesson), and only
+>   for the categories the person selected (§4.1).
+
 ## 6. Plex integration (personal library)
 
 Scope decision: **personal library only** (Movies/TV Shows/Music from a user's own Plex server or servers shared with them) — not Plex's Live TV/DVR feature, which is Plex Pass– and tuner-gated and would add scope for a small slice of users. It can be revisited as a later phase if there's demand.
@@ -2354,6 +2385,99 @@ Jellyseerr or Seerr has been connected (MANUAL_TESTING.md). The `%20`
 detail is from Overseerr's request validator, which refuses `+` for a space;
 whether Jellyseerr and Seerr behave the same is part of that check.
 
+## 21. Follow and remind: shows and teams (proposed 2026-11-01, not built)
+
+The person picks shows ("This Week" on a Sunday morning, a series) and teams
+(MLB, NBA, NHL) and is told when the next one airs and on which network, with
+a reminder before it starts. **Proposed, nothing built, and the sources below
+are unchecked against their terms**; the Open items entry lists what has to be
+settled first.
+
+Why this and not more guide work: §5 shows an IPTV guide is likely to be
+empty, and even a full one only covers the channels someone has. Shows and
+sports have their own structured schedule data, independent of any source in
+this app. So the feature is **not part of Advanced Sources (§8)**. It is a TV
+listings feature, of the kind plenty of approved store apps already have, and
+it reads that way in review. What it must never become is a "where to watch
+this" pointer at anything but the person's own sources (below).
+
+### 21.1 Where schedules come from
+
+- **Shows: TVmaze.** Free, no key, CC BY-SA, so attribution is owed on the
+  screen that shows its data. A show search returns the network and the
+  weekly slot, and episodes carry exact air times. The follow list lives on
+  the device. To verify: whether weekly news and talk shows have episode
+  entries or only a slot; a reminder can work from the slot alone.
+- **Shows, for someone signed in to Trakt (§19).** `/calendars/my/shows`
+  returns upcoming episodes of what they follow there, with network and time.
+  The sign-in exists, but §19.1 describes only *sending* finished watches;
+  reading the calendar is a new use, so the consent text has to cover it
+  before this ships.
+- **Sports: one `SportsScheduleSource` interface, source to be chosen.** The
+  leagues publish schedules with national broadcasters (NHL
+  `api-web.nhle.com`, MLB `statsapi.mlb.com`, NBA `cdn.nba.com`), and ESPN's
+  site API covers all three, but all of these are public and undocumented,
+  and MLB's terms restrict non-personal use. TheSportsDB is the clearer
+  licence (a community project with an app key) with patchier network data.
+  **Read each one's terms before building against it**; nothing here has been.
+  Teams are followed by id. National networks are reliable; regional sports
+  networks and blackouts vary by market, so say less about them, not more.
+
+### 21.2 Local air time is the trap
+
+TVmaze gives a network's national slot. Affiliates air some programmes at
+different local times (Sunday morning news shows are the standing example),
+and a reminder an hour wrong is worse than none. In order of preference:
+
+1. The person's own local channel listing, where one exists: the Plex Live TV
+   guide (Gracenote, licensed, from their own server), or a guide URL they
+   added and matched (§5).
+2. Otherwise the national time, with a per-show adjustment the person sets
+   once ("airs 1 hour later here").
+
+Sports times are absolute, but games move: postponements and flexed starts.
+Re-fetch shortly before a reminder fires, not only when it is scheduled.
+
+### 21.3 AI: for finding, never for timing
+
+With an AI provider configured (§9), it can turn "I follow the Celtics and
+that Sunday politics show" into a TVmaze show id and a team id, or answer a
+one-off "when is X on?" with a web search. It is **not a source of reminder
+times**. §9.2 already found that model output cannot be told apart from a
+correct answer, and an invented start time becomes a wrong notification. So:
+
+- A reminder fires only from structured data (21.1 or 21.2).
+- A time the AI found online is shown as found online, with its source, and
+  becomes a reminder only if the person confirms it.
+- Web search needs a provider that has it built in (Anthropic, OpenAI,
+  Gemini), not the local Ollama path, and each search costs the person
+  money. §9.3 applies: a consent naming the provider and the data ("your
+  followed shows and teams").
+
+### 21.4 Reminders on each platform
+
+- **Android.** Since Android 14 exact alarms are off by default for apps that
+  are not alarm clocks or calendars. Use inexact alarms with a short window;
+  a reminder a few minutes early is fine. Background refresh through
+  WorkManager.
+- **iOS.** At most 64 pending local notifications per app, so schedule only
+  the next few and top up when the app opens. Background app refresh is
+  best-effort and cannot be relied on.
+- **Android TV and Fire TV.** Notifications are poor there. A "Coming up" row
+  on the home screen does the job instead.
+- **Tapping a reminder** offers Watch only when one of the person's own
+  sources carries the channel: Plex Live TV, or a channel they matched
+  (§5, Advanced Sources only). Otherwise it is information, and nothing in the
+  feature suggests where else to watch.
+
+### 21.5 Suggested order
+
+1. Follow shows through TVmaze, local reminders, the per-show adjustment.
+2. The Trakt calendar for people already signed in, once its consent text is
+   updated.
+3. Sports, once one source's terms check out.
+4. AI as a way to find shows and teams.
+
 ---
 
 ## Open items
@@ -2451,6 +2575,14 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   say that, with consent, finished watches go to the tracker the person
   chose, and Play's data-safety form must declare "app activity, other user
   content" shared with a third party at the user's request. Added 2026-10-16.
+
+- **Follow and remind (§21), before any of it is built.** Added 2026-11-01.
+  (1) Read the terms of each sports schedule source and pick one; the league
+  and ESPN endpoints are undocumented and MLB's restrict non-personal use.
+  (2) Check whether TVmaze has episode entries for weekly news shows or only
+  a slot. (3) Reword the Trakt consent (§19.1) if its calendar is read.
+  (4) Decide whether the feature ships without AI first; §21.3's consent and
+  web-search providers are a separate piece of work.
 
 - **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
   out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
