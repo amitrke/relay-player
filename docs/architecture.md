@@ -493,7 +493,8 @@ needs no sign-in (`ProductName` "Jellyfin Server" or "Emby Server").
 - **Move to another device** (§17) does not carry a Jellyfin or Emby
   sign-in, for the reason it does not carry Plex: the token belongs to this
   device's id on that server. Quick Connect on the TV is the answer instead.
-- **Transcoding** is not offered, as on Plex.
+- **Transcoding** is not offered, as on Plex. *2026-11-01: proposed for Plex
+  first in §22; Jellyfin and Emby follow once sign-in is verified (§22.8).*
 - **Signing out** removes the server here only. The token stays valid on the
   server until its owner removes the device there; there is no single call
   that ends just this device's session on both products.
@@ -2553,6 +2554,181 @@ correct answer, and an invented start time becomes a wrong notification. So:
 3. Sports, once one source's terms check out.
 4. AI as a way to find shows and teams.
 
+## 22. Transcoding: a quality choice for server playback (proposed 2026-11-01, not built)
+
+Today every play from a personal server is **direct play of the original
+file**: the Plex Part key (`/library/parts/{id}/{ts}/file.mkv`) and
+Jellyfin's or Emby's `/Videos/{id}/stream?static=true`. Nothing ever asks a
+server to transcode, even one that could. That was not a decision against
+transcoding. §6 designed it (a `PlaybackSessionController` that starts the
+session, pings it and stops it), Phase 0 found the package could not drive
+it as shipped, and the re-run with the fix never happened (PHASE0_FINDINGS
+Q2; the Open items entry "Finish the Plex transcode lifecycle test").
+**Proposed, nothing built**; §22.1 is the gate for everything after it.
+
+Why it is worth doing now:
+
+- **Relayed Plex connections are capped.** Plex Relay carries a few Mbps at
+  best (around 1-2 Mbps without Plex Pass), and a full-quality original over
+  it buffers without end. The app already knows a connection is a relay: it
+  tries relay last (`plex_service.dart`, connection order) and the link
+  screen says "relay only" (`plex_link_screen.dart`). A server-side transcode
+  is the only thing that makes such a server watchable.
+- **Home upload is the limit when away.** A 4K HEVC file at 40-60 Mbps
+  cannot stream over a typical home uplink, relay or not.
+- **Weak TV hardware.** media_kit (libmpv) decodes almost anything in
+  software, so "this device cannot play this file", the usual reason Plex's
+  own apps transcode, rarely applies here. But a cheap streaming stick may
+  not keep up with 4K HEVC 10-bit or AV1 in software, and a lower-bitrate
+  H.264 stream is the fix.
+
+What it must never do is change the default: **at home the original file
+stays the default**, because it is what gives the best picture and costs the
+server's owner nothing (§22.6).
+
+### 22.1 The gate: finish the lifecycle test first
+
+The risk named since Phase 0 is a **leaked transcode session on every
+user's server**: a client that starts transcodes and forgets them leaves the
+owner's CPU busy encoding for nobody. Nothing below ships until the spike
+harness (`lib/features/_spike/`) has run, against a real server:
+
+1. `decision` with `hasMDE=1` and the **same parameters as the start URL**
+   (Phase 0's rule: a partial set makes the server decide about a different
+   request), then `start.m3u8`, then pings, then `stop`.
+2. Confirm the session **leaves `/transcode/sessions`** after `stop`, not
+   just that `stop` returned 200.
+3. **Measure the server's idle timeout** for a session with no pings and no
+   segment requests, and pick a ping interval well inside it. Unknown today;
+   §6's "Plex sessions time out without them" is not a number.
+4. **Kill the app mid-play** and see how long the session lives on. This is
+   the case no `stop` can cover, and it sets how much the crash clean-up in
+   §22.4 matters.
+5. **Seek inside a transcoded HLS stream.** Either mpv seeks within the
+   playlist and the server follows, or a seek past what has been encoded
+   needs a new session started with `offset`. Plex's own clients do the
+   latter; which one works with libmpv decides how §22.3 handles seeking.
+
+Record the results in PHASE0_FINDINGS Q2 beside the 2026-09 rows, failures
+included.
+
+### 22.2 What dart_plex offers, and what it lacks
+
+`dart_plex` 0.1.2 (`plex_streaming_api.dart`):
+
+- `universalVideoUrl(ratingKey, protocol: 'hls', container: 'mpegts',
+  videoResolution, videoBitrate, offsetSeconds, session, directPlay,
+  directStream)`. `videoBitrate` becomes `maxVideoBitrate`, in kbps.
+- `decisionUniversal(params)` returns a `PlexTranscodeDecision`: a 1xxx
+  `generalDecisionCode` is playable, and `isDirect` / `isTranscode` read the
+  sibling `directPlayDecisionCode` / `transcodeDecisionCode`. 2xxx is a
+  general refusal (bandwidth, permissions), 4xxx a transcode error.
+- `pingUniversal(session)` and `stopUniversal(session)`.
+- **`hasMDE=1` is missing from both the URL and the decision** and must be
+  added by us (Phase 0's blocking finding). Nothing else in this list has
+  been verified against a real server; treat each call as unproven until
+  §22.1 has exercised it, as Q2's standing caution says.
+
+### 22.3 The model
+
+- `MediaServer.transcode(id, TranscodeRequest)`, beside `directPlay`, which
+  is unchanged. `TranscodeRequest` carries the maximum bitrate in kbps, an
+  optional resolution, the start offset, and the audio choice.
+- It returns the playable **and a session handle** with `ping()` and
+  `stop()`. Only the handle can end a session, so nothing else needs to know
+  which server it is or how its sessions are named.
+- A server without transcoding (Jellyfin and Emby until §22.8) says so
+  through the default implementation, and the quality choice is not offered
+  for its titles rather than offered and failing.
+- The player keeps one code path: it opens a URL either way. What changes is
+  who owns the session, and that it must be stopped (§22.4).
+
+### 22.4 Lifecycle rules
+
+- **One unique session id per play**, never reused, so a stop for an old
+  play cannot end a new one.
+- **Ping on the interval §22.1 measured** for as long as the player holds
+  the session, paused included.
+- **Stop on every way out:** leaving the player, an error, a quality switch
+  (stop the old session before starting the new one, the same ordering §4
+  and §10 insist on for live streams), reopening the same title, and after
+  a long pause or a long time in the background. The last fits §10's
+  audio-focus table: a pause that outlives the server's patience should not
+  hold the owner's transcoder.
+- **Crash clean-up:** remember the active session id (and its server) in
+  settings while it runs, clear it on stop, and stop any left behind on the
+  next launch. It holds no credential, so the unencrypted settings box is
+  fine for it (§3).
+
+### 22.5 Pitfalls to design for
+
+- **The offset trap.** A transcode started with `offset` plays from 0:00 as
+  far as the player knows, so its position must have the offset added before
+  it reaches Plex, history or the trackers. Without that, leaving after a
+  minute reports "1:00" and wipes the saved place, the same failure as the
+  2026-10-30 resume bug (§4, MANUAL_TESTING.md). Pin it with a test before
+  anything else in the player changes.
+- **One audio track.** A transcoded stream carries the audio the server
+  chose, not all of them, so the audio picker cannot switch tracks locally.
+  The choice goes to the server (Plex's part stream selection) and changing
+  it restarts the session at the current position.
+- **Subtitles need a decision**: text subtitles as a sidecar the player
+  loads, image subtitles (PGS, VobSub) burned in by the server, which costs
+  more CPU. Deferred at first: a transcode plays with subtitles off, and the
+  picker says why.
+
+### 22.6 The settings and the player
+
+- **Playback → Quality**, with **separate values at home and away**, as
+  Plex has: *Original* (the default at home) and a few steps, for example
+  20, 12, 8 and 4 Mbps, and 2 Mbps at 720p. Away over a relay defaults to a
+  low step; away over a direct remote connection defaults to Original until
+  someone has measured otherwise.
+- **A quality chooser in the player** restarts at the current position.
+- **Later: offer it when direct play stalls.** The player already gives up
+  with a stated reason after its stall timeout (§10); that error state can
+  offer "Try a lower quality" for a server title.
+
+**The owner's side.** A transcode spends the server owner's CPU, and an
+owner can forbid transcoding for shared users or cap their remote bitrate.
+The decision reports that (2xxx/4xxx), and the app says so plainly ("This
+server does not allow lower quality for your account") rather than falling
+back silently or retrying.
+
+### 22.7 Tests
+
+- A fake Plex server that records requests and asserts **decision, start,
+  pings, stop**, in that order, and that `stop` is sent on leaving the
+  player, on an error and on a quality switch, with the old session's id.
+- A player test that a transcode started at an offset **reports the offset
+  plus the playlist position**, and that the control (no offset) still
+  reports the plain position.
+- The crash clean-up: a stored session id is stopped on the next launch and
+  then cleared.
+
+### 22.8 Out of scope, for now
+
+- **Downloads stay original files** (§18). A download is for watching
+  offline at full quality, and a transcoded copy would need the server to
+  finish the whole encode first.
+- **Jellyfin and Emby**, later, through `/Videos/{id}/master.m3u8` with
+  `MaxStreamingBitrate` and a `PlaySessionId`, reported through
+  `/Sessions/Playing` with that id and ended with
+  `/Sessions/Playing/Stopped` plus `DELETE /Videos/ActiveEncodings`. Not
+  before signing in to a real Jellyfin has been verified (§6.2): building a
+  session lifecycle on an unverified sign-in would stack one unknown on
+  another.
+
+### 22.9 Suggested order
+
+0. The lifecycle test (§22.1). If sessions cannot be reliably stopped, stop
+   here and record why.
+1. The Plex quality setting and the session controller (§22.3, §22.4), with
+   the offset test first.
+2. The in-player quality chooser.
+3. Relay and away defaults, and the "Try a lower quality" offer on a stall.
+4. Jellyfin and Emby (§22.8).
+
 ---
 
 ## Open items
@@ -2629,7 +2805,8 @@ correct answer, and an invented start time becomes a wrong notification. So:
   starts, since §15 singles out the SAF-after-reboot case as the one that fails.
 - **Finish the Plex transcode lifecycle test** — `decision → ping → stop` with
   the `hasMDE=1` fix in place. The specific risk is a leaked transcode session
-  on every user's server.
+  on every user's server. *2026-11-01: now the gate for §22, a quality
+  choice for server playback; §22.1 lists what the test must settle.*
 - ~~**Finalise the app name**~~ **Decided 2026-09-21: Subnext Player.**
   "Relay Player" was the working title. A web search found no app, company or
   trademark called Subnext, whereas "Relay" is crowded: a Plex music player
