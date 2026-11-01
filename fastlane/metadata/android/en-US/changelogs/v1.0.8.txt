@@ -1,0 +1,5 @@
+Film and show pages show ratings with their source, such as IMDb, Rotten Tomatoes and TMDB, and a Trailer button when your server has one.
+
+A Jellyfin server typed without https:// now connects, so Quick Connect works.
+
+On a TV, search boxes open the keyboard only when you press OK, not as the remote passes over them.
