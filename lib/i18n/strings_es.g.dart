@@ -305,6 +305,8 @@ class _Translations$liveTv$es extends Translations$liveTv$en {
 	@override String get noCategories => 'Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.';
 	@override String get chooseCategories => 'Elegir categorías';
 	@override String get noChannels => 'Esas categorías no devolvieron canales.';
+	@override String get refresh => 'Actualizar canales';
+	@override String get refreshFailed => 'No se pudo actualizar la lista de canales. Se muestra la anterior.';
 	@override String noMatch({required Object query}) => 'Ningún canal coincide con «${query}».';
 	@override String searchHint({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
 		one: 'Buscar en ${n} canal',
@@ -1684,6 +1686,8 @@ extension on TranslationsEs {
 			'liveTv.noCategories' => 'Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.',
 			'liveTv.chooseCategories' => 'Elegir categorías',
 			'liveTv.noChannels' => 'Esas categorías no devolvieron canales.',
+			'liveTv.refresh' => 'Actualizar canales',
+			'liveTv.refreshFailed' => 'No se pudo actualizar la lista de canales. Se muestra la anterior.',
 			'liveTv.noMatch' => ({required Object query}) => 'Ningún canal coincide con «${query}».',
 			'liveTv.searchHint' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: 'Buscar en ${n} canal', other: 'Buscar en ${n} canales', ), 
 			'liveTv.all' => 'Todos',
@@ -2023,10 +2027,10 @@ extension on TranslationsEs {
 			'xtream.channels.done' => 'Listo',
 			'xtream.channels.search' => 'Buscar en esta categoría',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} de ${total}',
-			'xtream.channels.whole' => 'Toda la categoría',
-			'xtream.channels.selectShown' => 'Marcar los mostrados',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.whole' => 'Toda la categoría',
+			'xtream.channels.selectShown' => 'Marcar los mostrados',
 			'xtream.channels.clear' => 'Desmarcar',
 			'xtream.channels.clearShown' => 'Desmarcar los mostrados',
 			'xtream.channels.none' => 'El panel no tiene canales en esta categoría.',

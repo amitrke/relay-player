@@ -241,6 +241,8 @@
     "noCategories": "No categories chosen yet.\nPanels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.",
     "chooseCategories": "Choose categories",
     "noChannels": "Those categories returned no channels.",
+    "refresh": "Refresh channels",
+    "refreshFailed": "Could not refresh the channel list. Showing the one from before.",
     "noMatch": "No channel matching \"{query}\".",
     "searchHint": {
       "one": "Search {n} channel",

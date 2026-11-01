@@ -241,6 +241,8 @@
     "noCategories": "Aucune catégorie choisie pour l'instant.\nLes panels comptent des dizaines de milliers de chaînes, alors Subnext Player ne récupère que celles que vous choisissez.",
     "chooseCategories": "Choisir des catégories",
     "noChannels": "Ces catégories n'ont renvoyé aucune chaîne.",
+    "refresh": "Actualiser les chaînes",
+    "refreshFailed": "Impossible d'actualiser la liste des chaînes. L'ancienne est affichée.",
     "noMatch": "Aucune chaîne ne correspond à « {query} ».",
     "searchHint": {
       "one": "Rechercher parmi {n} chaîne",

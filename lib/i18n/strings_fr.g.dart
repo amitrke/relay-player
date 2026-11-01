@@ -305,6 +305,8 @@ class _Translations$liveTv$fr extends Translations$liveTv$en {
 	@override String get noCategories => 'Aucune catégorie choisie pour l\'instant.\nLes panels comptent des dizaines de milliers de chaînes, alors Subnext Player ne récupère que celles que vous choisissez.';
 	@override String get chooseCategories => 'Choisir des catégories';
 	@override String get noChannels => 'Ces catégories n\'ont renvoyé aucune chaîne.';
+	@override String get refresh => 'Actualiser les chaînes';
+	@override String get refreshFailed => 'Impossible d\'actualiser la liste des chaînes. L\'ancienne est affichée.';
 	@override String noMatch({required Object query}) => 'Aucune chaîne ne correspond à « ${query} ».';
 	@override String searchHint({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(n,
 		one: 'Rechercher parmi ${n} chaîne',
@@ -1684,6 +1686,8 @@ extension on TranslationsFr {
 			'liveTv.noCategories' => 'Aucune catégorie choisie pour l\'instant.\nLes panels comptent des dizaines de milliers de chaînes, alors Subnext Player ne récupère que celles que vous choisissez.',
 			'liveTv.chooseCategories' => 'Choisir des catégories',
 			'liveTv.noChannels' => 'Ces catégories n\'ont renvoyé aucune chaîne.',
+			'liveTv.refresh' => 'Actualiser les chaînes',
+			'liveTv.refreshFailed' => 'Impossible d\'actualiser la liste des chaînes. L\'ancienne est affichée.',
 			'liveTv.noMatch' => ({required Object query}) => 'Aucune chaîne ne correspond à « ${query} ».',
 			'liveTv.searchHint' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(n, one: 'Rechercher parmi ${n} chaîne', other: 'Rechercher parmi ${n} chaînes', ), 
 			'liveTv.all' => 'Toutes',
@@ -2023,10 +2027,10 @@ extension on TranslationsFr {
 			'xtream.channels.done' => 'Terminé',
 			'xtream.channels.search' => 'Rechercher dans cette catégorie',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} sur ${total}',
-			'xtream.channels.whole' => 'Toute la catégorie',
-			'xtream.channels.selectShown' => 'Cocher celles affichées',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.whole' => 'Toute la catégorie',
+			'xtream.channels.selectShown' => 'Cocher celles affichées',
 			'xtream.channels.clear' => 'Décocher',
 			'xtream.channels.clearShown' => 'Décocher celles affichées',
 			'xtream.channels.none' => 'Le panel ne liste aucune chaîne dans cette catégorie.',

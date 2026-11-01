@@ -493,6 +493,12 @@ class Translations$liveTv$en {
 	/// en: 'Those categories returned no channels.'
 	String get noChannels => 'Those categories returned no channels.';
 
+	/// en: 'Refresh channels'
+	String get refresh => 'Refresh channels';
+
+	/// en: 'Could not refresh the channel list. Showing the one from before.'
+	String get refreshFailed => 'Could not refresh the channel list. Showing the one from before.';
+
 	/// en: 'No channel matching "{query}".'
 	String noMatch({required Object query}) => 'No channel matching "${query}".';
 
@@ -3041,6 +3047,8 @@ extension on Translations {
 			'liveTv.noCategories' => 'No categories chosen yet.\nPanels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.',
 			'liveTv.chooseCategories' => 'Choose categories',
 			'liveTv.noChannels' => 'Those categories returned no channels.',
+			'liveTv.refresh' => 'Refresh channels',
+			'liveTv.refreshFailed' => 'Could not refresh the channel list. Showing the one from before.',
 			'liveTv.noMatch' => ({required Object query}) => 'No channel matching "${query}".',
 			'liveTv.searchHint' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Search ${n} channel', other: 'Search ${n} channels', ), 
 			'liveTv.all' => 'All',
@@ -3380,10 +3388,10 @@ extension on Translations {
 			'xtream.channels.done' => 'Done',
 			'xtream.channels.search' => 'Search this category',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} of ${total}',
-			'xtream.channels.whole' => 'Whole category',
-			'xtream.channels.selectShown' => 'Select shown',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.channels.whole' => 'Whole category',
+			'xtream.channels.selectShown' => 'Select shown',
 			'xtream.channels.clear' => 'Clear',
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'The panel lists no channels in this category.',

@@ -241,6 +241,8 @@
     "noCategories": "Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.",
     "chooseCategories": "Elegir categorías",
     "noChannels": "Esas categorías no devolvieron canales.",
+    "refresh": "Actualizar canales",
+    "refreshFailed": "No se pudo actualizar la lista de canales. Se muestra la anterior.",
     "noMatch": "Ningún canal coincide con «{query}».",
     "searchHint": {
       "one": "Buscar en {n} canal",

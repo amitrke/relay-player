@@ -227,6 +227,39 @@ names are the panel's own labels, often streaming-service brands (PHASE0_FINDING
 Q4). Showing them in the app is fine; the §13 Phase 6 rule that store assets
 never show Advanced Sources screens covers this one too.
 
+**Refreshing the channel list (2026-11-01).** The chosen categories' channels
+were fetched once per process and kept in memory. Nothing fetched them again
+except a restart, a change to the categories, channel picks or hidden words,
+or *Try again* on an error page. On Android TV the process can live for days,
+so a channel the panel added or renamed did not appear. Now:
+
+- **A Refresh action.** Beside the search box on phone, tablet and desktop;
+  on a TV, the last row of the category column. A button beside the search
+  box was tried on the TV first and could not be reached: `RelayFieldTraversal`
+  leaves Left and Right in a text field to the caret, deliberately, so Right
+  never left the field. The list stays on screen while it reloads, and a
+  refresh that fails keeps it and says so.
+- **A quiet refetch of a stale list,** when the app comes back to the front
+  or the tab opens with a list over six hours old. Six hours is a guess:
+  line-ups change rarely, and the case is a TV left on its home screen
+  overnight. A failure here says nothing; nobody asked.
+- **All categories failing is now an error.** Each category's failure is
+  still swallowed so one bad category costs only its own channels, but when
+  every one failed the list came back empty and read as "Those categories
+  returned no channels", with no way to retry. It now throws, which the first
+  load shows with *Try again* and a refresh reports while keeping the old list.
+- **No automatic retry on this provider.** Riverpod 3 retries a failed
+  provider up to ten times with a growing delay. With the panel down, a
+  refresh spun for about half a minute before saying anything, asking every
+  category again each round, against a line §4 says may allow one
+  connection. Refresh and *Try again* are the retries, as for AI search.
+
+Pinned by `test/live_tv_refresh_test.dart`, including a TV test that walks to
+the row with the D-pad and fails without it. Seen on the Google TV emulator
+against a real panel: the row reached from the last category, a spinner while
+fetching, the list kept on screen. The stale refetch on resume is unit tested
+only.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.

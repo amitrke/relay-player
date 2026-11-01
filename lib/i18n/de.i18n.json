@@ -241,6 +241,8 @@
     "noCategories": "Noch keine Kategorien ausgewählt.\nPanels haben Zehntausende Sender, deshalb lädt Subnext Player nur die, die du auswählst.",
     "chooseCategories": "Kategorien auswählen",
     "noChannels": "Diese Kategorien haben keine Sender geliefert.",
+    "refresh": "Senderliste aktualisieren",
+    "refreshFailed": "Die Senderliste konnte nicht aktualisiert werden. Die bisherige wird angezeigt.",
     "noMatch": "Kein Sender passt zu „{query}“.",
     "searchHint": {
       "one": "{n} Sender durchsuchen",

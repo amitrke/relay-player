@@ -155,15 +155,22 @@ final xtreamCategoryChannelsProvider =
 
 /// Channels for the categories the user actually chose (§4.1).
 final xtreamChannelsProvider =
-    FutureProvider.family<List<XtreamChannel>, XtreamAccount>((
-      ref,
-      account,
-    ) async {
+    FutureProvider.family<List<XtreamChannel>, XtreamAccount>(
+      // No automatic retry, as for AI search (ai_controller.dart). Riverpod 3
+      // retries a failed provider up to ten times with a growing delay, so
+      // with the panel down a refresh spun for about half a minute before
+      // saying anything, every category asked again on each round, against a
+      // line §4 says may allow one connection. Refresh and Try again are the
+      // retries; the person decides.
+      retry: (_, _) => null,
+      (ref, account) async {
       if (account.liveCategoryIds.isEmpty) return const [];
       final client = await ref.watch(xtreamClientProvider(account).future);
       // Watched, so adding a word takes effect without a restart.
       final hidden = HiddenWords(ref.watch(hiddenWordsProvider));
 
+      Object? firstError;
+      var failed = 0;
       final pages = await Future.wait(
         account.liveCategoryIds.map((id) async {
           try {
@@ -171,14 +178,33 @@ final xtreamChannelsProvider =
               await client.liveStreams(id),
               account.liveChannelPicks[id],
             );
-          } catch (_) {
+          } catch (e) {
             // One bad category should cost its own channels, not the whole list.
+            firstError ??= e;
+            failed++;
             return const <XtreamChannel>[];
           }
         }),
       );
+      // Every category failing is the panel or the network being down, not a
+      // set of empty categories. Until 2026-11-01 it read as "Those categories
+      // returned no channels", with no Retry; and once Live TV could be
+      // refreshed, it would have replaced a good list with an empty one.
+      // Thrown, the tab keeps what it had and says the refresh failed.
+      if (failed == account.liveCategoryIds.length) throw firstError!;
+      xtreamChannelsFetchedAt[account.id] = DateTime.now();
       return withoutHidden(pages.expand((page) => page).toList(), hidden);
     });
+
+/// When each line's channel list was last fetched whole, for the Live TV tab
+/// to refetch one that has gone stale (live_tv_tab.dart).
+///
+/// The list lives in memory for the life of the process, and on Android TV
+/// that can be days: the app is rarely killed, so a channel the panel added
+/// would not appear until it was. A plain map rather than provider state,
+/// because it is written while [xtreamChannelsProvider] builds, and only read
+/// by the tab when it decides whether to refresh; nothing rebuilds on it.
+final xtreamChannelsFetchedAt = <String, DateTime>{};
 
 /// Panel movies and series, as catalogue items for the shared grid.
 ///
