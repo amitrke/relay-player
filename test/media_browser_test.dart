@@ -206,6 +206,33 @@ void main() {
     expect(info.kind, ServerKind.emby);
   });
 
+  // A proxy that sends `http://` on to `https://`: the probe's GET follows
+  // the 301 by itself, but Dart does not follow one for a POST, so Quick
+  // Connect failed with "answered 301" until the probe kept the address the
+  // server answered at. Seen against a real server, 2026-11-01.
+  test('a server that redirects is used at the address it redirected to',
+      () async {
+    fake = _Fake();
+    await fake.start();
+    addTearDown(fake.stop);
+    final proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => proxy.close(force: true));
+    proxy.listen((req) {
+      req.response
+        ..statusCode = HttpStatus.movedPermanently
+        ..headers.set(HttpHeaders.locationHeader, '${fake.base}${req.uri}');
+      req.response.close();
+    });
+
+    final info = await MediaBrowserService.probe(
+      'http://127.0.0.1:${proxy.port}/',
+    );
+    expect(info.apiBase, fake.base);
+    final code = await MediaBrowserService.startQuickConnect(info, _client);
+    expect(code.code, '123456');
+    expect(fake.requests, contains('POST /QuickConnect/Initiate?'));
+  });
+
   test('Jellyfin signs in with Authorization, Emby with X-Emby-Authorization',
       () async {
     final jf = await signedIn();
