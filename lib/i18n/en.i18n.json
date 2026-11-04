@@ -680,7 +680,11 @@
       "selectShown": "Select shown",
       "clear": "Clear",
       "clearShown": "Clear shown",
-      "none": "Your provider lists no channels in this category."
+      "none": "Your provider lists no channels in this category.",
+      "wholeTitle": "Whole category · {n} channels",
+      "wholeSub": "New channels your provider adds show up by themselves.",
+      "someTitle": "Only the ones I tick · {picked} of {total}",
+      "someSub": "Channels added later stay hidden until you tick them."
     },
     "hidden": {
       "title": "Hide words",

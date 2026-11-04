@@ -1329,6 +1329,10 @@ class _Translations$xtream$channels$es extends Translations$xtream$channels$en {
 	@override String get clear => 'Desmarcar';
 	@override String get clearShown => 'Desmarcar los mostrados';
 	@override String get none => 'Tu proveedor no tiene canales en esta categoría.';
+	@override String wholeTitle({required Object n}) => 'Categoría completa · ${n} canales';
+	@override String get wholeSub => 'Los canales nuevos que añada tu proveedor aparecen solos.';
+	@override String someTitle({required Object picked, required Object total}) => 'Solo los que marque · ${picked} de ${total}';
+	@override String get someSub => 'Los canales añadidos más tarde quedan ocultos hasta que los marques.';
 }
 
 // Path: xtream.hidden
@@ -2206,6 +2210,10 @@ extension on TranslationsEs {
 			'xtream.channels.clear' => 'Desmarcar',
 			'xtream.channels.clearShown' => 'Desmarcar los mostrados',
 			'xtream.channels.none' => 'Tu proveedor no tiene canales en esta categoría.',
+			'xtream.channels.wholeTitle' => ({required Object n}) => 'Categoría completa · ${n} canales',
+			'xtream.channels.wholeSub' => 'Los canales nuevos que añada tu proveedor aparecen solos.',
+			'xtream.channels.someTitle' => ({required Object picked, required Object total}) => 'Solo los que marque · ${picked} de ${total}',
+			'xtream.channels.someSub' => 'Los canales añadidos más tarde quedan ocultos hasta que los marques.',
 			'xtream.hidden.title' => 'Ocultar palabras',
 			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
 			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',

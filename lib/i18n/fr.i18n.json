@@ -680,7 +680,11 @@
       "selectShown": "Cocher celles affichées",
       "clear": "Décocher",
       "clearShown": "Décocher celles affichées",
-      "none": "Votre fournisseur ne liste aucune chaîne dans cette catégorie."
+      "none": "Votre fournisseur ne liste aucune chaîne dans cette catégorie.",
+      "wholeTitle": "Catégorie entière · {n} chaînes",
+      "wholeSub": "Les nouvelles chaînes ajoutées par votre fournisseur apparaissent d'elles-mêmes.",
+      "someTitle": "Seulement celles cochées · {picked} sur {total}",
+      "someSub": "Les chaînes ajoutées plus tard restent masquées jusqu'à ce que vous les cochiez."
     },
     "hidden": {
       "title": "Masquer des mots",

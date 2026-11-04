@@ -1329,6 +1329,10 @@ class _Translations$xtream$channels$fr extends Translations$xtream$channels$en {
 	@override String get clear => 'Décocher';
 	@override String get clearShown => 'Décocher celles affichées';
 	@override String get none => 'Votre fournisseur ne liste aucune chaîne dans cette catégorie.';
+	@override String wholeTitle({required Object n}) => 'Catégorie entière · ${n} chaînes';
+	@override String get wholeSub => 'Les nouvelles chaînes ajoutées par votre fournisseur apparaissent d\'elles-mêmes.';
+	@override String someTitle({required Object picked, required Object total}) => 'Seulement celles cochées · ${picked} sur ${total}';
+	@override String get someSub => 'Les chaînes ajoutées plus tard restent masquées jusqu\'à ce que vous les cochiez.';
 }
 
 // Path: xtream.hidden
@@ -2206,6 +2210,10 @@ extension on TranslationsFr {
 			'xtream.channels.clear' => 'Décocher',
 			'xtream.channels.clearShown' => 'Décocher celles affichées',
 			'xtream.channels.none' => 'Votre fournisseur ne liste aucune chaîne dans cette catégorie.',
+			'xtream.channels.wholeTitle' => ({required Object n}) => 'Catégorie entière · ${n} chaînes',
+			'xtream.channels.wholeSub' => 'Les nouvelles chaînes ajoutées par votre fournisseur apparaissent d\'elles-mêmes.',
+			'xtream.channels.someTitle' => ({required Object picked, required Object total}) => 'Seulement celles cochées · ${picked} sur ${total}',
+			'xtream.channels.someSub' => 'Les chaînes ajoutées plus tard restent masquées jusqu\'à ce que vous les cochiez.',
 			'xtream.hidden.title' => 'Masquer des mots',
 			'xtream.hidden.explain' => 'Une catégorie ou une chaîne contenant l\'un de ces mots en entier est exclue des listes. « UK » masque « UK News » mais pas « Ukraine ». Ajoutez une expression comme « south indian » pour la masquer d\'un bloc. La casse n\'a pas d\'importance.',
 			'xtream.hidden.hint' => 'Un pays, une langue, un mot',

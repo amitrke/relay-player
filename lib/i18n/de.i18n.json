@@ -680,7 +680,11 @@
       "selectShown": "Angezeigte auswählen",
       "clear": "Abwählen",
       "clearShown": "Angezeigte abwählen",
-      "none": "Dein Anbieter listet in dieser Kategorie keine Sender."
+      "none": "Dein Anbieter listet in dieser Kategorie keine Sender.",
+      "wholeTitle": "Ganze Kategorie · {n} Sender",
+      "wholeSub": "Neue Sender deines Anbieters erscheinen von selbst.",
+      "someTitle": "Nur die angehakten · {picked} von {total}",
+      "someSub": "Später hinzugefügte Sender bleiben verborgen, bis du sie anhakst."
     },
     "hidden": {
       "title": "Wörter ausblenden",

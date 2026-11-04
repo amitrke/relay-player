@@ -2516,6 +2516,18 @@ class Translations$xtream$channels$en {
 
 	/// en: 'Your provider lists no channels in this category.'
 	String get none => 'Your provider lists no channels in this category.';
+
+	/// en: 'Whole category · {n} channels'
+	String wholeTitle({required Object n}) => 'Whole category · ${n} channels';
+
+	/// en: 'New channels your provider adds show up by themselves.'
+	String get wholeSub => 'New channels your provider adds show up by themselves.';
+
+	/// en: 'Only the ones I tick · {picked} of {total}'
+	String someTitle({required Object picked, required Object total}) => 'Only the ones I tick · ${picked} of ${total}';
+
+	/// en: 'Channels added later stay hidden until you tick them.'
+	String get someSub => 'Channels added later stay hidden until you tick them.';
 }
 
 // Path: xtream.hidden
@@ -3695,6 +3707,10 @@ extension on Translations {
 			'xtream.channels.clear' => 'Clear',
 			'xtream.channels.clearShown' => 'Clear shown',
 			'xtream.channels.none' => 'Your provider lists no channels in this category.',
+			'xtream.channels.wholeTitle' => ({required Object n}) => 'Whole category · ${n} channels',
+			'xtream.channels.wholeSub' => 'New channels your provider adds show up by themselves.',
+			'xtream.channels.someTitle' => ({required Object picked, required Object total}) => 'Only the ones I tick · ${picked} of ${total}',
+			'xtream.channels.someSub' => 'Channels added later stay hidden until you tick them.',
 			'xtream.hidden.title' => 'Hide words',
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			'xtream.hidden.hint' => 'A country, a language, a word',

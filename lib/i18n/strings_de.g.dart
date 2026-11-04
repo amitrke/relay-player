@@ -1329,6 +1329,10 @@ class _Translations$xtream$channels$de extends Translations$xtream$channels$en {
 	@override String get clear => 'Abwählen';
 	@override String get clearShown => 'Angezeigte abwählen';
 	@override String get none => 'Dein Anbieter listet in dieser Kategorie keine Sender.';
+	@override String wholeTitle({required Object n}) => 'Ganze Kategorie · ${n} Sender';
+	@override String get wholeSub => 'Neue Sender deines Anbieters erscheinen von selbst.';
+	@override String someTitle({required Object picked, required Object total}) => 'Nur die angehakten · ${picked} von ${total}';
+	@override String get someSub => 'Später hinzugefügte Sender bleiben verborgen, bis du sie anhakst.';
 }
 
 // Path: xtream.hidden
@@ -2206,6 +2210,10 @@ extension on TranslationsDe {
 			'xtream.channels.clear' => 'Abwählen',
 			'xtream.channels.clearShown' => 'Angezeigte abwählen',
 			'xtream.channels.none' => 'Dein Anbieter listet in dieser Kategorie keine Sender.',
+			'xtream.channels.wholeTitle' => ({required Object n}) => 'Ganze Kategorie · ${n} Sender',
+			'xtream.channels.wholeSub' => 'Neue Sender deines Anbieters erscheinen von selbst.',
+			'xtream.channels.someTitle' => ({required Object picked, required Object total}) => 'Nur die angehakten · ${picked} von ${total}',
+			'xtream.channels.someSub' => 'Später hinzugefügte Sender bleiben verborgen, bis du sie anhakst.',
 			'xtream.hidden.title' => 'Wörter ausblenden',
 			'xtream.hidden.explain' => 'Eine Kategorie oder ein Sender, der eines dieser Wörter als ganzes Wort enthält, wird aus den Listen ausgelassen. „UK“ blendet „UK News“ aus, aber nicht „Ukraine“. Füge eine Wortgruppe wie „south indian“ hinzu, um sie als Ganzes auszublenden. Groß- und Kleinschreibung spielt keine Rolle.',
 			'xtream.hidden.hint' => 'Ein Land, eine Sprache, ein Wort',

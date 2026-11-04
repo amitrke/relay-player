@@ -1336,6 +1336,31 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
+   > **Setting up a subscription is three steps, 2026-11-03.** (1) *How did your
+   > provider send your login?*: one long link (the default off a TV), a
+   > username and password (the default on a TV, where pasting is not a thing
+   > a remote does), or copy from another device (§17). A pasted link is taken
+   > apart on screen by `ProviderLink` (`provider_link.dart`: `get.php`,
+   > `player_api.php`, `xmltv.php`, `panel_api.php` with `username` and
+   > `password`, or a stream URL) and checked exactly as typed fields are;
+   > only the pasted text is read, nothing is fetched to parse it, so §8.3 is
+   > untouched. (2) *You're connected*: status, trial, end date (`exp_date`,
+   > parsed since Phase 0 and never shown before), screens at once with a
+   > sentence on the one-screen limit (§4), and the number of channel
+   > categories. (3) *What do you watch?* (§4.1), then a review page with
+   > Live TV, Movies, Series and Never show together; Settings opens the same
+   > page as *What you see*, so the Movies and Series choices are no longer
+   > only small text buttons. Words: "panel" and "line" became "provider" and
+   > "subscription" in the strings, and "Xtream Codes login" became "IPTV
+   > subscription", with Xtream Codes kept as a sub-line because it is what
+   > people search for. A subscription with no name given is called "TV
+   > subscription" rather than its server address, which named the provider
+   > wherever the account was shown (§1). The channel picker now opens on its
+   > two choices, whole category or only the ticked channels, with what each
+   > means for channels added later. Pinned by `provider_link_test.dart`,
+   > `add_xtream_link_test.dart` and `add_xtream_form_test.dart` (now run as a
+   > TV, which is what it is about). **Not seen on a device or against a real
+   > panel**; see MANUAL_TESTING.md §6b.
 3. Home — Movies / Series tabs, plus Local & Network once it is used (see the note below) (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
    > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
    > above the Movies grid, from the artboard. On the Chromecast a show in
@@ -3010,6 +3035,39 @@ back silently or retrying.
   knowledge and unverified against LG's current developer docs.
 - **A second, worse Xtream panel** — to settle §10's malformed-TS claim, or
   else formally drop that argument.
+- **IPTV ease of use, round 2 (designed 2026-11-03, not built).** Round 1 (the
+  setup flow, §8.2 and §12 screen 2) is built. Still on the design canvas, with
+  the decisions already taken:
+  - *Watched recently* in Live TV: a short list of channel ids per
+    subscription, on the device only, counted after about 10 s of real
+    playback so zapping does not fill it, looked up in the current channel
+    list when shown (a channel gone from it drops out), cleared with watch
+    history and not copied by §17. Live playback deliberately writes no
+    history today (`player_screen.dart`), so this is new storage.
+  - *Hide this channel* from a long-press in Live TV. **Decided 2026-11-03: a
+    separate hidden list**, not "switch the category to ticked channels",
+    so a whole category stays whole and keeps picking up new channels.
+  - Channel logos only from the provider's own `stream_icon`, cached, with
+    initials while loading or when there is none. Looking logos up by name in
+    an outside collection was rejected: names match badly, every lookup would
+    send what the person watches to a third party, and bundling broadcasters'
+    marks would put them in our own artefacts (§1).
+  - A subscription card in Settings with status, end date and screens in use,
+    and a plain one-screen message in the player in place of the raw error.
+  - On a TV, setting up from the phone's browser: the TV shows a QR code for a
+    small page it serves itself, where the link is pasted. Unsolved: a page
+    served from `http://<lan-ip>` has no WebCrypto (not a secure context), so
+    it would need its own AES code to seal what it sends under a secret
+    carried after `#` in the QR link, and anyone on the Wi-Fi could tamper with
+    the page itself, which §17's app-to-app path does not allow. No relay
+    server (§16.3).
+  - AI *Also try*: suggestions of **categories**, never single channels from
+    categories not chosen (those lists are never fetched, §4.1), behind their
+    own consent (§9.3), each with its reason. A rules-only version (other
+    groups of the same country, an HD copy of an SD channel) first; AI only if
+    that proves too generic. Needs *Watched recently* as its signal.
+  - No programme guide exists yet (§5, §12 screen 7), so none of the above
+    may assume now-and-next data.
 
 ### Scoped out, revisitable
 

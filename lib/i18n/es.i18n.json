@@ -680,7 +680,11 @@
       "selectShown": "Marcar los mostrados",
       "clear": "Desmarcar",
       "clearShown": "Desmarcar los mostrados",
-      "none": "Tu proveedor no tiene canales en esta categoría."
+      "none": "Tu proveedor no tiene canales en esta categoría.",
+      "wholeTitle": "Categoría completa · {n} canales",
+      "wholeSub": "Los canales nuevos que añada tu proveedor aparecen solos.",
+      "someTitle": "Solo los que marque · {picked} de {total}",
+      "someSub": "Los canales añadidos más tarde quedan ocultos hasta que los marques."
     },
     "hidden": {
       "title": "Ocultar palabras",
