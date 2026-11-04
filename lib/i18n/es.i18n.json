@@ -9,13 +9,13 @@
     "shareGone": "Esa carpeta compartida ya no está configurada.",
     "shareFileGone": "Ese archivo ya no está en la carpeta compartida.",
     "deviceFileGone": "Ese archivo ya no está en este dispositivo.",
-    "lineGone": "Esa línea ya no está configurada.",
+    "lineGone": "Esa suscripción ya no está configurada.",
     "untitledVideo": "Vídeo",
     "untitledEpisode": "Episodio",
     "untitledFilm": "Película",
     "untitledLive": "En directo",
     "channelFroze": "Este canal se detuvo y no ha vuelto.",
-    "channelNotResponding": "Este canal no responde. Las listas de un panel suelen ir por delante de la realidad, así que prueba otro, o el mismo de nuevo.",
+    "channelNotResponding": "Este canal no responde. Los proveedores suelen listar canales que no están emitiendo, así que prueba otro o vuelve a probar el mismo.",
     "didNotStart": "No ha empezado a reproducirse. Puede que el servidor esté ocupado o que el archivo necesite transcodificación, que aún no está disponible.",
     "released": "Se detuvo mientras la app estaba en segundo plano, así que la conexión queda libre para otros dispositivos.",
     "rejoin": "Volver a entrar",
@@ -178,7 +178,7 @@
       "emptyMovies": "No hay películas en este servidor.",
       "emptySeries": "No hay series en este servidor.",
       "emptyLocalNetwork": "Aún no hay carpetas ni recursos de red.\nEl almacenamiento del dispositivo y las carpetas SMB no se pueden conectar en esta versión.",
-      "emptyLiveTv": "No hay ninguna lista ni panel configurado.\nAñade uno desde Ajustes cuando actives Fuentes avanzadas.",
+      "emptyLiveTv": "Aún no hay ninguna suscripción de IPTV.\nAñade una desde Añadir fuente.",
       "countMovies": {
         "one": "{n} película",
         "other": "{n} películas"
@@ -236,9 +236,9 @@
       "numbered": "Categoría {n}",
       "other": "Otros"
     },
-    "noPanel": "No hay ninguna lista ni panel configurado.",
+    "noPanel": "Aún no hay ninguna suscripción de IPTV.",
     "addOne": "Añadir uno",
-    "noCategories": "Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.",
+    "noCategories": "Aún no has elegido canales.\nTu proveedor tiene decenas de miles, así que Subnext Player solo carga los que eliges.",
     "chooseCategories": "Elegir categorías",
     "noChannels": "Esas categorías no devolvieron canales.",
     "refresh": "Actualizar canales",
@@ -450,9 +450,9 @@
       "pointRights": "Los derechos son cosa tuya",
       "pointLogin": "Tu inicio de sesión se queda en este dispositivo",
       "dialogConfirm": "Lo entiendo, activar",
-      "toggle": "Proveedor o lista de IPTV",
-      "toggleExplain": "Añade TV en directo e inicios de sesión de Xtream Codes.",
-      "offKeeps": "Si lo desactivas después, se oculta TV en directo pero se conservan las cuentas que hayas añadido."
+      "toggle": "TV en directo de una suscripción de IPTV",
+      "toggleExplain": "Añade la pestaña TV en directo y las suscripciones de IPTV en Añadir fuente.",
+      "offKeeps": "Si lo desactivas más tarde, se oculta la TV en directo, pero se conservan tus suscripciones."
     },
     "sources": {
       "noServers": "No hay servidores Plex conectados.",
@@ -478,7 +478,7 @@
     "plexTv": "Inicia sesión con tu propia cuenta en esta TV.",
     "plex": "Tu biblioteca personal, con tu propia cuenta.",
     "advancedTv": "Desactivado por defecto. Actívalo en Ajustes.",
-    "advanced": "Desactivado por defecto. Actívalo en Ajustes para usar un proveedor o una lista de IPTV.",
+    "advanced": "Desactivado por defecto. Actívalo desde Añadir fuente o Ajustes para usar una suscripción de IPTV.",
     "localTitle": "Local y red",
     "advancedTitle": "Fuentes avanzadas",
     "addFirst": "Añade tu primera fuente",
@@ -499,8 +499,8 @@
       "localFilesIos": "Reproduce los vídeos de tu fototeca.",
       "smb": "Recurso de red (SMB)",
       "smbSub": "Un NAS o una carpeta compartida de Windows en tu red doméstica.",
-      "xtream": "Inicio de sesión de Xtream Codes",
-      "xtreamSub": "Servidor, usuario y contraseña de tu proveedor.",
+      "xtream": "Suscripción de IPTV",
+      "xtreamSub": "El enlace o el inicio de sesión que te envió tu proveedor. También se llama Xtream Codes.",
       "mediaBrowser": "Servidor Jellyfin o Emby",
       "mediaBrowserSub": "Tu propio servidor, con tu propia cuenta."
     },
@@ -582,48 +582,61 @@
     "empty": "Aquí no hay vídeos ni carpetas."
   },
   "xtream": {
-    "lineGone": "Esa línea ya no está configurada.",
+    "lineGone": "Esa suscripción ya no está configurada.",
     "catalogue": {
       "live": "TV en directo",
       "vod": "Películas",
       "series": "Series"
     },
     "errors": {
-      "status": "El panel devolvió {code}. Inténtalo más tarde.",
-      "timeout": "El panel no respondió a tiempo.",
-      "unreachable": "No se pudo contactar con esa dirección. Comprueba el servidor y el puerto.",
-      "other": "No se pudo comunicar con el panel ({type}).",
-      "notXtream": "Esa dirección no respondió como un panel Xtream.",
-      "rejected": "El panel rechazó esas credenciales.",
+      "status": "El servidor de tu proveedor respondió {code}. Inténtalo más tarde.",
+      "timeout": "El servidor de tu proveedor no respondió a tiempo.",
+      "unreachable": "No se pudo acceder a esa dirección. Revisa el enlace, o la dirección del servidor y el puerto.",
+      "other": "No se pudo hablar con el servidor de tu proveedor ({type}).",
+      "notXtream": "Esa dirección no respondió como un servidor de IPTV. Revisa el enlace o la dirección del servidor.",
+      "rejected": "Tu proveedor no aceptó ese inicio de sesión.",
       "wrongLogin": "Usuario o contraseña incorrectos.",
       "unnamed": "Sin nombre",
       "episode": "Episodio",
-      "noPassword": "Esa línea no tiene contraseña guardada. Quítala y vuelve a añadirla."
+      "noPassword": "Esa suscripción no tiene contraseña guardada. Quítala y vuelve a añadirla."
     },
     "everythingElse": "Todo lo demás",
     "series": {
       "title": "Serie",
-      "noEpisodes": "El panel no devolvió episodios para esta serie.",
+      "noEpisodes": "Tu proveedor no devolvió episodios de esta serie.",
       "season": "Temporada {n}"
     },
     "remove": "Quitar",
-    "add": "Añadir una lista o un panel",
+    "add": "Añadir una suscripción de IPTV",
     "addLine": {
-      "discardTitle": "¿Descartar esta línea?",
+      "discardTitle": "¿Descartar lo que escribiste?",
       "discardBody": "Lo que has escrito aquí no se ha guardado.",
       "discard": "Descartar",
       "keepEditing": "Seguir editando",
-      "inactive": "El panel indica que esta línea está «{status}».",
+      "inactive": "Tu proveedor dice que esta suscripción está \"{status}\".",
       "noContent": "Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.",
       "host": "Dirección del servidor",
       "name": "Nombre (opcional)",
-      "nameHint": "Cómo quieres llamar a esta línea",
+      "nameHint": "Cómo quieres llamar a esta suscripción",
       "checking": "Comprobando…",
-      "verify": "Verificar y añadir",
-      "connected": {
-        "one": "Conectado. Se permite {n} emisión simultánea.",
-        "other": "Conectado. Se permiten {n} emisiones simultáneas."
-      }
+      "verify": "Conectar",
+      "hostHint": "example.com:8080",
+      "how": "¿Cómo te envió tu proveedor el inicio de sesión?",
+      "howHint": "Busca en el correo o mensaje que recibiste al suscribirte.",
+      "modeLink": "Un enlace largo",
+      "modeLinkSub": "Suele llamarse enlace M3U o URL de lista.",
+      "modeLogin": "Un usuario y una contraseña",
+      "modeLoginSub": "Con una dirección de servidor como example.com:8080. A veces se llama inicio de sesión Xtream Codes.",
+      "modeDevice": "Ya está en otro dispositivo",
+      "modeDeviceSub": "Envíalo desde tu móvil en lugar de escribirlo aquí.",
+      "link": "Enlace de tu proveedor",
+      "paste": "Pegar",
+      "found": "Hemos encontrado tu inicio de sesión en este enlace",
+      "notALink": "No parece un enlace con un inicio de sesión. Revísalo o escribe los datos tú mismo.",
+      "server": "Servidor",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "defaultName": "Suscripción de TV"
     },
     "picker": {
       "patternNone": "Ese patrón no coincidió con nada.",
@@ -667,7 +680,7 @@
       "selectShown": "Marcar los mostrados",
       "clear": "Desmarcar",
       "clearShown": "Desmarcar los mostrados",
-      "none": "El panel no tiene canales en esta categoría."
+      "none": "Tu proveedor no tiene canales en esta categoría."
     },
     "hidden": {
       "title": "Ocultar palabras",
@@ -676,6 +689,26 @@
       "add": "Añadir",
       "none": "Aún no hay nada oculto.",
       "tapToRemove": "Selecciona una palabra para dejar de ocultarla."
+    },
+    "setup": {
+      "step": "Paso {n} de 3"
+    },
+    "connected": {
+      "title": "Estás conectado",
+      "status": "Estado",
+      "active": "Activa",
+      "trial": "Activa, de prueba",
+      "ends": "Termina",
+      "noEnd": "Sin fecha de fin",
+      "screens": "Pantallas a la vez",
+      "oneScreen": "Tu suscripción se reproduce en una pantalla a la vez. Si está en marcha en otro sitio, aquí no empezará hasta que se detenga.",
+      "liveCategories": {
+        "one": "{n} categoría de canales",
+        "other": "{n} categorías de canales"
+      },
+      "available": "Canales",
+      "next": "Es más de lo que nadie ve, así que ahora eliges los países y tipos de canal que quieres. Solo se cargan esos.",
+      "choose": "Elegir lo que ves"
     }
   },
   "transfer": {

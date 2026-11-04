@@ -9,13 +9,13 @@
     "shareGone": "Ce partage n'est plus configuré.",
     "shareFileGone": "Ce fichier n'est plus sur le partage.",
     "deviceFileGone": "Ce fichier n'est plus sur cet appareil.",
-    "lineGone": "Cette ligne n'est plus configurée.",
+    "lineGone": "Cet abonnement n'est plus configuré.",
     "untitledVideo": "Vidéo",
     "untitledEpisode": "Épisode",
     "untitledFilm": "Film",
     "untitledLive": "En direct",
     "channelFroze": "Cette chaîne s'est arrêtée et n'est pas revenue.",
-    "channelNotResponding": "Cette chaîne ne répond pas. Les listes d'un panel sont souvent en avance sur la réalité, alors essayez-en une autre, ou la même à nouveau.",
+    "channelNotResponding": "Cette chaîne ne répond pas. Les fournisseurs listent souvent des chaînes qui ne diffusent pas, alors essayez-en une autre, ou la même à nouveau.",
     "didNotStart": "La lecture n'a pas démarré. Le serveur est peut-être occupé, ou le fichier doit être transcodé, ce qui n'est pas encore pris en charge.",
     "released": "Arrêté pendant que l'appli était en arrière-plan, pour libérer la connexion pour d'autres appareils.",
     "rejoin": "Reprendre",
@@ -178,7 +178,7 @@
       "emptyMovies": "Aucun film sur ce serveur.",
       "emptySeries": "Aucune série sur ce serveur.",
       "emptyLocalNetwork": "Aucun dossier ni partage réseau pour l'instant.\nLe stockage de l'appareil et les partages SMB ne sont pas connectables dans cette version.",
-      "emptyLiveTv": "Aucune playlist ni aucun panel configuré.\nAjoutez-en un depuis Réglages une fois les Sources avancées activées.",
+      "emptyLiveTv": "Aucun abonnement IPTV configuré.\nAjoutez-en un depuis Ajouter une source.",
       "countMovies": {
         "one": "{n} film",
         "other": "{n} films"
@@ -236,9 +236,9 @@
       "numbered": "Catégorie {n}",
       "other": "Autres"
     },
-    "noPanel": "Aucune playlist ni aucun panel configuré.",
+    "noPanel": "Aucun abonnement IPTV configuré.",
     "addOne": "En ajouter un",
-    "noCategories": "Aucune catégorie choisie pour l'instant.\nLes panels comptent des dizaines de milliers de chaînes, alors Subnext Player ne récupère que celles que vous choisissez.",
+    "noCategories": "Aucune chaîne choisie.\nVotre fournisseur en a des dizaines de milliers, donc Subnext Player ne charge que celles que vous choisissez.",
     "chooseCategories": "Choisir des catégories",
     "noChannels": "Ces catégories n'ont renvoyé aucune chaîne.",
     "refresh": "Actualiser les chaînes",
@@ -450,9 +450,9 @@
       "pointRights": "Les droits vous incombent",
       "pointLogin": "Votre identifiant reste sur cet appareil",
       "dialogConfirm": "Je comprends, activer",
-      "toggle": "Fournisseur ou playlist IPTV",
-      "toggleExplain": "Ajoute la TV en direct et les identifiants Xtream Codes.",
-      "offKeeps": "Le désactiver plus tard masque la TV en direct mais conserve les comptes ajoutés."
+      "toggle": "TV en direct depuis un abonnement IPTV",
+      "toggleExplain": "Ajoute l'onglet TV en direct, et les abonnements IPTV dans Ajouter une source.",
+      "offKeeps": "Le désactiver plus tard masque la TV en direct mais conserve vos abonnements."
     },
     "sources": {
       "noServers": "Aucun serveur Plex connecté.",
@@ -478,7 +478,7 @@
     "plexTv": "Connectez-vous avec votre propre compte sur cette TV.",
     "plex": "Votre bibliothèque personnelle, avec votre propre compte.",
     "advancedTv": "Désactivé par défaut. À activer dans Réglages.",
-    "advanced": "Désactivé par défaut. À activer dans Réglages pour utiliser un fournisseur ou une playlist IPTV.",
+    "advanced": "Désactivé par défaut. À activer depuis Ajouter une source ou Réglages pour utiliser un abonnement IPTV.",
     "localTitle": "Local et réseau",
     "advancedTitle": "Sources avancées",
     "addFirst": "Ajouter votre première source",
@@ -499,8 +499,8 @@
       "localFilesIos": "Lisez les vidéos de votre photothèque.",
       "smb": "Partage réseau (SMB)",
       "smbSub": "Un NAS ou un partage Windows sur votre réseau domestique.",
-      "xtream": "Identifiant Xtream Codes",
-      "xtreamSub": "Serveur, nom d'utilisateur et mot de passe de votre fournisseur.",
+      "xtream": "Abonnement IPTV",
+      "xtreamSub": "Le lien ou l'identifiant envoyé par votre fournisseur. Aussi appelé Xtream Codes.",
       "mediaBrowser": "Serveur Jellyfin ou Emby",
       "mediaBrowserSub": "Votre propre serveur, avec votre propre compte."
     },
@@ -582,48 +582,61 @@
     "empty": "Aucune vidéo ni dossier ici."
   },
   "xtream": {
-    "lineGone": "Cette ligne n'est plus configurée.",
+    "lineGone": "Cet abonnement n'est plus configuré.",
     "catalogue": {
       "live": "TV en direct",
       "vod": "Films",
       "series": "Séries"
     },
     "errors": {
-      "status": "Le panel a renvoyé {code}. Réessayez plus tard.",
-      "timeout": "Le panel n'a pas répondu à temps.",
-      "unreachable": "Impossible de joindre cette adresse. Vérifiez l'hôte et le port.",
-      "other": "Impossible de communiquer avec le panel ({type}).",
-      "notXtream": "Cette adresse n'a pas répondu comme un panel Xtream.",
-      "rejected": "Le panel a refusé ces identifiants.",
+      "status": "Le serveur de votre fournisseur a répondu {code}. Réessayez plus tard.",
+      "timeout": "Le serveur de votre fournisseur n'a pas répondu à temps.",
+      "unreachable": "Impossible de joindre cette adresse. Vérifiez le lien, ou l'adresse du serveur et le port.",
+      "other": "Impossible de communiquer avec le serveur de votre fournisseur ({type}).",
+      "notXtream": "Cette adresse n'a pas répondu comme un serveur IPTV. Vérifiez le lien ou l'adresse du serveur.",
+      "rejected": "Votre fournisseur n'a pas accepté cet identifiant.",
       "wrongLogin": "Nom d'utilisateur ou mot de passe incorrect.",
       "unnamed": "Sans nom",
       "episode": "Épisode",
-      "noPassword": "Cette ligne n'a pas de mot de passe enregistré. Retirez-la et ajoutez-la à nouveau."
+      "noPassword": "Cet abonnement n'a pas de mot de passe enregistré. Retirez-le et ajoutez-le à nouveau."
     },
     "everythingElse": "Tout le reste",
     "series": {
       "title": "Série",
-      "noEpisodes": "Le panel n'a renvoyé aucun épisode pour cette série.",
+      "noEpisodes": "Votre fournisseur n'a renvoyé aucun épisode pour cette série.",
       "season": "Saison {n}"
     },
     "remove": "Retirer",
-    "add": "Ajouter une playlist ou un panel",
+    "add": "Ajouter un abonnement IPTV",
     "addLine": {
-      "discardTitle": "Abandonner cette ligne ?",
+      "discardTitle": "Abandonner ce que vous avez saisi ?",
       "discardBody": "Ce que vous avez saisi ici n'a pas été enregistré.",
       "discard": "Abandonner",
       "keepEditing": "Continuer la saisie",
-      "inactive": "Le panel indique que cette ligne est « {status} ».",
+      "inactive": "Votre fournisseur indique que cet abonnement est \"{status}\".",
       "noContent": "Subnext Player ne fournit, n'héberge ni ne cautionne aucun contenu ni aucun fournisseur. Vous indiquez l'adresse et l'identifiant, et l'appli lit ce que renvoie cette adresse.",
       "host": "Adresse du serveur",
       "name": "Nom (facultatif)",
-      "nameHint": "Le nom que vous voulez donner à cette ligne",
+      "nameHint": "Comment vous voulez appeler cet abonnement",
       "checking": "Vérification…",
-      "verify": "Vérifier et ajouter",
-      "connected": {
-        "one": "Connecté. {n} flux simultané autorisé.",
-        "other": "Connecté. {n} flux simultanés autorisés."
-      }
+      "verify": "Se connecter",
+      "hostHint": "example.com:8080",
+      "how": "Comment votre fournisseur vous a-t-il envoyé votre identifiant ?",
+      "howHint": "Regardez dans l'e-mail ou le message reçu lors de votre abonnement.",
+      "modeLink": "Un long lien",
+      "modeLinkSub": "Souvent appelé lien M3U ou URL de playlist.",
+      "modeLogin": "Un nom d'utilisateur et un mot de passe",
+      "modeLoginSub": "Avec une adresse de serveur comme example.com:8080. Parfois appelé identifiant Xtream Codes.",
+      "modeDevice": "C'est déjà sur un autre appareil",
+      "modeDeviceSub": "Envoyez-le depuis votre téléphone au lieu de le saisir ici.",
+      "link": "Lien de votre fournisseur",
+      "paste": "Coller",
+      "found": "Identifiant trouvé dans ce lien",
+      "notALink": "Cela ne ressemble pas à un lien contenant un identifiant. Vérifiez-le, ou saisissez les informations vous-même.",
+      "server": "Serveur",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "defaultName": "Abonnement TV"
     },
     "picker": {
       "patternNone": "Ce motif ne correspond à rien.",
@@ -667,7 +680,7 @@
       "selectShown": "Cocher celles affichées",
       "clear": "Décocher",
       "clearShown": "Décocher celles affichées",
-      "none": "Le panel ne liste aucune chaîne dans cette catégorie."
+      "none": "Votre fournisseur ne liste aucune chaîne dans cette catégorie."
     },
     "hidden": {
       "title": "Masquer des mots",
@@ -676,6 +689,26 @@
       "add": "Ajouter",
       "none": "Rien n'est masqué pour l'instant.",
       "tapToRemove": "Sélectionnez un mot pour ne plus le masquer."
+    },
+    "setup": {
+      "step": "Étape {n} sur 3"
+    },
+    "connected": {
+      "title": "Vous êtes connecté",
+      "status": "État",
+      "active": "Actif",
+      "trial": "Actif, essai",
+      "ends": "Fin",
+      "noEnd": "Aucune date de fin indiquée",
+      "screens": "Écrans en même temps",
+      "oneScreen": "Votre abonnement fonctionne sur un écran à la fois. S'il est en cours ailleurs, il ne démarrera pas ici avant que cela s'arrête.",
+      "liveCategories": {
+        "one": "{n} catégorie de chaînes",
+        "other": "{n} catégories de chaînes"
+      },
+      "available": "Chaînes",
+      "next": "C'est plus que ce que l'on regarde, alors vous choisissez ensuite les pays et types de chaînes que vous voulez. Seuls ceux-là sont chargés.",
+      "choose": "Choisir ce que vous regardez"
     }
   },
   "transfer": {

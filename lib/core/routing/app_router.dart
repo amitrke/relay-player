@@ -9,9 +9,11 @@ import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
 import '../../features/advanced_sources/add_xtream_screen.dart';
 import '../../features/advanced_sources/category_picker_screen.dart';
+import '../../features/advanced_sources/connected_screen.dart';
 import '../../features/advanced_sources/channel_picker_screen.dart';
 import '../../features/advanced_sources/xtream_series_screen.dart';
 import '../../data/xtream/xtream_account_store.dart';
+import '../../data/xtream/xtream_client.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/downloads/downloads_screen.dart';
 import '../../features/home/home_shell.dart';
@@ -141,6 +143,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/advanced/xtream/new',
         builder: (_, _) => const AddXtreamScreen(),
+      ),
+      GoRoute(
+        // Step 2 of setting up a subscription. The provider's answer to the
+        // form's check comes as extra; without it the screen shows less.
+        path: '/advanced/xtream/:accountId/connected',
+        builder: (_, state) => ConnectedScreen(
+          accountId: state.pathParameters['accountId']!,
+          info: state.extra as XtreamAccountInfo?,
+        ),
       ),
       GoRoute(
         path: '/advanced/xtream/:accountId/categories/:catalogue',

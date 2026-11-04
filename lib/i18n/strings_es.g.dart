@@ -125,13 +125,13 @@ class _Translations$player$es extends Translations$player$en {
 	@override String get shareGone => 'Esa carpeta compartida ya no está configurada.';
 	@override String get shareFileGone => 'Ese archivo ya no está en la carpeta compartida.';
 	@override String get deviceFileGone => 'Ese archivo ya no está en este dispositivo.';
-	@override String get lineGone => 'Esa línea ya no está configurada.';
+	@override String get lineGone => 'Esa suscripción ya no está configurada.';
 	@override String get untitledVideo => 'Vídeo';
 	@override String get untitledEpisode => 'Episodio';
 	@override String get untitledFilm => 'Película';
 	@override String get untitledLive => 'En directo';
 	@override String get channelFroze => 'Este canal se detuvo y no ha vuelto.';
-	@override String get channelNotResponding => 'Este canal no responde. Las listas de un panel suelen ir por delante de la realidad, así que prueba otro, o el mismo de nuevo.';
+	@override String get channelNotResponding => 'Este canal no responde. Los proveedores suelen listar canales que no están emitiendo, así que prueba otro o vuelve a probar el mismo.';
 	@override String get didNotStart => 'No ha empezado a reproducirse. Puede que el servidor esté ocupado o que el archivo necesite transcodificación, que aún no está disponible.';
 	@override String get released => 'Se detuvo mientras la app estaba en segundo plano, así que la conexión queda libre para otros dispositivos.';
 	@override String get rejoin => 'Volver a entrar';
@@ -300,9 +300,9 @@ class _Translations$liveTv$es extends Translations$liveTv$en {
 
 	// Translations
 	@override late final _Translations$liveTv$group$es group = _Translations$liveTv$group$es._(_root);
-	@override String get noPanel => 'No hay ninguna lista ni panel configurado.';
+	@override String get noPanel => 'Aún no hay ninguna suscripción de IPTV.';
 	@override String get addOne => 'Añadir uno';
-	@override String get noCategories => 'Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.';
+	@override String get noCategories => 'Aún no has elegido canales.\nTu proveedor tiene decenas de miles, así que Subnext Player solo carga los que eliges.';
 	@override String get chooseCategories => 'Elegir categorías';
 	@override String get noChannels => 'Esas categorías no devolvieron canales.';
 	@override String get refresh => 'Actualizar canales';
@@ -387,7 +387,7 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 	@override String get plexTv => 'Inicia sesión con tu propia cuenta en esta TV.';
 	@override String get plex => 'Tu biblioteca personal, con tu propia cuenta.';
 	@override String get advancedTv => 'Desactivado por defecto. Actívalo en Ajustes.';
-	@override String get advanced => 'Desactivado por defecto. Actívalo en Ajustes para usar un proveedor o una lista de IPTV.';
+	@override String get advanced => 'Desactivado por defecto. Actívalo desde Añadir fuente o Ajustes para usar una suscripción de IPTV.';
 	@override String get localTitle => 'Local y red';
 	@override String get advancedTitle => 'Fuentes avanzadas';
 	@override String get addFirst => 'Añade tu primera fuente';
@@ -508,17 +508,19 @@ class _Translations$xtream$es extends Translations$xtream$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get lineGone => 'Esa línea ya no está configurada.';
+	@override String get lineGone => 'Esa suscripción ya no está configurada.';
 	@override late final _Translations$xtream$catalogue$es catalogue = _Translations$xtream$catalogue$es._(_root);
 	@override late final _Translations$xtream$errors$es errors = _Translations$xtream$errors$es._(_root);
 	@override String get everythingElse => 'Todo lo demás';
 	@override late final _Translations$xtream$series$es series = _Translations$xtream$series$es._(_root);
 	@override String get remove => 'Quitar';
-	@override String get add => 'Añadir una lista o un panel';
+	@override String get add => 'Añadir una suscripción de IPTV';
 	@override late final _Translations$xtream$addLine$es addLine = _Translations$xtream$addLine$es._(_root);
 	@override late final _Translations$xtream$picker$es picker = _Translations$xtream$picker$es._(_root);
 	@override late final _Translations$xtream$channels$es channels = _Translations$xtream$channels$es._(_root);
 	@override late final _Translations$xtream$hidden$es hidden = _Translations$xtream$hidden$es._(_root);
+	@override late final _Translations$xtream$setup$es setup = _Translations$xtream$setup$es._(_root);
+	@override late final _Translations$xtream$connected$es connected = _Translations$xtream$connected$es._(_root);
 }
 
 // Path: transfer
@@ -755,7 +757,7 @@ class _Translations$library$tab$es extends Translations$library$tab$en {
 	@override String get emptyMovies => 'No hay películas en este servidor.';
 	@override String get emptySeries => 'No hay series en este servidor.';
 	@override String get emptyLocalNetwork => 'Aún no hay carpetas ni recursos de red.\nEl almacenamiento del dispositivo y las carpetas SMB no se pueden conectar en esta versión.';
-	@override String get emptyLiveTv => 'No hay ninguna lista ni panel configurado.\nAñade uno desde Ajustes cuando actives Fuentes avanzadas.';
+	@override String get emptyLiveTv => 'Aún no hay ninguna suscripción de IPTV.\nAñade una desde Añadir fuente.';
 	@override String countMovies({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
 		one: '${n} película',
 		other: '${n} películas',
@@ -1090,9 +1092,9 @@ class _Translations$settings$advanced$es extends Translations$settings$advanced$
 	@override String get pointRights => 'Los derechos son cosa tuya';
 	@override String get pointLogin => 'Tu inicio de sesión se queda en este dispositivo';
 	@override String get dialogConfirm => 'Lo entiendo, activar';
-	@override String get toggle => 'Proveedor o lista de IPTV';
-	@override String get toggleExplain => 'Añade TV en directo e inicios de sesión de Xtream Codes.';
-	@override String get offKeeps => 'Si lo desactivas después, se oculta TV en directo pero se conservan las cuentas que hayas añadido.';
+	@override String get toggle => 'TV en directo de una suscripción de IPTV';
+	@override String get toggleExplain => 'Añade la pestaña TV en directo y las suscripciones de IPTV en Añadir fuente.';
+	@override String get offKeeps => 'Si lo desactivas más tarde, se oculta la TV en directo, pero se conservan tus suscripciones.';
 }
 
 // Path: settings.sources
@@ -1131,8 +1133,8 @@ class _Translations$addSource$kind$es extends Translations$addSource$kind$en {
 	@override String get localFilesIos => 'Reproduce los vídeos de tu fototeca.';
 	@override String get smb => 'Recurso de red (SMB)';
 	@override String get smbSub => 'Un NAS o una carpeta compartida de Windows en tu red doméstica.';
-	@override String get xtream => 'Inicio de sesión de Xtream Codes';
-	@override String get xtreamSub => 'Servidor, usuario y contraseña de tu proveedor.';
+	@override String get xtream => 'Suscripción de IPTV';
+	@override String get xtreamSub => 'El enlace o el inicio de sesión que te envió tu proveedor. También se llama Xtream Codes.';
 	@override String get mediaBrowser => 'Servidor Jellyfin o Emby';
 	@override String get mediaBrowserSub => 'Tu propio servidor, con tu propia cuenta.';
 }
@@ -1169,16 +1171,16 @@ class _Translations$xtream$errors$es extends Translations$xtream$errors$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String status({required Object code}) => 'El panel devolvió ${code}. Inténtalo más tarde.';
-	@override String get timeout => 'El panel no respondió a tiempo.';
-	@override String get unreachable => 'No se pudo contactar con esa dirección. Comprueba el servidor y el puerto.';
-	@override String other({required Object type}) => 'No se pudo comunicar con el panel (${type}).';
-	@override String get notXtream => 'Esa dirección no respondió como un panel Xtream.';
-	@override String get rejected => 'El panel rechazó esas credenciales.';
+	@override String status({required Object code}) => 'El servidor de tu proveedor respondió ${code}. Inténtalo más tarde.';
+	@override String get timeout => 'El servidor de tu proveedor no respondió a tiempo.';
+	@override String get unreachable => 'No se pudo acceder a esa dirección. Revisa el enlace, o la dirección del servidor y el puerto.';
+	@override String other({required Object type}) => 'No se pudo hablar con el servidor de tu proveedor (${type}).';
+	@override String get notXtream => 'Esa dirección no respondió como un servidor de IPTV. Revisa el enlace o la dirección del servidor.';
+	@override String get rejected => 'Tu proveedor no aceptó ese inicio de sesión.';
 	@override String get wrongLogin => 'Usuario o contraseña incorrectos.';
 	@override String get unnamed => 'Sin nombre';
 	@override String get episode => 'Episodio';
-	@override String get noPassword => 'Esa línea no tiene contraseña guardada. Quítala y vuelve a añadirla.';
+	@override String get noPassword => 'Esa suscripción no tiene contraseña guardada. Quítala y vuelve a añadirla.';
 }
 
 // Path: xtream.series
@@ -1189,7 +1191,7 @@ class _Translations$xtream$series$es extends Translations$xtream$series$en {
 
 	// Translations
 	@override String get title => 'Serie';
-	@override String get noEpisodes => 'El panel no devolvió episodios para esta serie.';
+	@override String get noEpisodes => 'Tu proveedor no devolvió episodios de esta serie.';
 	@override String season({required Object n}) => 'Temporada ${n}';
 }
 
@@ -1200,21 +1202,34 @@ class _Translations$xtream$addLine$es extends Translations$xtream$addLine$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get discardTitle => '¿Descartar esta línea?';
+	@override String get discardTitle => '¿Descartar lo que escribiste?';
 	@override String get discardBody => 'Lo que has escrito aquí no se ha guardado.';
 	@override String get discard => 'Descartar';
 	@override String get keepEditing => 'Seguir editando';
-	@override String inactive({required Object status}) => 'El panel indica que esta línea está «${status}».';
+	@override String inactive({required Object status}) => 'Tu proveedor dice que esta suscripción está "${status}".';
 	@override String get noContent => 'Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.';
 	@override String get host => 'Dirección del servidor';
 	@override String get name => 'Nombre (opcional)';
-	@override String get nameHint => 'Cómo quieres llamar a esta línea';
+	@override String get nameHint => 'Cómo quieres llamar a esta suscripción';
 	@override String get checking => 'Comprobando…';
-	@override String get verify => 'Verificar y añadir';
-	@override String connected({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
-		one: 'Conectado. Se permite ${n} emisión simultánea.',
-		other: 'Conectado. Se permiten ${n} emisiones simultáneas.',
-	);
+	@override String get verify => 'Conectar';
+	@override String get hostHint => 'example.com:8080';
+	@override String get how => '¿Cómo te envió tu proveedor el inicio de sesión?';
+	@override String get howHint => 'Busca en el correo o mensaje que recibiste al suscribirte.';
+	@override String get modeLink => 'Un enlace largo';
+	@override String get modeLinkSub => 'Suele llamarse enlace M3U o URL de lista.';
+	@override String get modeLogin => 'Un usuario y una contraseña';
+	@override String get modeLoginSub => 'Con una dirección de servidor como example.com:8080. A veces se llama inicio de sesión Xtream Codes.';
+	@override String get modeDevice => 'Ya está en otro dispositivo';
+	@override String get modeDeviceSub => 'Envíalo desde tu móvil en lugar de escribirlo aquí.';
+	@override String get link => 'Enlace de tu proveedor';
+	@override String get paste => 'Pegar';
+	@override String get found => 'Hemos encontrado tu inicio de sesión en este enlace';
+	@override String get notALink => 'No parece un enlace con un inicio de sesión. Revísalo o escribe los datos tú mismo.';
+	@override String get server => 'Servidor';
+	@override String get show => 'Mostrar';
+	@override String get hide => 'Ocultar';
+	@override String get defaultName => 'Suscripción de TV';
 }
 
 // Path: xtream.picker
@@ -1272,7 +1287,7 @@ class _Translations$xtream$channels$es extends Translations$xtream$channels$en {
 	@override String get selectShown => 'Marcar los mostrados';
 	@override String get clear => 'Desmarcar';
 	@override String get clearShown => 'Desmarcar los mostrados';
-	@override String get none => 'El panel no tiene canales en esta categoría.';
+	@override String get none => 'Tu proveedor no tiene canales en esta categoría.';
 }
 
 // Path: xtream.hidden
@@ -1288,6 +1303,40 @@ class _Translations$xtream$hidden$es extends Translations$xtream$hidden$en {
 	@override String get add => 'Añadir';
 	@override String get none => 'Aún no hay nada oculto.';
 	@override String get tapToRemove => 'Selecciona una palabra para dejar de ocultarla.';
+}
+
+// Path: xtream.setup
+class _Translations$xtream$setup$es extends Translations$xtream$setup$en {
+	_Translations$xtream$setup$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String step({required Object n}) => 'Paso ${n} de 3';
+}
+
+// Path: xtream.connected
+class _Translations$xtream$connected$es extends Translations$xtream$connected$en {
+	_Translations$xtream$connected$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Estás conectado';
+	@override String get status => 'Estado';
+	@override String get active => 'Activa';
+	@override String get trial => 'Activa, de prueba';
+	@override String get ends => 'Termina';
+	@override String get noEnd => 'Sin fecha de fin';
+	@override String get screens => 'Pantallas a la vez';
+	@override String get oneScreen => 'Tu suscripción se reproduce en una pantalla a la vez. Si está en marcha en otro sitio, aquí no empezará hasta que se detenga.';
+	@override String liveCategories({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '${n} categoría de canales',
+		other: '${n} categorías de canales',
+	);
+	@override String get available => 'Canales';
+	@override String get next => 'Es más de lo que nadie ve, así que ahora eliges los países y tipos de canal que quieres. Solo se cargan esos.';
+	@override String get choose => 'Elegir lo que ves';
 }
 
 // Path: transfer.receive
@@ -1526,13 +1575,13 @@ extension on TranslationsEs {
 			'player.shareGone' => 'Esa carpeta compartida ya no está configurada.',
 			'player.shareFileGone' => 'Ese archivo ya no está en la carpeta compartida.',
 			'player.deviceFileGone' => 'Ese archivo ya no está en este dispositivo.',
-			'player.lineGone' => 'Esa línea ya no está configurada.',
+			'player.lineGone' => 'Esa suscripción ya no está configurada.',
 			'player.untitledVideo' => 'Vídeo',
 			'player.untitledEpisode' => 'Episodio',
 			'player.untitledFilm' => 'Película',
 			'player.untitledLive' => 'En directo',
 			'player.channelFroze' => 'Este canal se detuvo y no ha vuelto.',
-			'player.channelNotResponding' => 'Este canal no responde. Las listas de un panel suelen ir por delante de la realidad, así que prueba otro, o el mismo de nuevo.',
+			'player.channelNotResponding' => 'Este canal no responde. Los proveedores suelen listar canales que no están emitiendo, así que prueba otro o vuelve a probar el mismo.',
 			'player.didNotStart' => 'No ha empezado a reproducirse. Puede que el servidor esté ocupado o que el archivo necesite transcodificación, que aún no está disponible.',
 			'player.released' => 'Se detuvo mientras la app estaba en segundo plano, así que la conexión queda libre para otros dispositivos.',
 			'player.rejoin' => 'Volver a entrar',
@@ -1656,7 +1705,7 @@ extension on TranslationsEs {
 			'library.tab.emptyMovies' => 'No hay películas en este servidor.',
 			'library.tab.emptySeries' => 'No hay series en este servidor.',
 			'library.tab.emptyLocalNetwork' => 'Aún no hay carpetas ni recursos de red.\nEl almacenamiento del dispositivo y las carpetas SMB no se pueden conectar en esta versión.',
-			'library.tab.emptyLiveTv' => 'No hay ninguna lista ni panel configurado.\nAñade uno desde Ajustes cuando actives Fuentes avanzadas.',
+			'library.tab.emptyLiveTv' => 'Aún no hay ninguna suscripción de IPTV.\nAñade una desde Añadir fuente.',
 			'library.tab.countMovies' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} película', other: '${n} películas', ), 
 			'library.tab.countSeries' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} serie', other: '${n} series', ), 
 			'library.tab.countItems' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} elemento', other: '${n} elementos', ), 
@@ -1685,9 +1734,9 @@ extension on TranslationsEs {
 			'liveTv.group.favourites' => 'Favoritos',
 			'liveTv.group.numbered' => ({required Object n}) => 'Categoría ${n}',
 			'liveTv.group.other' => 'Otros',
-			'liveTv.noPanel' => 'No hay ninguna lista ni panel configurado.',
+			'liveTv.noPanel' => 'Aún no hay ninguna suscripción de IPTV.',
 			'liveTv.addOne' => 'Añadir uno',
-			'liveTv.noCategories' => 'Aún no has elegido categorías.\nLos paneles tienen decenas de miles de canales, así que Subnext Player solo obtiene los que elijas.',
+			'liveTv.noCategories' => 'Aún no has elegido canales.\nTu proveedor tiene decenas de miles, así que Subnext Player solo carga los que eliges.',
 			'liveTv.chooseCategories' => 'Elegir categorías',
 			'liveTv.noChannels' => 'Esas categorías no devolvieron canales.',
 			'liveTv.refresh' => 'Actualizar canales',
@@ -1861,9 +1910,9 @@ extension on TranslationsEs {
 			'settings.advanced.pointRights' => 'Los derechos son cosa tuya',
 			'settings.advanced.pointLogin' => 'Tu inicio de sesión se queda en este dispositivo',
 			'settings.advanced.dialogConfirm' => 'Lo entiendo, activar',
-			'settings.advanced.toggle' => 'Proveedor o lista de IPTV',
-			'settings.advanced.toggleExplain' => 'Añade TV en directo e inicios de sesión de Xtream Codes.',
-			'settings.advanced.offKeeps' => 'Si lo desactivas después, se oculta TV en directo pero se conservan las cuentas que hayas añadido.',
+			'settings.advanced.toggle' => 'TV en directo de una suscripción de IPTV',
+			'settings.advanced.toggleExplain' => 'Añade la pestaña TV en directo y las suscripciones de IPTV en Añadir fuente.',
+			'settings.advanced.offKeeps' => 'Si lo desactivas más tarde, se oculta la TV en directo, pero se conservan tus suscripciones.',
 			'settings.sources.noServers' => 'No hay servidores Plex conectados.',
 			'settings.sources.remove' => 'Quitar',
 			'settings.sources.loadFailed' => ({required Object error}) => 'No se pudieron cargar las bibliotecas de este servidor.\n\n${error}',
@@ -1884,7 +1933,7 @@ extension on TranslationsEs {
 			'onboarding.plexTv' => 'Inicia sesión con tu propia cuenta en esta TV.',
 			'onboarding.plex' => 'Tu biblioteca personal, con tu propia cuenta.',
 			'onboarding.advancedTv' => 'Desactivado por defecto. Actívalo en Ajustes.',
-			'onboarding.advanced' => 'Desactivado por defecto. Actívalo en Ajustes para usar un proveedor o una lista de IPTV.',
+			'onboarding.advanced' => 'Desactivado por defecto. Actívalo desde Añadir fuente o Ajustes para usar una suscripción de IPTV.',
 			'onboarding.localTitle' => 'Local y red',
 			'onboarding.advancedTitle' => 'Fuentes avanzadas',
 			'onboarding.addFirst' => 'Añade tu primera fuente',
@@ -1902,8 +1951,8 @@ extension on TranslationsEs {
 			'addSource.kind.localFilesIos' => 'Reproduce los vídeos de tu fototeca.',
 			'addSource.kind.smb' => 'Recurso de red (SMB)',
 			'addSource.kind.smbSub' => 'Un NAS o una carpeta compartida de Windows en tu red doméstica.',
-			'addSource.kind.xtream' => 'Inicio de sesión de Xtream Codes',
-			'addSource.kind.xtreamSub' => 'Servidor, usuario y contraseña de tu proveedor.',
+			'addSource.kind.xtream' => 'Suscripción de IPTV',
+			'addSource.kind.xtreamSub' => 'El enlace o el inicio de sesión que te envió tu proveedor. También se llama Xtream Codes.',
 			'addSource.kind.mediaBrowser' => 'Servidor Jellyfin o Emby',
 			'addSource.kind.mediaBrowserSub' => 'Tu propio servidor, con tu propia cuenta.',
 			'addSource.copyFromDevice' => 'Copiar de otro dispositivo',
@@ -1974,38 +2023,54 @@ extension on TranslationsEs {
 			'smb.gone' => 'Ese recurso ya no está configurado.',
 			'smb.unreachable' => ({required Object error}) => 'No se pudo contactar con este recurso. Puede que el servidor esté en reposo o fuera de la red.\n\n${error}',
 			'smb.empty' => 'Aquí no hay vídeos ni carpetas.',
-			'xtream.lineGone' => 'Esa línea ya no está configurada.',
+			'xtream.lineGone' => 'Esa suscripción ya no está configurada.',
 			'xtream.catalogue.live' => 'TV en directo',
 			'xtream.catalogue.vod' => 'Películas',
 			'xtream.catalogue.series' => 'Series',
-			'xtream.errors.status' => ({required Object code}) => 'El panel devolvió ${code}. Inténtalo más tarde.',
-			'xtream.errors.timeout' => 'El panel no respondió a tiempo.',
-			'xtream.errors.unreachable' => 'No se pudo contactar con esa dirección. Comprueba el servidor y el puerto.',
-			'xtream.errors.other' => ({required Object type}) => 'No se pudo comunicar con el panel (${type}).',
-			'xtream.errors.notXtream' => 'Esa dirección no respondió como un panel Xtream.',
-			'xtream.errors.rejected' => 'El panel rechazó esas credenciales.',
+			'xtream.errors.status' => ({required Object code}) => 'El servidor de tu proveedor respondió ${code}. Inténtalo más tarde.',
+			'xtream.errors.timeout' => 'El servidor de tu proveedor no respondió a tiempo.',
+			'xtream.errors.unreachable' => 'No se pudo acceder a esa dirección. Revisa el enlace, o la dirección del servidor y el puerto.',
+			'xtream.errors.other' => ({required Object type}) => 'No se pudo hablar con el servidor de tu proveedor (${type}).',
+			'xtream.errors.notXtream' => 'Esa dirección no respondió como un servidor de IPTV. Revisa el enlace o la dirección del servidor.',
+			'xtream.errors.rejected' => 'Tu proveedor no aceptó ese inicio de sesión.',
 			'xtream.errors.wrongLogin' => 'Usuario o contraseña incorrectos.',
 			'xtream.errors.unnamed' => 'Sin nombre',
 			'xtream.errors.episode' => 'Episodio',
-			'xtream.errors.noPassword' => 'Esa línea no tiene contraseña guardada. Quítala y vuelve a añadirla.',
+			'xtream.errors.noPassword' => 'Esa suscripción no tiene contraseña guardada. Quítala y vuelve a añadirla.',
 			'xtream.everythingElse' => 'Todo lo demás',
 			'xtream.series.title' => 'Serie',
-			'xtream.series.noEpisodes' => 'El panel no devolvió episodios para esta serie.',
+			'xtream.series.noEpisodes' => 'Tu proveedor no devolvió episodios de esta serie.',
 			'xtream.series.season' => ({required Object n}) => 'Temporada ${n}',
 			'xtream.remove' => 'Quitar',
-			'xtream.add' => 'Añadir una lista o un panel',
-			'xtream.addLine.discardTitle' => '¿Descartar esta línea?',
+			'xtream.add' => 'Añadir una suscripción de IPTV',
+			'xtream.addLine.discardTitle' => '¿Descartar lo que escribiste?',
 			'xtream.addLine.discardBody' => 'Lo que has escrito aquí no se ha guardado.',
 			'xtream.addLine.discard' => 'Descartar',
 			'xtream.addLine.keepEditing' => 'Seguir editando',
-			'xtream.addLine.inactive' => ({required Object status}) => 'El panel indica que esta línea está «${status}».',
+			'xtream.addLine.inactive' => ({required Object status}) => 'Tu proveedor dice que esta suscripción está "${status}".',
 			'xtream.addLine.noContent' => 'Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.',
 			'xtream.addLine.host' => 'Dirección del servidor',
 			'xtream.addLine.name' => 'Nombre (opcional)',
-			'xtream.addLine.nameHint' => 'Cómo quieres llamar a esta línea',
+			'xtream.addLine.nameHint' => 'Cómo quieres llamar a esta suscripción',
 			'xtream.addLine.checking' => 'Comprobando…',
-			'xtream.addLine.verify' => 'Verificar y añadir',
-			'xtream.addLine.connected' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: 'Conectado. Se permite ${n} emisión simultánea.', other: 'Conectado. Se permiten ${n} emisiones simultáneas.', ), 
+			'xtream.addLine.verify' => 'Conectar',
+			'xtream.addLine.hostHint' => 'example.com:8080',
+			'xtream.addLine.how' => '¿Cómo te envió tu proveedor el inicio de sesión?',
+			'xtream.addLine.howHint' => 'Busca en el correo o mensaje que recibiste al suscribirte.',
+			'xtream.addLine.modeLink' => 'Un enlace largo',
+			'xtream.addLine.modeLinkSub' => 'Suele llamarse enlace M3U o URL de lista.',
+			'xtream.addLine.modeLogin' => 'Un usuario y una contraseña',
+			'xtream.addLine.modeLoginSub' => 'Con una dirección de servidor como example.com:8080. A veces se llama inicio de sesión Xtream Codes.',
+			'xtream.addLine.modeDevice' => 'Ya está en otro dispositivo',
+			'xtream.addLine.modeDeviceSub' => 'Envíalo desde tu móvil en lugar de escribirlo aquí.',
+			'xtream.addLine.link' => 'Enlace de tu proveedor',
+			'xtream.addLine.paste' => 'Pegar',
+			'xtream.addLine.found' => 'Hemos encontrado tu inicio de sesión en este enlace',
+			'xtream.addLine.notALink' => 'No parece un enlace con un inicio de sesión. Revísalo o escribe los datos tú mismo.',
+			'xtream.addLine.server' => 'Servidor',
+			'xtream.addLine.show' => 'Mostrar',
+			'xtream.addLine.hide' => 'Ocultar',
+			'xtream.addLine.defaultName' => 'Suscripción de TV',
 			'xtream.picker.patternNone' => 'Ese patrón no coincidió con nada.',
 			'xtream.picker.title' => ({required Object catalogue}) => 'Categorías de ${catalogue}',
 			'xtream.picker.save' => 'Guardar',
@@ -2015,6 +2080,8 @@ extension on TranslationsEs {
 			'xtream.picker.chosen' => ({required Object n}) => 'Elegidas ${n}',
 			'xtream.picker.hideWords' => 'Ocultar palabras',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Ocultas ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.pattern' => 'Patrón',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => 'Se desmarcó «${name}», que oculta «${word}». Guarda para conservarlo.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => 'Se desmarcaron ${n} categorías elegidas que oculta «${word}». Guarda para conservarlo.',
@@ -2031,8 +2098,6 @@ extension on TranslationsEs {
 			'xtream.picker.channelsPicked' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} canal', other: '${n} canales', ), 
 			'xtream.picker.pickedChosen' => ({required Object n}) => '${n} elegidos',
 			'xtream.picker.categories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} categoría', other: '${n} categorías', ), 
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.channels' => 'Canales',
 			'xtream.channels.done' => 'Listo',
 			'xtream.channels.search' => 'Buscar en esta categoría',
@@ -2041,13 +2106,26 @@ extension on TranslationsEs {
 			'xtream.channels.selectShown' => 'Marcar los mostrados',
 			'xtream.channels.clear' => 'Desmarcar',
 			'xtream.channels.clearShown' => 'Desmarcar los mostrados',
-			'xtream.channels.none' => 'El panel no tiene canales en esta categoría.',
+			'xtream.channels.none' => 'Tu proveedor no tiene canales en esta categoría.',
 			'xtream.hidden.title' => 'Ocultar palabras',
 			'xtream.hidden.explain' => 'Las categorías o canales que contengan cualquiera de estas como palabra completa quedan fuera de las listas. «UK» oculta «UK News» pero no «Ukraine». Añade una frase como «south indian» para ocultarla como un todo. No distingue mayúsculas.',
 			'xtream.hidden.hint' => 'Un país, un idioma, una palabra',
 			'xtream.hidden.add' => 'Añadir',
 			'xtream.hidden.none' => 'Aún no hay nada oculto.',
 			'xtream.hidden.tapToRemove' => 'Selecciona una palabra para dejar de ocultarla.',
+			'xtream.setup.step' => ({required Object n}) => 'Paso ${n} de 3',
+			'xtream.connected.title' => 'Estás conectado',
+			'xtream.connected.status' => 'Estado',
+			'xtream.connected.active' => 'Activa',
+			'xtream.connected.trial' => 'Activa, de prueba',
+			'xtream.connected.ends' => 'Termina',
+			'xtream.connected.noEnd' => 'Sin fecha de fin',
+			'xtream.connected.screens' => 'Pantallas a la vez',
+			'xtream.connected.oneScreen' => 'Tu suscripción se reproduce en una pantalla a la vez. Si está en marcha en otro sitio, aquí no empezará hasta que se detenga.',
+			'xtream.connected.liveCategories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} categoría de canales', other: '${n} categorías de canales', ), 
+			'xtream.connected.available' => 'Canales',
+			'xtream.connected.next' => 'Es más de lo que nadie ve, así que ahora eliges los países y tipos de canal que quieres. Solo se cargan esos.',
+			'xtream.connected.choose' => 'Elegir lo que ves',
 			'transfer.noNetwork' => 'Este dispositivo no está en una red Wi-Fi ni Ethernet. Conéctalo a la misma red que el otro dispositivo e inténtalo de nuevo.',
 			'transfer.cannotListen' => ({required Object error}) => 'No se pudo empezar a escuchar: ${error}',
 			'transfer.expired' => 'Ese código ha caducado. Vuelve a empezar para obtener uno nuevo.',

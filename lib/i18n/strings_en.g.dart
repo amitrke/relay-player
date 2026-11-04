@@ -142,8 +142,8 @@ class Translations$player$en {
 	/// en: 'That file is no longer on this device.'
 	String get deviceFileGone => 'That file is no longer on this device.';
 
-	/// en: 'That line is no longer configured.'
-	String get lineGone => 'That line is no longer configured.';
+	/// en: 'That subscription is no longer set up.'
+	String get lineGone => 'That subscription is no longer set up.';
 
 	/// en: 'Video'
 	String get untitledVideo => 'Video';
@@ -160,8 +160,8 @@ class Translations$player$en {
 	/// en: 'This channel stopped and did not come back.'
 	String get channelFroze => 'This channel stopped and did not come back.';
 
-	/// en: 'This channel is not responding. Listings often outrun reality on a panel, so try another, or the same one again.'
-	String get channelNotResponding => 'This channel is not responding. Listings often outrun reality on a panel, so try another, or the same one again.';
+	/// en: 'This channel is not responding. Providers often list channels that are not broadcasting, so try another, or the same one again.'
+	String get channelNotResponding => 'This channel is not responding. Providers often list channels that are not broadcasting, so try another, or the same one again.';
 
 	/// en: 'This did not start playing. The server may be busy, or the file may need transcoding, which is not supported yet.'
 	String get didNotStart => 'This did not start playing. The server may be busy, or the file may need transcoding, which is not supported yet.';
@@ -478,14 +478,14 @@ class Translations$liveTv$en {
 	// Translations
 	late final Translations$liveTv$group$en group = Translations$liveTv$group$en.internal(_root);
 
-	/// en: 'No playlist or panel configured.'
-	String get noPanel => 'No playlist or panel configured.';
+	/// en: 'No IPTV subscription set up yet.'
+	String get noPanel => 'No IPTV subscription set up yet.';
 
 	/// en: 'Add one'
 	String get addOne => 'Add one';
 
-	/// en: 'No categories chosen yet. Panels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.'
-	String get noCategories => 'No categories chosen yet.\nPanels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.';
+	/// en: 'No channels chosen yet. Your provider has tens of thousands, so Subnext Player only loads the ones you pick.'
+	String get noCategories => 'No channels chosen yet.\nYour provider has tens of thousands, so Subnext Player only loads the ones you pick.';
 
 	/// en: 'Choose categories'
 	String get chooseCategories => 'Choose categories';
@@ -634,8 +634,8 @@ class Translations$onboarding$en {
 	/// en: 'Off by default. Turn on in Settings.'
 	String get advancedTv => 'Off by default. Turn on in Settings.';
 
-	/// en: 'Off by default. Turn on in Settings to use an IPTV provider or playlist.'
-	String get advanced => 'Off by default. Turn on in Settings to use an IPTV provider or playlist.';
+	/// en: 'Off by default. Turn it on from Add source or Settings to use an IPTV subscription.'
+	String get advanced => 'Off by default. Turn it on from Add source or Settings to use an IPTV subscription.';
 
 	/// en: 'Local & Network'
 	String get localTitle => 'Local & Network';
@@ -905,8 +905,8 @@ class Translations$xtream$en {
 
 	// Translations
 
-	/// en: 'That line is no longer configured.'
-	String get lineGone => 'That line is no longer configured.';
+	/// en: 'That subscription is no longer set up.'
+	String get lineGone => 'That subscription is no longer set up.';
 
 	late final Translations$xtream$catalogue$en catalogue = Translations$xtream$catalogue$en.internal(_root);
 	late final Translations$xtream$errors$en errors = Translations$xtream$errors$en.internal(_root);
@@ -919,13 +919,15 @@ class Translations$xtream$en {
 	/// en: 'Remove'
 	String get remove => 'Remove';
 
-	/// en: 'Add a playlist or panel'
-	String get add => 'Add a playlist or panel';
+	/// en: 'Add an IPTV subscription'
+	String get add => 'Add an IPTV subscription';
 
 	late final Translations$xtream$addLine$en addLine = Translations$xtream$addLine$en.internal(_root);
 	late final Translations$xtream$picker$en picker = Translations$xtream$picker$en.internal(_root);
 	late final Translations$xtream$channels$en channels = Translations$xtream$channels$en.internal(_root);
 	late final Translations$xtream$hidden$en hidden = Translations$xtream$hidden$en.internal(_root);
+	late final Translations$xtream$setup$en setup = Translations$xtream$setup$en.internal(_root);
+	late final Translations$xtream$connected$en connected = Translations$xtream$connected$en.internal(_root);
 }
 
 // Path: transfer
@@ -1400,8 +1402,8 @@ class Translations$library$tab$en {
 	/// en: 'No folders or network shares yet. Device storage and SMB shares are not connectable in this build.'
 	String get emptyLocalNetwork => 'No folders or network shares yet.\nDevice storage and SMB shares are not connectable in this build.';
 
-	/// en: 'No playlist or panel configured. Add one from Settings once Advanced sources is on.'
-	String get emptyLiveTv => 'No playlist or panel configured.\nAdd one from Settings once Advanced sources is on.';
+	/// en: 'No IPTV subscription set up yet. Add one from Add source.'
+	String get emptyLiveTv => 'No IPTV subscription set up yet.\nAdd one from Add source.';
 
 	/// en: '(one) {{n} movie} (other) {{n} movies}'
 	String countMovies({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
@@ -2060,14 +2062,14 @@ class Translations$settings$advanced$en {
 	/// en: 'I understand, turn on'
 	String get dialogConfirm => 'I understand, turn on';
 
-	/// en: 'IPTV provider or playlist'
-	String get toggle => 'IPTV provider or playlist';
+	/// en: 'Live TV from an IPTV subscription'
+	String get toggle => 'Live TV from an IPTV subscription';
 
-	/// en: 'Adds Live TV and Xtream Codes logins.'
-	String get toggleExplain => 'Adds Live TV and Xtream Codes logins.';
+	/// en: 'Adds the Live TV tab, and IPTV subscriptions in Add source.'
+	String get toggleExplain => 'Adds the Live TV tab, and IPTV subscriptions in Add source.';
 
-	/// en: 'Turning this off later hides Live TV but keeps any accounts you added.'
-	String get offKeeps => 'Turning this off later hides Live TV but keeps any accounts you added.';
+	/// en: 'Turning this off later hides Live TV but keeps any subscriptions you added.'
+	String get offKeeps => 'Turning this off later hides Live TV but keeps any subscriptions you added.';
 }
 
 // Path: settings.sources
@@ -2147,11 +2149,11 @@ class Translations$addSource$kind$en {
 	/// en: 'A NAS or Windows share on your home network.'
 	String get smbSub => 'A NAS or Windows share on your home network.';
 
-	/// en: 'Xtream Codes login'
-	String get xtream => 'Xtream Codes login';
+	/// en: 'IPTV subscription'
+	String get xtream => 'IPTV subscription';
 
-	/// en: 'Host, username and password from your provider.'
-	String get xtreamSub => 'Host, username and password from your provider.';
+	/// en: 'The link or login your provider sent you. Also called Xtream Codes.'
+	String get xtreamSub => 'The link or login your provider sent you. Also called Xtream Codes.';
 
 	/// en: 'Jellyfin or Emby server'
 	String get mediaBrowser => 'Jellyfin or Emby server';
@@ -2207,23 +2209,23 @@ class Translations$xtream$errors$en {
 
 	// Translations
 
-	/// en: 'The panel returned {code}. Try again later.'
-	String status({required Object code}) => 'The panel returned ${code}. Try again later.';
+	/// en: 'Your provider's server answered {code}. Try again later.'
+	String status({required Object code}) => 'Your provider\'s server answered ${code}. Try again later.';
 
-	/// en: 'The panel did not respond in time.'
-	String get timeout => 'The panel did not respond in time.';
+	/// en: 'Your provider's server did not answer in time.'
+	String get timeout => 'Your provider\'s server did not answer in time.';
 
-	/// en: 'Could not reach that address. Check the host and port.'
-	String get unreachable => 'Could not reach that address. Check the host and port.';
+	/// en: 'Could not reach that address. Check the link, or the server address and port.'
+	String get unreachable => 'Could not reach that address. Check the link, or the server address and port.';
 
-	/// en: 'Could not talk to the panel ({type}).'
-	String other({required Object type}) => 'Could not talk to the panel (${type}).';
+	/// en: 'Could not talk to your provider's server ({type}).'
+	String other({required Object type}) => 'Could not talk to your provider\'s server (${type}).';
 
-	/// en: 'That address did not answer like an Xtream panel.'
-	String get notXtream => 'That address did not answer like an Xtream panel.';
+	/// en: 'That address did not answer like an IPTV server. Check the link, or the server address.'
+	String get notXtream => 'That address did not answer like an IPTV server. Check the link, or the server address.';
 
-	/// en: 'The panel rejected those credentials.'
-	String get rejected => 'The panel rejected those credentials.';
+	/// en: 'Your provider did not accept that login.'
+	String get rejected => 'Your provider did not accept that login.';
 
 	/// en: 'Wrong username or password.'
 	String get wrongLogin => 'Wrong username or password.';
@@ -2234,8 +2236,8 @@ class Translations$xtream$errors$en {
 	/// en: 'Episode'
 	String get episode => 'Episode';
 
-	/// en: 'That line has no stored password. Remove it and add it again.'
-	String get noPassword => 'That line has no stored password. Remove it and add it again.';
+	/// en: 'That subscription has no stored password. Remove it and add it again.'
+	String get noPassword => 'That subscription has no stored password. Remove it and add it again.';
 }
 
 // Path: xtream.series
@@ -2249,8 +2251,8 @@ class Translations$xtream$series$en {
 	/// en: 'Series'
 	String get title => 'Series';
 
-	/// en: 'The panel returned no episodes for this series.'
-	String get noEpisodes => 'The panel returned no episodes for this series.';
+	/// en: 'Your provider returned no episodes for this series.'
+	String get noEpisodes => 'Your provider returned no episodes for this series.';
 
 	/// en: 'Season {n}'
 	String season({required Object n}) => 'Season ${n}';
@@ -2264,8 +2266,8 @@ class Translations$xtream$addLine$en {
 
 	// Translations
 
-	/// en: 'Discard this line?'
-	String get discardTitle => 'Discard this line?';
+	/// en: 'Discard what you typed?'
+	String get discardTitle => 'Discard what you typed?';
 
 	/// en: 'What you typed here has not been saved.'
 	String get discardBody => 'What you typed here has not been saved.';
@@ -2276,8 +2278,8 @@ class Translations$xtream$addLine$en {
 	/// en: 'Keep editing'
 	String get keepEditing => 'Keep editing';
 
-	/// en: 'The panel says this line is "{status}".'
-	String inactive({required Object status}) => 'The panel says this line is "${status}".';
+	/// en: 'Your provider says this subscription is "{status}".'
+	String inactive({required Object status}) => 'Your provider says this subscription is "${status}".';
 
 	/// en: 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.'
 	String get noContent => 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.';
@@ -2288,20 +2290,65 @@ class Translations$xtream$addLine$en {
 	/// en: 'Name (optional)'
 	String get name => 'Name (optional)';
 
-	/// en: 'What you want to call this line'
-	String get nameHint => 'What you want to call this line';
+	/// en: 'What you want to call this subscription'
+	String get nameHint => 'What you want to call this subscription';
 
 	/// en: 'Checking…'
 	String get checking => 'Checking…';
 
-	/// en: 'Verify and add'
-	String get verify => 'Verify and add';
+	/// en: 'Connect'
+	String get verify => 'Connect';
 
-	/// en: '(one) {Connected. {n} concurrent stream allowed.} (other) {Connected. {n} concurrent streams allowed.}'
-	String connected({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
-		one: 'Connected. ${n} concurrent stream allowed.',
-		other: 'Connected. ${n} concurrent streams allowed.',
-	);
+	/// en: 'example.com:8080'
+	String get hostHint => 'example.com:8080';
+
+	/// en: 'How did your provider send your login?'
+	String get how => 'How did your provider send your login?';
+
+	/// en: 'Look in the email or message you got when you subscribed.'
+	String get howHint => 'Look in the email or message you got when you subscribed.';
+
+	/// en: 'One long link'
+	String get modeLink => 'One long link';
+
+	/// en: 'Often called an M3U link or playlist URL.'
+	String get modeLinkSub => 'Often called an M3U link or playlist URL.';
+
+	/// en: 'A username and password'
+	String get modeLogin => 'A username and password';
+
+	/// en: 'With a server address such as example.com:8080. Sometimes called an Xtream Codes login.'
+	String get modeLoginSub => 'With a server address such as example.com:8080. Sometimes called an Xtream Codes login.';
+
+	/// en: 'It's already on another device'
+	String get modeDevice => 'It\'s already on another device';
+
+	/// en: 'Send it from your phone instead of typing it here.'
+	String get modeDeviceSub => 'Send it from your phone instead of typing it here.';
+
+	/// en: 'Link from your provider'
+	String get link => 'Link from your provider';
+
+	/// en: 'Paste'
+	String get paste => 'Paste';
+
+	/// en: 'Found your login in this link'
+	String get found => 'Found your login in this link';
+
+	/// en: 'This doesn't look like a link with a login in it. Check it, or type the details instead.'
+	String get notALink => 'This doesn\'t look like a link with a login in it. Check it, or type the details instead.';
+
+	/// en: 'Server'
+	String get server => 'Server';
+
+	/// en: 'Show'
+	String get show => 'Show';
+
+	/// en: 'Hide'
+	String get hide => 'Hide';
+
+	/// en: 'TV subscription'
+	String get defaultName => 'TV subscription';
 }
 
 // Path: xtream.picker
@@ -2426,8 +2473,8 @@ class Translations$xtream$channels$en {
 	/// en: 'Clear shown'
 	String get clearShown => 'Clear shown';
 
-	/// en: 'The panel lists no channels in this category.'
-	String get none => 'The panel lists no channels in this category.';
+	/// en: 'Your provider lists no channels in this category.'
+	String get none => 'Your provider lists no channels in this category.';
 }
 
 // Path: xtream.hidden
@@ -2455,6 +2502,66 @@ class Translations$xtream$hidden$en {
 
 	/// en: 'Select a word to stop hiding it.'
 	String get tapToRemove => 'Select a word to stop hiding it.';
+}
+
+// Path: xtream.setup
+class Translations$xtream$setup$en {
+	Translations$xtream$setup$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Step {n} of 3'
+	String step({required Object n}) => 'Step ${n} of 3';
+}
+
+// Path: xtream.connected
+class Translations$xtream$connected$en {
+	Translations$xtream$connected$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'You're connected'
+	String get title => 'You\'re connected';
+
+	/// en: 'Status'
+	String get status => 'Status';
+
+	/// en: 'Active'
+	String get active => 'Active';
+
+	/// en: 'Active, trial'
+	String get trial => 'Active, trial';
+
+	/// en: 'Ends'
+	String get ends => 'Ends';
+
+	/// en: 'No end date given'
+	String get noEnd => 'No end date given';
+
+	/// en: 'Screens at once'
+	String get screens => 'Screens at once';
+
+	/// en: 'Your subscription plays on one screen at a time. If it is playing somewhere else, it won't start here until that stops.'
+	String get oneScreen => 'Your subscription plays on one screen at a time. If it is playing somewhere else, it won\'t start here until that stops.';
+
+	/// en: '(one) {{n} channel category} (other) {{n} channel categories}'
+	String liveCategories({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} channel category',
+		other: '${n} channel categories',
+	);
+
+	/// en: 'Channels'
+	String get available => 'Channels';
+
+	/// en: 'That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.'
+	String get next => 'That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.';
+
+	/// en: 'Choose what you watch'
+	String get choose => 'Choose what you watch';
 }
 
 // Path: transfer.receive
@@ -2895,13 +3002,13 @@ extension on Translations {
 			'player.shareGone' => 'That share is no longer configured.',
 			'player.shareFileGone' => 'That file is no longer on the share.',
 			'player.deviceFileGone' => 'That file is no longer on this device.',
-			'player.lineGone' => 'That line is no longer configured.',
+			'player.lineGone' => 'That subscription is no longer set up.',
 			'player.untitledVideo' => 'Video',
 			'player.untitledEpisode' => 'Episode',
 			'player.untitledFilm' => 'Film',
 			'player.untitledLive' => 'Live',
 			'player.channelFroze' => 'This channel stopped and did not come back.',
-			'player.channelNotResponding' => 'This channel is not responding. Listings often outrun reality on a panel, so try another, or the same one again.',
+			'player.channelNotResponding' => 'This channel is not responding. Providers often list channels that are not broadcasting, so try another, or the same one again.',
 			'player.didNotStart' => 'This did not start playing. The server may be busy, or the file may need transcoding, which is not supported yet.',
 			'player.released' => 'Stopped while the app was in the background, so the connection is free for other devices.',
 			'player.rejoin' => 'Rejoin',
@@ -3025,7 +3132,7 @@ extension on Translations {
 			'library.tab.emptyMovies' => 'No movies on this server.',
 			'library.tab.emptySeries' => 'No series on this server.',
 			'library.tab.emptyLocalNetwork' => 'No folders or network shares yet.\nDevice storage and SMB shares are not connectable in this build.',
-			'library.tab.emptyLiveTv' => 'No playlist or panel configured.\nAdd one from Settings once Advanced sources is on.',
+			'library.tab.emptyLiveTv' => 'No IPTV subscription set up yet.\nAdd one from Add source.',
 			'library.tab.countMovies' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} movie', other: '${n} movies', ), 
 			'library.tab.countSeries' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} series', other: '${n} series', ), 
 			'library.tab.countItems' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} item', other: '${n} items', ), 
@@ -3054,9 +3161,9 @@ extension on Translations {
 			'liveTv.group.favourites' => 'Favourites',
 			'liveTv.group.numbered' => ({required Object n}) => 'Category ${n}',
 			'liveTv.group.other' => 'Other',
-			'liveTv.noPanel' => 'No playlist or panel configured.',
+			'liveTv.noPanel' => 'No IPTV subscription set up yet.',
 			'liveTv.addOne' => 'Add one',
-			'liveTv.noCategories' => 'No categories chosen yet.\nPanels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.',
+			'liveTv.noCategories' => 'No channels chosen yet.\nYour provider has tens of thousands, so Subnext Player only loads the ones you pick.',
 			'liveTv.chooseCategories' => 'Choose categories',
 			'liveTv.noChannels' => 'Those categories returned no channels.',
 			'liveTv.refresh' => 'Refresh channels',
@@ -3230,9 +3337,9 @@ extension on Translations {
 			'settings.advanced.pointRights' => 'The rights are yours',
 			'settings.advanced.pointLogin' => 'Your login stays on this device',
 			'settings.advanced.dialogConfirm' => 'I understand, turn on',
-			'settings.advanced.toggle' => 'IPTV provider or playlist',
-			'settings.advanced.toggleExplain' => 'Adds Live TV and Xtream Codes logins.',
-			'settings.advanced.offKeeps' => 'Turning this off later hides Live TV but keeps any accounts you added.',
+			'settings.advanced.toggle' => 'Live TV from an IPTV subscription',
+			'settings.advanced.toggleExplain' => 'Adds the Live TV tab, and IPTV subscriptions in Add source.',
+			'settings.advanced.offKeeps' => 'Turning this off later hides Live TV but keeps any subscriptions you added.',
 			'settings.sources.noServers' => 'No Plex servers connected.',
 			'settings.sources.remove' => 'Remove',
 			'settings.sources.loadFailed' => ({required Object error}) => 'Could not load libraries from this server.\n\n${error}',
@@ -3253,7 +3360,7 @@ extension on Translations {
 			'onboarding.plexTv' => 'Sign in with your own account on this TV.',
 			'onboarding.plex' => 'Your personal library, signed in with your own account.',
 			'onboarding.advancedTv' => 'Off by default. Turn on in Settings.',
-			'onboarding.advanced' => 'Off by default. Turn on in Settings to use an IPTV provider or playlist.',
+			'onboarding.advanced' => 'Off by default. Turn it on from Add source or Settings to use an IPTV subscription.',
 			'onboarding.localTitle' => 'Local & Network',
 			'onboarding.advancedTitle' => 'Advanced sources',
 			'onboarding.addFirst' => 'Add your first source',
@@ -3271,8 +3378,8 @@ extension on Translations {
 			'addSource.kind.localFilesIos' => 'Play the videos in your photo library.',
 			'addSource.kind.smb' => 'Network share (SMB)',
 			'addSource.kind.smbSub' => 'A NAS or Windows share on your home network.',
-			'addSource.kind.xtream' => 'Xtream Codes login',
-			'addSource.kind.xtreamSub' => 'Host, username and password from your provider.',
+			'addSource.kind.xtream' => 'IPTV subscription',
+			'addSource.kind.xtreamSub' => 'The link or login your provider sent you. Also called Xtream Codes.',
 			'addSource.kind.mediaBrowser' => 'Jellyfin or Emby server',
 			'addSource.kind.mediaBrowserSub' => 'Your own server, signed in with your own account.',
 			'addSource.copyFromDevice' => 'Copy from another device',
@@ -3343,38 +3450,54 @@ extension on Translations {
 			'smb.gone' => 'That share is no longer configured.',
 			'smb.unreachable' => ({required Object error}) => 'Could not reach this share. The server may be asleep or off the network.\n\n${error}',
 			'smb.empty' => 'No videos or folders here.',
-			'xtream.lineGone' => 'That line is no longer configured.',
+			'xtream.lineGone' => 'That subscription is no longer set up.',
 			'xtream.catalogue.live' => 'Live TV',
 			'xtream.catalogue.vod' => 'Movies',
 			'xtream.catalogue.series' => 'Series',
-			'xtream.errors.status' => ({required Object code}) => 'The panel returned ${code}. Try again later.',
-			'xtream.errors.timeout' => 'The panel did not respond in time.',
-			'xtream.errors.unreachable' => 'Could not reach that address. Check the host and port.',
-			'xtream.errors.other' => ({required Object type}) => 'Could not talk to the panel (${type}).',
-			'xtream.errors.notXtream' => 'That address did not answer like an Xtream panel.',
-			'xtream.errors.rejected' => 'The panel rejected those credentials.',
+			'xtream.errors.status' => ({required Object code}) => 'Your provider\'s server answered ${code}. Try again later.',
+			'xtream.errors.timeout' => 'Your provider\'s server did not answer in time.',
+			'xtream.errors.unreachable' => 'Could not reach that address. Check the link, or the server address and port.',
+			'xtream.errors.other' => ({required Object type}) => 'Could not talk to your provider\'s server (${type}).',
+			'xtream.errors.notXtream' => 'That address did not answer like an IPTV server. Check the link, or the server address.',
+			'xtream.errors.rejected' => 'Your provider did not accept that login.',
 			'xtream.errors.wrongLogin' => 'Wrong username or password.',
 			'xtream.errors.unnamed' => 'Unnamed',
 			'xtream.errors.episode' => 'Episode',
-			'xtream.errors.noPassword' => 'That line has no stored password. Remove it and add it again.',
+			'xtream.errors.noPassword' => 'That subscription has no stored password. Remove it and add it again.',
 			'xtream.everythingElse' => 'Everything else',
 			'xtream.series.title' => 'Series',
-			'xtream.series.noEpisodes' => 'The panel returned no episodes for this series.',
+			'xtream.series.noEpisodes' => 'Your provider returned no episodes for this series.',
 			'xtream.series.season' => ({required Object n}) => 'Season ${n}',
 			'xtream.remove' => 'Remove',
-			'xtream.add' => 'Add a playlist or panel',
-			'xtream.addLine.discardTitle' => 'Discard this line?',
+			'xtream.add' => 'Add an IPTV subscription',
+			'xtream.addLine.discardTitle' => 'Discard what you typed?',
 			'xtream.addLine.discardBody' => 'What you typed here has not been saved.',
 			'xtream.addLine.discard' => 'Discard',
 			'xtream.addLine.keepEditing' => 'Keep editing',
-			'xtream.addLine.inactive' => ({required Object status}) => 'The panel says this line is "${status}".',
+			'xtream.addLine.inactive' => ({required Object status}) => 'Your provider says this subscription is "${status}".',
 			'xtream.addLine.noContent' => 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.',
 			'xtream.addLine.host' => 'Server address',
 			'xtream.addLine.name' => 'Name (optional)',
-			'xtream.addLine.nameHint' => 'What you want to call this line',
+			'xtream.addLine.nameHint' => 'What you want to call this subscription',
 			'xtream.addLine.checking' => 'Checking…',
-			'xtream.addLine.verify' => 'Verify and add',
-			'xtream.addLine.connected' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Connected. ${n} concurrent stream allowed.', other: 'Connected. ${n} concurrent streams allowed.', ), 
+			'xtream.addLine.verify' => 'Connect',
+			'xtream.addLine.hostHint' => 'example.com:8080',
+			'xtream.addLine.how' => 'How did your provider send your login?',
+			'xtream.addLine.howHint' => 'Look in the email or message you got when you subscribed.',
+			'xtream.addLine.modeLink' => 'One long link',
+			'xtream.addLine.modeLinkSub' => 'Often called an M3U link or playlist URL.',
+			'xtream.addLine.modeLogin' => 'A username and password',
+			'xtream.addLine.modeLoginSub' => 'With a server address such as example.com:8080. Sometimes called an Xtream Codes login.',
+			'xtream.addLine.modeDevice' => 'It\'s already on another device',
+			'xtream.addLine.modeDeviceSub' => 'Send it from your phone instead of typing it here.',
+			'xtream.addLine.link' => 'Link from your provider',
+			'xtream.addLine.paste' => 'Paste',
+			'xtream.addLine.found' => 'Found your login in this link',
+			'xtream.addLine.notALink' => 'This doesn\'t look like a link with a login in it. Check it, or type the details instead.',
+			'xtream.addLine.server' => 'Server',
+			'xtream.addLine.show' => 'Show',
+			'xtream.addLine.hide' => 'Hide',
+			'xtream.addLine.defaultName' => 'TV subscription',
 			'xtream.picker.patternNone' => 'That pattern matched nothing.',
 			'xtream.picker.title' => ({required Object catalogue}) => '${catalogue} categories',
 			'xtream.picker.save' => 'Save',
@@ -3384,6 +3507,8 @@ extension on Translations {
 			'xtream.picker.chosen' => ({required Object n}) => 'Chosen ${n}',
 			'xtream.picker.hideWords' => 'Hide words',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Hide ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.pattern' => 'Pattern',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => 'Un-ticked "${name}", which "${word}" hides. Save to keep that.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => 'Un-ticked ${n} chosen categories that "${word}" hides. Save to keep that.',
@@ -3400,8 +3525,6 @@ extension on Translations {
 			'xtream.picker.channelsPicked' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} channel', other: '${n} channels', ), 
 			'xtream.picker.pickedChosen' => ({required Object n}) => '${n} chosen',
 			'xtream.picker.categories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} category', other: '${n} categories', ), 
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.channels' => 'Channels',
 			'xtream.channels.done' => 'Done',
 			'xtream.channels.search' => 'Search this category',
@@ -3410,13 +3533,26 @@ extension on Translations {
 			'xtream.channels.selectShown' => 'Select shown',
 			'xtream.channels.clear' => 'Clear',
 			'xtream.channels.clearShown' => 'Clear shown',
-			'xtream.channels.none' => 'The panel lists no channels in this category.',
+			'xtream.channels.none' => 'Your provider lists no channels in this category.',
 			'xtream.hidden.title' => 'Hide words',
 			'xtream.hidden.explain' => 'A category or channel with any of these as a whole word is left out of the lists. "UK" hides "UK News" and not "Ukraine". Add a phrase such as "south indian" to hide it as one thing. Case does not matter.',
 			'xtream.hidden.hint' => 'A country, a language, a word',
 			'xtream.hidden.add' => 'Add',
 			'xtream.hidden.none' => 'Nothing hidden yet.',
 			'xtream.hidden.tapToRemove' => 'Select a word to stop hiding it.',
+			'xtream.setup.step' => ({required Object n}) => 'Step ${n} of 3',
+			'xtream.connected.title' => 'You\'re connected',
+			'xtream.connected.status' => 'Status',
+			'xtream.connected.active' => 'Active',
+			'xtream.connected.trial' => 'Active, trial',
+			'xtream.connected.ends' => 'Ends',
+			'xtream.connected.noEnd' => 'No end date given',
+			'xtream.connected.screens' => 'Screens at once',
+			'xtream.connected.oneScreen' => 'Your subscription plays on one screen at a time. If it is playing somewhere else, it won\'t start here until that stops.',
+			'xtream.connected.liveCategories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} channel category', other: '${n} channel categories', ), 
+			'xtream.connected.available' => 'Channels',
+			'xtream.connected.next' => 'That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.',
+			'xtream.connected.choose' => 'Choose what you watch',
 			'transfer.noNetwork' => 'This device is not on a Wi-Fi or Ethernet network. Connect it to the same network as the other device and try again.',
 			'transfer.cannotListen' => ({required Object error}) => 'Could not start listening: ${error}',
 			'transfer.expired' => 'That code has expired. Start again for a new one.',
