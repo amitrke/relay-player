@@ -3,3 +3,5 @@ Film and show pages show ratings with their source, such as IMDb, Rotten Tomatoe
 A Jellyfin server typed without https:// now connects, so Quick Connect works.
 
 On a TV, search boxes open the keyboard only when you press OK, not as the remote passes over them.
+
+Setting up a source is easier, with clearer steps and plainer wording.
