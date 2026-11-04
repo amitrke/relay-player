@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/relay_theme.dart';
@@ -14,15 +13,16 @@ import '../../i18n/strings.g.dart';
 /// The canvas gates its Advanced-sources block on an `advancedEnabled` prop,
 /// which is §8.2 made literal: while the toggle is off there are no Xtream/M3U
 /// entries in Add source at all — not disabled ones, absent ones. When off, a
-/// single muted line points at Settings. Keep it that way; a greyed-out row
-/// still advertises the feature, which is the thing §1 is trying not to do.
+/// single muted line offers to set Live TV up, behind the acknowledgement
+/// (see [_AdvancedOffHint]). Keep it that way; a greyed-out row still
+/// advertises the feature, which is the thing §1 is trying not to do.
 class AddSourceScreen extends StatelessWidget {
   const AddSourceScreen({
     super.key,
     required this.advancedEnabled,
     required this.onBack,
     required this.onPickSource,
-    this.onOpenSettings,
+    this.onSetUpLiveTv,
     this.onReceiveFromDevice,
   });
 
@@ -30,7 +30,11 @@ class AddSourceScreen extends StatelessWidget {
   final bool advancedEnabled;
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
-  final VoidCallback? onOpenSettings;
+
+  /// Shown while [advancedEnabled] is off: opens the §8.2 acknowledgement and,
+  /// if it is accepted, carries on into adding a subscription. Null leaves the
+  /// muted line without its button, which is how the design gallery shows it.
+  final VoidCallback? onSetUpLiveTv;
 
   /// Copy the setup from another device on the network (§17). Null hides it,
   /// which is how the design gallery shows this screen.
@@ -53,13 +57,14 @@ class AddSourceScreen extends StatelessWidget {
             ? _DesktopAddSource(
                 advancedEnabled: advancedEnabled,
                 onPickSource: onPickSource,
+                onSetUpLiveTv: onSetUpLiveTv,
                 onReceiveFromDevice: onReceiveFromDevice,
               )
             : _CompactAddSource(
                 advancedEnabled: advancedEnabled,
                 onBack: onBack,
                 onPickSource: onPickSource,
-                onOpenSettings: onOpenSettings,
+                onSetUpLiveTv: onSetUpLiveTv,
                 onReceiveFromDevice: onReceiveFromDevice,
               ),
       ),
@@ -228,14 +233,14 @@ class _CompactAddSource extends StatelessWidget {
     required this.advancedEnabled,
     required this.onBack,
     required this.onPickSource,
-    this.onOpenSettings,
+    this.onSetUpLiveTv,
     this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final VoidCallback onBack;
   final ValueChanged<SourceKind> onPickSource;
-  final VoidCallback? onOpenSettings;
+  final VoidCallback? onSetUpLiveTv;
   final VoidCallback? onReceiveFromDevice;
 
   @override
@@ -294,7 +299,7 @@ class _CompactAddSource extends StatelessWidget {
                 ],
               ] else ...[
                 const SizedBox(height: 18),
-                _AdvancedOffHint(onOpenSettings: onOpenSettings),
+                _AdvancedOffHint(onSetUpLiveTv: onSetUpLiveTv),
               ],
               if (onReceiveFromDevice != null) ...[
                 const SizedBox(height: 22),
@@ -332,52 +337,56 @@ class _SectionLabel extends StatelessWidget {
 
 /// Shown in place of the Advanced block while the toggle is off.
 ///
-/// One muted sentence, pointing at Settings — deliberately not a button that
-/// enables the feature. §8.2 requires the acknowledgement flow to happen in
-/// Settings, so this only navigates there.
-class _AdvancedOffHint extends StatefulWidget {
-  const _AdvancedOffHint({this.onOpenSettings});
+/// One muted sentence and a quiet button, not a source tile: §8.2 keeps the
+/// subscription entries out of this screen until the gate is open, and a tile
+/// would advertise the feature as one of the app's sources (§1).
+///
+/// **The button opens the acknowledgement here (2026-11-03).** Until then the
+/// sentence linked to Settings and said "turn it on there", on the reading
+/// that §8.2 wanted the acknowledgement made in Settings. It does not: it
+/// wants it made before the forms are reachable. Sending someone to Settings
+/// and leaving them there, with nothing saying where to go once the switch was
+/// on, was the first place the IPTV setup read as a tool for experts. The link
+/// was also a text span, which a TV remote cannot reach, and the TV's rail had
+/// no hint at all; this is a real button on both.
+class _AdvancedOffHint extends StatelessWidget {
+  const _AdvancedOffHint({this.onSetUpLiveTv});
 
-  final VoidCallback? onOpenSettings;
-
-  @override
-  State<_AdvancedOffHint> createState() => _AdvancedOffHintState();
-}
-
-class _AdvancedOffHintState extends State<_AdvancedOffHint> {
-  // Owned rather than built per-frame: a TapGestureRecognizer must be disposed.
-  late final TapGestureRecognizer _tap = TapGestureRecognizer()
-    ..onTap = () => widget.onOpenSettings?.call();
-
-  @override
-  void dispose() {
-    _tap.dispose();
-    super.dispose();
-  }
+  final VoidCallback? onSetUpLiveTv;
 
   @override
   Widget build(BuildContext context) {
     final t = RelayTheme.of(context);
     final form = RelayLayout.of(context);
-    final style = TextStyle(
-      color: t.inkDim,
-      fontSize: RelayLayout.bodySize(form) - 1,
-      height: 1.5,
-    );
-
-    return Text.rich(
-      TextSpan(
-        style: style,
-        children: [
-          TextSpan(text: tr.addSource.advancedHintLead),
-          TextSpan(
-            text: tr.addSource.advanced,
-            style: style.copyWith(color: t.accent, fontWeight: FontWeight.w600),
-            recognizer: widget.onOpenSettings == null ? null : _tap,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tr.addSource.advancedHint,
+          style: TextStyle(
+            color: t.inkDim,
+            fontSize: RelayLayout.bodySize(form) - 1,
+            height: 1.5,
           ),
-          TextSpan(text: tr.addSource.advancedHintTail),
-        ],
-      ),
+        ),
+        if (onSetUpLiveTv != null)
+          RelayFocusHalo(
+            borderRadius: BorderRadius.circular(10),
+            child: TextButton.icon(
+              onPressed: onSetUpLiveTv,
+              style: TextButton.styleFrom(
+                foregroundColor: t.accent,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                minimumSize: Size(0, form == RelayFormFactor.tv ? 56 : 44),
+              ),
+              icon: const Icon(Icons.live_tv_outlined, size: 18),
+              label: Text(
+                tr.addSource.advancedSetUp,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -389,11 +398,13 @@ class _DesktopAddSource extends StatelessWidget {
   const _DesktopAddSource({
     required this.advancedEnabled,
     required this.onPickSource,
+    this.onSetUpLiveTv,
     this.onReceiveFromDevice,
   });
 
   final bool advancedEnabled;
   final ValueChanged<SourceKind> onPickSource;
+  final VoidCallback? onSetUpLiveTv;
   final VoidCallback? onReceiveFromDevice;
 
   @override
@@ -464,6 +475,9 @@ class _DesktopAddSource extends StatelessWidget {
                             selected: false,
                             onTap: () => onPickSource(kind),
                           ),
+                      ] else ...[
+                        const SizedBox(height: 14),
+                        _AdvancedOffHint(onSetUpLiveTv: onSetUpLiveTv),
                       ],
                       if (onReceiveFromDevice != null) ...[
                         const SizedBox(height: 14),

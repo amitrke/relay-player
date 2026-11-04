@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../advanced_sources/advanced_sources_consent.dart';
 import '../advanced_sources/xtream_accounts_pane.dart';
 import '../transfer/transfer_pane.dart';
 import 'about_pane.dart';
@@ -302,65 +303,6 @@ class _PhoneSettings extends ConsumerWidget {
       ],
     );
   }
-}
-
-/// The §8.2 acknowledgement. Separate from, and additional to, the general
-/// onboarding disclaimer — this is a materially different consent moment, and
-/// the wording is chosen to be specific rather than reassuring.
-Future<bool?> showAdvancedSourcesDialog(BuildContext context) {
-  return showDialog<bool>(
-    context: context,
-    builder: (context) {
-      final t = RelayTheme.of(context);
-      return AlertDialog(
-        backgroundColor: t.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: Text(
-          tr.settings.advanced.dialogTitle,
-          style: TextStyle(
-            color: t.ink,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              tr.settings.advanced.dialogLead,
-              style: TextStyle(color: t.ink, fontSize: 14, height: 1.55),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              tr.settings.advanced.dialogNoContent,
-              style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              tr.settings.advanced.dialogRights,
-              style: TextStyle(color: t.inkDim, fontSize: 13, height: 1.6),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            style: TextButton.styleFrom(foregroundColor: t.inkDim),
-            child: Text(tr.common.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: t.accent,
-              foregroundColor: t.accentInk,
-            ),
-            child: Text(tr.settings.advanced.dialogConfirm),
-          ),
-        ],
-      );
-    },
-  );
 }
 
 class _AdvancedSourcesControl extends StatelessWidget {

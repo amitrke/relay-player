@@ -690,11 +690,11 @@ class Translations$addSource$en {
 	/// en: 'Or'
 	String get or => 'Or';
 
-	/// en: 'Looking for an IPTV provider or playlist? Turn on '
-	String get advancedHintLead => 'Looking for an IPTV provider or playlist? Turn on ';
+	/// en: 'Have an IPTV subscription?'
+	String get advancedHint => 'Have an IPTV subscription?';
 
-	/// en: ' in Settings.'
-	String get advancedHintTail => ' in Settings.';
+	/// en: 'Set up Live TV'
+	String get advancedSetUp => 'Set up Live TV';
 
 	/// en: 'Source type'
 	String get sourceType => 'Source type';
@@ -2033,8 +2033,8 @@ class Translations$settings$advanced$en {
 
 	// Translations
 
-	/// en: 'Turning on advanced sources'
-	String get dialogTitle => 'Turning on advanced sources';
+	/// en: 'Before you turn on Live TV'
+	String get dialogTitle => 'Before you turn on Live TV';
 
 	/// en: 'You are about to connect a third-party provider using your own credentials.'
 	String get dialogLead => 'You are about to connect a third-party provider using your own credentials.';
@@ -2044,6 +2044,18 @@ class Translations$settings$advanced$en {
 
 	/// en: 'You are responsible for holding the rights to whatever you connect to.'
 	String get dialogRights => 'You are responsible for holding the rights to whatever you connect to.';
+
+	/// en: 'It is kept in this device's secure storage and sent only to the address you enter.'
+	String get dialogLogin => 'It is kept in this device\'s secure storage and sent only to the address you enter.';
+
+	/// en: 'We don't provide or recommend any provider'
+	String get pointNoContent => 'We don\'t provide or recommend any provider';
+
+	/// en: 'The rights are yours'
+	String get pointRights => 'The rights are yours';
+
+	/// en: 'Your login stays on this device'
+	String get pointLogin => 'Your login stays on this device';
 
 	/// en: 'I understand, turn on'
 	String get dialogConfirm => 'I understand, turn on';
@@ -3209,10 +3221,14 @@ extension on Translations {
 			'settings.section.about' => 'About',
 			'settings.section.trackers' => 'Watch tracking',
 			'settings.section.requests' => 'Requests',
-			'settings.advanced.dialogTitle' => 'Turning on advanced sources',
+			'settings.advanced.dialogTitle' => 'Before you turn on Live TV',
 			'settings.advanced.dialogLead' => 'You are about to connect a third-party provider using your own credentials.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.',
 			'settings.advanced.dialogRights' => 'You are responsible for holding the rights to whatever you connect to.',
+			'settings.advanced.dialogLogin' => 'It is kept in this device\'s secure storage and sent only to the address you enter.',
+			'settings.advanced.pointNoContent' => 'We don\'t provide or recommend any provider',
+			'settings.advanced.pointRights' => 'The rights are yours',
+			'settings.advanced.pointLogin' => 'Your login stays on this device',
 			'settings.advanced.dialogConfirm' => 'I understand, turn on',
 			'settings.advanced.toggle' => 'IPTV provider or playlist',
 			'settings.advanced.toggleExplain' => 'Adds Live TV and Xtream Codes logins.',
@@ -3264,8 +3280,8 @@ extension on Translations {
 			'addSource.title' => 'Add a source',
 			'addSource.advanced' => 'Advanced sources',
 			'addSource.or' => 'Or',
-			'addSource.advancedHintLead' => 'Looking for an IPTV provider or playlist? Turn on ',
-			'addSource.advancedHintTail' => ' in Settings.',
+			'addSource.advancedHint' => 'Have an IPTV subscription?',
+			'addSource.advancedSetUp' => 'Set up Live TV',
 			'addSource.sourceType' => 'Source type',
 			'addSource.plexRail' => 'Link with a code',
 			'addSource.pcFiles' => 'Files on this PC',
@@ -3384,12 +3400,12 @@ extension on Translations {
 			'xtream.picker.channelsPicked' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} channel', other: '${n} channels', ), 
 			'xtream.picker.pickedChosen' => ({required Object n}) => '${n} chosen',
 			'xtream.picker.categories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} category', other: '${n} categories', ), 
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.channels' => 'Channels',
 			'xtream.channels.done' => 'Done',
 			'xtream.channels.search' => 'Search this category',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} of ${total}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.channels.whole' => 'Whole category',
 			'xtream.channels.selectShown' => 'Select shown',
 			'xtream.channels.clear' => 'Clear',

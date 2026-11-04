@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../accounts/add_source_screen.dart';
+import '../advanced_sources/advanced_sources_consent.dart';
 import '../settings/settings_controller.dart';
 import 'onboarding_screen.dart';
 
@@ -47,7 +48,13 @@ class AddSourceRoute extends ConsumerWidget {
     return AddSourceScreen(
       advancedEnabled: ref.watch(advancedSourcesEnabledProvider),
       onBack: () => context.canPop() ? context.pop() : context.go('/library'),
-      onOpenSettings: () => context.go('/settings'),
+      // The acknowledgement, here rather than in Settings (§8.2, see
+      // advanced_sources_consent.dart), then straight on to the subscription
+      // form, which is what the person asked for by pressing it.
+      onSetUpLiveTv: () async {
+        final on = await turnOnAdvancedSources(context, ref);
+        if (on && context.mounted) context.push('/advanced/xtream/new');
+      },
       onReceiveFromDevice: () => context.push('/transfer/receive'),
       onPickSource: (kind) async {
         if (kind == SourceKind.localFiles || kind == SourceKind.smb) {

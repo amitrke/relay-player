@@ -412,8 +412,8 @@ class _Translations$addSource$de extends Translations$addSource$en {
 	@override String get title => 'Quelle hinzufügen';
 	@override String get advanced => 'Erweiterte Quellen';
 	@override String get or => 'Oder';
-	@override String get advancedHintLead => 'Suchst du einen IPTV-Anbieter oder eine Playlist? Schalte ';
-	@override String get advancedHintTail => ' in den Einstellungen ein.';
+	@override String get advancedHint => 'Hast du ein IPTV-Abo?';
+	@override String get advancedSetUp => 'Live-TV einrichten';
 	@override String get sourceType => 'Art der Quelle';
 	@override String get plexRail => 'Mit einem Code verknüpfen';
 	@override String get pcFiles => 'Dateien auf diesem PC';
@@ -1081,10 +1081,14 @@ class _Translations$settings$advanced$de extends Translations$settings$advanced$
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
-	@override String get dialogTitle => 'Erweiterte Quellen einschalten';
+	@override String get dialogTitle => 'Bevor du Live-TV einschaltest';
 	@override String get dialogLead => 'Du bist dabei, einen Drittanbieter mit deinen eigenen Zugangsdaten zu verbinden.';
 	@override String get dialogNoContent => 'Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.';
 	@override String get dialogRights => 'Du bist dafür verantwortlich, die Rechte an allem zu haben, womit du dich verbindest.';
+	@override String get dialogLogin => 'Sie wird im sicheren Speicher dieses Geräts abgelegt und nur an die Adresse gesendet, die du eingibst.';
+	@override String get pointNoContent => 'Wir stellen keinen Anbieter bereit und empfehlen keinen';
+	@override String get pointRights => 'Die Rechte liegen bei dir';
+	@override String get pointLogin => 'Deine Anmeldung bleibt auf diesem Gerät';
 	@override String get dialogConfirm => 'Verstanden, einschalten';
 	@override String get toggle => 'IPTV-Anbieter oder Playlist';
 	@override String get toggleExplain => 'Fügt Live-TV und Xtream-Codes-Anmeldungen hinzu.';
@@ -1848,10 +1852,14 @@ extension on TranslationsDe {
 			'settings.section.about' => 'Über',
 			'settings.section.trackers' => 'Wiedergabe-Tracking',
 			'settings.section.requests' => 'Anfragen',
-			'settings.advanced.dialogTitle' => 'Erweiterte Quellen einschalten',
+			'settings.advanced.dialogTitle' => 'Bevor du Live-TV einschaltest',
 			'settings.advanced.dialogLead' => 'Du bist dabei, einen Drittanbieter mit deinen eigenen Zugangsdaten zu verbinden.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player stellt keine Inhalte oder Anbieter bereit, hostet sie nicht und unterstützt sie nicht. Du gibst Adresse und Anmeldung an, und die App spielt ab, was diese Adresse liefert.',
 			'settings.advanced.dialogRights' => 'Du bist dafür verantwortlich, die Rechte an allem zu haben, womit du dich verbindest.',
+			'settings.advanced.dialogLogin' => 'Sie wird im sicheren Speicher dieses Geräts abgelegt und nur an die Adresse gesendet, die du eingibst.',
+			'settings.advanced.pointNoContent' => 'Wir stellen keinen Anbieter bereit und empfehlen keinen',
+			'settings.advanced.pointRights' => 'Die Rechte liegen bei dir',
+			'settings.advanced.pointLogin' => 'Deine Anmeldung bleibt auf diesem Gerät',
 			'settings.advanced.dialogConfirm' => 'Verstanden, einschalten',
 			'settings.advanced.toggle' => 'IPTV-Anbieter oder Playlist',
 			'settings.advanced.toggleExplain' => 'Fügt Live-TV und Xtream-Codes-Anmeldungen hinzu.',
@@ -1903,8 +1911,8 @@ extension on TranslationsDe {
 			'addSource.title' => 'Quelle hinzufügen',
 			'addSource.advanced' => 'Erweiterte Quellen',
 			'addSource.or' => 'Oder',
-			'addSource.advancedHintLead' => 'Suchst du einen IPTV-Anbieter oder eine Playlist? Schalte ',
-			'addSource.advancedHintTail' => ' in den Einstellungen ein.',
+			'addSource.advancedHint' => 'Hast du ein IPTV-Abo?',
+			'addSource.advancedSetUp' => 'Live-TV einrichten',
 			'addSource.sourceType' => 'Art der Quelle',
 			'addSource.plexRail' => 'Mit einem Code verknüpfen',
 			'addSource.pcFiles' => 'Dateien auf diesem PC',
@@ -2023,12 +2031,12 @@ extension on TranslationsDe {
 			'xtream.picker.channelsPicked' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '${n} Sender', other: '${n} Sender', ), 
 			'xtream.picker.pickedChosen' => ({required Object n}) => '${n} ausgewählt',
 			'xtream.picker.categories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(n, one: '${n} Kategorie', other: '${n} Kategorien', ), 
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.channels' => 'Sender',
 			'xtream.channels.done' => 'Fertig',
 			'xtream.channels.search' => 'Diese Kategorie durchsuchen',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} von ${total}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.channels.whole' => 'Ganze Kategorie',
 			'xtream.channels.selectShown' => 'Angezeigte auswählen',
 			'xtream.channels.clear' => 'Abwählen',

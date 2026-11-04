@@ -59,6 +59,17 @@ void main() {
           ),
       const [],
     ),
+    // The way in while the gate is off (§8.2): until 2026-11-03 a text link
+    // the remote could not reach, and absent from the TV's rail altogether.
+    'Add source, Advanced sources off': (
+      () => AddSourceScreen(
+            advancedEnabled: false,
+            onBack: () {},
+            onPickSource: (_) {},
+            onSetUpLiveTv: () {},
+          ),
+      const [],
+    ),
     'Settings, Advanced sources with a line': (
       () => SettingsScreen(
             theme: ThemeController(),

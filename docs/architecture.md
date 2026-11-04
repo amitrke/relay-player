@@ -615,6 +615,25 @@ The opt-in toggle is the cheapest option that still captures the main benefit: i
 - Turning it on surfaces a short, specific disclaimer ("you're about to connect a third-party IPTV provider or playlist using credentials you supply; the app does not provide, host, or endorse any content or provider") that must be acknowledged before the Xtream/M3U account forms become reachable — separate from, and in addition to, the general onboarding disclaimer in §1.3, since this is a materially different consent moment.
 - The toggle is freely reversible; turning it back off hides the tab/entries again but doesn't delete configured Xtream/M3U accounts, so re-enabling restores them.
 
+> **The acknowledgement can be opened from Add source, 2026-11-03.** Add source
+> said "turn on Advanced sources in Settings" and linked there, on the reading
+> that the acknowledgement had to happen in Settings. The bullets above ask
+> only that it comes before the account forms are reachable. Sending someone
+> who had just said "I have an IPTV subscription" to Settings, and leaving them
+> there once the switch was on, was the first place the setup read as a tool
+> for experts. Now the off-state line in Add source has a *Set up Live TV*
+> button that opens **the same dialog** (`advanced_sources_consent.dart`) and,
+> on yes, goes straight to the form. What did not change: while off, Add source
+> still shows no Xtream entry, no tile and nothing greyed out, only that one
+> muted line and its button; the dialog's no-content and rights sentences are
+> word for word what they were. It gained short headings and a third point
+> (the login stays on this device), which are new consent text for the draft
+> languages' review (lib/i18n/README.md). The line used to be a text link a
+> remote could not reach and was missing from the TV and desktop rail; it is a
+> focusable button on both. Decided by the account owner, 2026-11-03, over
+> showing a full Live TV card in Add source while off, which would have needed
+> this section rewritten. Pinned by `test/live_tv_consent_test.dart`.
+
 ### 8.3 Provider Profile import (data-only)
 
 A convenience for adding a provider without hand-typing host/username/password: paste a URL to a small JSON manifest, the app fetches and parses it, and pre-fills the Xtream or M3U account form. This is explicitly **not** a plugin-loading mechanism — see §1.4 for why that distinction is a hard line, not a style choice.

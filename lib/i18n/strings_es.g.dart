@@ -412,8 +412,8 @@ class _Translations$addSource$es extends Translations$addSource$en {
 	@override String get title => 'Añadir una fuente';
 	@override String get advanced => 'Fuentes avanzadas';
 	@override String get or => 'O';
-	@override String get advancedHintLead => '¿Buscas un proveedor o una lista de IPTV? Activa ';
-	@override String get advancedHintTail => ' en Ajustes.';
+	@override String get advancedHint => '¿Tienes una suscripción de IPTV?';
+	@override String get advancedSetUp => 'Configurar TV en directo';
 	@override String get sourceType => 'Tipo de fuente';
 	@override String get plexRail => 'Vincular con un código';
 	@override String get pcFiles => 'Archivos de este PC';
@@ -1081,10 +1081,14 @@ class _Translations$settings$advanced$es extends Translations$settings$advanced$
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get dialogTitle => 'Activar fuentes avanzadas';
+	@override String get dialogTitle => 'Antes de activar la TV en directo';
 	@override String get dialogLead => 'Vas a conectar un proveedor externo con tus propias credenciales.';
 	@override String get dialogNoContent => 'Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.';
 	@override String get dialogRights => 'Eres responsable de tener los derechos de aquello a lo que te conectes.';
+	@override String get dialogLogin => 'Se guarda en el almacenamiento seguro de este dispositivo y solo se envía a la dirección que indiques.';
+	@override String get pointNoContent => 'No ofrecemos ni recomendamos ningún proveedor';
+	@override String get pointRights => 'Los derechos son cosa tuya';
+	@override String get pointLogin => 'Tu inicio de sesión se queda en este dispositivo';
 	@override String get dialogConfirm => 'Lo entiendo, activar';
 	@override String get toggle => 'Proveedor o lista de IPTV';
 	@override String get toggleExplain => 'Añade TV en directo e inicios de sesión de Xtream Codes.';
@@ -1848,10 +1852,14 @@ extension on TranslationsEs {
 			'settings.section.about' => 'Acerca de',
 			'settings.section.trackers' => 'Seguimiento de lo visto',
 			'settings.section.requests' => 'Solicitudes',
-			'settings.advanced.dialogTitle' => 'Activar fuentes avanzadas',
+			'settings.advanced.dialogTitle' => 'Antes de activar la TV en directo',
 			'settings.advanced.dialogLead' => 'Vas a conectar un proveedor externo con tus propias credenciales.',
 			'settings.advanced.dialogNoContent' => 'Subnext Player no proporciona, aloja ni respalda ningún contenido ni proveedor. Tú indicas la dirección y el inicio de sesión, y la app reproduce lo que devuelva esa dirección.',
 			'settings.advanced.dialogRights' => 'Eres responsable de tener los derechos de aquello a lo que te conectes.',
+			'settings.advanced.dialogLogin' => 'Se guarda en el almacenamiento seguro de este dispositivo y solo se envía a la dirección que indiques.',
+			'settings.advanced.pointNoContent' => 'No ofrecemos ni recomendamos ningún proveedor',
+			'settings.advanced.pointRights' => 'Los derechos son cosa tuya',
+			'settings.advanced.pointLogin' => 'Tu inicio de sesión se queda en este dispositivo',
 			'settings.advanced.dialogConfirm' => 'Lo entiendo, activar',
 			'settings.advanced.toggle' => 'Proveedor o lista de IPTV',
 			'settings.advanced.toggleExplain' => 'Añade TV en directo e inicios de sesión de Xtream Codes.',
@@ -1903,8 +1911,8 @@ extension on TranslationsEs {
 			'addSource.title' => 'Añadir una fuente',
 			'addSource.advanced' => 'Fuentes avanzadas',
 			'addSource.or' => 'O',
-			'addSource.advancedHintLead' => '¿Buscas un proveedor o una lista de IPTV? Activa ',
-			'addSource.advancedHintTail' => ' en Ajustes.',
+			'addSource.advancedHint' => '¿Tienes una suscripción de IPTV?',
+			'addSource.advancedSetUp' => 'Configurar TV en directo',
 			'addSource.sourceType' => 'Tipo de fuente',
 			'addSource.plexRail' => 'Vincular con un código',
 			'addSource.pcFiles' => 'Archivos de este PC',
@@ -2023,12 +2031,12 @@ extension on TranslationsEs {
 			'xtream.picker.channelsPicked' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} canal', other: '${n} canales', ), 
 			'xtream.picker.pickedChosen' => ({required Object n}) => '${n} elegidos',
 			'xtream.picker.categories' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '${n} categoría', other: '${n} categorías', ), 
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.channels' => 'Canales',
 			'xtream.channels.done' => 'Listo',
 			'xtream.channels.search' => 'Buscar en esta categoría',
 			'xtream.channels.pickedOf' => ({required Object picked, required Object total}) => '${picked} de ${total}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.channels.whole' => 'Toda la categoría',
 			'xtream.channels.selectShown' => 'Marcar los mostrados',
 			'xtream.channels.clear' => 'Desmarcar',

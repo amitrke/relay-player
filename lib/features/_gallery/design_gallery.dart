@@ -98,7 +98,7 @@ class _DesignGalleryState extends State<DesignGallery> {
         advancedEnabled: advanced,
         onBack: () => _toast(context, 'Back'),
         onPickSource: (kind) => _toast(context, 'Picked ${kind.title}'),
-        onOpenSettings: () => _toast(context, 'Settings → Advanced sources'),
+        onSetUpLiveTv: () => _toast(context, 'Set up Live TV'),
       );
 
   void _toast(BuildContext context, String message) {
