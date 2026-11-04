@@ -131,6 +131,24 @@ String categoryLabelInGroup(String name) {
   return parts.skip(1).join(' · ').replaceAll('_', '/');
 }
 
+/// [name] split where panels put their separators, with years, brackets and
+/// quality tags taken off: "DE ➾ News FHD (2024)" is `[DE, News]`. The same
+/// splitting [groupCategories] uses, so the region guess in
+/// category_facets.dart reads a name the way the groups do.
+List<String> categoryNameParts(String name) {
+  final protectedName = name.replaceAll('24/7', '24_7');
+  final bare = protectedName
+      .replaceAll(_years, ' ')
+      .replaceAll(_decoration, ' ')
+      .replaceAll(_quality, ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  return [
+    for (final p in bare.split(_separators))
+      if (p.trim().isNotEmpty) p.trim().replaceAll('24_7', '24/7'),
+  ];
+}
+
 class _Bucket {
   _Bucket(this.key);
 

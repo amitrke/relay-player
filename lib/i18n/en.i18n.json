@@ -709,6 +709,89 @@
       "available": "Channels",
       "next": "That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.",
       "choose": "Choose what you watch"
+    },
+    "regions(map)": {
+      "uk": "United Kingdom",
+      "us": "USA",
+      "ca": "Canada",
+      "au": "Australia",
+      "en": "English",
+      "de": "Germany",
+      "at": "Austria",
+      "ch": "Switzerland",
+      "fr": "France",
+      "be": "Belgium",
+      "nl": "Netherlands",
+      "es": "Spain",
+      "latam": "Latin America",
+      "pt": "Portugal",
+      "br": "Brazil",
+      "it": "Italy",
+      "pl": "Poland",
+      "tr": "Turkey",
+      "gr": "Greece",
+      "ro": "Romania",
+      "ru": "Russia",
+      "ar": "Arabic",
+      "in": "India",
+      "pk": "Pakistan",
+      "af": "Africa",
+      "jp": "Japan",
+      "kr": "Korea",
+      "cn": "China"
+    },
+    "kinds(map)": {
+      "news": "News",
+      "sport": "Sport",
+      "kids": "Kids",
+      "films": "Films",
+      "docs": "Documentary",
+      "music": "Music",
+      "entertainment": "Entertainment"
+    },
+    "watch": {
+      "title": "What do you watch?",
+      "sub": "Pick a few. You can change this any time.",
+      "regions": "Countries and languages",
+      "kinds": "Kinds of channel",
+      "more": "Show all {n}",
+      "fewer": "Show fewer",
+      "count": {
+        "one": "{n} category chosen",
+        "other": "{n} categories chosen"
+      },
+      "none": "Pick a country, a language or a kind of channel.",
+      "unplaced": {
+        "one": "Sorted by the names your provider uses. {n} category fits none of these: find it in Fine-tune.",
+        "other": "Sorted by the names your provider uses. {n} categories fit none of these: find them in Fine-tune."
+      },
+      "fineTune": "Fine-tune",
+      "chips": "Back to the choices",
+      "replaceTitle": "Replace your hand-picked choice?",
+      "replaceBody": "You changed the choice by hand in Fine-tune. This replaces it with what these choices reach.",
+      "replace": "Replace",
+      "keep": "Keep mine",
+      "next": "Continue"
+    },
+    "review": {
+      "title": "Here's what you'll see",
+      "live": "Live TV",
+      "movies": "Movies",
+      "series": "Series",
+      "chosen": {
+        "one": "{n} category",
+        "other": "{n} categories"
+      },
+      "notAdded": "Not added yet",
+      "add": "Add",
+      "change": "Change",
+      "neverShow": "Never show",
+      "neverShowSub": "Hide anything with these words",
+      "neverShowNone": "Nothing hidden",
+      "edit": "Edit",
+      "later": "Change any of this later from Settings, Advanced sources.",
+      "open": "Open Live TV",
+      "link": "What you see"
     }
   },
   "transfer": {

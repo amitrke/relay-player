@@ -4,6 +4,10 @@ import 'package:relay_player/data/xtream/xtream_account_store.dart';
 import 'package:relay_player/data/xtream/xtream_client.dart';
 import 'package:relay_player/features/accounts/add_source_screen.dart';
 import 'package:relay_player/features/advanced_sources/add_xtream_screen.dart';
+import 'package:relay_player/features/advanced_sources/category_picker_screen.dart';
+import 'package:relay_player/features/advanced_sources/connected_screen.dart';
+import 'package:relay_player/features/advanced_sources/hidden_words_controller.dart';
+import 'package:relay_player/features/advanced_sources/setup_review_screen.dart';
 import 'package:relay_player/features/advanced_sources/xtream_controller.dart';
 import 'package:relay_player/features/favorites_history/favorites_controller.dart';
 import 'package:relay_player/features/live_tv/live_tv_tab.dart';
@@ -29,6 +33,11 @@ class _SignedOut extends PlexSessionController {
 class _Prefs extends PlaybackPrefsController {
   @override
   PlaybackPrefs build() => const PlaybackPrefs();
+}
+
+class _NoHiddenWords extends HiddenWordsController {
+  @override
+  List<String> build() => const [];
 }
 
 class _NoFavourites extends FavoritesController {
@@ -94,6 +103,50 @@ void main() {
               XtreamChannel(streamId: '2', name: 'Two', categoryId: '20'),
             ]),
         favoritesProvider.overrideWith(_NoFavourites.new),
+      ],
+    ),
+    // The setup screens added 2026-11-03: step 2, step 3's chips, and the
+    // review. Chips and the review are read from across a room with a remote.
+    'Connected': (
+      () => const ConnectedScreen(
+            accountId: 'a',
+            info: XtreamAccountInfo(
+              status: 'Active',
+              isTrial: false,
+              maxConnections: 1,
+              activeConnections: 0,
+              expiresAt: null,
+              outputFormats: [],
+            ),
+          ),
+      [
+        xtreamAccountsProvider.overrideWith(() => _Accounts(const [account])),
+        xtreamCategoriesProvider.overrideWith((ref, _) async => const [
+              XtreamCategory(id: '10', name: 'DE | News'),
+            ]),
+      ],
+    ),
+    'What do you watch?': (
+      () => const CategoryPickerScreen(
+            accountId: 'a',
+            catalogue: XtreamCatalogue.live,
+            setup: true,
+          ),
+      [
+        xtreamAccountsProvider.overrideWith(() => _Accounts(const [account])),
+        xtreamCategoriesProvider.overrideWith((ref, _) async => const [
+              XtreamCategory(id: '10', name: 'DE | News'),
+              XtreamCategory(id: '20', name: 'DE | Sport'),
+              XtreamCategory(id: '30', name: 'UK | Sport'),
+            ]),
+        hiddenWordsProvider.overrideWith(_NoHiddenWords.new),
+      ],
+    ),
+    'Review': (
+      () => const SetupReviewScreen(accountId: 'a'),
+      [
+        xtreamAccountsProvider.overrideWith(() => _Accounts(const [account])),
+        hiddenWordsProvider.overrideWith(_NoHiddenWords.new),
       ],
     ),
   };

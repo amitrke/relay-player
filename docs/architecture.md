@@ -260,6 +260,44 @@ against a real panel: the row reached from the last category, a spinner while
 fetching, the list kept on screen. The stale refetch on resume is unit tested
 only.
 
+**"What do you watch?" opens the picker (2026-11-03).** Setting up a
+subscription used to end on the group list above: hundreds of categories
+under names such as "DE", "GER" and "Germany" as three groups, with Pattern
+and Hide words beside them. The selection rules in this section are
+unchanged; what changed is the first thing the picker shows.
+
+- **Chips, as a bulk selector.** Countries and languages and, for Live TV,
+  kinds of channel (news, sport, kids, films, documentary, music,
+  entertainment). Tapping one sets the ticks to the categories that are in a
+  chosen place and, when a kind is chosen, of a chosen kind. As with the
+  pattern box, the chips act on the selection, the result is visible before
+  Save, and nothing is chosen until one is tapped. Opt-in holds.
+- **The group list is Fine-tune**, one press away, with a way back to the
+  chips and the same Continue. A change made by hand there and then a chip
+  tapped asks before replacing it, because the chips cannot know about a
+  category ticked one at a time.
+- **When it opens:** in setup, and whenever nothing is chosen yet. Someone
+  coming back from Settings to a choice they already made lands on the list,
+  as before.
+- **The region and kind are guesses from names** (`category_facets.dart`),
+  like the language guess under §12 Search. A short code counts only as a
+  whole leading word or a part of its own, in capitals, so "IT" in an English
+  title is not Italy. Languages are filed under a country where that is how
+  people would look for them (Tamil under India). A category the guess cannot
+  place is never lost: the screen counts those and points at Fine-tune.
+  Tested only against made-up names in the shapes one real panel used; **how
+  well it places a different provider's names is not known yet.** The tables
+  are English plus the words seen most in the draft languages.
+- **Counts are categories, never channels.** A channel count would mean
+  fetching the streams of every category, which this section exists to avoid.
+
+Pinned by `test/category_facets_test.dart` and
+`test/category_picker_chips_test.dart`; the chips, the Connected screen and
+the review are in the D-pad audit (`test/dpad/dpad_screens_test.dart`), which
+found on its first run that `RelaySurface(onTap:)` rows show no ring it counts
+and add a second, ringless stop through their InkWell; the new rows use
+`RelayTappable`. Older `RelaySurface` rows elsewhere were not rechecked.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.

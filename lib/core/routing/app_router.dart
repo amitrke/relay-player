@@ -10,6 +10,7 @@ import '../../features/accounts/plex_link_screen.dart';
 import '../../features/advanced_sources/add_xtream_screen.dart';
 import '../../features/advanced_sources/category_picker_screen.dart';
 import '../../features/advanced_sources/connected_screen.dart';
+import '../../features/advanced_sources/setup_review_screen.dart';
 import '../../features/advanced_sources/channel_picker_screen.dart';
 import '../../features/advanced_sources/xtream_series_screen.dart';
 import '../../data/xtream/xtream_account_store.dart';
@@ -154,9 +155,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        // The end of setting up a subscription, and Settings' way in to
+        // adjust one: Live TV, Movies, Series and Never show together.
+        path: '/advanced/xtream/:accountId/review',
+        builder: (_, state) => SetupReviewScreen(
+          accountId: state.pathParameters['accountId']!,
+        ),
+      ),
+      GoRoute(
         path: '/advanced/xtream/:accountId/categories/:catalogue',
         builder: (_, state) => CategoryPickerScreen(
           accountId: state.pathParameters['accountId']!,
+          // Step 3 of setting up: opens on "What do you watch?" and ends in
+          // the review rather than back where it came from.
+          setup: state.uri.queryParameters['setup'] == '1',
           catalogue: XtreamCatalogue.values.firstWhere(
             (c) => c.name == state.pathParameters['catalogue'],
             orElse: () => XtreamCatalogue.live,

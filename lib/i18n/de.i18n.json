@@ -709,6 +709,89 @@
       "available": "Sender",
       "next": "Das ist mehr, als jemand schaut. Als Nächstes wählst du die Länder und Arten von Sendern, die du möchtest. Nur diese werden geladen.",
       "choose": "Auswählen, was du schaust"
+    },
+    "regions(map)": {
+      "uk": "Vereinigtes Königreich",
+      "us": "USA",
+      "ca": "Kanada",
+      "au": "Australien",
+      "en": "Englisch",
+      "de": "Deutschland",
+      "at": "Österreich",
+      "ch": "Schweiz",
+      "fr": "Frankreich",
+      "be": "Belgien",
+      "nl": "Niederlande",
+      "es": "Spanien",
+      "latam": "Lateinamerika",
+      "pt": "Portugal",
+      "br": "Brasilien",
+      "it": "Italien",
+      "pl": "Polen",
+      "tr": "Türkei",
+      "gr": "Griechenland",
+      "ro": "Rumänien",
+      "ru": "Russland",
+      "ar": "Arabisch",
+      "in": "Indien",
+      "pk": "Pakistan",
+      "af": "Afrika",
+      "jp": "Japan",
+      "kr": "Korea",
+      "cn": "China"
+    },
+    "kinds(map)": {
+      "news": "Nachrichten",
+      "sport": "Sport",
+      "kids": "Kinder",
+      "films": "Filme",
+      "docs": "Dokumentation",
+      "music": "Musik",
+      "entertainment": "Unterhaltung"
+    },
+    "watch": {
+      "title": "Was schaust du?",
+      "sub": "Wähle ein paar aus. Du kannst das jederzeit ändern.",
+      "regions": "Länder und Sprachen",
+      "kinds": "Arten von Sendern",
+      "more": "Alle {n} anzeigen",
+      "fewer": "Weniger anzeigen",
+      "count": {
+        "one": "{n} Kategorie ausgewählt",
+        "other": "{n} Kategorien ausgewählt"
+      },
+      "none": "Wähle ein Land, eine Sprache oder eine Art von Sender.",
+      "unplaced": {
+        "one": "Sortiert nach den Namen deines Anbieters. {n} Kategorie passt zu keiner davon: du findest sie unter Feinabstimmung.",
+        "other": "Sortiert nach den Namen deines Anbieters. {n} Kategorien passen zu keiner davon: du findest sie unter Feinabstimmung."
+      },
+      "fineTune": "Feinabstimmung",
+      "chips": "Zurück zur Auswahl",
+      "replaceTitle": "Deine eigene Auswahl ersetzen?",
+      "replaceBody": "Du hast die Auswahl in der Feinabstimmung von Hand geändert. Das ersetzt sie durch das, was diese Auswahl erfasst.",
+      "replace": "Ersetzen",
+      "keep": "Meine behalten",
+      "next": "Weiter"
+    },
+    "review": {
+      "title": "Das wirst du sehen",
+      "live": "Live-TV",
+      "movies": "Filme",
+      "series": "Serien",
+      "chosen": {
+        "one": "{n} Kategorie",
+        "other": "{n} Kategorien"
+      },
+      "notAdded": "Noch nicht hinzugefügt",
+      "add": "Hinzufügen",
+      "change": "Ändern",
+      "neverShow": "Nie anzeigen",
+      "neverShowSub": "Alles mit diesen Wörtern ausblenden",
+      "neverShowNone": "Nichts ausgeblendet",
+      "edit": "Bearbeiten",
+      "later": "Du kannst das alles später unter Einstellungen, Erweiterte Quellen ändern.",
+      "open": "Live-TV öffnen",
+      "link": "Was du siehst"
     }
   },
   "transfer": {

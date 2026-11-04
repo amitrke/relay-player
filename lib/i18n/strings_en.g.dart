@@ -928,6 +928,47 @@ class Translations$xtream$en {
 	late final Translations$xtream$hidden$en hidden = Translations$xtream$hidden$en.internal(_root);
 	late final Translations$xtream$setup$en setup = Translations$xtream$setup$en.internal(_root);
 	late final Translations$xtream$connected$en connected = Translations$xtream$connected$en.internal(_root);
+	Map<String, String> get regions => {
+		'uk': 'United Kingdom',
+		'us': 'USA',
+		'ca': 'Canada',
+		'au': 'Australia',
+		'en': 'English',
+		'de': 'Germany',
+		'at': 'Austria',
+		'ch': 'Switzerland',
+		'fr': 'France',
+		'be': 'Belgium',
+		'nl': 'Netherlands',
+		'es': 'Spain',
+		'latam': 'Latin America',
+		'pt': 'Portugal',
+		'br': 'Brazil',
+		'it': 'Italy',
+		'pl': 'Poland',
+		'tr': 'Turkey',
+		'gr': 'Greece',
+		'ro': 'Romania',
+		'ru': 'Russia',
+		'ar': 'Arabic',
+		'in': 'India',
+		'pk': 'Pakistan',
+		'af': 'Africa',
+		'jp': 'Japan',
+		'kr': 'Korea',
+		'cn': 'China',
+	};
+	Map<String, String> get kinds => {
+		'news': 'News',
+		'sport': 'Sport',
+		'kids': 'Kids',
+		'films': 'Films',
+		'docs': 'Documentary',
+		'music': 'Music',
+		'entertainment': 'Entertainment',
+	};
+	late final Translations$xtream$watch$en watch = Translations$xtream$watch$en.internal(_root);
+	late final Translations$xtream$review$en review = Translations$xtream$review$en.internal(_root);
 }
 
 // Path: transfer
@@ -2564,6 +2605,126 @@ class Translations$xtream$connected$en {
 	String get choose => 'Choose what you watch';
 }
 
+// Path: xtream.watch
+class Translations$xtream$watch$en {
+	Translations$xtream$watch$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'What do you watch?'
+	String get title => 'What do you watch?';
+
+	/// en: 'Pick a few. You can change this any time.'
+	String get sub => 'Pick a few. You can change this any time.';
+
+	/// en: 'Countries and languages'
+	String get regions => 'Countries and languages';
+
+	/// en: 'Kinds of channel'
+	String get kinds => 'Kinds of channel';
+
+	/// en: 'Show all {n}'
+	String more({required Object n}) => 'Show all ${n}';
+
+	/// en: 'Show fewer'
+	String get fewer => 'Show fewer';
+
+	/// en: '(one) {{n} category chosen} (other) {{n} categories chosen}'
+	String count({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} category chosen',
+		other: '${n} categories chosen',
+	);
+
+	/// en: 'Pick a country, a language or a kind of channel.'
+	String get none => 'Pick a country, a language or a kind of channel.';
+
+	/// en: '(one) {Sorted by the names your provider uses. {n} category fits none of these: find it in Fine-tune.} (other) {Sorted by the names your provider uses. {n} categories fit none of these: find them in Fine-tune.}'
+	String unplaced({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Sorted by the names your provider uses. ${n} category fits none of these: find it in Fine-tune.',
+		other: 'Sorted by the names your provider uses. ${n} categories fit none of these: find them in Fine-tune.',
+	);
+
+	/// en: 'Fine-tune'
+	String get fineTune => 'Fine-tune';
+
+	/// en: 'Back to the choices'
+	String get chips => 'Back to the choices';
+
+	/// en: 'Replace your hand-picked choice?'
+	String get replaceTitle => 'Replace your hand-picked choice?';
+
+	/// en: 'You changed the choice by hand in Fine-tune. This replaces it with what these choices reach.'
+	String get replaceBody => 'You changed the choice by hand in Fine-tune. This replaces it with what these choices reach.';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
+	/// en: 'Keep mine'
+	String get keep => 'Keep mine';
+
+	/// en: 'Continue'
+	String get next => 'Continue';
+}
+
+// Path: xtream.review
+class Translations$xtream$review$en {
+	Translations$xtream$review$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Here's what you'll see'
+	String get title => 'Here\'s what you\'ll see';
+
+	/// en: 'Live TV'
+	String get live => 'Live TV';
+
+	/// en: 'Movies'
+	String get movies => 'Movies';
+
+	/// en: 'Series'
+	String get series => 'Series';
+
+	/// en: '(one) {{n} category} (other) {{n} categories}'
+	String chosen({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} category',
+		other: '${n} categories',
+	);
+
+	/// en: 'Not added yet'
+	String get notAdded => 'Not added yet';
+
+	/// en: 'Add'
+	String get add => 'Add';
+
+	/// en: 'Change'
+	String get change => 'Change';
+
+	/// en: 'Never show'
+	String get neverShow => 'Never show';
+
+	/// en: 'Hide anything with these words'
+	String get neverShowSub => 'Hide anything with these words';
+
+	/// en: 'Nothing hidden'
+	String get neverShowNone => 'Nothing hidden';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Change any of this later from Settings, Advanced sources.'
+	String get later => 'Change any of this later from Settings, Advanced sources.';
+
+	/// en: 'Open Live TV'
+	String get open => 'Open Live TV';
+
+	/// en: 'What you see'
+	String get link => 'What you see';
+}
+
 // Path: transfer.receive
 class Translations$transfer$receive$en {
 	Translations$transfer$receive$en.internal(this._root);
@@ -3553,6 +3714,72 @@ extension on Translations {
 			'xtream.connected.available' => 'Channels',
 			'xtream.connected.next' => 'That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.',
 			'xtream.connected.choose' => 'Choose what you watch',
+			'xtream.regions.uk' => 'United Kingdom',
+			'xtream.regions.us' => 'USA',
+			'xtream.regions.ca' => 'Canada',
+			'xtream.regions.au' => 'Australia',
+			'xtream.regions.en' => 'English',
+			'xtream.regions.de' => 'Germany',
+			'xtream.regions.at' => 'Austria',
+			'xtream.regions.ch' => 'Switzerland',
+			'xtream.regions.fr' => 'France',
+			'xtream.regions.be' => 'Belgium',
+			'xtream.regions.nl' => 'Netherlands',
+			'xtream.regions.es' => 'Spain',
+			'xtream.regions.latam' => 'Latin America',
+			'xtream.regions.pt' => 'Portugal',
+			'xtream.regions.br' => 'Brazil',
+			'xtream.regions.it' => 'Italy',
+			'xtream.regions.pl' => 'Poland',
+			'xtream.regions.tr' => 'Turkey',
+			'xtream.regions.gr' => 'Greece',
+			'xtream.regions.ro' => 'Romania',
+			'xtream.regions.ru' => 'Russia',
+			'xtream.regions.ar' => 'Arabic',
+			'xtream.regions.in' => 'India',
+			'xtream.regions.pk' => 'Pakistan',
+			'xtream.regions.af' => 'Africa',
+			'xtream.regions.jp' => 'Japan',
+			'xtream.regions.kr' => 'Korea',
+			'xtream.regions.cn' => 'China',
+			'xtream.kinds.news' => 'News',
+			'xtream.kinds.sport' => 'Sport',
+			'xtream.kinds.kids' => 'Kids',
+			'xtream.kinds.films' => 'Films',
+			'xtream.kinds.docs' => 'Documentary',
+			'xtream.kinds.music' => 'Music',
+			'xtream.kinds.entertainment' => 'Entertainment',
+			'xtream.watch.title' => 'What do you watch?',
+			'xtream.watch.sub' => 'Pick a few. You can change this any time.',
+			'xtream.watch.regions' => 'Countries and languages',
+			'xtream.watch.kinds' => 'Kinds of channel',
+			'xtream.watch.more' => ({required Object n}) => 'Show all ${n}',
+			'xtream.watch.fewer' => 'Show fewer',
+			'xtream.watch.count' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} category chosen', other: '${n} categories chosen', ), 
+			'xtream.watch.none' => 'Pick a country, a language or a kind of channel.',
+			'xtream.watch.unplaced' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Sorted by the names your provider uses. ${n} category fits none of these: find it in Fine-tune.', other: 'Sorted by the names your provider uses. ${n} categories fit none of these: find them in Fine-tune.', ), 
+			'xtream.watch.fineTune' => 'Fine-tune',
+			'xtream.watch.chips' => 'Back to the choices',
+			'xtream.watch.replaceTitle' => 'Replace your hand-picked choice?',
+			'xtream.watch.replaceBody' => 'You changed the choice by hand in Fine-tune. This replaces it with what these choices reach.',
+			'xtream.watch.replace' => 'Replace',
+			'xtream.watch.keep' => 'Keep mine',
+			'xtream.watch.next' => 'Continue',
+			'xtream.review.title' => 'Here\'s what you\'ll see',
+			'xtream.review.live' => 'Live TV',
+			'xtream.review.movies' => 'Movies',
+			'xtream.review.series' => 'Series',
+			'xtream.review.chosen' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} category', other: '${n} categories', ), 
+			'xtream.review.notAdded' => 'Not added yet',
+			'xtream.review.add' => 'Add',
+			'xtream.review.change' => 'Change',
+			'xtream.review.neverShow' => 'Never show',
+			'xtream.review.neverShowSub' => 'Hide anything with these words',
+			'xtream.review.neverShowNone' => 'Nothing hidden',
+			'xtream.review.edit' => 'Edit',
+			'xtream.review.later' => 'Change any of this later from Settings, Advanced sources.',
+			'xtream.review.open' => 'Open Live TV',
+			'xtream.review.link' => 'What you see',
 			'transfer.noNetwork' => 'This device is not on a Wi-Fi or Ethernet network. Connect it to the same network as the other device and try again.',
 			'transfer.cannotListen' => ({required Object error}) => 'Could not start listening: ${error}',
 			'transfer.expired' => 'That code has expired. Start again for a new one.',

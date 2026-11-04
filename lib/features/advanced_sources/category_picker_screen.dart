@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_tokens.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/xtream/category_facets.dart';
 import '../../data/xtream/category_groups.dart';
 import '../../data/xtream/hidden_words.dart';
 import '../../data/xtream/xtream_account_store.dart';
@@ -12,6 +13,7 @@ import '../../data/xtream/xtream_client.dart';
 import 'channel_picker_screen.dart';
 import 'hidden_words_controller.dart';
 import 'hidden_words_sheet.dart';
+import 'setup_steps.dart';
 import 'xtream_controller.dart';
 import '../../i18n/strings.g.dart';
 
@@ -33,15 +35,31 @@ import '../../i18n/strings.g.dart';
 /// groups, found from the names (see [groupCategories]), each of which opens to
 /// its own categories, with a switch to show only what is already chosen. Typing
 /// a search still works across everything.
+///
+/// **It opens on "What do you watch?" (2026-11-03).** Chips for countries and
+/// languages, and for live channels kinds of channel, set the selection in a
+/// few taps ([categoriesForFacets]); the group list above is still all here,
+/// one press away as Fine-tune. Until then setting up a subscription ended
+/// on hundreds of categories with Pattern and Hide words beside them, which is
+/// where it read as a tool for experts. The chips are a bulk selector in the
+/// §4.1 sense: they set ticks the person can see and change, nothing is
+/// chosen until one is tapped, and Save is still what commits. They open
+/// first in setup and when nothing is chosen yet; someone coming back to
+/// adjust a choice they made by hand lands on the list, as before.
 class CategoryPickerScreen extends ConsumerStatefulWidget {
   const CategoryPickerScreen({
     super.key,
     required this.accountId,
     required this.catalogue,
+    this.setup = false,
   });
 
   final String accountId;
   final XtreamCatalogue catalogue;
+
+  /// Step 3 of setting up a subscription ([SetupSteps]): opens on "What do
+  /// you watch?" whatever is already chosen, and Save goes on to the review.
+  final bool setup;
 
   @override
   ConsumerState<CategoryPickerScreen> createState() =>
@@ -71,6 +89,30 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
 
   /// Said once after adding a word, when it un-ticked something.
   String? _note;
+
+  /// On the group list (and everything under it) rather than the chips.
+  late bool _fineTune;
+
+  /// Whether the screen opened on the chips, so Back from Fine-tune goes back
+  /// to them rather than leaving.
+  late final bool _chipsFirst;
+
+  /// The chips that are on. Region and kind codes from category_facets.dart.
+  final Set<String> _regions = {};
+  final Set<String> _kinds = {};
+  bool _allRegions = false;
+
+  /// Set when the selection is changed by hand in Fine-tune, so a chip tapped
+  /// afterwards asks before replacing it.
+  bool _handEdited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final chosen = _account?.categoriesFor(widget.catalogue) ?? const [];
+    _chipsFirst = widget.setup || chosen.isEmpty;
+    _fineTune = !_chipsFirst;
+  }
 
   // Grouping is not free on hundreds of names, so it is done once per list.
   List<XtreamCategory>? _groupedFrom;
@@ -140,6 +182,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     }
     setState(() {
       _selected = next;
+      _handEdited = true;
       _patternError = hits == 0 ? tr.xtream.picker.patternNone : null;
     });
   }
@@ -175,6 +218,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
       }
       _picks = picks;
       _selected = {..._current, category.id};
+      _handEdited = true;
     });
   }
 
@@ -182,6 +226,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     final next = {..._current};
     if (!next.add(category.id)) next.remove(category.id);
     _selected = next;
+    _handEdited = true;
   });
 
   void _setAll(Iterable<XtreamCategory> categories, {required bool on}) =>
@@ -195,7 +240,74 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           }
         }
         _selected = next;
+        _handEdited = true;
       });
+
+  /// Turns a chip on or off and sets the selection to what the chips reach.
+  /// After a change by hand in Fine-tune it asks first, since the chips
+  /// cannot know about a category ticked or unticked one at a time.
+  Future<void> _toggleFacet(
+    Set<String> chips,
+    String code,
+    List<XtreamCategory> visible,
+  ) async {
+    if (_handEdited) {
+      final replace = await _confirmReplace();
+      if (replace != true || !mounted) return;
+    }
+    setState(() {
+      if (!chips.add(code)) chips.remove(code);
+      final reached = categoriesForFacets<XtreamCategory>(
+        visible,
+        (c) => c.name,
+        regionCodes: _regions,
+        kindCodes: _isLive ? _kinds : const {},
+      );
+      _selected = {for (final c in reached) c.id};
+      _handEdited = false;
+    });
+  }
+
+  Future<bool?> _confirmReplace() {
+    final t = RelayTheme.of(context);
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(
+          tr.xtream.watch.replaceTitle,
+          style: TextStyle(
+            color: t.ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          tr.xtream.watch.replaceBody,
+          style: TextStyle(color: t.inkDim, fontSize: 14, height: 1.55),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: t.inkDim),
+            child: Text(tr.xtream.watch.replace),
+          ),
+          // Initial focus on keeping, as for the add form's discard: a
+          // second stray OK on a remote keeps the work.
+          FilledButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            style: FilledButton.styleFrom(
+              backgroundColor: t.accent,
+              foregroundColor: t.accentInk,
+            ),
+            child: Text(tr.xtream.watch.keep),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Saves the selection in the panel's own category order, with names.
   ///
@@ -231,7 +343,14 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     // Picks only for the categories kept, which `withChannelPicks` enforces.
     if (_isLive) updated = updated.withChannelPicks(_currentPicks);
     await ref.read(xtreamAccountsProvider.notifier).save(updated);
-    if (mounted) Navigator.of(context).maybePop();
+    if (!mounted) return;
+    // In setup, on to the review (step 3's end) rather than back to the
+    // Connected screen this replaced.
+    if (widget.setup) {
+      context.pushReplacement('/advanced/xtream/${account.id}/review');
+    } else {
+      Navigator.of(context).maybePop();
+    }
   }
 
   @override
@@ -255,7 +374,11 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
     // Back steps out of a group or the selected-only view before it leaves the
     // screen, so a remote's Back does not throw away a screen of choices.
     return PopScope(
-      canPop: _open == null && !_selectedOnly && _query.isEmpty,
+      canPop:
+          _open == null &&
+          !_selectedOnly &&
+          _query.isEmpty &&
+          !(_fineTune && _chipsFirst),
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         setState(() {
@@ -264,8 +387,10 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             _query = '';
           } else if (_selectedOnly) {
             _selectedOnly = false;
-          } else {
+          } else if (_open != null) {
             _open = null;
+          } else {
+            _fineTune = false;
           }
         });
       },
@@ -280,11 +405,16 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
             tr.xtream.picker.title(catalogue: widget.catalogue.label),
           ),
           actions: [
-            TextButton(
-              onPressed: () => _save(categories.value),
-              child: Text(
-                tr.xtream.picker.save,
-                style: TextStyle(color: t.accent),
+            // With a halo: without one its focus drew nothing on a TV,
+            // which the D-pad audit found once this screen was in it.
+            RelayFocusHalo(
+              borderRadius: BorderRadius.circular(10),
+              child: TextButton(
+                onPressed: () => _save(categories.value),
+                child: Text(
+                  tr.xtream.picker.save,
+                  style: TextStyle(color: t.accent),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -342,6 +472,8 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
         for (final c in list)
           if (chosen.contains(c.id)) c,
       ], empty: tr.xtream.picker.noneChosen);
+    } else if (!_fineTune) {
+      content = _facetsView(visible, chosen);
     } else if (_open != null) {
       // A big group is browsed by letter: A to Z, with a chip per letter to
       // jump to. A small one keeps the panel's order, which usually means
@@ -388,15 +520,17 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              _ModeChip(
-                label: tr.xtream.picker.chosen(n: chosen.length),
-                on: _selectedOnly,
-                onTap: () => setState(() {
-                  _selectedOnly = !_selectedOnly;
-                  _open = null;
-                }),
-              ),
+              if (_fineTune) ...[
+                const SizedBox(width: 10),
+                _ModeChip(
+                  label: tr.xtream.picker.chosen(n: chosen.length),
+                  on: _selectedOnly,
+                  onTap: () => setState(() {
+                    _selectedOnly = !_selectedOnly;
+                    _open = null;
+                  }),
+                ),
+              ],
               const SizedBox(width: 8),
               _ModeChip(
                 label: words.isEmpty
@@ -408,20 +542,247 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                   onAdded: (word) => _onWordAdded(word, list),
                 ),
               ),
-              const SizedBox(width: 8),
-              _ModeChip(
-                label: tr.xtream.picker.pattern,
-                on: _showPattern,
-                onTap: () => setState(() => _showPattern = !_showPattern),
-              ),
+              if (_fineTune) ...[
+                const SizedBox(width: 8),
+                _ModeChip(
+                  label: tr.xtream.picker.pattern,
+                  on: _showPattern,
+                  onTap: () => setState(() => _showPattern = !_showPattern),
+                ),
+              ],
             ],
           ),
         ),
         if (_note != null || hiddenCount > 0 || _showHidden)
           _hiddenNote(hiddenCount),
-        if (_showPattern) _patternRow(visible),
+        if (_showPattern && _fineTune) _patternRow(visible),
         Expanded(child: content),
+        if (_fineTune && _chipsFirst) _fineTuneFooter(chosen.length),
       ],
+    );
+  }
+
+  /// "What do you watch?": chips for where, and for live channels what kind.
+  ///
+  /// A chip is offered only when it reaches something, and shows how many
+  /// categories it would: a list of every country in the table, most of them
+  /// empty on any given subscription, would be noise. The most used regions
+  /// come first, ten of them until *Show all*, since a panel with 40 places
+  /// on it would otherwise put the kinds below the fold on a TV.
+  Widget _facetsView(List<XtreamCategory> visible, Set<String> chosen) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+
+    final regionCounts = <String, int>{};
+    var unplaced = 0;
+    for (final c in visible) {
+      final r = regionOf(c.name);
+      if (r == null) {
+        unplaced++;
+      } else {
+        regionCounts[r] = (regionCounts[r] ?? 0) + 1;
+      }
+    }
+    final regionOrder = [...regions.where(regionCounts.containsKey)]
+      ..sort((a, b) => regionCounts[b]!.compareTo(regionCounts[a]!));
+    // Chosen chips stay in view even past the first ten.
+    final shownRegions = _allRegions || regionOrder.length <= 12
+        ? regionOrder
+        : [
+            ...regionOrder.take(10),
+            ...regionOrder.skip(10).where(_regions.contains),
+          ];
+
+    // Kinds count within the chosen places, so "Sport 5" means five of the
+    // places picked, which is what tapping it would add.
+    final inPlaces = _regions.isEmpty
+        ? visible
+        : [
+            for (final c in visible)
+              if (_regions.contains(regionOf(c.name))) c,
+          ];
+    final kindCounts = <String, int>{};
+    if (_isLive) {
+      for (final c in inPlaces) {
+        for (final k in kindsOf(c.name)) {
+          kindCounts[k] = (kindCounts[k] ?? 0) + 1;
+        }
+      }
+    }
+
+    Widget heading(String text) => Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 10),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          color: t.inkDim,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: RelayLayout.pagePadding(f).copyWith(top: 4, bottom: 20),
+            children: [
+              if (widget.setup) ...[
+                const SetupSteps(step: 3),
+                const SizedBox(height: 16),
+              ],
+              Text(
+                tr.xtream.watch.title,
+                style: TextStyle(
+                  color: t.ink,
+                  fontSize: RelayLayout.bodySize(f) + 7,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                tr.xtream.watch.sub,
+                style: TextStyle(color: t.inkDim, fontSize: 13.5, height: 1.5),
+              ),
+              if (regionOrder.isNotEmpty) ...[
+                heading(tr.xtream.watch.regions),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final code in shownRegions)
+                      _FacetChip(
+                        label: tr.xtream.regions[code] ?? code,
+                        count: regionCounts[code]!,
+                        on: _regions.contains(code),
+                        onTap: () => _toggleFacet(_regions, code, visible),
+                      ),
+                    if (regionOrder.length > 12)
+                      _ModeChip(
+                        label: _allRegions
+                            ? tr.xtream.watch.fewer
+                            : tr.xtream.watch.more(n: regionOrder.length),
+                        on: false,
+                        onTap: () => setState(() => _allRegions = !_allRegions),
+                      ),
+                  ],
+                ),
+              ],
+              if (kindCounts.isNotEmpty) ...[
+                heading(tr.xtream.watch.kinds),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final code in kinds.where(kindCounts.containsKey))
+                      _FacetChip(
+                        label: tr.xtream.kinds[code] ?? code,
+                        count: kindCounts[code]!,
+                        on: _kinds.contains(code),
+                        onTap: () => _toggleFacet(_kinds, code, visible),
+                      ),
+                  ],
+                ),
+              ],
+              if (unplaced > 0) ...[
+                const SizedBox(height: 18),
+                Text(
+                  tr.xtream.watch.unplaced(n: unplaced),
+                  style: TextStyle(
+                    color: t.inkDim,
+                    fontSize: 12.5,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: t.surface,
+            border: Border(top: BorderSide(color: t.line)),
+          ),
+          padding: RelayLayout.pagePadding(f).copyWith(top: 12, bottom: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  chosen.isEmpty
+                      ? tr.xtream.watch.none
+                      : tr.xtream.watch.count(n: chosen.length),
+                  style: TextStyle(color: t.ink, fontSize: 13.5, height: 1.4),
+                ),
+              ),
+              const SizedBox(width: 10),
+              RelayFocusHalo(
+                borderRadius: BorderRadius.circular(10),
+                child: RelayTextButton(
+                  label: tr.xtream.watch.fineTune,
+                  onPressed: () => setState(() => _fineTune = true),
+                ),
+              ),
+              const SizedBox(width: 6),
+              RelayButton(
+                label: tr.xtream.watch.next,
+                onPressed: () => _save(
+                  ref
+                      .read(
+                        xtreamCategoriesProvider((_account!, widget.catalogue)),
+                      )
+                      .value,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Under Fine-tune, when the screen opened on the chips: the way back to
+  /// them, and the same Continue, so leaving Fine-tune is not only Back.
+  Widget _fineTuneFooter(int chosenCount) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border(top: BorderSide(color: t.line)),
+      ),
+      padding: RelayLayout.pagePadding(f).copyWith(top: 10, bottom: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              tr.xtream.watch.count(n: chosenCount),
+              style: TextStyle(color: t.ink, fontSize: 13.5),
+            ),
+          ),
+          RelayFocusHalo(
+            borderRadius: BorderRadius.circular(10),
+            child: RelayTextButton(
+              label: tr.xtream.watch.chips,
+              onPressed: () => setState(() {
+                _fineTune = false;
+                _open = null;
+                _selectedOnly = false;
+              }),
+            ),
+          ),
+          const SizedBox(width: 6),
+          RelayButton(
+            label: tr.xtream.watch.next,
+            onPressed: () => _save(
+              ref
+                  .read(xtreamCategoriesProvider((_account!, widget.catalogue)))
+                  .value,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -504,10 +865,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
                     onTap: onTap,
                     controller: _pattern,
                     style: TextStyle(color: t.ink),
-                    decoration: _decoration(
-                      t,
-                      tr.xtream.picker.patternHint,
-                    ),
+                    decoration: _decoration(t, tr.xtream.picker.patternHint),
                   ),
                 ),
               ),
@@ -667,9 +1025,7 @@ class _CategoryPickerScreenState extends ConsumerState<CategoryPickerScreen> {
           name: shorten ? categoryLabelInGroup(c.name) : c.name,
           checked: chosen.contains(c.id),
           onTap: () => _toggle(c),
-          note: picked > 0
-              ? tr.xtream.picker.channelsPicked(n: picked)
-              : null,
+          note: picked > 0 ? tr.xtream.picker.channelsPicked(n: picked) : null,
           onChannels: _isLive ? () => _pickChannels(c) : null,
         );
       },
@@ -747,6 +1103,69 @@ class _ModeChip extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A "What do you watch?" chip: a label, how many categories it reaches, and
+/// on or off. Larger than [_ModeChip] because it is the main control of its
+/// screen, and on a TV it is read from across a room.
+class _FacetChip extends StatelessWidget {
+  const _FacetChip({
+    required this.label,
+    required this.count,
+    required this.on,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    final size = f == RelayFormFactor.tv ? 17.0 : 14.0;
+    return Semantics(
+      selected: on,
+      child: RelayTappable(
+        borderRadius: 22,
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: f == RelayFormFactor.tv ? 12 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: on ? t.accent : t.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: on ? t.accent : t.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: on ? t.accentInk : t.ink,
+                  fontSize: size,
+                  fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                '$count',
+                style: TextStyle(
+                  color: on ? t.accentInk.withValues(alpha: 0.7) : t.inkDim,
+                  fontSize: size - 2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

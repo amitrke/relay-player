@@ -709,6 +709,89 @@
       "available": "Chaînes",
       "next": "C'est plus que ce que l'on regarde, alors vous choisissez ensuite les pays et types de chaînes que vous voulez. Seuls ceux-là sont chargés.",
       "choose": "Choisir ce que vous regardez"
+    },
+    "regions(map)": {
+      "uk": "Royaume-Uni",
+      "us": "États-Unis",
+      "ca": "Canada",
+      "au": "Australie",
+      "en": "Anglais",
+      "de": "Allemagne",
+      "at": "Autriche",
+      "ch": "Suisse",
+      "fr": "France",
+      "be": "Belgique",
+      "nl": "Pays-Bas",
+      "es": "Espagne",
+      "latam": "Amérique latine",
+      "pt": "Portugal",
+      "br": "Brésil",
+      "it": "Italie",
+      "pl": "Pologne",
+      "tr": "Turquie",
+      "gr": "Grèce",
+      "ro": "Roumanie",
+      "ru": "Russie",
+      "ar": "Arabe",
+      "in": "Inde",
+      "pk": "Pakistan",
+      "af": "Afrique",
+      "jp": "Japon",
+      "kr": "Corée",
+      "cn": "Chine"
+    },
+    "kinds(map)": {
+      "news": "Info",
+      "sport": "Sport",
+      "kids": "Jeunesse",
+      "films": "Films",
+      "docs": "Documentaires",
+      "music": "Musique",
+      "entertainment": "Divertissement"
+    },
+    "watch": {
+      "title": "Que regardez-vous ?",
+      "sub": "Choisissez-en quelques-uns. Vous pourrez changer à tout moment.",
+      "regions": "Pays et langues",
+      "kinds": "Types de chaîne",
+      "more": "Tout afficher ({n})",
+      "fewer": "Afficher moins",
+      "count": {
+        "one": "{n} catégorie choisie",
+        "other": "{n} catégories choisies"
+      },
+      "none": "Choisissez un pays, une langue ou un type de chaîne.",
+      "unplaced": {
+        "one": "Classé d'après les noms de votre fournisseur. {n} catégorie ne correspond à aucun : retrouvez-la dans Affiner.",
+        "other": "Classé d'après les noms de votre fournisseur. {n} catégories ne correspondent à aucun : retrouvez-les dans Affiner."
+      },
+      "fineTune": "Affiner",
+      "chips": "Retour aux choix",
+      "replaceTitle": "Remplacer votre choix fait à la main ?",
+      "replaceBody": "Vous avez modifié le choix à la main dans Affiner. Ceci le remplace par ce que couvrent ces choix.",
+      "replace": "Remplacer",
+      "keep": "Garder le mien",
+      "next": "Continuer"
+    },
+    "review": {
+      "title": "Voici ce que vous verrez",
+      "live": "TV en direct",
+      "movies": "Films",
+      "series": "Séries",
+      "chosen": {
+        "one": "{n} catégorie",
+        "other": "{n} catégories"
+      },
+      "notAdded": "Pas encore ajouté",
+      "add": "Ajouter",
+      "change": "Modifier",
+      "neverShow": "Ne jamais afficher",
+      "neverShowSub": "Masquer tout ce qui contient ces mots",
+      "neverShowNone": "Rien de masqué",
+      "edit": "Modifier",
+      "later": "Vous pourrez tout modifier plus tard dans Réglages, Sources avancées.",
+      "open": "Ouvrir la TV en direct",
+      "link": "Ce que vous voyez"
     }
   },
   "transfer": {

@@ -709,6 +709,89 @@
       "available": "Canales",
       "next": "Es más de lo que nadie ve, así que ahora eliges los países y tipos de canal que quieres. Solo se cargan esos.",
       "choose": "Elegir lo que ves"
+    },
+    "regions(map)": {
+      "uk": "Reino Unido",
+      "us": "EE. UU.",
+      "ca": "Canadá",
+      "au": "Australia",
+      "en": "Inglés",
+      "de": "Alemania",
+      "at": "Austria",
+      "ch": "Suiza",
+      "fr": "Francia",
+      "be": "Bélgica",
+      "nl": "Países Bajos",
+      "es": "España",
+      "latam": "Latinoamérica",
+      "pt": "Portugal",
+      "br": "Brasil",
+      "it": "Italia",
+      "pl": "Polonia",
+      "tr": "Turquía",
+      "gr": "Grecia",
+      "ro": "Rumanía",
+      "ru": "Rusia",
+      "ar": "Árabe",
+      "in": "India",
+      "pk": "Pakistán",
+      "af": "África",
+      "jp": "Japón",
+      "kr": "Corea",
+      "cn": "China"
+    },
+    "kinds(map)": {
+      "news": "Noticias",
+      "sport": "Deportes",
+      "kids": "Infantil",
+      "films": "Películas",
+      "docs": "Documentales",
+      "music": "Música",
+      "entertainment": "Entretenimiento"
+    },
+    "watch": {
+      "title": "¿Qué ves?",
+      "sub": "Elige unos cuantos. Puedes cambiarlo cuando quieras.",
+      "regions": "Países e idiomas",
+      "kinds": "Tipos de canal",
+      "more": "Ver los {n}",
+      "fewer": "Ver menos",
+      "count": {
+        "one": "{n} categoría elegida",
+        "other": "{n} categorías elegidas"
+      },
+      "none": "Elige un país, un idioma o un tipo de canal.",
+      "unplaced": {
+        "one": "Ordenado por los nombres que usa tu proveedor. {n} categoría no encaja en ninguno: la encontrarás en Ajuste fino.",
+        "other": "Ordenado por los nombres que usa tu proveedor. {n} categorías no encajan en ninguno: las encontrarás en Ajuste fino."
+      },
+      "fineTune": "Ajuste fino",
+      "chips": "Volver a las opciones",
+      "replaceTitle": "¿Sustituir tu selección hecha a mano?",
+      "replaceBody": "Cambiaste la selección a mano en Ajuste fino. Esto la sustituye por lo que abarcan estas opciones.",
+      "replace": "Sustituir",
+      "keep": "Mantener la mía",
+      "next": "Continuar"
+    },
+    "review": {
+      "title": "Esto es lo que verás",
+      "live": "TV en directo",
+      "movies": "Películas",
+      "series": "Series",
+      "chosen": {
+        "one": "{n} categoría",
+        "other": "{n} categorías"
+      },
+      "notAdded": "Aún no añadido",
+      "add": "Añadir",
+      "change": "Cambiar",
+      "neverShow": "No mostrar nunca",
+      "neverShowSub": "Ocultar todo lo que tenga estas palabras",
+      "neverShowNone": "Nada oculto",
+      "edit": "Editar",
+      "later": "Puedes cambiar todo esto más tarde en Ajustes, Fuentes avanzadas.",
+      "open": "Abrir TV en directo",
+      "link": "Lo que ves"
     }
   },
   "transfer": {

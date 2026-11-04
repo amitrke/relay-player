@@ -91,6 +91,25 @@ class XtreamAccountsPane extends ConsumerWidget {
                 ),
                 Wrap(
                   children: [
+                    // First, and the one to use: Live TV, Movies, Series and
+                    // the hidden words on one page (setup_review_screen.dart).
+                    // The three below go straight to one catalogue, as before.
+                    RelayFocusHalo(
+                      borderRadius: BorderRadius.circular(10),
+                      child: TextButton(
+                        onPressed: () => context.push(
+                          '/advanced/xtream/${account.id}/review',
+                        ),
+                        child: Text(
+                          tr.xtream.review.link,
+                          style: TextStyle(
+                            color: t.accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                     for (final c in XtreamCatalogue.values)
                       RelayFocusHalo(
                         borderRadius: BorderRadius.circular(10),
