@@ -74,6 +74,50 @@ The copy deliberately omits things that exist in the code but are not ready:
   and skipped the compaction, and the stale records would have survived
   forever. The pass is now driven by a marker recording whether it has *run*.
 
+## Search keywords, 2026-11-07
+
+Play has no keyword field; it ranks on the title, the short description and
+the full description. Until this date the title was the bare brand ("Subnext
+Player", 14 of 30 characters), and the description never said "video player"
+or "media player". Searching Play (US) for *smb video player*, *nas video
+player* and *plex player* did not show the app in any of them, and the apps
+that lead the niche searches name the use in their title (NAS, SMB, WebDAV).
+Searching *subnext* put two unrelated apps with similar names above it.
+
+What changed, and the lines it was held to:
+
+- **Title: "Subnext Player: NAS & SMB".** A descriptor of what the app does,
+  not of whose servers it talks to. No third-party brand goes in the title:
+  Play's metadata policy is strictest there, and constraint 1 above is easier
+  to defend when the most prominent text names only source *types*. Plex is
+  named in the short and full description, nominatively, as before.
+- **Short description** now opens with "Video player" and lists the source
+  types, 76 of 80 characters.
+- **Full description** says "video player" and "media player" once each, in
+  sentences that describe the app, and spells out SMB as Samba and Windows
+  file sharing, which is how many people search for it. No repeated keyword
+  lists: Play treats those as spam, and they read as such to a reviewer.
+
+Deliberately left out:
+
+- **Jellyfin and Emby**, although they ship (1.0.6) and "jellyfin player" is a
+  real search term. MANUAL_TESTING.md has them as never signed in to a real
+  server, so nobody has seen a film play through them. Constraint 3 is about
+  exactly this. Add them to the short and full description once that row has
+  a real playback on it; they would also fit the short description at 78
+  characters ("Video player for your Plex, Jellyfin or Emby server, NAS, SMB
+  share and files.").
+- **File formats** (MKV, MP4 and so on). Probably true through media_kit, but
+  no format claim has been checked on hardware.
+- **IPTV, TV and subtitle terms**, for constraints 2 and 3 and the honesty notes
+  above.
+
+Not yet known: whether any of this moves ranking. At 1+ installs, install
+velocity and ratings likely outweigh text. Once there is traffic, Play
+Console's search terms report (Acquisition) shows real queries, and a store
+listing experiment can test the title against the old one. Record either
+result here.
+
 ## Drafted console answers
 
 Read off the console on 2026-09-13. **These are drafts for you to review and

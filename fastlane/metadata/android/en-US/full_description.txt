@@ -1,4 +1,4 @@
-Subnext Player plays media from sources you connect yourself. It hosts no content, ships no catalogue, and has no server of its own.
+Subnext Player is a video player for media you already have: a Plex server, a NAS or PC on your network, and video files on your phone or tablet. It hosts no content, ships no catalogue, and has no server of its own.
 
 CONNECT YOUR OWN SOURCES
 
@@ -11,8 +11,8 @@ Play video already on your phone or tablet. Subnext Player asks only for scoped 
 Folders you choose
 Pick a folder and it stays available, including after a restart. Browse it and play from it.
 
-Network shares
-Connect an SMB share on a NAS or a PC and browse it like a folder.
+Network shares (SMB / Samba)
+Connect an SMB share on a NAS, a home server, or a Windows PC with file sharing turned on, and browse it like a folder. Play straight from the share, with nothing to copy to the phone first.
 
 BUILT AROUND NOT HAVING A BACKEND
 
@@ -22,7 +22,7 @@ EVERYDAY THINGS THAT SHOULD JUST WORK
 
 Continue watching, picking up where you stopped
 Favourites across every source you have connected
-Search that covers all of your sources at once
+One media player for all of them, with search that covers every source at once
 Five themes, including one that follows your system light and dark setting, plus an accent colour
 
 OPEN SOURCE

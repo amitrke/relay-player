@@ -1,1 +1,1 @@
-Play your own media from Plex, a NAS, or files on your device.
+Video player for your Plex server, NAS, SMB shares and files on your device.
