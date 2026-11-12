@@ -2162,6 +2162,9 @@ Each of these looks locally reasonable and each would spend something the no-bac
 
 The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does. **Moving settings between the user's own devices (§17) passes that test: it goes device to device on the local network, and we run nothing.** It is not the cross-device sync this section rules out, because it is a one-off copy the user starts on both screens, with nothing kept anywhere afterwards.
 
+
+**Tested a second time and withdrawn, 2026-11-12: a problem-report relay.** The Admiral AVI (MANUAL_TESTING.md §4) took a real iPad, a Pixel, Xcode signing and an Android SDK to diagnose, because the user's report was a screenshot and a sentence. A one-tap report needed somewhere to land without an account, which a public issue tracker cannot be, so a small Cloudflare Worker was proposed, argued against this section, built (diagnostics-only schema, redaction, rate and hourly ceilings, repeats folded into one issue, a deploy script), deployed and run against the real services: it filed a diagnostics-only issue and folded a repeat into it. **The owner then withdrew it the same day**, before any release carried it, because the cost is not the code: it ends "no backend" in the privacy policy and "no data collected" on both store listings (Play Data Safety would have declared Diagnostics, probably as *shared*, since GitHub publishes the issue, and Apple's labels likewise), for a convenience feature. The privacy posture is worth more than the faster diagnosis, and the bug that prompted it was found without it. Nothing was published: the store forms were never changed, the Worker and its label were deleted, and the repository secret was removed. **The working relay is in git history** (`ac0074a`, reverted by `761ad46`) if this is ever reconsidered; it would have to be argued against this note, not asked for again as a small convenience. What is still true if it comes back: a key shipped in the app protects nothing (the repository and binaries are public), a Python client is blocked by Cloudflare's bot filter (`error code: 1010`) unless it sets its own User-Agent, and a report the person can see and send themselves, such as Copy, collects nothing and is a different, much smaller proposal.
+
 ---
 
 ## 17. Moving settings to another device
@@ -2941,8 +2944,8 @@ back silently or retrying.
   out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
   the MVP contains no Firebase at all. **The Remote Config kill switch was
   dropped, 2026-10-06** (§16.1, #16 closed). Everything else backend-shaped
-  stays out; §16.3 is the standing answer. **Tested once already,
-  2026-09-13:** issue #6 asked for Firebase Analytics alongside Crashlytics,
+  stays out; §16.3 is the standing answer. **Tested twice already,
+  2026-09-13 and 2026-11-12 (§16.3, the report relay):** issue #6 asked for Firebase Analytics alongside Crashlytics,
   and Analytics was dropped rather than §16.3 revised. #6 is now Crashlytics
   only. A future case for analytics has to be argued against §16.3 here first,
   not in an issue.
