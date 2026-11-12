@@ -53,6 +53,27 @@ VideoControllerConfiguration videoConfigurationFor(VideoOutput output) =>
       VideoOutput.compatible => const VideoControllerConfiguration(),
     };
 
+/// The codecs mpv may hardware-decode on Android: media_kit's own list
+/// (`h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1`) **minus `mpeg4`**.
+///
+/// MPEG-4 part 2 (DivX/Xvid, usually in AVI) froze the picture on a Pixel 10a
+/// (Android 17), 2026-11-12, on a Plex film that is an AVI with MPEG-4 video
+/// and AC-3 audio. The container carries no video timestamps, and mpv logged
+/// "mpeg4_mediacodec: Input packet is missing PTS" for every packet. After each
+/// seek, resume included, MediaCodec's output timestamps restarted near zero:
+/// "Invalid video timestamp: 848.43 -> -0.04", then "Audio/Video
+/// desynchronisation detected!". The audio played on while the picture stood
+/// still. Software decoding rebuilds the timestamps itself and played the same
+/// file correctly, on this Pixel and on a real iPad (where mpv's own
+/// whitelist leaves MPEG-4 to software already). Cheap to decode in software,
+/// since MPEG-4 part 2 is old and is seen at DVD-era resolutions.
+///
+/// On the direct path (hwdec=mediacodec, no software path) mpv now declines
+/// hardware for such a file, `hwdec-current` comes back empty, and
+/// [needsCompatibleOutput] reopens it on the compatible path about a second
+/// after it starts. Seen working on the Pixel, same day.
+const androidHardwareCodecs = 'h264,hevc,mpeg2video,vp8,vp9,av1';
+
 /// Whether a title playing on the direct path has to be reopened on the
 /// compatible one.
 ///

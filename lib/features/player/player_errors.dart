@@ -37,4 +37,20 @@ bool isFatalPlayerError(String message) {
 const _nonFatal = [
   // Audio output could not start. mpv plays the video without sound.
   'Could not open/initialize audio device',
+
+  // One audio packet could not be decoded. Seen on a real iPad on 2026-11-12:
+  // a Plex film that is an AVI with MPEG-4 video and AC-3 5.1 audio, resumed
+  // mid-film. mpv seeked to the resume point, showed the first frame, logged
+  // this once, and its very next line was "playback restart complete ...
+  // audio=playing, video=playing", with the sound audible behind the error
+  // overlay this screen drew. The likely cause is that a seek in an AVI can
+  // land inside an AC-3 frame, so the decoder rejects the first packet and
+  // then resyncs (not established beyond that one log). Every resume seeks,
+  // which is why it hit only some files. mpv logs it at error level and
+  // carries on, so it is "continuing without this one packet".
+  //
+  // Deliberately not 'Could not open codec': that message (reported from
+  // Android, same film) can also mean a track that never decodes at all, and
+  // for video that is a black screen. It stays fatal until its cause is seen.
+  'Error decoding audio',
 ];

@@ -17,6 +17,19 @@ void main() {
     );
   });
 
+  test('one undecodable audio packet is not fatal', () {
+    // Exact text from a real iPad, 2026-11-12: an AVI with AC-3 audio, resumed
+    // mid-film. mpv's next line was "playback restart complete ...
+    // audio=playing, video=playing".
+    expect(isFatalPlayerError('Error decoding audio.'), isFalse);
+  });
+
+  test('a codec that will not open is still fatal', () {
+    // Reported from Android on the same film. Kept fatal on purpose: for a
+    // video track this is a black screen, and its cause has not been seen.
+    expect(isFatalPlayerError('Could not open codec.'), isTrue);
+  });
+
   test('real failures are still fatal', () {
     for (final message in [
       'Failed to open https://<panel-host>/movie/1.mkv.',
