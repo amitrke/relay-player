@@ -115,47 +115,6 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   @override
-  Future<PlaybackDiagnostics> diagnostics() async {
-    final native = _player.platform as NativePlayer;
-    Future<String?> prop(String name) async {
-      try {
-        final value = (await native.getProperty(name)).trim();
-        return value.isEmpty ? null : value;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    final tracks = _player.state.tracks;
-    final selected = _player.state.track;
-    VideoTrack? video;
-    for (final t in tracks.video) {
-      if (!isRealTrackId(t.id)) continue;
-      video ??= t;
-      if (t.id == selected.video.id) video = t;
-    }
-    AudioTrack? audio;
-    for (final t in tracks.audio) {
-      if (!isRealTrackId(t.id)) continue;
-      audio ??= t;
-      if (t.id == selected.audio.id) audio = t;
-    }
-
-    // mpv's `hwdec-current` is "no" (or empty) for software decoding.
-    final hw = await prop('hwdec-current');
-    return PlaybackDiagnostics(
-      container: await prop('file-format'),
-      videoCodec: video?.codec,
-      audioCodec: audio?.codec,
-      audioChannels: audio?.channelscount,
-      decoder: hw == null || hw == 'no'
-          ? (video == null ? 'unknown' : 'software')
-          : 'hardware',
-      output: _output.name,
-    );
-  }
-
-  @override
   Stream<Duration> get positionStream => _player.stream.position;
   @override
   Duration get position => _player.state.position;
