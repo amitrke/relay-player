@@ -34,6 +34,15 @@ void main() {
       expect(regionOf('Tamil Movies'), 'in');
     });
 
+    test('a code longer than four letters is still a code', () {
+      // A length limit once left the table's own LATAM unreachable.
+      expect(regionOf('LATAM | Deportes'), 'latam');
+      expect(regionOf('LATIN | Sports'), 'latam');
+      expect(regionOf('SPORTS | LATAM'), 'latam');
+      // Capitals alone do not make a code: it has to be in the table.
+      expect(regionOf('MUSIC | Hits'), isNull);
+    });
+
     test('a name that says no place gives none', () {
       for (final name in ['24/7 Classics', 'BOLLYWOOD (2016-2018)', 'Music']) {
         expect(regionOf(name), isNull, reason: name);
@@ -50,6 +59,16 @@ void main() {
       // Not a word that merely contains one.
       expect(kindsOf('Newsroom Classics'), isEmpty);
       expect(kindsOf('Sportsbar Live'), isEmpty);
+    });
+
+    test('a word spelled with its accents is the same word', () {
+      expect(kindsOf('FR | Actualités'), {'news'});
+      expect(kindsOf('ES | Películas'), {'films'});
+      expect(kindsOf('ES | Fútbol'), {'sport'});
+      expect(kindsOf('DE | Fußball'), {'sport'});
+      expect(kindsOf('ES | MÚSICA'), {'music'});
+      // Without them, as before.
+      expect(kindsOf('ES | Peliculas'), {'films'});
     });
   });
 

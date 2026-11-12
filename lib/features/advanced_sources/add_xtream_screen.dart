@@ -191,8 +191,9 @@ class _AddXtreamScreenState extends ConsumerState<AddXtreamScreen> {
     if (!host.contains('://')) host = 'http://$host';
     final uri = Uri.tryParse(host);
     if (uri == null) return host;
-    final port = uri.hasPort ? ':${uri.port}' : '';
-    return '${uri.scheme}://${uri.host}$port';
+    // Shared with the link reader, so an IPv6 address keeps its brackets
+    // through both (a link's host is normalised here a second time).
+    return ProviderLink.originOf(uri);
   }
 
   /// The name when none is given. It used to be the server address, which is

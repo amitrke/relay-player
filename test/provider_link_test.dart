@@ -66,6 +66,38 @@ void main() {
     );
   });
 
+  test('a plus in a password is a plus, not a space', () {
+    // Uri.queryParameters decodes as a web form does and made this "a b",
+    // which the provider refuses as a wrong password.
+    expectLogin(
+      'http://panel-host.example:8080/get.php?username=de+mo&password=a+b&type=m3u_plus',
+      'http://panel-host.example:8080',
+      'de+mo',
+      'a+b',
+    );
+  });
+
+  test('a broken percent-escape is kept as written', () {
+    expectLogin(
+      'http://panel-host.example/get.php?username=demo&password=50%off',
+      'http://panel-host.example',
+      'demo',
+      '50%off',
+    );
+  });
+
+  test('an IPv6 address keeps its brackets', () {
+    // The documentation range (RFC 3849), not anyone's address.
+    expectLogin(
+      'http://[2001:db8::1]:8080/get.php?username=demo&password=pw',
+      'http://[2001:db8::1]:8080',
+      'demo',
+      'pw',
+    );
+    expectLogin('http://[2001:db8::1]/live/demo/pw/1234.ts',
+        'http://[2001:db8::1]', 'demo', 'pw');
+  });
+
   test('anything else is not a guess', () {
     for (final text in [
       '',

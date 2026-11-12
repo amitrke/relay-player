@@ -39,7 +39,7 @@ String? regionOf(String name) {
 
 /// The channel kinds a live category's name mentions, from [kinds].
 Set<String> kindsOf(String name) {
-  final words = _words(name).map((w) => w.toLowerCase()).toList();
+  final words = _words(name).map((w) => _unaccented(w.toLowerCase())).toList();
   final found = <String>{};
   for (final w in words) {
     final kind = _kindWords[w];
@@ -84,7 +84,11 @@ String? _regionOfPart(String part, {required bool leading}) {
   final words = _words(part);
   if (words.isEmpty) return null;
   final first = words.first;
-  final isCode = first.length <= 4 && first == first.toUpperCase();
+  // In capitals is the whole test: [_regionCodes] is what bounds a code. A
+  // length limit of four stood here too until 2026-11-12, and made the
+  // table's own five-letter LATAM unreachable, so "LATAM | Deportes" had no
+  // place.
+  final isCode = first == first.toUpperCase();
   // A code counts as the first word of the leading part, or as a later part
   // that is nothing but the code.
   if (isCode && (leading || words.length == 1)) {
@@ -108,6 +112,33 @@ List<String> _words(String text) => RegExp(r'[A-Za-zÀ-ÿ0-9]+')
     .allMatches(text)
     .map((m) => m.group(0)!)
     .toList();
+
+/// A lower-case word with its accents taken off, for [_kindWords], which is
+/// written without them. Until 2026-11-12 nothing did this, so the correct
+/// spellings ("Actualités", "Películas", "Fútbol", "Fußball") matched nothing
+/// and only a panel that dropped its accents got a kind. Only the Latin-1
+/// letters [_words] lets through; [_regionNames] lists its accented
+/// spellings itself and is not folded.
+String _unaccented(String word) {
+  final out = StringBuffer();
+  for (final rune in word.runes) {
+    final ch = String.fromCharCode(rune);
+    out.write(_accents[ch] ?? ch);
+  }
+  return out.toString();
+}
+
+const _accents = <String, String>{
+  'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+  'ç': 'c',
+  'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+  'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+  'ñ': 'n',
+  'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+  'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+  'ý': 'y', 'ÿ': 'y',
+  'ß': 'ss',
+};
 
 const _regionCodes = <String, String>{
   'UK': 'uk', 'GB': 'uk',

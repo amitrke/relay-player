@@ -53,13 +53,12 @@ class ProviderLink {
       return null;
     }
     if (uri.host.isEmpty) return null;
-    final host =
-        '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+    final host = originOf(uri);
 
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
     if (segments.isNotEmpty && _queryEndpoints.contains(segments.last)) {
-      final user = uri.queryParameters['username']?.trim() ?? '';
-      final pass = uri.queryParameters['password'] ?? '';
+      final user = _queryValue(uri, 'username')?.trim() ?? '';
+      final pass = _queryValue(uri, 'password') ?? '';
       if (user.isEmpty || pass.isEmpty) return null;
       return ProviderLink(host: host, username: user, password: pass);
     }
@@ -81,6 +80,40 @@ class ProviderLink {
         username: segments[0],
         password: segments[1],
       );
+    }
+    return null;
+  }
+
+  /// `scheme://host[:port]` of [uri], which is what the add form keeps of an
+  /// address however it arrived.
+  ///
+  /// `Uri.host` gives an IPv6 literal without its brackets, so putting it back
+  /// beside a port made `http://2001:db8::1:8080`, an address nothing can
+  /// parse (found in review, 2026-11-12). The brackets go back on.
+  static String originOf(Uri uri) {
+    final host = uri.host.contains(':') ? '[${uri.host}]' : uri.host;
+    return '${uri.scheme}://$host${uri.hasPort ? ':${uri.port}' : ''}';
+  }
+
+  /// The first [name] in the query, percent-decoded and nothing more.
+  ///
+  /// Not `Uri.queryParameters`: that decodes as a web form does, where `+` is
+  /// a space, so a password of `a+b` came out as `a b` and the provider then
+  /// answered "wrong username or password" to a correct link (found in
+  /// review, 2026-11-12). Panels write the password into these links as it
+  /// is, so a `+` is a `+`; whitespace was already taken out by [_clean], so
+  /// no link here can be using `+` to mean a space. A value with a broken
+  /// percent-escape is kept as written rather than refused.
+  static String? _queryValue(Uri uri, String name) {
+    for (final pair in uri.query.split('&')) {
+      final eq = pair.indexOf('=');
+      if (eq < 0 || pair.substring(0, eq) != name) continue;
+      final raw = pair.substring(eq + 1);
+      try {
+        return Uri.decodeComponent(raw);
+      } on ArgumentError {
+        return raw;
+      }
     }
     return null;
   }
