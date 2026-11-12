@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/redact.dart';
@@ -25,6 +27,9 @@ import 'engine/playback_engine.dart';
 import 'playback_focus.dart';
 import 'playback_prefs.dart';
 import 'player_controls.dart';
+import 'problem_report.dart';
+import 'problem_report_sheet.dart';
+import 'report_sender.dart';
 import 'up_next.dart';
 import '../../i18n/strings.g.dart';
 import '../accounts/media_servers.dart';
@@ -1023,6 +1028,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  /// Builds the report for the error on screen and shows it for the person to
+  /// read. Sends nothing by itself (architecture.md section 16.4).
+  Future<void> _reportProblem() async {
+    final diagnostics = await _engine.diagnostics();
+    final info = await PackageInfo.fromPlatform();
+    final report = ProblemReport(
+      error: _error ?? '',
+      diagnostics: diagnostics,
+      appVersion: info.buildNumber.isEmpty
+          ? info.version
+          : '${info.version}+${info.buildNumber}',
+      platform: ProblemReport.platformName(),
+      osVersion: ProblemReport.osVersionOf(Platform.operatingSystemVersion),
+    );
+    if (!mounted) return;
+    await showProblemReportSheet(context, report, ref.read(reportSenderProvider));
+  }
+
   void _fail(Object message) {
     _stallTimer?.cancel();
     // libmpv names the address it failed to open, and a panel's address holds
@@ -1075,7 +1098,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       action: (tr.player.rejoin, _rejoin),
                     )
                   else if (_error != null)
-                    _PlaybackError(message: _error!, title: _title)
+                    _PlaybackError(
+                      message: _error!,
+                      title: _title,
+                      onReport: _reportProblem,
+                    )
                   else if (!_started)
                     Center(child: CircularProgressIndicator(color: t.accent)),
                 ],
@@ -1114,7 +1141,12 @@ class _PlaybackError extends StatefulWidget {
     this.title,
     this.icon = Icons.error_outline,
     this.action,
+    this.onReport,
   });
+
+  /// Opens the problem report. Only for a real failure, not for a stream that
+  /// was released on purpose.
+  final VoidCallback? onReport;
 
   final String message;
   final String? title;
@@ -1188,11 +1220,19 @@ class _PlaybackErrorState extends State<_PlaybackError> {
                 label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
-            ] else
+            ] else ...[
               RelayButton(
                 label: tr.common.back,
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
+              if (widget.onReport != null) ...[
+                const SizedBox(height: 8),
+                RelayTextButton(
+                  label: tr.player.reportProblem,
+                  onPressed: widget.onReport,
+                ),
+              ],
+            ],
           ],
         ),
       ),

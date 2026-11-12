@@ -35,6 +35,10 @@ class _FakeEngine implements PlaybackEngine {
 
   final EngineOutput output;
   final calls = <String>[];
+
+  @override
+  Future<PlaybackDiagnostics> diagnostics() async =>
+      const PlaybackDiagnostics();
   final _position = StreamController<Duration>.broadcast();
   final _errors = StreamController<EngineError>.broadcast();
   final _completed = StreamController<void>.broadcast();

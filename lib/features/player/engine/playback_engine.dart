@@ -168,6 +168,10 @@ abstract class PlaybackEngine implements PlayerTransport {
   /// something to fall back from.
   bool get hasCompatibleFallback;
 
+  /// Format facts about what is playing or failed to play. Never throws: a
+  /// property mpv will not give is simply left out.
+  Future<PlaybackDiagnostics> diagnostics();
+
   Future<void> dispose();
 }
 
@@ -176,6 +180,37 @@ abstract class PlaybackEngine implements PlayerTransport {
 /// decode at all, chosen after [PlaybackEngine.checkOutputAfterStart] or a
 /// failed start asked for it.
 enum EngineOutput { fast, compatible }
+
+/// What the engine knows about the file it is playing, for a problem report
+/// (architecture.md section 16.4). Format facts only: **no title, address,
+/// path, server or account**, and every field may be absent, because a file
+/// that failed to open has no tracks to describe.
+///
+/// Strings are the engine's own names ("avi", "mpeg4", "ac3"), not
+/// user-visible text, and are checked again before they leave the device
+/// (`ProblemReport`).
+@immutable
+class PlaybackDiagnostics {
+  const PlaybackDiagnostics({
+    this.container,
+    this.videoCodec,
+    this.audioCodec,
+    this.audioChannels,
+    this.decoder = 'unknown',
+    this.output = 'unknown',
+  });
+
+  final String? container;
+  final String? videoCodec;
+  final String? audioCodec;
+  final int? audioChannels;
+
+  /// `hardware`, `software` or `unknown`.
+  final String decoder;
+
+  /// `direct`, `compatible` or `unknown`.
+  final String output;
+}
 
 typedef PlaybackEngineFactory = PlaybackEngine Function(EngineOutput output);
 

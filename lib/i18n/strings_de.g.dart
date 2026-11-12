@@ -134,6 +134,16 @@ class _Translations$player$de extends Translations$player$en {
 	@override String get channelNotResponding => 'Dieser Sender antwortet nicht. Anbieter listen oft Sender, die gerade nicht senden. Versuche einen anderen oder denselben noch einmal.';
 	@override String get didNotStart => 'Die Wiedergabe ist nicht gestartet. Der Server ist vielleicht ausgelastet, oder die Datei muss transkodiert werden, was noch nicht unterstützt wird.';
 	@override String get released => 'Angehalten, während die App im Hintergrund war, damit die Verbindung für andere Geräte frei ist.';
+	@override String get reportProblem => 'Problem melden';
+	@override String get reportTitle => 'Dieses Problem melden';
+	@override String get reportIntro => 'Genau das wird gesendet. Es beschreibt das Format der Datei und dein Gerät und enthält keinen Titel, keine Adresse und kein Konto. Die Meldung wird öffentlich abgelegt und kann nicht beantwortet werden.';
+	@override String get reportNote => 'Notiz hinzufügen (optional)';
+	@override String get reportSend => 'Meldung senden';
+	@override String get reportCopy => 'Kopieren';
+	@override String get reportCopied => 'Kopiert.';
+	@override String get reportSending => 'Wird gesendet…';
+	@override String get reportSent => 'Gesendet. Danke.';
+	@override String get reportFailed => 'Senden nicht möglich. Du kannst den Text stattdessen kopieren.';
 	@override String get rejoin => 'Wieder einsteigen';
 	@override String get live => 'LIVE';
 	@override String skipBack({required Object seconds}) => '${seconds} Sekunden zurück';
@@ -1687,6 +1697,16 @@ extension on TranslationsDe {
 			'player.channelNotResponding' => 'Dieser Sender antwortet nicht. Anbieter listen oft Sender, die gerade nicht senden. Versuche einen anderen oder denselben noch einmal.',
 			'player.didNotStart' => 'Die Wiedergabe ist nicht gestartet. Der Server ist vielleicht ausgelastet, oder die Datei muss transkodiert werden, was noch nicht unterstützt wird.',
 			'player.released' => 'Angehalten, während die App im Hintergrund war, damit die Verbindung für andere Geräte frei ist.',
+			'player.reportProblem' => 'Problem melden',
+			'player.reportTitle' => 'Dieses Problem melden',
+			'player.reportIntro' => 'Genau das wird gesendet. Es beschreibt das Format der Datei und dein Gerät und enthält keinen Titel, keine Adresse und kein Konto. Die Meldung wird öffentlich abgelegt und kann nicht beantwortet werden.',
+			'player.reportNote' => 'Notiz hinzufügen (optional)',
+			'player.reportSend' => 'Meldung senden',
+			'player.reportCopy' => 'Kopieren',
+			'player.reportCopied' => 'Kopiert.',
+			'player.reportSending' => 'Wird gesendet…',
+			'player.reportSent' => 'Gesendet. Danke.',
+			'player.reportFailed' => 'Senden nicht möglich. Du kannst den Text stattdessen kopieren.',
 			'player.rejoin' => 'Wieder einsteigen',
 			'player.live' => 'LIVE',
 			'player.skipBack' => ({required Object seconds}) => '${seconds} Sekunden zurück',
@@ -2173,6 +2193,8 @@ extension on TranslationsDe {
 			'xtream.addLine.server' => 'Server',
 			'xtream.addLine.show' => 'Anzeigen',
 			'xtream.addLine.hide' => 'Verbergen',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.addLine.defaultName' => 'TV-Abo',
 			'xtream.picker.patternNone' => 'Dieses Muster hat nichts gefunden.',
 			'xtream.picker.title' => ({required Object catalogue}) => 'Kategorien: ${catalogue}',
@@ -2183,8 +2205,6 @@ extension on TranslationsDe {
 			'xtream.picker.chosen' => ({required Object n}) => 'Ausgewählt ${n}',
 			'xtream.picker.hideWords' => 'Wörter ausblenden',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Ausgeblendet ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.pattern' => 'Muster',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => '„${name}“ wurde abgewählt, weil „${word}“ es ausblendet. Speichern, um das zu behalten.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => '${n} ausgewählte Kategorien, die „${word}“ ausblendet, wurden abgewählt. Speichern, um das zu behalten.',

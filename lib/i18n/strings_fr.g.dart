@@ -134,6 +134,16 @@ class _Translations$player$fr extends Translations$player$en {
 	@override String get channelNotResponding => 'Cette chaîne ne répond pas. Les fournisseurs listent souvent des chaînes qui ne diffusent pas, alors essayez-en une autre, ou la même à nouveau.';
 	@override String get didNotStart => 'La lecture n\'a pas démarré. Le serveur est peut-être occupé, ou le fichier doit être transcodé, ce qui n\'est pas encore pris en charge.';
 	@override String get released => 'Arrêté pendant que l\'appli était en arrière-plan, pour libérer la connexion pour d\'autres appareils.';
+	@override String get reportProblem => 'Signaler un problème';
+	@override String get reportTitle => 'Signaler ce problème';
+	@override String get reportIntro => 'Voici exactement ce qui sera envoyé. Cela décrit le format du fichier et votre appareil, sans titre, adresse ni compte. Le signalement est public et ne peut pas recevoir de réponse.';
+	@override String get reportNote => 'Ajouter une note (facultatif)';
+	@override String get reportSend => 'Envoyer le signalement';
+	@override String get reportCopy => 'Copier';
+	@override String get reportCopied => 'Copié.';
+	@override String get reportSending => 'Envoi…';
+	@override String get reportSent => 'Envoyé. Merci.';
+	@override String get reportFailed => 'Envoi impossible. Vous pouvez copier le texte à la place.';
 	@override String get rejoin => 'Reprendre';
 	@override String get live => 'EN DIRECT';
 	@override String skipBack({required Object seconds}) => 'Reculer de ${seconds} secondes';
@@ -1687,6 +1697,16 @@ extension on TranslationsFr {
 			'player.channelNotResponding' => 'Cette chaîne ne répond pas. Les fournisseurs listent souvent des chaînes qui ne diffusent pas, alors essayez-en une autre, ou la même à nouveau.',
 			'player.didNotStart' => 'La lecture n\'a pas démarré. Le serveur est peut-être occupé, ou le fichier doit être transcodé, ce qui n\'est pas encore pris en charge.',
 			'player.released' => 'Arrêté pendant que l\'appli était en arrière-plan, pour libérer la connexion pour d\'autres appareils.',
+			'player.reportProblem' => 'Signaler un problème',
+			'player.reportTitle' => 'Signaler ce problème',
+			'player.reportIntro' => 'Voici exactement ce qui sera envoyé. Cela décrit le format du fichier et votre appareil, sans titre, adresse ni compte. Le signalement est public et ne peut pas recevoir de réponse.',
+			'player.reportNote' => 'Ajouter une note (facultatif)',
+			'player.reportSend' => 'Envoyer le signalement',
+			'player.reportCopy' => 'Copier',
+			'player.reportCopied' => 'Copié.',
+			'player.reportSending' => 'Envoi…',
+			'player.reportSent' => 'Envoyé. Merci.',
+			'player.reportFailed' => 'Envoi impossible. Vous pouvez copier le texte à la place.',
 			'player.rejoin' => 'Reprendre',
 			'player.live' => 'EN DIRECT',
 			'player.skipBack' => ({required Object seconds}) => 'Reculer de ${seconds} secondes',
@@ -2173,6 +2193,8 @@ extension on TranslationsFr {
 			'xtream.addLine.server' => 'Serveur',
 			'xtream.addLine.show' => 'Afficher',
 			'xtream.addLine.hide' => 'Masquer',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.addLine.defaultName' => 'Abonnement TV',
 			'xtream.picker.patternNone' => 'Ce motif ne correspond à rien.',
 			'xtream.picker.title' => ({required Object catalogue}) => 'Catégories ${catalogue}',
@@ -2183,8 +2205,6 @@ extension on TranslationsFr {
 			'xtream.picker.chosen' => ({required Object n}) => 'Choisies ${n}',
 			'xtream.picker.hideWords' => 'Masquer des mots',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Masqués ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.pattern' => 'Motif',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => '« ${name} » a été décochée, car « ${word} » la masque. Enregistrez pour le conserver.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => '${n} catégories choisies que « ${word} » masque ont été décochées. Enregistrez pour le conserver.',

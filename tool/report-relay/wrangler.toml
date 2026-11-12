@@ -1,0 +1,18 @@
+# Cloudflare Worker for the in-app problem report (architecture.md section 16.4).
+# Not part of the app build; deployed by hand. See README.md.
+name = "subnext-report-relay"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+REPORT_REPO = "amitrke/relay-player"
+
+# Per-caller rate limit. Created in the Cloudflare dashboard or by wrangler;
+# the relay skips the check when the binding is absent.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 5, period = 60 }
+
+# GITHUB_TOKEN is a secret: `wrangler secret put GITHUB_TOKEN`. Never put it here.

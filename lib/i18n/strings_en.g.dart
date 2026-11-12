@@ -169,6 +169,36 @@ class Translations$player$en {
 	/// en: 'Stopped while the app was in the background, so the connection is free for other devices.'
 	String get released => 'Stopped while the app was in the background, so the connection is free for other devices.';
 
+	/// en: 'Report a problem'
+	String get reportProblem => 'Report a problem';
+
+	/// en: 'Report this problem'
+	String get reportTitle => 'Report this problem';
+
+	/// en: 'This is exactly what will be sent. It describes the file's format and your device, and holds no title, address or account. It is filed publicly, and a report cannot be answered.'
+	String get reportIntro => 'This is exactly what will be sent. It describes the file\'s format and your device, and holds no title, address or account. It is filed publicly, and a report cannot be answered.';
+
+	/// en: 'Add a note (optional)'
+	String get reportNote => 'Add a note (optional)';
+
+	/// en: 'Send report'
+	String get reportSend => 'Send report';
+
+	/// en: 'Copy'
+	String get reportCopy => 'Copy';
+
+	/// en: 'Copied.'
+	String get reportCopied => 'Copied.';
+
+	/// en: 'Sending…'
+	String get reportSending => 'Sending…';
+
+	/// en: 'Sent. Thank you.'
+	String get reportSent => 'Sent. Thank you.';
+
+	/// en: 'Could not send it. You can copy the text instead.'
+	String get reportFailed => 'Could not send it. You can copy the text instead.';
+
 	/// en: 'Rejoin'
 	String get rejoin => 'Rejoin';
 
@@ -3184,6 +3214,16 @@ extension on Translations {
 			'player.channelNotResponding' => 'This channel is not responding. Providers often list channels that are not broadcasting, so try another, or the same one again.',
 			'player.didNotStart' => 'This did not start playing. The server may be busy, or the file may need transcoding, which is not supported yet.',
 			'player.released' => 'Stopped while the app was in the background, so the connection is free for other devices.',
+			'player.reportProblem' => 'Report a problem',
+			'player.reportTitle' => 'Report this problem',
+			'player.reportIntro' => 'This is exactly what will be sent. It describes the file\'s format and your device, and holds no title, address or account. It is filed publicly, and a report cannot be answered.',
+			'player.reportNote' => 'Add a note (optional)',
+			'player.reportSend' => 'Send report',
+			'player.reportCopy' => 'Copy',
+			'player.reportCopied' => 'Copied.',
+			'player.reportSending' => 'Sending…',
+			'player.reportSent' => 'Sent. Thank you.',
+			'player.reportFailed' => 'Could not send it. You can copy the text instead.',
 			'player.rejoin' => 'Rejoin',
 			'player.live' => 'LIVE',
 			'player.skipBack' => ({required Object seconds}) => 'Back ${seconds} seconds',
@@ -3670,6 +3710,8 @@ extension on Translations {
 			'xtream.addLine.server' => 'Server',
 			'xtream.addLine.show' => 'Show',
 			'xtream.addLine.hide' => 'Hide',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.addLine.defaultName' => 'TV subscription',
 			'xtream.picker.patternNone' => 'That pattern matched nothing.',
 			'xtream.picker.title' => ({required Object catalogue}) => '${catalogue} categories',
@@ -3680,8 +3722,6 @@ extension on Translations {
 			'xtream.picker.chosen' => ({required Object n}) => 'Chosen ${n}',
 			'xtream.picker.hideWords' => 'Hide words',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Hide ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.pattern' => 'Pattern',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => 'Un-ticked "${name}", which "${word}" hides. Save to keep that.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => 'Un-ticked ${n} chosen categories that "${word}" hides. Save to keep that.',
