@@ -1629,6 +1629,7 @@ class _Translations$seerr$errors$es extends Translations$seerr$errors$en {
 
 	// Translations
 	@override String get notASeerr => 'Ningún servidor Overseerr, Jellyseerr o Seerr respondió en esa dirección. Compruébala, incluido el puerto (normalmente 5055).';
+	@override String get behindAccess => 'Esa dirección está detrás de Cloudflare Access, que envía la app a una página de inicio de sesión que no puede usar. Quien la gestiona puede añadir una política de Access que omita /api/*, ya que Seerr ya pide iniciar sesión.';
 	@override String get badKey => 'El servidor no aceptó esa clave de API.';
 	@override String get refused => 'El servidor no aceptó ese inicio de sesión.';
 	@override String status({required Object code}) => 'El servidor respondió ${code}.';
@@ -2440,6 +2441,7 @@ extension on TranslationsEs {
 			'trackers.copyAddress' => 'Copiar dirección',
 			'trackers.connected' => ({required Object service}) => 'Conectado a ${service}.',
 			'seerr.errors.notASeerr' => 'Ningún servidor Overseerr, Jellyseerr o Seerr respondió en esa dirección. Compruébala, incluido el puerto (normalmente 5055).',
+			'seerr.errors.behindAccess' => 'Esa dirección está detrás de Cloudflare Access, que envía la app a una página de inicio de sesión que no puede usar. Quien la gestiona puede añadir una política de Access que omita /api/*, ya que Seerr ya pide iniciar sesión.',
 			'seerr.errors.badKey' => 'El servidor no aceptó esa clave de API.',
 			'seerr.errors.refused' => 'El servidor no aceptó ese inicio de sesión.',
 			'seerr.errors.status' => ({required Object code}) => 'El servidor respondió ${code}.',

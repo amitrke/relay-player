@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:relay_player/data/seerr/seerr_client.dart';
 
@@ -138,6 +139,81 @@ void main() {
   test('normalise adds a scheme and strips trailing slashes', () {
     expect(SeerrClient.normalise(' host:5055// '), 'http://host:5055');
     expect(SeerrClient.normalise('https://r.example'), 'https://r.example');
+    expect(SeerrClient.normalise('http://r.example'), 'http://r.example');
+  });
+
+  test('normalise picks http for a LAN host and https for a domain', () {
+    for (final lan in [
+      '192.168.1.20:5055',
+      'localhost:5055',
+      'nas.local:5055',
+      'seerr.home.arpa',
+      'box.lan/',
+      '[fe80::1]:5055',
+    ]) {
+      expect(SeerrClient.normalise(lan), startsWith('http://'), reason: lan);
+    }
+    // A domain is a proxy or a tunnel, which redirects plain HTTP and so
+    // broke sign-in's POST (§20).
+    expect(
+      SeerrClient.normalise('requests.example.com'),
+      'https://requests.example.com',
+    );
+    expect(
+      SeerrClient.normalise('requests.example.com/seerr/'),
+      'https://requests.example.com/seerr',
+    );
+  });
+
+  test(
+    'probe behind Cloudflare Access says so, not "check the port"',
+    () async {
+      // What a real Access application answered (§20): 302 to its login page
+      // with this header. Not followed here, so the header alone has to do it;
+      // a followed redirect is caught by the login host, which a local fake
+      // cannot stand in for.
+      final access = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      access.listen((req) {
+        req.response
+          ..statusCode = 302
+          ..headers.set(
+            'www-authenticate',
+            'Cloudflare-Access resource_metadata="x"',
+          )
+          ..headers.set('location', 'https://team.cloudflareaccess.com/login');
+        req.response.close();
+      });
+      addTearDown(() => access.close(force: true));
+      final dio = Dio(
+        BaseOptions(validateStatus: (_) => true, followRedirects: false),
+      );
+      await expectLater(
+        SeerrClient.probe('http://127.0.0.1:${access.port}', dio: dio),
+        throwsA(
+          isA<SeerrException>().having(
+            (e) => e.message,
+            'message',
+            contains('Cloudflare Access'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('probe keeps the address a redirect lands on', () async {
+    // A second server that redirects everything to the fake, as a proxy
+    // sending http to https does. Sign-in must then go to the fake directly.
+    final proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    proxy.listen((req) {
+      req.response
+        ..statusCode = 301
+        ..headers.set('location', '${fake.base}${req.uri.path}');
+      req.response.close();
+    });
+    addTearDown(() => proxy.close(force: true));
+    final info = await SeerrClient.probe('http://127.0.0.1:${proxy.port}');
+    expect(info.baseUrl, fake.base);
+    expect(info.title, 'Home Requests');
   });
 
   test('probe reads the public settings', () async {

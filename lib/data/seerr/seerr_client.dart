@@ -49,10 +49,7 @@ class SeerrSession {
   final String? cookie;
   final String? userName;
 
-  Map<String, String> get headers => {
-    'X-Api-Key': ?apiKey,
-    'Cookie': ?cookie,
-  };
+  Map<String, String> get headers => {'X-Api-Key': ?apiKey, 'Cookie': ?cookie};
 
   Map<String, Object?> toJson() => {
     'auth': auth.name,
@@ -117,8 +114,9 @@ class SeerrTitle {
   final String? posterPath;
   final SeerrAvailability availability;
 
-  String? posterUrl({int width = 300}) =>
-      posterPath == null ? null : 'https://image.tmdb.org/t/p/w$width$posterPath';
+  String? posterUrl({int width = 300}) => posterPath == null
+      ? null
+      : 'https://image.tmdb.org/t/p/w$width$posterPath';
 }
 
 /// One of the person's requests, for the list in Settings.
@@ -169,35 +167,90 @@ class SeerrClient {
     ),
   );
 
+  /// A typed address as a base URL. With no scheme, a LAN-looking host gets
+  /// `http://` (Seerr's own port 5055 serves plain HTTP) and a domain name
+  /// gets `https://`. A domain is almost always a reverse proxy or a tunnel
+  /// such as Cloudflare's, which redirects plain HTTP. That redirect is not
+  /// harmless: Dio follows it for the probe's GET, but not for sign-in's POST,
+  /// so an `http://` base found that way failed only at sign-in, with
+  /// "The server answered 301" (§20).
   static String normalise(String address) {
     var a = address.trim();
-    if (!a.contains('://')) a = 'http://$a';
+    if (!a.contains('://')) {
+      a = '${_looksLocal(a) ? 'http' : 'https'}://$a';
+    }
     while (a.endsWith('/')) {
       a = a.substring(0, a.length - 1);
     }
     return a;
   }
 
+  static const _probePath = '/api/v1/settings/public';
+
+  /// The base URL the probe's redirects ended at, or [typed] when there were
+  /// none or the final URL is not the probe path under some base.
+  static String _landedBase(Response<dynamic> r, String typed) {
+    if (r.redirects.isEmpty) return typed;
+    final u = r.realUri;
+    if (!u.path.endsWith(_probePath)) return typed;
+    final prefix = u.path.substring(0, u.path.length - _probePath.length);
+    return '${u.origin}$prefix';
+  }
+
+  /// An IP address, `localhost`, a single-label name, or a name under a
+  /// suffix kept for local networks.
+  static bool _looksLocal(String address) {
+    if (address.startsWith('[')) return true; // IPv6 literal
+    final host = address.split(RegExp('[:/]')).first.toLowerCase();
+    if (!host.contains('.')) return true;
+    if (RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host)) return true;
+    return const [
+      '.local',
+      '.lan',
+      '.home',
+      '.internal',
+      '.home.arpa',
+    ].any(host.endsWith);
+  }
+
   /// Finds a Seerr server at [address] and reads its public settings.
   static Future<SeerrServerInfo> probe(String address, {Dio? dio}) async {
     final base = normalise(address);
     try {
-      final r = await (dio ?? _http()).get<dynamic>(
-        '$base/api/v1/settings/public',
-      );
+      final r = await (dio ?? _http()).get<dynamic>('$base$_probePath');
       final d = r.data;
       if (r.statusCode == 200 && d is Map && d.containsKey('mediaServerType')) {
         return SeerrServerInfo(
-          baseUrl: base,
+          // Where the probe landed, not what was typed: an explicit
+          // `http://` in front of a proxy that redirects to HTTPS is kept
+          // as the HTTPS address, so later POSTs need no redirect.
+          baseUrl: _landedBase(r, base),
           title: '${d['applicationTitle'] ?? 'Seerr'}',
           mediaServer: (d['mediaServerType'] as num?)?.toInt() ?? 1,
           localLogin: d['localLogin'] == true,
         );
       }
+      if (_behindAccess(r)) {
+        throw SeerrException(tr.seerr.errors.behindAccess);
+      }
     } on DioException {
       // Falls through to the message below.
     }
     throw SeerrException(tr.seerr.errors.notASeerr);
+  }
+
+  /// Whether Cloudflare Access stood in front of the server. Seen on a real
+  /// tunnel (§20): the API answers 302 to `<team>.cloudflareaccess.com` with
+  /// `www-authenticate: Cloudflare-Access`, Dio follows it to an HTML login
+  /// page, and the generic "no Seerr answered … usually 5055" pointed the
+  /// person at their port instead of at Access. Any one sign is enough: the
+  /// header if the redirect was not followed, the hosts if it was.
+  static bool _behindAccess(Response<dynamic> r) {
+    bool access(Uri u) => u.host.endsWith('.cloudflareaccess.com');
+    final auth = r.headers['www-authenticate'] ?? const <String>[];
+    return auth.any((h) => h.contains('Cloudflare-Access')) ||
+        access(r.realUri) ||
+        r.redirects.any((x) => access(x.location));
   }
 
   /// Signs in and returns the session to keep.

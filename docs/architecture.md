@@ -2565,6 +2565,52 @@ Jellyseerr or Seerr has been connected (MANUAL_TESTING.md). The `%20`
 detail is from Overseerr's request validator, which refuses `+` for a space;
 whether Jellyseerr and Seerr behave the same is part of that check.
 
+**First real server, 2026-11-12.** A Plex-backed Seerr on the LAN, from the
+iOS Simulator (debug build): connected by address, and search returned the
+row for titles the library lacked (TMDB posters, years, `unknown` status, and
+`person` results dropped as intended). The search query had no spaces, so
+`%20` is still unchecked, and no request was sent. The report that led here
+was "search shows nothing missing" on a physical iPad. Tried again on that
+iPad the same day, without a new build, the row appeared. The cause is not
+confirmed. The likeliest one is that the iPad had no Seerr connection until
+then: it is per device and Move to another device does not copy it (above). Unconfirmed causes are harder to find
+because the row used to hide any failure that was not a `SeerrException`.
+It now shows every error and logs the ones it did not expect
+(`seerr_search_row.dart`).
+
+**Behind a reverse proxy or tunnel (2026-11-12).** An address typed with no
+scheme used to get `http://` whatever the host. A proxy or tunnel that
+redirects HTTP to HTTPS then passed the probe, because Dio follows a GET's
+redirect, and failed at sign-in, because it does not follow a POST's. Now a
+LAN-looking host (an IP, `localhost`, a single label, `.local`, `.lan`,
+`.home`, `.internal`, `.home.arpa`) still gets `http://`, and any other
+domain gets `https://`. The probe also keeps the base its redirects ended
+at, so an explicit `http://` that redirects is saved as the HTTPS address.
+Both are pinned in `seerr_test.dart`; the redirect test uses a local fake,
+not a real proxy.
+
+**Cloudflare Access does not work, and now says so.** Checked
+from a Mac against a real Seerr behind a Cloudflare Tunnel with an Access
+application in front. The API answers `302` to Access's login page, with
+`www-authenticate: Cloudflare-Access`. Dio follows it and gets HTML, so
+the probe used to report "No Overseerr, Jellyseerr or Seerr server answered …
+usually 5055", which sent the person looking at the wrong thing. Since the
+same day it detects Access (that header, or a redirect to or landing on
+`*.cloudflareaccess.com`) and says the address is behind Access, naming the
+`/api/*` bypass. Checked against the same real server; the unit test covers
+the header with redirects not followed, since a local fake cannot stand in
+for the login host. The new message's de, es and fr text is a draft, like
+the rest of those locales (§12.3). A plain tunnel
+without Access has not been tried. The workaround is on the owner's side:
+an Access *bypass* policy for `/api/*` (Seerr's API has its own sign-in),
+or no Access on that hostname. Sending Access service-token headers would
+mean storing a second secret per server; not built, and not decided. With that bypass in place
+on the same server (a second self-hosted Access application for the
+hostname's `api/*` path, policy Bypass for Everyone), the probe succeeded
+through the tunnel, typed with no scheme and saved as `https://`. The web UI
+stayed behind Access, and an unauthenticated `/api/v1/search` still got
+Seerr's own 401. Sign-in and search through the tunnel have not been tried.
+
 ## 21. Follow and remind: shows and teams (proposed 2026-11-01, not built)
 
 The person picks shows ("This Week" on a Sunday morning, a series) and teams

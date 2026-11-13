@@ -980,6 +980,7 @@
   "seerr": {
     "errors": {
       "notASeerr": "Aucun serveur Overseerr, Jellyseerr ou Seerr n'a répondu à cette adresse. Vérifiez-la, port compris (souvent 5055).",
+      "behindAccess": "Cette adresse est derrière Cloudflare Access, qui renvoie l'app vers une page de connexion qu'elle ne peut pas utiliser. Son propriétaire peut ajouter une règle Access qui contourne /api/*, puisque Seerr gère lui-même la connexion.",
       "badKey": "Le serveur n'a pas accepté cette clé d'API.",
       "refused": "Le serveur n'a pas accepté cette connexion.",
       "status": "Le serveur a répondu {code}.",

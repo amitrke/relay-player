@@ -1629,6 +1629,7 @@ class _Translations$seerr$errors$de extends Translations$seerr$errors$en {
 
 	// Translations
 	@override String get notASeerr => 'Unter dieser Adresse hat kein Overseerr-, Jellyseerr- oder Seerr-Server geantwortet. Prüfe sie, auch den Port (meist 5055).';
+	@override String get behindAccess => 'Diese Adresse liegt hinter Cloudflare Access, das die App auf eine Anmeldeseite schickt, die sie nicht nutzen kann. Der Betreiber kann eine Access-Regel hinzufügen, die /api/* umgeht, denn Seerr meldet Nutzer selbst an.';
 	@override String get badKey => 'Der Server hat diesen API-Schlüssel nicht angenommen.';
 	@override String get refused => 'Der Server hat diese Anmeldung nicht angenommen.';
 	@override String status({required Object code}) => 'Der Server hat mit ${code} geantwortet.';
@@ -2440,6 +2441,7 @@ extension on TranslationsDe {
 			'trackers.copyAddress' => 'Adresse kopieren',
 			'trackers.connected' => ({required Object service}) => 'Mit ${service} verbunden.',
 			'seerr.errors.notASeerr' => 'Unter dieser Adresse hat kein Overseerr-, Jellyseerr- oder Seerr-Server geantwortet. Prüfe sie, auch den Port (meist 5055).',
+			'seerr.errors.behindAccess' => 'Diese Adresse liegt hinter Cloudflare Access, das die App auf eine Anmeldeseite schickt, die sie nicht nutzen kann. Der Betreiber kann eine Access-Regel hinzufügen, die /api/* umgeht, denn Seerr meldet Nutzer selbst an.',
 			'seerr.errors.badKey' => 'Der Server hat diesen API-Schlüssel nicht angenommen.',
 			'seerr.errors.refused' => 'Der Server hat diese Anmeldung nicht angenommen.',
 			'seerr.errors.status' => ({required Object code}) => 'Der Server hat mit ${code} geantwortet.',

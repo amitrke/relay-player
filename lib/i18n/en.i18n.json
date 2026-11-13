@@ -980,6 +980,7 @@
   "seerr": {
     "errors": {
       "notASeerr": "No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).",
+      "behindAccess": "That address is behind Cloudflare Access, which sends the app to a sign-in page it cannot use. Its owner can add an Access policy that bypasses /api/*, since Seerr signs people in itself.",
       "badKey": "The server did not accept that API key.",
       "refused": "The server did not accept that sign-in.",
       "status": "The server answered {code}.",

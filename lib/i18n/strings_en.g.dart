@@ -3099,6 +3099,9 @@ class Translations$seerr$errors$en {
 	/// en: 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).'
 	String get notASeerr => 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).';
 
+	/// en: 'That address is behind Cloudflare Access, which sends the app to a sign-in page it cannot use. Its owner can add an Access policy that bypasses /api/*, since Seerr signs people in itself.'
+	String get behindAccess => 'That address is behind Cloudflare Access, which sends the app to a sign-in page it cannot use. Its owner can add an Access policy that bypasses /api/*, since Seerr signs people in itself.';
+
 	/// en: 'The server did not accept that API key.'
 	String get badKey => 'The server did not accept that API key.';
 
@@ -3937,6 +3940,7 @@ extension on Translations {
 			'trackers.copyAddress' => 'Copy address',
 			'trackers.connected' => ({required Object service}) => 'Connected to ${service}.',
 			'seerr.errors.notASeerr' => 'No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).',
+			'seerr.errors.behindAccess' => 'That address is behind Cloudflare Access, which sends the app to a sign-in page it cannot use. Its owner can add an Access policy that bypasses /api/*, since Seerr signs people in itself.',
 			'seerr.errors.badKey' => 'The server did not accept that API key.',
 			'seerr.errors.refused' => 'The server did not accept that sign-in.',
 			'seerr.errors.status' => ({required Object code}) => 'The server answered ${code}.',

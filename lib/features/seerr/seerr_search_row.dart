@@ -22,12 +22,18 @@ class SeerrSearchRow extends ConsumerWidget {
     final result = ref.watch(seerrSearchProvider(query));
     final t = RelayTheme.of(context);
     final f = RelayLayout.of(context);
-    // A lapsed sign-in says so here rather than leaving the row quietly
-    // empty, which would read as "the server has nothing".
-    if (result.error case final SeerrException e) {
+    // Any failure says so here rather than leaving the row quietly empty,
+    // which would read as "the server has nothing". This used to match only
+    // SeerrException (a lapsed sign-in, an HTTP status), so a response the
+    // parser choked on, or anything else thrown, looked exactly like an empty
+    // search; that is how a row that never appeared went undiagnosed (§20).
+    if (result.error case final Object e) {
+      if (e is! SeerrException) {
+        debugPrint('Seerr search failed: $e\n${result.stackTrace}');
+      }
       return Padding(
         padding: RelayLayout.pagePadding(f).copyWith(top: 10, bottom: 4),
-        child: Text(e.message, style: TextStyle(color: t.inkDim, fontSize: 13)),
+        child: Text('$e', style: TextStyle(color: t.inkDim, fontSize: 13)),
       );
     }
     final titles = result.value ?? const <SeerrTitle>[];
