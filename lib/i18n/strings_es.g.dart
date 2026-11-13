@@ -439,7 +439,13 @@ class _Translations$plex$es extends Translations$plex$en {
 	@override String get connect => 'Conectar con Plex';
 	@override String get explain => 'Subnext Player reproduce lo que ya tiene tu propio servidor Plex. No se sube nada, y los datos de tu cuenta no llegan a nadie más que a Plex.';
 	@override String get contacting => 'Contactando con Plex…';
-	@override String get enterCode => 'En cualquier dispositivo, abre plex.tv/link e introduce:';
+	@override String enterCode({required Object link}) => 'En cualquier dispositivo, abre ${link} e introduce:';
+	@override String linkNoBrowser({required Object link}) => 'Nada en este dispositivo puede abrir ${link}. Ábrelo en otro dispositivo.';
+	@override String get signInBrowser => 'Iniciar sesión con Plex';
+	@override String get useCode => 'Usar un código';
+	@override String get finishInBrowser => 'Aprueba Subnext Player en la página de Plex que se abrió y vuelve a esta app.';
+	@override String get openAgain => 'Abrir Plex de nuevo';
+	@override String get browserFailed => 'Nada en este dispositivo puede abrir la página de inicio de sesión de Plex, así que aquí tienes un código.';
 	@override String get waiting => 'Esperando la aprobación…';
 	@override String get copyCode => 'Copiar código';
 	@override String get chooseServer => 'Elige un servidor';
@@ -2084,7 +2090,13 @@ extension on TranslationsEs {
 			'plex.connect' => 'Conectar con Plex',
 			'plex.explain' => 'Subnext Player reproduce lo que ya tiene tu propio servidor Plex. No se sube nada, y los datos de tu cuenta no llegan a nadie más que a Plex.',
 			'plex.contacting' => 'Contactando con Plex…',
-			'plex.enterCode' => 'En cualquier dispositivo, abre plex.tv/link e introduce:',
+			'plex.enterCode' => ({required Object link}) => 'En cualquier dispositivo, abre ${link} e introduce:',
+			'plex.linkNoBrowser' => ({required Object link}) => 'Nada en este dispositivo puede abrir ${link}. Ábrelo en otro dispositivo.',
+			'plex.signInBrowser' => 'Iniciar sesión con Plex',
+			'plex.useCode' => 'Usar un código',
+			'plex.finishInBrowser' => 'Aprueba Subnext Player en la página de Plex que se abrió y vuelve a esta app.',
+			'plex.openAgain' => 'Abrir Plex de nuevo',
+			'plex.browserFailed' => 'Nada en este dispositivo puede abrir la página de inicio de sesión de Plex, así que aquí tienes un código.',
 			'plex.waiting' => 'Esperando la aprobación…',
 			'plex.copyCode' => 'Copiar código',
 			'plex.chooseServer' => 'Elige un servidor',
@@ -2180,14 +2192,14 @@ extension on TranslationsEs {
 			'xtream.addLine.hide' => 'Ocultar',
 			'xtream.addLine.defaultName' => 'Suscripción de TV',
 			'xtream.picker.patternNone' => 'Ese patrón no coincidió con nada.',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.title' => ({required Object catalogue}) => 'Categorías de ${catalogue}',
 			'xtream.picker.save' => 'Guardar',
 			'xtream.picker.noMatch' => ({required Object query}) => 'Nada coincide con «${query}».',
 			'xtream.picker.noneChosen' => 'Aún no has elegido nada.',
 			'xtream.picker.search' => 'Buscar en todas las categorías',
 			'xtream.picker.chosen' => ({required Object n}) => 'Elegidas ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.hideWords' => 'Ocultar palabras',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Ocultas ${n}',
 			'xtream.picker.pattern' => 'Patrón',

@@ -439,7 +439,13 @@ class _Translations$plex$fr extends Translations$plex$en {
 	@override String get connect => 'Se connecter à Plex';
 	@override String get explain => 'Subnext Player lit ce que votre propre serveur Plex contient déjà. Rien n\'est envoyé en ligne, et vos informations de compte ne parviennent à personne d\'autre que Plex.';
 	@override String get contacting => 'Contact de Plex…';
-	@override String get enterCode => 'Sur n\'importe quel appareil, ouvrez plex.tv/link et saisissez :';
+	@override String enterCode({required Object link}) => 'Sur n\'importe quel appareil, ouvrez ${link} et saisissez :';
+	@override String linkNoBrowser({required Object link}) => 'Rien sur cet appareil ne peut ouvrir ${link}. Ouvrez-le sur un autre appareil.';
+	@override String get signInBrowser => 'Se connecter avec Plex';
+	@override String get useCode => 'Utiliser un code';
+	@override String get finishInBrowser => 'Autorisez Subnext Player sur la page Plex qui s\'est ouverte, puis revenez dans cette app.';
+	@override String get openAgain => 'Rouvrir Plex';
+	@override String get browserFailed => 'Rien sur cet appareil ne peut ouvrir la page de connexion Plex, voici donc un code.';
 	@override String get waiting => 'En attente d\'approbation…';
 	@override String get copyCode => 'Copier le code';
 	@override String get chooseServer => 'Choisir un serveur';
@@ -2084,7 +2090,13 @@ extension on TranslationsFr {
 			'plex.connect' => 'Se connecter à Plex',
 			'plex.explain' => 'Subnext Player lit ce que votre propre serveur Plex contient déjà. Rien n\'est envoyé en ligne, et vos informations de compte ne parviennent à personne d\'autre que Plex.',
 			'plex.contacting' => 'Contact de Plex…',
-			'plex.enterCode' => 'Sur n\'importe quel appareil, ouvrez plex.tv/link et saisissez :',
+			'plex.enterCode' => ({required Object link}) => 'Sur n\'importe quel appareil, ouvrez ${link} et saisissez :',
+			'plex.linkNoBrowser' => ({required Object link}) => 'Rien sur cet appareil ne peut ouvrir ${link}. Ouvrez-le sur un autre appareil.',
+			'plex.signInBrowser' => 'Se connecter avec Plex',
+			'plex.useCode' => 'Utiliser un code',
+			'plex.finishInBrowser' => 'Autorisez Subnext Player sur la page Plex qui s\'est ouverte, puis revenez dans cette app.',
+			'plex.openAgain' => 'Rouvrir Plex',
+			'plex.browserFailed' => 'Rien sur cet appareil ne peut ouvrir la page de connexion Plex, voici donc un code.',
 			'plex.waiting' => 'En attente d\'approbation…',
 			'plex.copyCode' => 'Copier le code',
 			'plex.chooseServer' => 'Choisir un serveur',
@@ -2180,14 +2192,14 @@ extension on TranslationsFr {
 			'xtream.addLine.hide' => 'Masquer',
 			'xtream.addLine.defaultName' => 'Abonnement TV',
 			'xtream.picker.patternNone' => 'Ce motif ne correspond à rien.',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.title' => ({required Object catalogue}) => 'Catégories ${catalogue}',
 			'xtream.picker.save' => 'Enregistrer',
 			'xtream.picker.noMatch' => ({required Object query}) => 'Rien ne correspond à « ${query} ».',
 			'xtream.picker.noneChosen' => 'Rien de choisi pour l\'instant.',
 			'xtream.picker.search' => 'Rechercher dans toutes les catégories',
 			'xtream.picker.chosen' => ({required Object n}) => 'Choisies ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.hideWords' => 'Masquer des mots',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Masqués ${n}',
 			'xtream.picker.pattern' => 'Motif',
