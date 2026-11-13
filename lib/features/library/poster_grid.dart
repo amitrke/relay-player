@@ -94,9 +94,12 @@ class _PosterGridState extends ConsumerState<PosterGrid> {
       ),
     );
     // Label each poster with its source only when the grid mixes them. With
-    // Plex alone, which is most people, a "Plex" tag on every tile says
-    // nothing and covers artwork.
-    final mixed = items.map((i) => i.source).toSet().length > 1;
+    // one server alone, which is most people, a tag on every tile says
+    // nothing and covers artwork. Counted by source, not by kind of source:
+    // it was by kind until 2026-11-12, so results from several Plex servers
+    // carried no badge at all and nothing said which server a title was on.
+    final mixed =
+        items.map((i) => '${i.source.wire}|${i.sourceId}').toSet().length > 1;
     final columns = switch (f) {
       RelayFormFactor.phone => 3,
       RelayFormFactor.tablet => 5,

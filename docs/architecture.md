@@ -227,6 +227,77 @@ names are the panel's own labels, often streaming-service brands (PHASE0_FINDING
 Q4). Showing them in the app is fine; the §13 Phase 6 rule that store assets
 never show Advanced Sources screens covers this one too.
 
+**Refreshing the channel list (2026-11-01).** The chosen categories' channels
+were fetched once per process and kept in memory. Nothing fetched them again
+except a restart, a change to the categories, channel picks or hidden words,
+or *Try again* on an error page. On Android TV the process can live for days,
+so a channel the panel added or renamed did not appear. Now:
+
+- **A Refresh action.** Beside the search box on phone, tablet and desktop;
+  on a TV, the last row of the category column. A button beside the search
+  box was tried on the TV first and could not be reached: `RelayFieldTraversal`
+  leaves Left and Right in a text field to the caret, deliberately, so Right
+  never left the field. The list stays on screen while it reloads, and a
+  refresh that fails keeps it and says so.
+- **A quiet refetch of a stale list,** when the app comes back to the front
+  or the tab opens with a list over six hours old. Six hours is a guess:
+  line-ups change rarely, and the case is a TV left on its home screen
+  overnight. A failure here says nothing; nobody asked.
+- **All categories failing is now an error.** Each category's failure is
+  still swallowed so one bad category costs only its own channels, but when
+  every one failed the list came back empty and read as "Those categories
+  returned no channels", with no way to retry. It now throws, which the first
+  load shows with *Try again* and a refresh reports while keeping the old list.
+- **No automatic retry on this provider.** Riverpod 3 retries a failed
+  provider up to ten times with a growing delay. With the panel down, a
+  refresh spun for about half a minute before saying anything, asking every
+  category again each round, against a line §4 says may allow one
+  connection. Refresh and *Try again* are the retries, as for AI search.
+
+Pinned by `test/live_tv_refresh_test.dart`, including a TV test that walks to
+the row with the D-pad and fails without it. Seen on the Google TV emulator
+against a real panel: the row reached from the last category, a spinner while
+fetching, the list kept on screen. The stale refetch on resume is unit tested
+only.
+
+**"What do you watch?" opens the picker (2026-11-03).** Setting up a
+subscription used to end on the group list above: hundreds of categories
+under names such as "DE", "GER" and "Germany" as three groups, with Pattern
+and Hide words beside them. The selection rules in this section are
+unchanged; what changed is the first thing the picker shows.
+
+- **Chips, as a bulk selector.** Countries and languages and, for Live TV,
+  kinds of channel (news, sport, kids, films, documentary, music,
+  entertainment). Tapping one sets the ticks to the categories that are in a
+  chosen place and, when a kind is chosen, of a chosen kind. As with the
+  pattern box, the chips act on the selection, the result is visible before
+  Save, and nothing is chosen until one is tapped. Opt-in holds.
+- **The group list is Fine-tune**, one press away, with a way back to the
+  chips and the same Continue. A change made by hand there and then a chip
+  tapped asks before replacing it, because the chips cannot know about a
+  category ticked one at a time.
+- **When it opens:** in setup, and whenever nothing is chosen yet. Someone
+  coming back from Settings to a choice they already made lands on the list,
+  as before.
+- **The region and kind are guesses from names** (`category_facets.dart`),
+  like the language guess under §12 Search. A short code counts only as a
+  whole leading word or a part of its own, in capitals, so "IT" in an English
+  title is not Italy. Languages are filed under a country where that is how
+  people would look for them (Tamil under India). A category the guess cannot
+  place is never lost: the screen counts those and points at Fine-tune.
+  Tested only against made-up names in the shapes one real panel used; **how
+  well it places a different provider's names is not known yet.** The tables
+  are English plus the words seen most in the draft languages.
+- **Counts are categories, never channels.** A channel count would mean
+  fetching the streams of every category, which this section exists to avoid.
+
+Pinned by `test/category_facets_test.dart` and
+`test/category_picker_chips_test.dart`; the chips, the Connected screen and
+the review are in the D-pad audit (`test/dpad/dpad_screens_test.dart`), which
+found on its first run that `RelaySurface(onTap:)` rows show no ring it counts
+and add a second, ringless stop through their InkWell; the new rows use
+`RelayTappable`. Older `RelaySurface` rows elsewhere were not rechecked.
+
 ## 5. M3U / XMLTV fallback
 
 - Parse M3U with `#EXTINF` tag attributes (`tvg-id`, `tvg-logo`, `group-title`) to reconstruct categories and EPG linkage; a small hand-rolled parser is plenty (playlists are simple line-based text) — no need for a heavy package.
@@ -295,6 +366,37 @@ the app owns the consequence:
 - Treat a populated guide as the exception when estimating the value of EPG
   work in §13.
 - Also gated behind Advanced Sources (§8).
+
+> **Re-checked 2026-11-01, and the per-channel endpoints too** (PHASE0_FINDINGS.md,
+> Q6): `get_simple_data_table` and `get_short_epg` are empty for every sampled
+> channel, with or without an id, and the XMLTV export still has no programmes.
+> So on a panel like this, guide data can only come from outside it. Proposed
+> design, not built:
+>
+> - **Guide URLs the person adds**, several per account in priority order
+>   (`Account.epgUrl` becomes a list). Plain XMLTV, parsed like the panel's own.
+>   The app ships no URL, no list of suggested guides and no named project,
+>   for the same reason it ships no provider directory (§8.3).
+> - **Automatic matching, as suggestions.** In order: an exact id match, but
+>   ignoring any id the panel gives to more than one or two streams (the
+>   `AMC.us` case); then a normalised name match against every
+>   `<display-name>`, with country prefixes (`UK:`, `US |`), quality tags
+>   (`FHD`, `4K`, `HEVC`, `50fps`) and brackets stripped, but **time-shift tags
+>   such as `+1` kept**, since a `+1` channel's schedule is an hour later;
+>   then a fuzzy score with the category or prefix as a country hint and an
+>   identical logo URL as a bonus. High scores apply automatically, a middle
+>   band is offered to confirm, and when the top two candidates are close
+>   nothing is chosen automatically. Numbered event channels (`EVENT 00`) are
+>   skipped: no guide describes them.
+> - **Manual mapping wins.** "Guide channel…" on a channel searches the
+>   guide's channel list; "accept suggestions" works per category. The
+>   person's choices are kept apart from the automatic ones so a re-match
+>   never overwrites them, keyed by account and stream id with the normalised
+>   name as a fallback for panels that renumber.
+> - **Cost.** 16k channels against a guide of 10k or more is too many pairs to
+>   score naively: block candidates on shared tokens first, run it in the
+>   long-lived isolate writing straight to the cache (the Q4 lesson), and only
+>   for the categories the person selected (§4.1).
 
 ## 6. Plex integration (personal library)
 
@@ -429,7 +531,8 @@ needs no sign-in (`ProductName` "Jellyfin Server" or "Emby Server").
 - **Move to another device** (§17) does not carry a Jellyfin or Emby
   sign-in, for the reason it does not carry Plex: the token belongs to this
   device's id on that server. Quick Connect on the TV is the answer instead.
-- **Transcoding** is not offered, as on Plex.
+- **Transcoding** is not offered, as on Plex. *2026-11-01: proposed for Plex
+  first in §22; Jellyfin and Emby follow once sign-in is verified (§22.8).*
 - **Signing out** removes the server here only. The token stays valid on the
   server until its owner removes the device there; there is no single call
   that ends just this device's session on both products.
@@ -550,6 +653,25 @@ The opt-in toggle is the cheapest option that still captures the main benefit: i
 - Turning it on surfaces a short, specific disclaimer ("you're about to connect a third-party IPTV provider or playlist using credentials you supply; the app does not provide, host, or endorse any content or provider") that must be acknowledged before the Xtream/M3U account forms become reachable — separate from, and in addition to, the general onboarding disclaimer in §1.3, since this is a materially different consent moment.
 - The toggle is freely reversible; turning it back off hides the tab/entries again but doesn't delete configured Xtream/M3U accounts, so re-enabling restores them.
 
+> **The acknowledgement can be opened from Add source, 2026-11-03.** Add source
+> said "turn on Advanced sources in Settings" and linked there, on the reading
+> that the acknowledgement had to happen in Settings. The bullets above ask
+> only that it comes before the account forms are reachable. Sending someone
+> who had just said "I have an IPTV subscription" to Settings, and leaving them
+> there once the switch was on, was the first place the setup read as a tool
+> for experts. Now the off-state line in Add source has a *Set up Live TV*
+> button that opens **the same dialog** (`advanced_sources_consent.dart`) and,
+> on yes, goes straight to the form. What did not change: while off, Add source
+> still shows no Xtream entry, no tile and nothing greyed out, only that one
+> muted line and its button; the dialog's no-content and rights sentences are
+> word for word what they were. It gained short headings and a third point
+> (the login stays on this device), which are new consent text for the draft
+> languages' review (lib/i18n/README.md). The line used to be a text link a
+> remote could not reach and was missing from the TV and desktop rail; it is a
+> focusable button on both. Decided by the account owner, 2026-11-03, over
+> showing a full Live TV card in Add source while off, which would have needed
+> this section rewritten. Pinned by `test/live_tv_consent_test.dart`.
+
 ### 8.3 Provider Profile import (data-only)
 
 A convenience for adding a provider without hand-typing host/username/password: paste a URL to a small JSON manifest, the app fetches and parses it, and pre-fills the Xtream or M3U account form. This is explicitly **not** a plugin-loading mechanism — see §1.4 for why that distinction is a hard line, not a style choice.
@@ -564,7 +686,7 @@ A convenience for adding a provider without hand-typing host/username/password: 
 
 Regardless of the toggle, Apple's App Review Information must disclose the IPTV feature in full: what it is, that it is off by default, the acknowledgement it sits behind, and that the app supplies no provider (§1.3). The notes live in `fastlane/metadata/ios/review_information/notes.txt`.
 
-No demo account is supplied. The app has no sign-in of its own, and reviewers test it the way users do, with their own media; the notes offer test access for Advanced Sources on request. If a reviewer asks, credentials go into App Store Connect only, typed by the account owner, never into this repo. (Until 2026-09-23 this section required a standing demo Xtream account under Guideline 2.1; the account owner decided against it that day.)
+No demo account is supplied. The app has no sign-in of its own, and reviewers test it the way users do, with their own media; the notes offer test access for Advanced Sources on request. If a reviewer asks, credentials go into App Store Connect only, typed by the account owner, never into this repo. (Until 2026-09-23 this section required a standing demo Xtream account under Guideline 2.1; the account owner decided against it that day.) On Play, "no sign-in" is declared as "some functionality is restricted" with instructions and no credentials, since 2026-10-31, when a reviewer read the optional SMB form as a login wall; the reasoning is in `docs/STORE_LISTING.md`.
 
 ## 9. AI Features (bring-your-own AI provider key)
 
@@ -1102,6 +1224,25 @@ check lives; play a Plex title on the Chromecast before trusting it
 > is now pinned. It still passes without the key, so the key rests on the
 > emulator runs alone.
 >
+> **A search box the remote passes over opened the keyboard, 2026-11-01.**
+> Reported on Live TV, whose search box sits between the tabs and the
+> channels: walking down to the channels landed on it, and the keyboard came
+> up over the screen. The category and channel pickers have the same shape. A
+> Flutter text field opens its input connection, and with it the keyboard, the
+> moment it is focused, and with a remote focus arrives by passing, not by
+> choosing. `RelayTypeOnSelect` keeps such a field read-only on a TV, which
+> opens no connection, until OK or a tap; when focus leaves it is read-only
+> again, and OK on it with the keyboard put away brings the keyboard back.
+> Off a TV it changes nothing. It is on the search fields a remote walks past:
+> Live TV, Search, and the category and channel pickers (the picker's pattern
+> field too). Not on forms opened to be typed into, such as the Xtream form or
+> a sign-in, where the keyboard on arrival is the point. **One cost:** on
+> Search, which focuses its field on arrival, typing now takes one OK first.
+> `test/type_on_select_test.dart` pins it, and fails with the gate open; on
+> the Google TV emulator, Down from the tabs crossed Live TV's search box with
+> `mInputShown=false`, OK opened the keyboard, typing filtered, Back closed it
+> and Down went on to the list. The pickers and Search were not looked at.
+>
 > **The D-pad audit, `test/dpad/`, 2026-09-28.** Every defect above was a rule
 > a test could have stated once for every screen, so `DpadAudit` states them
 > and drives each screen at TV size with arrow keys: something is focused
@@ -1195,6 +1336,31 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
 
 1. Onboarding / disclaimer — general framing only ("this app streams from sources you connect yourself — a Plex server, a home NAS or local files, or optionally an IPTV provider/playlist; we host no content"); no IPTV-specific language up front
 2. Add source — Plex (PIN-link flow, §6) and Local & Network (device scan, folder picker, or SMB share, §7) always available; Xtream/M3U/Provider-Profile-import only appear once Advanced Sources is enabled (§8)
+   > **Setting up a subscription is three steps, 2026-11-03.** (1) *How did your
+   > provider send your login?*: one long link (the default off a TV), a
+   > username and password (the default on a TV, where pasting is not a thing
+   > a remote does), or copy from another device (§17). A pasted link is taken
+   > apart on screen by `ProviderLink` (`provider_link.dart`: `get.php`,
+   > `player_api.php`, `xmltv.php`, `panel_api.php` with `username` and
+   > `password`, or a stream URL) and checked exactly as typed fields are;
+   > only the pasted text is read, nothing is fetched to parse it, so §8.3 is
+   > untouched. (2) *You're connected*: status, trial, end date (`exp_date`,
+   > parsed since Phase 0 and never shown before), screens at once with a
+   > sentence on the one-screen limit (§4), and the number of channel
+   > categories. (3) *What do you watch?* (§4.1), then a review page with
+   > Live TV, Movies, Series and Never show together; Settings opens the same
+   > page as *What you see*, so the Movies and Series choices are no longer
+   > only small text buttons. Words: "panel" and "line" became "provider" and
+   > "subscription" in the strings, and "Xtream Codes login" became "IPTV
+   > subscription", with Xtream Codes kept as a sub-line because it is what
+   > people search for. A subscription with no name given is called "TV
+   > subscription" rather than its server address, which named the provider
+   > wherever the account was shown (§1). The channel picker now opens on its
+   > two choices, whole category or only the ticked channels, with what each
+   > means for channels added later. Pinned by `provider_link_test.dart`,
+   > `add_xtream_link_test.dart` and `add_xtream_form_test.dart` (now run as a
+   > TV, which is what it is about). **Not seen on a device or against a real
+   > panel**; see MANUAL_TESTING.md §6b.
 3. Home — Movies / Series tabs, plus Local & Network once it is used (see the note below) (Movies/Series merge across Plex accounts); Live TV tab appears only when Advanced Sources is on; continue-watching row (films above Movies, episodes above Series; see the note below), favorites row; search bar offers an AI natural-language mode once a text-generation provider is configured (§9.2)
    > **Continue watching is split by kind, 2026-09-28.** It was one mixed row
    > above the Movies grid, from the artboard. On the Chromecast a show in
@@ -1246,6 +1412,78 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > `test/film_detail_screen_test.dart`, including a phone-size render that
    > caught action labels overflowing; seen on the Google TV and Pixel Tablet
    > emulators against a real Plex server.
+   >
+   > **Which server, and the other copies, 2026-11-12.** Reported: with
+   > several Plex servers, nothing on a poster or a title page said which
+   > server a title was on. The poster badge appeared only when a grid mixed
+   > *kinds* of source (Plex and a panel), and said only "Plex". And when two
+   > servers had the same film, `dedupeLibrary` kept one copy and dropped the
+   > other without a trace. Now:
+   > - **Title pages say "On DS220plus"** under the facts line, film and show
+   >   alike (`source_line.dart`). A panel copy is only ever "IPTV", as on the
+   >   badge, so a provider's label never reaches a screenshot (§1).
+   > - **Dedupe keeps the copies it folds** on the kept item
+   >   (`CatalogItem.alsoOn`), and a tile opens its page with them as repeated
+   >   `?also=` parameters. `CatalogItem.route` stays the bare path, since it
+   >   is also an identity elsewhere. The page lists each as "Also on …".
+   >   Tapping one replaces the page, so Back still goes to where the person
+   >   came from, and the replaced page lists the first copy in turn. The copy
+   >   chosen first is unchanged: LAN server, then any server, then a panel.
+   > - **The badge counts sources, not kinds of source**, so results from two
+   >   Plex servers are labelled. It names the server, cut to fit, with "+1"
+   >   for a merged title.
+   > **Tradeoffs:** the copies travel only in the link a tile opens. A page
+   > reached any other way (Continue watching's Details, a favourite, a deep
+   > link) names its server but lists no other copies. Panel title pages
+   > (`/vod`, xtream series) do not have the line yet. Pinned by
+   > `library_dedupe_test.dart` (copies kept, carried through the metadata
+   > rebuilds, round-tripped through the link, including ids containing the
+   > separator) and `film_detail_screen_test.dart` (the line, and opening the
+   > other copy). Not seen on a device: driving the iOS Simulator failed that
+   > day (taps and typing lost), and that Simulator had one server connected,
+   > so the badge and "Also on" were not visible there anyway.
+   >
+   > **Ratings by source and a Trailer button, 2026-11-01.** Both title
+   > pages (film and show) gained a line of scores, each named by its source
+   > ("IMDb 6.8 · Rotten Tomatoes 60% · RT audience 86% · TMDB 7.5"), and a
+   > *Trailer* button beside Play, drawn only once a trailer is known to
+   > exist. Decisions, and why (`title_extras.dart`):
+   > - **Scores are the server's own, never fetched.** There is no IMDb API;
+   >   IMDb's datasets and OMDb's data are both licensed for non-commercial
+   >   use only, and OMDb would be another key and another place titles go.
+   >   Plex says whose each score is (a `Rating` tag per source, and
+   >   `ratingImage`/`audienceRatingImage` on listings), so IMDb shows exactly
+   >   when the library's agent fetched it. Jellyfin's `CommunityRating` does
+   >   not say (TMDB's or IMDb's, depending on fetcher order), so it is a
+   >   plain "★ 8.7"; its `CriticRating` is Rotten Tomatoes'. A bare number
+   >   with no source was rejected: a film is a 6.8 on IMDb and a 7.5 on TMDB.
+   > - **Trailers come from the server first and play in our player.** Plex
+   >   lists them as extras (`extraType` 1). On a real Plex Pass server none
+   >   were files: all three for a new film were trailers Plex supplies,
+   >   relayed by the server from `/services/iva/assets/...video.mp4?fmt=4&...`.
+   >   They play like any file, with the server's token, which had to be
+   >   joined with `&` because that part key already has a query. Jellyfin's
+   >   local trailers play the same way.
+   > - **Otherwise a YouTube link, opened outside the app.** Jellyfin's
+   >   `RemoteTrailers`, or, with the person's TMDB key saved and nothing from
+   >   the server, TMDB's official YouTube trailer (only the TMDB id is sent,
+   >   on page open). The link is handed to the YouTube app or a browser
+   >   (`url_launcher`). Pulling the stream out of YouTube to play in-app was
+   >   ruled out: against YouTube's terms and Play's policy.
+   > - **A trailer leaves no trace.** `/play/...?trailer=1` starts at 0 and
+   >   writes no history, reports nothing to the server or the trackers, and
+   >   offers no up next; otherwise a trailer would sit in Continue watching.
+   >
+   > Seen on the Google TV emulator against a real Plex server: the four
+   > scores above, two (IMDb, TMDB) on a smaller film, none on a home video;
+   > a Plex-relayed trailer playing (clock moving; the emulator shows no
+   > picture, as CLAUDE.md's Commands section warns), and absent from Continue watching afterwards.
+   > **Not seen:** the YouTube hand-off. The emulator has no YouTube app or
+   > browser, and Android TV's stub claims every web link with its own
+   > notice, so `launchUrl` reports success and our "nothing can open" note
+   > never shows there. Jellyfin's ratings and trailers are unit tested only
+   > (`/Items/{id}` with `userId`, a newer route than the rest of that
+   > client uses). The show page's line and button were not looked at.
 6. Player (full-screen, gesture + remote-friendly controls, subtitle track selector including AI-generated tracks)
 7. EPG guide (grid: channels × time, "now/next") — Advanced Sources only
 8. Search (cross Movies/Series/Local & Network always; Live TV included once enabled; AI natural-language mode per §9.2)
@@ -1954,6 +2192,9 @@ Each of these looks locally reasonable and each would spend something the no-bac
 
 The test for any future proposal: *does this put our server in the path of user content or credentials?* Crash reports and a config flag do not. Almost everything else does. **Moving settings between the user's own devices (§17) passes that test: it goes device to device on the local network, and we run nothing.** It is not the cross-device sync this section rules out, because it is a one-off copy the user starts on both screens, with nothing kept anywhere afterwards.
 
+
+**Tested a second time and withdrawn, 2026-11-12: a problem-report relay.** The Admiral AVI (MANUAL_TESTING.md §4) took a real iPad, a Pixel, Xcode signing and an Android SDK to diagnose, because the user's report was a screenshot and a sentence. A one-tap report needed somewhere to land without an account, which a public issue tracker cannot be, so a small Cloudflare Worker was proposed, argued against this section, built (diagnostics-only schema, redaction, rate and hourly ceilings, repeats folded into one issue, a deploy script), deployed and run against the real services: it filed a diagnostics-only issue and folded a repeat into it. **The owner then withdrew it the same day**, before any release carried it, because the cost is not the code: it ends "no backend" in the privacy policy and "no data collected" on both store listings (Play Data Safety would have declared Diagnostics, probably as *shared*, since GitHub publishes the issue, and Apple's labels likewise), for a convenience feature. The privacy posture is worth more than the faster diagnosis, and the bug that prompted it was found without it. Nothing was published: the store forms were never changed, the Worker and its label were deleted, and the repository secret was removed. **The working relay is in git history** (`ac0074a`, reverted by `761ad46`) if this is ever reconsidered; it would have to be argued against this note, not asked for again as a small convenience. What is still true if it comes back: a key shipped in the app protects nothing (the repository and binaries are public), a Python client is blocked by Cloudflare's bot filter (`error code: 1010`) unless it sets its own User-Agent, and a report the person can see and send themselves, such as Copy, collects nothing and is a different, much smaller proposal.
+
 ---
 
 ## 17. Moving settings to another device
@@ -2354,6 +2595,320 @@ Jellyseerr or Seerr has been connected (MANUAL_TESTING.md). The `%20`
 detail is from Overseerr's request validator, which refuses `+` for a space;
 whether Jellyseerr and Seerr behave the same is part of that check.
 
+**First real server, 2026-11-12.** A Plex-backed Seerr on the LAN, from the
+iOS Simulator (debug build): connected by address, and search returned the
+row for titles the library lacked (TMDB posters, years, `unknown` status, and
+`person` results dropped as intended). The search query had no spaces, so
+`%20` is still unchecked, and no request was sent. The report that led here
+was "search shows nothing missing" on a physical iPad. Tried again on that
+iPad the same day, without a new build, the row appeared. The cause is not
+confirmed. The likeliest one is that the iPad had no Seerr connection until
+then: it is per device and Move to another device does not copy it (above). Unconfirmed causes are harder to find
+because the row used to hide any failure that was not a `SeerrException`.
+It now shows every error and logs the ones it did not expect
+(`seerr_search_row.dart`).
+
+**Behind a reverse proxy or tunnel (2026-11-12).** An address typed with no
+scheme used to get `http://` whatever the host. A proxy or tunnel that
+redirects HTTP to HTTPS then passed the probe, because Dio follows a GET's
+redirect, and failed at sign-in, because it does not follow a POST's. Now a
+LAN-looking host (an IP, `localhost`, a single label, `.local`, `.lan`,
+`.home`, `.internal`, `.home.arpa`) still gets `http://`, and any other
+domain gets `https://`. The probe also keeps the base its redirects ended
+at, so an explicit `http://` that redirects is saved as the HTTPS address.
+Both are pinned in `seerr_test.dart`; the redirect test uses a local fake,
+not a real proxy.
+
+**Cloudflare Access does not work, and now says so.** Checked
+from a Mac against a real Seerr behind a Cloudflare Tunnel with an Access
+application in front. The API answers `302` to Access's login page, with
+`www-authenticate: Cloudflare-Access`. Dio follows it and gets HTML, so
+the probe used to report "No Overseerr, Jellyseerr or Seerr server answered …
+usually 5055", which sent the person looking at the wrong thing. Since the
+same day it detects Access (that header, or a redirect to or landing on
+`*.cloudflareaccess.com`) and says the address is behind Access, naming the
+`/api/*` bypass. Checked against the same real server; the unit test covers
+the header with redirects not followed, since a local fake cannot stand in
+for the login host. The new message's de, es and fr text is a draft, like
+the rest of those locales (§12.3). A plain tunnel
+without Access has not been tried. The workaround is on the owner's side:
+an Access *bypass* policy for `/api/*` (Seerr's API has its own sign-in),
+or no Access on that hostname. Sending Access service-token headers would
+mean storing a second secret per server; not built, and not decided. With that bypass in place
+on the same server (a second self-hosted Access application for the
+hostname's `api/*` path, policy Bypass for Everyone), the probe succeeded
+through the tunnel, typed with no scheme and saved as `https://`. The web UI
+stayed behind Access, and an unauthenticated `/api/v1/search` still got
+Seerr's own 401. Sign-in and search through the tunnel have not been tried.
+
+## 21. Follow and remind: shows and teams (proposed 2026-11-01, not built)
+
+The person picks shows ("This Week" on a Sunday morning, a series) and teams
+(MLB, NBA, NHL) and is told when the next one airs and on which network, with
+a reminder before it starts. **Proposed, nothing built, and the sources below
+are unchecked against their terms**; the Open items entry lists what has to be
+settled first.
+
+Why this and not more guide work: §5 shows an IPTV guide is likely to be
+empty, and even a full one only covers the channels someone has. Shows and
+sports have their own structured schedule data, independent of any source in
+this app. So the feature is **not part of Advanced Sources (§8)**. It is a TV
+listings feature, of the kind plenty of approved store apps already have, and
+it reads that way in review. What it must never become is a "where to watch
+this" pointer at anything but the person's own sources (below).
+
+### 21.1 Where schedules come from
+
+- **Shows: TVmaze.** Free, no key, CC BY-SA, so attribution is owed on the
+  screen that shows its data. A show search returns the network and the
+  weekly slot, and episodes carry exact air times. The follow list lives on
+  the device. To verify: whether weekly news and talk shows have episode
+  entries or only a slot; a reminder can work from the slot alone.
+- **Shows, for someone signed in to Trakt (§19).** `/calendars/my/shows`
+  returns upcoming episodes of what they follow there, with network and time.
+  The sign-in exists, but §19.1 describes only *sending* finished watches;
+  reading the calendar is a new use, so the consent text has to cover it
+  before this ships.
+- **Sports: one `SportsScheduleSource` interface, source to be chosen.** The
+  leagues publish schedules with national broadcasters (NHL
+  `api-web.nhle.com`, MLB `statsapi.mlb.com`, NBA `cdn.nba.com`), and ESPN's
+  site API covers all three, but all of these are public and undocumented,
+  and MLB's terms restrict non-personal use. TheSportsDB is the clearer
+  licence (a community project with an app key) with patchier network data.
+  **Read each one's terms before building against it**; nothing here has been.
+  Teams are followed by id. National networks are reliable; regional sports
+  networks and blackouts vary by market, so say less about them, not more.
+
+### 21.2 Local air time is the trap
+
+TVmaze gives a network's national slot. Affiliates air some programmes at
+different local times (Sunday morning news shows are the standing example),
+and a reminder an hour wrong is worse than none. In order of preference:
+
+1. The person's own local channel listing, where one exists: the Plex Live TV
+   guide (Gracenote, licensed, from their own server), or a guide URL they
+   added and matched (§5).
+2. Otherwise the national time, with a per-show adjustment the person sets
+   once ("airs 1 hour later here").
+
+Sports times are absolute, but games move: postponements and flexed starts.
+Re-fetch shortly before a reminder fires, not only when it is scheduled.
+
+### 21.3 AI: for finding, never for timing
+
+With an AI provider configured (§9), it can turn "I follow the Celtics and
+that Sunday politics show" into a TVmaze show id and a team id, or answer a
+one-off "when is X on?" with a web search. It is **not a source of reminder
+times**. §9.2 already found that model output cannot be told apart from a
+correct answer, and an invented start time becomes a wrong notification. So:
+
+- A reminder fires only from structured data (21.1 or 21.2).
+- A time the AI found online is shown as found online, with its source, and
+  becomes a reminder only if the person confirms it.
+- Web search needs a provider that has it built in (Anthropic, OpenAI,
+  Gemini), not the local Ollama path, and each search costs the person
+  money. §9.3 applies: a consent naming the provider and the data ("your
+  followed shows and teams").
+
+### 21.4 Reminders on each platform
+
+- **Android.** Since Android 14 exact alarms are off by default for apps that
+  are not alarm clocks or calendars. Use inexact alarms with a short window;
+  a reminder a few minutes early is fine. Background refresh through
+  WorkManager.
+- **iOS.** At most 64 pending local notifications per app, so schedule only
+  the next few and top up when the app opens. Background app refresh is
+  best-effort and cannot be relied on.
+- **Android TV and Fire TV.** Notifications are poor there. A "Coming up" row
+  on the home screen does the job instead.
+- **Tapping a reminder** offers Watch only when one of the person's own
+  sources carries the channel: Plex Live TV, or a channel they matched
+  (§5, Advanced Sources only). Otherwise it is information, and nothing in the
+  feature suggests where else to watch.
+
+### 21.5 Suggested order
+
+1. Follow shows through TVmaze, local reminders, the per-show adjustment.
+2. The Trakt calendar for people already signed in, once its consent text is
+   updated.
+3. Sports, once one source's terms check out.
+4. AI as a way to find shows and teams.
+
+## 22. Transcoding: a quality choice for server playback (proposed 2026-11-01, not built)
+
+Today every play from a personal server is **direct play of the original
+file**: the Plex Part key (`/library/parts/{id}/{ts}/file.mkv`) and
+Jellyfin's or Emby's `/Videos/{id}/stream?static=true`. Nothing ever asks a
+server to transcode, even one that could. That was not a decision against
+transcoding. §6 designed it (a `PlaybackSessionController` that starts the
+session, pings it and stops it), Phase 0 found the package could not drive
+it as shipped, and the re-run with the fix never happened (PHASE0_FINDINGS
+Q2; the Open items entry "Finish the Plex transcode lifecycle test").
+**Proposed, nothing built**; §22.1 is the gate for everything after it.
+
+Why it is worth doing now:
+
+- **Relayed Plex connections are capped.** Plex Relay carries a few Mbps at
+  best (around 1-2 Mbps without Plex Pass), and a full-quality original over
+  it buffers without end. The app already knows a connection is a relay: it
+  tries relay last (`plex_service.dart`, connection order) and the link
+  screen says "relay only" (`plex_link_screen.dart`). A server-side transcode
+  is the only thing that makes such a server watchable.
+- **Home upload is the limit when away.** A 4K HEVC file at 40-60 Mbps
+  cannot stream over a typical home uplink, relay or not.
+- **Weak TV hardware.** media_kit (libmpv) decodes almost anything in
+  software, so "this device cannot play this file", the usual reason Plex's
+  own apps transcode, rarely applies here. But a cheap streaming stick may
+  not keep up with 4K HEVC 10-bit or AV1 in software, and a lower-bitrate
+  H.264 stream is the fix.
+
+What it must never do is change the default: **at home the original file
+stays the default**, because it is what gives the best picture and costs the
+server's owner nothing (§22.6).
+
+### 22.1 The gate: finish the lifecycle test first
+
+The risk named since Phase 0 is a **leaked transcode session on every
+user's server**: a client that starts transcodes and forgets them leaves the
+owner's CPU busy encoding for nobody. Nothing below ships until the spike
+harness (`lib/features/_spike/`) has run, against a real server:
+
+1. `decision` with `hasMDE=1` and the **same parameters as the start URL**
+   (Phase 0's rule: a partial set makes the server decide about a different
+   request), then `start.m3u8`, then pings, then `stop`.
+2. Confirm the session **leaves `/transcode/sessions`** after `stop`, not
+   just that `stop` returned 200.
+3. **Measure the server's idle timeout** for a session with no pings and no
+   segment requests, and pick a ping interval well inside it. Unknown today;
+   §6's "Plex sessions time out without them" is not a number.
+4. **Kill the app mid-play** and see how long the session lives on. This is
+   the case no `stop` can cover, and it sets how much the crash clean-up in
+   §22.4 matters.
+5. **Seek inside a transcoded HLS stream.** Either mpv seeks within the
+   playlist and the server follows, or a seek past what has been encoded
+   needs a new session started with `offset`. Plex's own clients do the
+   latter; which one works with libmpv decides how §22.3 handles seeking.
+
+Record the results in PHASE0_FINDINGS Q2 beside the 2026-09 rows, failures
+included.
+
+### 22.2 What dart_plex offers, and what it lacks
+
+`dart_plex` 0.1.2 (`plex_streaming_api.dart`):
+
+- `universalVideoUrl(ratingKey, protocol: 'hls', container: 'mpegts',
+  videoResolution, videoBitrate, offsetSeconds, session, directPlay,
+  directStream)`. `videoBitrate` becomes `maxVideoBitrate`, in kbps.
+- `decisionUniversal(params)` returns a `PlexTranscodeDecision`: a 1xxx
+  `generalDecisionCode` is playable, and `isDirect` / `isTranscode` read the
+  sibling `directPlayDecisionCode` / `transcodeDecisionCode`. 2xxx is a
+  general refusal (bandwidth, permissions), 4xxx a transcode error.
+- `pingUniversal(session)` and `stopUniversal(session)`.
+- **`hasMDE=1` is missing from both the URL and the decision** and must be
+  added by us (Phase 0's blocking finding). Nothing else in this list has
+  been verified against a real server; treat each call as unproven until
+  §22.1 has exercised it, as Q2's standing caution says.
+
+### 22.3 The model
+
+- `MediaServer.transcode(id, TranscodeRequest)`, beside `directPlay`, which
+  is unchanged. `TranscodeRequest` carries the maximum bitrate in kbps, an
+  optional resolution, the start offset, and the audio choice.
+- It returns the playable **and a session handle** with `ping()` and
+  `stop()`. Only the handle can end a session, so nothing else needs to know
+  which server it is or how its sessions are named.
+- A server without transcoding (Jellyfin and Emby until §22.8) says so
+  through the default implementation, and the quality choice is not offered
+  for its titles rather than offered and failing.
+- The player keeps one code path: it opens a URL either way. What changes is
+  who owns the session, and that it must be stopped (§22.4).
+
+### 22.4 Lifecycle rules
+
+- **One unique session id per play**, never reused, so a stop for an old
+  play cannot end a new one.
+- **Ping on the interval §22.1 measured** for as long as the player holds
+  the session, paused included.
+- **Stop on every way out:** leaving the player, an error, a quality switch
+  (stop the old session before starting the new one, the same ordering §4
+  and §10 insist on for live streams), reopening the same title, and after
+  a long pause or a long time in the background. The last fits §10's
+  audio-focus table: a pause that outlives the server's patience should not
+  hold the owner's transcoder.
+- **Crash clean-up:** remember the active session id (and its server) in
+  settings while it runs, clear it on stop, and stop any left behind on the
+  next launch. It holds no credential, so the unencrypted settings box is
+  fine for it (§3).
+
+### 22.5 Pitfalls to design for
+
+- **The offset trap.** A transcode started with `offset` plays from 0:00 as
+  far as the player knows, so its position must have the offset added before
+  it reaches Plex, history or the trackers. Without that, leaving after a
+  minute reports "1:00" and wipes the saved place, the same failure as the
+  2026-10-30 resume bug (§4, MANUAL_TESTING.md). Pin it with a test before
+  anything else in the player changes.
+- **One audio track.** A transcoded stream carries the audio the server
+  chose, not all of them, so the audio picker cannot switch tracks locally.
+  The choice goes to the server (Plex's part stream selection) and changing
+  it restarts the session at the current position.
+- **Subtitles need a decision**: text subtitles as a sidecar the player
+  loads, image subtitles (PGS, VobSub) burned in by the server, which costs
+  more CPU. Deferred at first: a transcode plays with subtitles off, and the
+  picker says why.
+
+### 22.6 The settings and the player
+
+- **Playback → Quality**, with **separate values at home and away**, as
+  Plex has: *Original* (the default at home) and a few steps, for example
+  20, 12, 8 and 4 Mbps, and 2 Mbps at 720p. Away over a relay defaults to a
+  low step; away over a direct remote connection defaults to Original until
+  someone has measured otherwise.
+- **A quality chooser in the player** restarts at the current position.
+- **Later: offer it when direct play stalls.** The player already gives up
+  with a stated reason after its stall timeout (§10); that error state can
+  offer "Try a lower quality" for a server title.
+
+**The owner's side.** A transcode spends the server owner's CPU, and an
+owner can forbid transcoding for shared users or cap their remote bitrate.
+The decision reports that (2xxx/4xxx), and the app says so plainly ("This
+server does not allow lower quality for your account") rather than falling
+back silently or retrying.
+
+### 22.7 Tests
+
+- A fake Plex server that records requests and asserts **decision, start,
+  pings, stop**, in that order, and that `stop` is sent on leaving the
+  player, on an error and on a quality switch, with the old session's id.
+- A player test that a transcode started at an offset **reports the offset
+  plus the playlist position**, and that the control (no offset) still
+  reports the plain position.
+- The crash clean-up: a stored session id is stopped on the next launch and
+  then cleared.
+
+### 22.8 Out of scope, for now
+
+- **Downloads stay original files** (§18). A download is for watching
+  offline at full quality, and a transcoded copy would need the server to
+  finish the whole encode first.
+- **Jellyfin and Emby**, later, through `/Videos/{id}/master.m3u8` with
+  `MaxStreamingBitrate` and a `PlaySessionId`, reported through
+  `/Sessions/Playing` with that id and ended with
+  `/Sessions/Playing/Stopped` plus `DELETE /Videos/ActiveEncodings`. Not
+  before signing in to a real Jellyfin has been verified (§6.2): building a
+  session lifecycle on an unverified sign-in would stack one unknown on
+  another.
+
+### 22.9 Suggested order
+
+0. The lifecycle test (§22.1). If sessions cannot be reliably stopped, stop
+   here and record why.
+1. The Plex quality setting and the session controller (§22.3, §22.4), with
+   the offset test first.
+2. The in-player quality chooser.
+3. Relay and away defaults, and the "Try a lower quality" offer on a stall.
+4. Jellyfin and Emby (§22.8).
+
 ---
 
 ## Open items
@@ -2430,7 +2985,8 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   starts, since §15 singles out the SAF-after-reboot case as the one that fails.
 - **Finish the Plex transcode lifecycle test** — `decision → ping → stop` with
   the `hasMDE=1` fix in place. The specific risk is a leaked transcode session
-  on every user's server.
+  on every user's server. *2026-11-01: now the gate for §22, a quality
+  choice for server playback; §22.1 lists what the test must settle.*
 - ~~**Finalise the app name**~~ **Decided 2026-09-21: Subnext Player.**
   "Relay Player" was the working title. A web search found no app, company or
   trademark called Subnext, whereas "Relay" is crowded: a Plex music player
@@ -2452,12 +3008,20 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   chose, and Play's data-safety form must declare "app activity, other user
   content" shared with a third party at the user's request. Added 2026-10-16.
 
+- **Follow and remind (§21), before any of it is built.** Added 2026-11-01.
+  (1) Read the terms of each sports schedule source and pick one; the league
+  and ESPN endpoints are undocumented and MLB's restrict non-personal use.
+  (2) Check whether TVmaze has episode entries for weekly news shows or only
+  a slot. (3) Reword the Trakt consent (§19.1) if its calendar is read.
+  (4) Decide whether the feature ships without AI first; §21.3's consent and
+  web-search providers are a separate piece of work.
+
 - **§16 backend exceptions** — whether Crashlytics ships opt-in. **Deferred
   out of the MVP, 2026-09-21:** it does not ship in the first Play release, so
   the MVP contains no Firebase at all. **The Remote Config kill switch was
   dropped, 2026-10-06** (§16.1, #16 closed). Everything else backend-shaped
-  stays out; §16.3 is the standing answer. **Tested once already,
-  2026-09-13:** issue #6 asked for Firebase Analytics alongside Crashlytics,
+  stays out; §16.3 is the standing answer. **Tested twice already,
+  2026-09-13 and 2026-11-12 (§16.3, the report relay):** issue #6 asked for Firebase Analytics alongside Crashlytics,
   and Analytics was dropped rather than §16.3 revised. #6 is now Crashlytics
   only. A future case for analytics has to be argued against §16.3 here first,
   not in an issue.
@@ -2550,6 +3114,39 @@ whether Jellyseerr and Seerr behave the same is part of that check.
   knowledge and unverified against LG's current developer docs.
 - **A second, worse Xtream panel** — to settle §10's malformed-TS claim, or
   else formally drop that argument.
+- **IPTV ease of use, round 2 (designed 2026-11-03, not built).** Round 1 (the
+  setup flow, §8.2 and §12 screen 2) is built. Still on the design canvas, with
+  the decisions already taken:
+  - *Watched recently* in Live TV: a short list of channel ids per
+    subscription, on the device only, counted after about 10 s of real
+    playback so zapping does not fill it, looked up in the current channel
+    list when shown (a channel gone from it drops out), cleared with watch
+    history and not copied by §17. Live playback deliberately writes no
+    history today (`player_screen.dart`), so this is new storage.
+  - *Hide this channel* from a long-press in Live TV. **Decided 2026-11-03: a
+    separate hidden list**, not "switch the category to ticked channels",
+    so a whole category stays whole and keeps picking up new channels.
+  - Channel logos only from the provider's own `stream_icon`, cached, with
+    initials while loading or when there is none. Looking logos up by name in
+    an outside collection was rejected: names match badly, every lookup would
+    send what the person watches to a third party, and bundling broadcasters'
+    marks would put them in our own artefacts (§1).
+  - A subscription card in Settings with status, end date and screens in use,
+    and a plain one-screen message in the player in place of the raw error.
+  - On a TV, setting up from the phone's browser: the TV shows a QR code for a
+    small page it serves itself, where the link is pasted. Unsolved: a page
+    served from `http://<lan-ip>` has no WebCrypto (not a secure context), so
+    it would need its own AES code to seal what it sends under a secret
+    carried after `#` in the QR link, and anyone on the Wi-Fi could tamper with
+    the page itself, which §17's app-to-app path does not allow. No relay
+    server (§16.3).
+  - AI *Also try*: suggestions of **categories**, never single channels from
+    categories not chosen (those lists are never fetched, §4.1), behind their
+    own consent (§9.3), each with its reason. A rules-only version (other
+    groups of the same country, an HD copy of an SD channel) first; AI only if
+    that proves too generic. Needs *Watched recently* as its signal.
+  - No programme guide exists yet (§5, §12 screen 7), so none of the above
+    may assume now-and-next data.
 
 ### Scoped out, revisitable
 

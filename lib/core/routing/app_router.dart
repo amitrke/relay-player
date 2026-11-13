@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/models/catalog_item.dart';
 import '../../features/_debug/debug_menu_screen.dart';
 import '../../features/_gallery/design_gallery.dart';
 import '../../features/_spike/spike_app.dart';
 import '../../features/accounts/plex_link_screen.dart';
 import '../../features/advanced_sources/add_xtream_screen.dart';
 import '../../features/advanced_sources/category_picker_screen.dart';
+import '../../features/advanced_sources/connected_screen.dart';
+import '../../features/advanced_sources/setup_review_screen.dart';
 import '../../features/advanced_sources/channel_picker_screen.dart';
 import '../../features/advanced_sources/xtream_series_screen.dart';
 import '../../data/xtream/xtream_account_store.dart';
+import '../../data/xtream/xtream_client.dart';
 import '../../features/accounts/plex_session.dart';
 import '../../features/downloads/downloads_screen.dart';
 import '../../features/home/home_shell.dart';
@@ -143,9 +147,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const AddXtreamScreen(),
       ),
       GoRoute(
+        // Step 2 of setting up a subscription. The provider's answer to the
+        // form's check comes as extra; without it the screen shows less.
+        path: '/advanced/xtream/:accountId/connected',
+        builder: (_, state) => ConnectedScreen(
+          accountId: state.pathParameters['accountId']!,
+          info: state.extra as XtreamAccountInfo?,
+        ),
+      ),
+      GoRoute(
+        // The end of setting up a subscription, and Settings' way in to
+        // adjust one: Live TV, Movies, Series and Never show together.
+        path: '/advanced/xtream/:accountId/review',
+        builder: (_, state) => SetupReviewScreen(
+          accountId: state.pathParameters['accountId']!,
+        ),
+      ),
+      GoRoute(
         path: '/advanced/xtream/:accountId/categories/:catalogue',
         builder: (_, state) => CategoryPickerScreen(
           accountId: state.pathParameters['accountId']!,
+          // Step 3 of setting up: opens on "What do you watch?" and ends in
+          // the review rather than back where it came from.
+          setup: state.uri.queryParameters['setup'] == '1',
           catalogue: XtreamCatalogue.values.firstWhere(
             (c) => c.name == state.pathParameters['catalogue'],
             orElse: () => XtreamCatalogue.live,
@@ -270,6 +294,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => ShowDetailScreen(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
+          // Other copies of the title, from a merged tile (source_line.dart).
+          alsoOn: CatalogCopy.fromQuery(state.uri, CatalogKind.show),
         ),
       ),
       GoRoute(
@@ -277,6 +303,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => FilmDetailScreen(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
+          // Other copies of the title, from a merged tile (source_line.dart).
+          alsoOn: CatalogCopy.fromQuery(state.uri, CatalogKind.movie),
         ),
       ),
       GoRoute(
@@ -286,6 +314,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ratingKey: state.pathParameters['ratingKey']!,
           // `?start=0`: the film page's Play from start.
           fromStart: state.uri.queryParameters['start'] == '0',
+          // `?trailer=1`: a title page's Trailer, played and forgotten.
+          trailer: state.uri.queryParameters['trailer'] == '1',
         ),
       ),
       // Never registered in a release build, so neither screen can be reached

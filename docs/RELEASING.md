@@ -480,6 +480,61 @@ with a higher `rollout`. If one store fails, fix it and run again for that
 store only: the tag waits until both have succeeded, and a re-run accepts its
 own tag.
 
+**First `release`, 2026-10-31 (run 41169012510, 1.0.7 build 45): both stores
+refused, nothing changed live.**
+
+- **Play: "Track 'internal' doesn't have any releases".** The build tested
+  was 45, but three later pushes to `develop` (two docs commits and the
+  notes rewrite) built 46 and 47, and Play's internal track holds only its
+  latest release. 45 was no longer on it, and supply looks the release up
+  by version code there. **So: promote the build that is on the internal
+  track now, and push nothing to `develop` between testing a build and
+  promoting it.** A later build that differs only in docs or notes is the
+  same app (`git diff` between the two commits says so); a later build with
+  code in it needs testing again.
+- **App Store: "The specified pre-release build could not be added"**
+  (`/data/relationships/build`), when deliver attached 1.0.7 (45) to the
+  1.0.7 version it had just created and filled in. The metadata and review
+  information uploaded before it. The build had installed from TestFlight,
+  `ITSAppUsesNonExemptEncryption` is set in `Info.plist`, and the export is
+  `app-store-connect`, so the usual causes do not obviously apply. **Cause,
+  found in App Store Connect the same day:** the version deliver "created"
+  was not new. 1.0.6 (build 39) had been submitted for review and was still
+  Waiting for Review, and deliver counts that state as editable
+  (`get_edit_app_store_version` in fastlane 2.241.2 lists
+  `WAITING_FOR_REVIEW` beside `PREPARE_FOR_SUBMISSION`). It renamed that
+  version to 1.0.7 and replaced its notes and listing, and then Apple refused
+  the build swap, since a version in review keeps its build. So Apple was
+  about to review 1.0.6 code under 1.0.7's name and notes. Fixed by hand:
+  "Remove from review" in App Store Connect, which left 1.0.7 as Developer
+  Rejected, editable again with build 39 still attached, ready for the re-run
+  to attach the new build. 1.0.6 never shipped on iOS as a result; 1.0.7
+  contains it.
+- **Now guarded:** the iOS `promote` lane first asks App Store Connect for
+  any version Waiting for Review or In Review, and stops before changing
+  anything if there is one (`refuse_while_in_review`). Written against
+  fastlane 2.241.2's source; not yet run, since it needs the App Store
+  Connect key, so the next release is its first real test.
+
+**Second `release`, 2026-10-31 (run 41170545239, 1.0.7 build 47): both
+stores succeeded and `v1.0.7` was tagged.** Play moved 47 from internal
+testing to production at 100%. On the App Store, 47 replaced build 39 on
+the Developer Rejected 1.0.7 and was submitted; App Store Connect then
+showed 1.0.7 Waiting for Review with build 47. 47 is 45's code (only docs
+and the notes differ), and 45 is what was tested on an iPad. The first
+end-to-end run of this workflow.
+
+**Play rejected that production release the same day**, under "Play Console
+Requirements": no demo account or credentials. The evidence was one
+screenshot, the "Add a network share" form, which a reviewer read as a login
+wall. Sign in details had said nothing is restricted, which left no field to
+say the form is optional and connects to the user's own NAS. The previous
+version stayed live. Fixed in the console rather than in code, and 47 was
+sent for review again unchanged; the new declaration and its reasoning are in
+`docs/STORE_LISTING.md` (Sign in details). The workflow itself did nothing
+wrong, but a green `release` run only means Play *accepted the upload*; the
+review outcome arrives later, in Policy status.
+
 ### Store listings
 
 `fastlane/metadata/android` (Play) and `fastlane/metadata/ios` (App Store) hold

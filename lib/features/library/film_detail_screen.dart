@@ -16,8 +16,11 @@ import '../favorites_history/favorites_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
+import '../../domain/models/catalog_item.dart';
 import 'library_hero.dart' show HeroInfo;
 import 'poster_grid.dart' show LibraryEmptyState;
+import 'source_line.dart';
+import 'title_extras.dart';
 
 /// A film's own page (§12 screen 5), between its poster and the player.
 ///
@@ -49,10 +52,14 @@ class FilmDetailScreen extends ConsumerWidget {
     super.key,
     required this.serverId,
     required this.ratingKey,
+    this.alsoOn = const [],
   });
 
   final String serverId;
   final String ratingKey;
+
+  /// Other copies of this film, from a merged tile (source_line.dart).
+  final List<CatalogCopy> alsoOn;
 
   /// Where a film from a server opens. The player is `/play/...`.
   static String routeOf(String serverId, String ratingKey) =>
@@ -88,17 +95,22 @@ class FilmDetailScreen extends ConsumerWidget {
                 icon: Icons.movie_outlined,
                 message: tr.film.gone,
               )
-            : _FilmPage(serverId: serverId, item: item),
+            : _FilmPage(serverId: serverId, item: item, alsoOn: alsoOn),
       ),
     );
   }
 }
 
 class _FilmPage extends ConsumerWidget {
-  const _FilmPage({required this.serverId, required this.item});
+  const _FilmPage({
+    required this.serverId,
+    required this.item,
+    required this.alsoOn,
+  });
 
   final String serverId;
   final MediaItem item;
+  final List<CatalogCopy> alsoOn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -163,6 +175,22 @@ class _FilmPage extends ConsumerWidget {
           Text(
             hero.meta.join('  ·  '),
             style: TextStyle(color: t.inkDim, fontSize: tv ? 15 : 13),
+          ),
+        ],
+        // Which server this copy is on, and the others (source_line.dart).
+        const SizedBox(height: 8),
+        SourceLine(here: catalog.asCopy, alsoOn: alsoOn),
+        // Each score named by its source, on a line of its own so they read
+        // as a group rather than as more facts about the film (title_extras).
+        if (item.ratings.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            ratingLabels(item.ratings).join('  ·  '),
+            style: TextStyle(
+              color: t.ink.withValues(alpha: 0.85),
+              fontSize: tv ? 15 : 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
         if (resumeAt != null && total != null) ...[
@@ -241,8 +269,8 @@ class _FilmPage extends ConsumerWidget {
   }
 }
 
-/// Play or Resume, Play from start, Watched, Download and Favourite, in that
-/// order. The first takes focus, so on a TV OK starts the film from where it
+/// Play or Resume, Play from start, Trailer, Watched, Download and Favourite,
+/// in that order. The first takes focus, so on a TV OK starts the film from where it
 /// says, and the rest are one Right away.
 class _Buttons extends ConsumerWidget {
   const _Buttons({
@@ -272,6 +300,19 @@ class _Buttons extends ConsumerWidget {
       itemId: item.id,
     );
     final starred = ref.watch(favoritesProvider).contains(favourite.key);
+    // No button until a trailer is known to exist, so it never appears and
+    // then fails; while the lookup runs the row simply has one fewer pill.
+    final trailer = ref
+        .watch(
+          trailersProvider((
+            serverId: serverId,
+            itemId: item.id,
+            tmdbId: item.ids.tmdb,
+            tv: false,
+          )),
+        )
+        .value
+        ?.firstOrNull;
     final resume = resumeAt;
     final play = '/play/$serverId/${item.id}';
 
@@ -279,7 +320,7 @@ class _Buttons extends ConsumerWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        _PillButton(
+        TitlePillButton(
           primary: true,
           autofocus: true,
           icon: Icons.play_arrow_rounded,
@@ -289,19 +330,25 @@ class _Buttons extends ConsumerWidget {
           onTap: () => context.push(play),
         ),
         if (resume != null)
-          _PillButton(
+          TitlePillButton(
             icon: Icons.replay,
             label: tr.film.fromStart,
             onTap: () => context.push('$play?start=0'),
           ),
-        _PillButton(
+        if (trailer != null)
+          TitlePillButton(
+            icon: Icons.movie_creation_outlined,
+            label: tr.film.trailer,
+            onTap: () => openTrailer(context, serverId, trailer),
+          ),
+        TitlePillButton(
           icon: watched ? Icons.check_circle : Icons.check_circle_outline,
           label: watched
               ? tr.watchActions.markUnwatched(scope: '')
               : tr.watchActions.markWatched(scope: ''),
           onTap: () => _markWatched(context, ref, !watched),
         ),
-        _PillButton(
+        TitlePillButton(
           icon: download == null || download.state == DownloadState.failed
               ? Icons.download_outlined
               : Icons.delete_outline,
@@ -312,7 +359,7 @@ class _Buttons extends ConsumerWidget {
                     : tr.watchActions.cancelDownload),
           onTap: () => _toggleDownload(context, ref, download),
         ),
-        _PillButton(
+        TitlePillButton(
           icon: starred ? Icons.star : Icons.star_border,
           label: starred
               ? tr.watchActions.removeFavourite
@@ -364,9 +411,11 @@ class _Buttons extends ConsumerWidget {
 }
 
 /// A rounded action, filled for the main one. Built on [RelayTappable] so a
-/// remote reaches every one with the same ring as a poster (§11).
-class _PillButton extends StatelessWidget {
-  const _PillButton({
+/// remote reaches every one with the same ring as a poster (§11). Public for
+/// the show page's Trailer, so both pages' buttons look the same.
+class TitlePillButton extends StatelessWidget {
+  const TitlePillButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,

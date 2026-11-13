@@ -29,6 +29,16 @@ class ChannelPickerArgs {
 ///
 /// Live only, because a live category holds a modest number of channels. A movie
 /// category can hold thousands of titles and wants a different screen.
+///
+/// **The two choices are said out loud (2026-11-03).** "Whole category" was a
+/// chip beside the search box that left the screen when pressed, and a count
+/// such as "3 of 120" sat next to it; what the difference meant was nowhere.
+/// It matters, because a narrowed category is a fixed list: a channel the
+/// provider adds later does not appear until it is ticked here. So the screen
+/// now opens on the two choices with that sentence under each, and the list
+/// shows a whole category as everything ticked; unticking one there starts a
+/// narrowed list from all the others, which is what someone doing it means.
+/// The model is unchanged: an empty list is still the whole category.
 class ChannelPickerScreen extends ConsumerStatefulWidget {
   const ChannelPickerScreen({
     super.key,
@@ -49,6 +59,10 @@ class ChannelPickerScreen extends ConsumerStatefulWidget {
 class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
   final _search = TextEditingController();
   late Set<String> _picked = {...widget.args.picked};
+
+  /// Keep the whole category: what an empty [ChannelPickerArgs.picked] meant
+  /// all along, now a choice of its own on screen.
+  late bool _whole = widget.args.picked.isEmpty;
   String _query = '';
 
   @override
@@ -64,7 +78,13 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
     return null;
   }
 
-  void _toggle(XtreamChannel c) => setState(() {
+  void _toggle(XtreamChannel c, List<XtreamChannel> all) => setState(() {
+    if (_whole) {
+      // Every channel was in; unticking one keeps the rest.
+      _whole = false;
+      _picked = {for (final x in all) x.streamId}..remove(c.streamId);
+      return;
+    }
     final next = {..._picked};
     if (!next.add(c.streamId)) next.remove(c.streamId);
     _picked = next;
@@ -74,7 +94,7 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
   /// channel is stored as "whole" so that a channel the panel adds later is not
   /// silently left out.
   void _done(List<XtreamChannel> all) {
-    final everything = all.every((c) => _picked.contains(c.streamId));
+    final everything = _whole || all.every((c) => _picked.contains(c.streamId));
     Navigator.of(context)
         .pop<List<String>>(everything ? const [] : _picked.toList());
   }
@@ -113,12 +133,14 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
           TextButton(
             // With nothing picked there is nothing to keep, which is not what
             // anyone means; "Whole category" is the way to ask for everything.
-            onPressed: channels.value == null || _picked.isEmpty
+            onPressed: channels.value == null || (!_whole && _picked.isEmpty)
                 ? null
                 : () => _done(channels.value!),
             child: Text(
               tr.xtream.channels.done,
-              style: TextStyle(color: _picked.isEmpty ? t.inkDim : t.accent),
+              style: TextStyle(
+                color: !_whole && _picked.isEmpty ? t.inkDim : t.accent,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -154,12 +176,42 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
           return Column(
             children: [
               Padding(
+                padding: RelayLayout.pagePadding(f).copyWith(top: 4, bottom: 8),
+                child: Column(
+                  children: [
+                    _Choice(
+                      title: tr.xtream.channels.wholeTitle(n: all.length),
+                      subtitle: tr.xtream.channels.wholeSub,
+                      on: _whole,
+                      onTap: () => setState(() => _whole = true),
+                    ),
+                    const SizedBox(height: 8),
+                    _Choice(
+                      title: tr.xtream.channels.someTitle(
+                        picked: _whole ? all.length : _picked.length,
+                        total: all.length,
+                      ),
+                      subtitle: tr.xtream.channels.someSub,
+                      on: !_whole,
+                      onTap: () => setState(() {
+                        if (_whole) {
+                          _whole = false;
+                          _picked = {for (final c in all) c.streamId};
+                        }
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
                 padding: RelayLayout.pagePadding(f).copyWith(top: 4, bottom: 6),
                 child: Row(
                   children: [
                     Expanded(
-                      child: RelayFieldTraversal(
-                        child: TextField(
+                      child: RelayTypeOnSelect(
+                        builder: (context, readOnly, onTap) => TextField(
+                          readOnly: readOnly,
+                          onTap: onTap,
                           controller: _search,
                           onChanged: (v) => setState(() => _query = v),
                           style: TextStyle(color: t.ink),
@@ -194,21 +246,6 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    _Chip(
-                      label: tr.xtream.channels.pickedOf(
-                        picked: _picked.length,
-                        total: all.length,
-                      ),
-                      onTap: null,
-                    ),
-                    const SizedBox(width: 8),
-                    _Chip(
-                      label: tr.xtream.channels.whole,
-                      onTap: () =>
-                          Navigator.of(context)
-                              .pop<List<String>>(const <String>[]),
-                    ),
                   ],
                 ),
               ),
@@ -222,9 +259,12 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                           : tr.xtream.channels.selectShown,
                       onTap: () => setState(() {
                         _picked = {
-                          ..._picked,
+                          if (!_whole) ..._picked,
+                          if (_whole)
+                            for (final c in all) c.streamId,
                           for (final c in shown) c.streamId,
                         };
+                        _whole = false;
                       }),
                     ),
                     const SizedBox(width: 8),
@@ -234,9 +274,13 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                           : tr.xtream.channels.clearShown,
                       onTap: () => setState(() {
                         final drop = {for (final c in shown) c.streamId};
-                        _picked = _picked
+                        final from = _whole
+                            ? {for (final c in all) c.streamId}
+                            : _picked;
+                        _picked = from
                             .where((id) => !drop.contains(id))
                             .toSet();
+                        _whole = false;
                       }),
                     ),
                   ],
@@ -258,12 +302,12 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
                         itemCount: shown.length,
                         itemBuilder: (context, i) {
                           final c = shown[i];
-                          final on = _picked.contains(c.streamId);
+                          final on = _whole || _picked.contains(c.streamId);
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: RelayTappable(
                               borderRadius: 10,
-                              onTap: () => _toggle(c),
+                              onTap: () => _toggle(c, all),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
@@ -300,6 +344,78 @@ class _ChannelPickerScreenState extends ConsumerState<ChannelPickerScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// One of the two ways to keep a category, with what it means underneath.
+class _Choice extends StatelessWidget {
+  const _Choice({
+    required this.title,
+    required this.subtitle,
+    required this.on,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return Semantics(
+      selected: on,
+      // RelayTappable and not RelaySurface(onTap:): the surface draws its own focus
+      // shadow, which the D-pad audit does not count as a ring, and its
+      // InkWell adds a second stop with no ring at all (test/dpad, 2026-11-03).
+      child: RelayTappable(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: t.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: on ? t.accent : t.line),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                on ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                size: 20,
+                color: on ? t.accent : t.inkDim,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: t.ink,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: t.inkDim,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

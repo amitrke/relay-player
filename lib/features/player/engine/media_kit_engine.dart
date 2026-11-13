@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -53,8 +55,23 @@ class MediaKitEngine implements PlaybackEngine {
   Stream<void> get completedStream =>
       _player.stream.completed.where((done) => done);
 
+  bool _codecsSet = false;
+
+  /// On Android, narrows mpv's hardware-decode list (see
+  /// [androidHardwareCodecs]). Set here, just before the first open, and not in
+  /// the constructor: media_kit configures the player asynchronously after
+  /// construction and would be free to overwrite an earlier value.
   @override
-  Future<void> open(String url) => _player.open(Media(url));
+  Future<void> open(String url) async {
+    if (Platform.isAndroid && !_codecsSet) {
+      _codecsSet = true;
+      await (_player.platform as NativePlayer).setProperty(
+        'hwdec-codecs',
+        androidHardwareCodecs,
+      );
+    }
+    await _player.open(Media(url));
+  }
 
   @override
   Future<void> stop() => _player.stop();

@@ -549,6 +549,33 @@ Two independent failures, either of which alone would cripple the guide:
   reused verbatim for "ESPN+ EVENT 00", "01", "02"… — one ID mapping to many
   unrelated channels.
 
+**Re-checked 2026-11-01, including the per-channel endpoints Phase 0 skipped.**
+Still empty, by every route the API offers:
+
+| Check | Result |
+|---|---|
+| Live streams / with `epg_channel_id` | 15,798 / 1,460 (9.2%), so unchanged |
+| Distinct IDs / IDs shared by >1 stream | 1,343 / 62, one ID on up to 24 streams |
+| `get_simple_data_table`, 60 sampled streams (40 with an ID, 20 without) | `{"epg_listings":[]}` for all 60 |
+| `get_short_epg`, same 60 | **HTTP 222 with an empty body** for all 60 |
+| `xmltv.php` | 0.25 MB, 1,544 `<channel>`, 0 `<programme>` |
+| Control: `get_live_categories` in the same run | HTTP 200 with data |
+
+The control passing rules out an auth or rate-limit failure: the panel simply
+has no schedule data. Two client-side details surfaced along the way:
+
+- `get_short_epg` answers with a non-standard **222** status and no body
+  rather than an empty JSON list. The Xtream client must treat any non-JSON
+  or empty response from it as "no EPG", not as an error to surface or retry.
+- The panel returns **403 to Python's `urllib` default user agent** while
+  accepting curl's. It is a user-agent filter, not an auth failure. Phase 0's
+  Dart client got through, but the user agent our shipped client sends is
+  something to confirm against a filtering panel, not assume.
+
+Conclusion for the guide: with this provider, any schedule data has to come from a
+guide URL the user adds themselves, matched to channels by name. The panel's
+own IDs cover too few channels and are too often shared to be the key.
+
 **Implication for §12 screen 7 (EPG guide):** for this provider the guide would
 render empty. That is a provider-data problem, not an app bug, but the app has
 to handle it gracefully and say so — an empty grid with no explanation reads as

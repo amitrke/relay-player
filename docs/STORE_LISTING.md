@@ -84,7 +84,7 @@ correction, so none of them should be submitted on someone else's reading.
 | Form | Draft answer |
 |---|---|
 | Set privacy policy | `https://amitrke.github.io/relay-player/privacy.html`. Served from `site/` by `.github/workflows/pages.yml`. Live once this reaches `main` (#9) |
-| Sign in details | **Submitted 2026-09-22: no part of the app is restricted.** The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. Reviewers test with their own media, as users do; no demo account is supplied on either store (architecture.md §8.4) |
+| Sign in details | **Changed 2026-10-31 to "some functionality is restricted", with instructions and no credentials** (see the note below this table). Was, from 2026-09-22: no part of the app is restricted. The app itself has no sign-in: local files, chosen folders and SMB shares all work without an account, and Plex uses the user's own Plex account rather than one of ours. No demo account is supplied on either store (architecture.md §8.4) |
 | Ads | No ads. The app contains no advertising and no ad SDK |
 | Content rating | **Submitted 2026-09-22**, reasoning in the note below. Result: ESRB Everyone, PEGI 3, ClassInd all ages |
 | Target audience | **Submitted 2026-09-22: 18 and over**, not directed at children. The app has no child-appropriate content of its own and no content filtering, so a lower band would pull it into the Families policy programme for no benefit |
@@ -116,6 +116,45 @@ Still open: the contact email, which Play publishes immediately on save, and
 the tablet screenshots (#7). The phone screenshots were captured on 2026-09-22
 and are in the repo; what they are, and what could not be photographed, is
 below.
+
+### Sign in details, after the 2026-10-31 rejection
+
+Play rejected the 1.0.7 production release (build 47) under "Play Console
+Requirements: you didn't provide an active demo/guest account or a valid
+username and password". Its only evidence was a screenshot of the "Add a
+network share" form: server address, username, password. The reviewer read an
+optional SMB form as a login wall. "Nothing is restricted" was true, but that
+answer has no free-text field, so there was nowhere to say the form is
+optional.
+
+No credentials can fix this. SMB reaches a share on the user's own network,
+and exposing one to the internet for a reviewer would be unsafe and still not
+what users do. So the declaration now says **some functionality is
+restricted**, leaves username and password blank, and gives instructions
+(entry name "No sign-in: optional network share form", 481 of 500
+characters):
+
+> The app has no account or sign-in of its own, so there are no credentials to
+> give. The "Add a network share" screen is optional: it connects to an SMB
+> share on the user's own home network, using that computer's own login. To
+> review without credentials: open the app, tap "Add a source", choose "Video
+> on this device", allow video access, and play any video on the test device.
+> Other sources (Plex, network shares) connect to servers the user owns and
+> are not needed to use the app.
+
+Plex is not offered as a review route: the form says reviewers cannot use
+their own existing accounts. Play will not save an entry without ticking
+"Sign in details in this declaration provide full access to all the features
+and content within this app, including premium or paid content", and the
+account owner chose to tick it. That is close to true rather than exactly
+true: the instructions reach every screen and there is no paid content, but a
+reviewer still cannot browse a real SMB share, and no sign-in details could
+change that. If this is rejected again on the same grounds, the next step is
+an appeal on this reasoning, not a public test share.
+
+Labels quoted in the instructions come from `lib/i18n/en.i18n.json`
+(`addSource.title`, `addSource.localFiles`, `smb.title`). Renaming any of them
+makes these instructions wrong, so update the console text with it.
 
 ### Content rating deserves real thought
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dart_plex/dart_plex.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../domain/models/media_server.dart';
 import 'paging.dart';
@@ -387,6 +388,7 @@ class PlexService extends MediaServer {
         parentId: m.parentRatingKey,
         ids: idsOf(m.raw),
         rating: m.rating ?? m.userRating,
+        ratings: ratingsOf(m.raw),
         unwatchedEpisodes: m.type == PlexMetadataType.show
             ? unwatchedOf(m.raw)
             : null,
@@ -423,6 +425,72 @@ class PlexService extends MediaServer {
     if (all is! int || seen is! int) return null;
     if (seen == 0 && raw['lastViewedAt'] == null) return null;
     return all > seen ? all - seen : 0;
+  }
+
+  /// Scores with their sources, from the image Plex names beside each.
+  ///
+  /// A title's own fetch carries a `Rating` tag per source (the new Plex
+  /// agents: `imdb://image.rating`, `rottentomatoes://image.rating.ripe`,
+  /// `themoviedb://image.rating`), and every listing carries the two the
+  /// library is set to show as `rating`/`ratingImage` and
+  /// `audienceRating`/`audienceRatingImage`. Both are read, tags first, and a
+  /// source seen twice is kept once. A score whose image names no known
+  /// source (an old agent's) is left out here; [MediaItem.rating] still has
+  /// it. dart_plex 0.1.2 parses none of these.
+  static List<SourcedRating> ratingsOf(Map<String, dynamic> raw) {
+    final out = <SourcedRating>[];
+    void add(Object? image, Object? value, {required bool critic}) {
+      final v = value is num ? value.toDouble() : double.tryParse('$value');
+      if (image is! String || v == null || v <= 0) return;
+      final source = image.startsWith('imdb://')
+          ? RatingSource.imdb
+          : image.startsWith('rottentomatoes://')
+          ? RatingSource.rottenTomatoes
+          : image.startsWith('themoviedb://')
+          ? RatingSource.tmdb
+          : null;
+      if (source == null) return;
+      // Only Rotten Tomatoes has a critics' score distinct from its audience.
+      final isCritic = critic && source == RatingSource.rottenTomatoes;
+      if (out.any((r) => r.source == source && r.critic == isCritic)) return;
+      out.add(SourcedRating(source: source, value: v, critic: isCritic));
+    }
+
+    final tags = raw['Rating'];
+    if (tags is List) {
+      for (final t in tags) {
+        if (t is Map) add(t['image'], t['value'], critic: t['type'] == 'critic');
+      }
+    }
+    add(raw['ratingImage'], raw['rating'], critic: true);
+    add(raw['audienceRatingImage'], raw['audienceRating'], critic: false);
+    return out;
+  }
+
+  /// Trailers among the title's extras (`extraType` 1), served by this
+  /// server.
+  ///
+  /// Two kinds, and both come through the person's own server with its own
+  /// token: a trailer file in their library (`/library/parts/...`), and the
+  /// trailers Plex supplies to Plex Pass servers, which the server relays
+  /// from `/services/iva/assets/...` (seen on a real server 2026-11-01: three
+  /// trailers for a new film, none of them files). A part on any other host
+  /// is left out; the player only plays what the server serves.
+  @override
+  Future<List<MediaTrailer>> trailers(String id) async {
+    try {
+      final extras = await _client.library.extras(ids: id);
+      return [
+        for (final e in extras)
+          if ((e.raw['extraType'] == 1 || e.raw['extraType'] == '1') &&
+              e.media
+                  .expand((m) => m.parts)
+                  .any((p) => (p.key ?? '').startsWith('/')))
+            MediaTrailer.onServer(e.ratingKey, title: e.title),
+      ];
+    } catch (_) {
+      return const [];
+    }
   }
 
   static DateTime? _later(DateTime? a, DateTime? b) =>
@@ -638,7 +706,7 @@ class PlexService extends MediaServer {
 
     final offset = item.viewOffsetMs ?? 0;
     return MediaPlayable(
-      url: '$base${part.key}?X-Plex-Token=$token',
+      url: withToken('$base${part.key}', token),
       title: item.title,
       duration: Duration(milliseconds: item.durationMs ?? 0),
       posterPath: posterPathOf(item),
@@ -664,6 +732,13 @@ class PlexService extends MediaServer {
     }
     return (item, part);
   }
+
+  /// [url] with the token added. A library file's part key has no query, but
+  /// a trailer Plex relays does (`.../video.mp4?fmt=4&bitrate=5000`), and a
+  /// second `?` would have made the token part of the bitrate.
+  @visibleForTesting
+  static String withToken(String url, String token) =>
+      '$url${url.contains('?') ? '&' : '?'}X-Plex-Token=$token';
 
   (String, String) _credentials() {
     final base = _client.baseUrl;

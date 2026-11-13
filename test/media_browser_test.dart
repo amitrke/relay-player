@@ -78,6 +78,18 @@ class _Fake {
         'Items': [_season()],
         'TotalRecordCount': 1,
       },
+      '/Items/m-1' => {
+        'Id': 'm-1',
+        'LocalTrailerCount': 1,
+        'RemoteTrailers': [
+          {'Url': 'https://www.youtube.com/watch?v=abc', 'Name': 'Trailer'},
+          {'Url': 'javascript:alert(1)', 'Name': 'Not a link'},
+        ],
+      },
+      '/Items/m-1/LocalTrailers' => [
+        {'Id': 'tr-1', 'Name': 'Theatrical trailer', 'Type': 'Trailer'},
+      ],
+      '/Items/m-2' => {'Id': 'm-2', 'LocalTrailerCount': 0},
       '/Users/u1/Items/m-1' => {
         ..._movie('m-1'),
         'MediaSources': [
@@ -128,6 +140,8 @@ Map<String, Object?> _movie(String id) => {
   'RunTimeTicks': 90 * 60 * 10000000,
   'ImageTags': {'Primary': 'abc'},
   'ProviderIds': {'Imdb': 'tt0111161', 'Tmdb': '278'},
+  'CommunityRating': 8.7,
+  'CriticRating': 91,
   'Genres': ['Drama'],
   'UserData': {
     'Played': false,
@@ -204,6 +218,63 @@ void main() {
     final info = await MediaBrowserService.probe(fake.base);
     expect(info.apiBase, '${fake.base}/emby');
     expect(info.kind, ServerKind.emby);
+  });
+
+  // A proxy that sends `http://` on to `https://`: the probe's GET follows
+  // the 301 by itself, but Dart does not follow one for a POST, so Quick
+  // Connect failed with "answered 301" until the probe kept the address the
+  // server answered at. Seen against a real server, 2026-11-01.
+  test('a server that redirects is used at the address it redirected to',
+      () async {
+    fake = _Fake();
+    await fake.start();
+    addTearDown(fake.stop);
+    final proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => proxy.close(force: true));
+    proxy.listen((req) {
+      req.response
+        ..statusCode = HttpStatus.movedPermanently
+        ..headers.set(HttpHeaders.locationHeader, '${fake.base}${req.uri}');
+      req.response.close();
+    });
+
+    final info = await MediaBrowserService.probe(
+      'http://127.0.0.1:${proxy.port}/',
+    );
+    expect(info.apiBase, fake.base);
+    final code = await MediaBrowserService.startQuickConnect(info, _client);
+    expect(code.code, '123456');
+    expect(fake.requests, contains('POST /QuickConnect/Initiate?'));
+  });
+
+  // Jellyfin does not say whose CommunityRating is (TMDB's or IMDb's,
+  // depending on the fetcher order), so it gets no name; CriticRating is
+  // Rotten Tomatoes' Tomatometer out of 100. Decided 2026-11-01.
+  test('scores: the community one unnamed, the critic one as Rotten Tomatoes',
+      () async {
+    final jf = await signedIn();
+    final film = (await jf.item('m-1'))!;
+    expect(film.ratings, hasLength(2));
+    expect(film.ratings[0].source, RatingSource.unknown);
+    expect(film.ratings[0].value, 8.7);
+    expect(film.ratings[1].source, RatingSource.rottenTomatoes);
+    expect(film.ratings[1].critic, isTrue);
+    expect(film.ratings[1].value, closeTo(9.1, 1e-9));
+  });
+
+  test("trailers: the server's own files first, then http links only",
+      () async {
+    final jf = await signedIn();
+    final trailers = await jf.trailers('m-1');
+    expect(trailers.map((t) => t.itemId), ['tr-1', null]);
+    expect(trailers.last.url, 'https://www.youtube.com/watch?v=abc');
+    expect(
+      fake.requests,
+      contains('GET /Items/m-1/LocalTrailers?userId=u1'),
+    );
+    expect(await jf.trailers('m-2'), isEmpty);
+    // A title the server cannot answer for has no trailer, not an error.
+    expect(await jf.trailers('nope'), isEmpty);
   });
 
   test('Jellyfin signs in with Authorization, Emby with X-Emby-Authorization',

@@ -80,8 +80,10 @@ class MediaBrowserClientInfo {
 /// - **Emby** takes `X-Emby-Authorization` with an `X-Emby-Token` header, and
 ///   `api_key` on media URLs.
 ///
-/// Both forms are as documented by each project; neither has been run against
-/// a real server from this app yet (MANUAL_TESTING.md).
+/// Both forms are as documented by each project. Of these, only finding a
+/// real Jellyfin and getting a Quick Connect code from it has been seen
+/// working from this app (2026-11-01); signing in and everything after it
+/// has not (MANUAL_TESTING.md).
 ///
 /// **Artwork carries no credential.** Both servers serve `/Items/{id}/Images`
 /// without auth, so the poster path stored on disk and the URL built from it
@@ -233,7 +235,7 @@ class MediaBrowserService extends MediaServer {
                 ? ServerKind.jellyfin
                 : ServerKind.emby,
             version: '${data['Version'] ?? ''}',
-            apiBase: candidate,
+            apiBase: _answeredAt(r, candidate),
           );
         }
       } on DioException {
@@ -241,6 +243,26 @@ class MediaBrowserService extends MediaServer {
       }
     }
     throw MediaServerUnreachable(tr.mediaBrowser.errors.notAServer);
+  }
+
+  /// The base the server actually answered at, which is not always the one
+  /// asked for.
+  ///
+  /// A server behind a reverse proxy commonly redirects `http://` to
+  /// `https://`. The GET above follows that redirect on its own, but Dart's
+  /// HttpClient follows redirects only for GET and HEAD, so every POST after
+  /// it (Quick Connect, password sign-in, playback reports) would get the 301
+  /// back as an error if [apiBase] kept the address as typed. An address with
+  /// no scheme becomes `http://` in [normaliseAddress], so this is the usual
+  /// case for a hostname, not an edge one. Seen on the Google TV emulator
+  /// against a real Jellyfin 12.4 behind a proxy, 2026-11-01: the server was
+  /// found and Quick Connect then failed with "answered 301".
+  static String _answeredAt(Response<dynamic> r, String asked) {
+    const suffix = '/System/Info/Public';
+    final real = r.realUri;
+    if (!real.hasScheme || !real.path.endsWith(suffix)) return asked;
+    final path = real.path.substring(0, real.path.length - suffix.length);
+    return '${real.origin}$path';
   }
 
   /// `nas:8096`, `http://nas:8096/`, `https://jf.example` all become a base
@@ -471,6 +493,7 @@ class MediaBrowserService extends MediaServer {
       parentId: (j['SeasonId'] ?? j['ParentId']) as String?,
       ids: _ids(j['ProviderIds']),
       rating: (j['CommunityRating'] as num?)?.toDouble(),
+      ratings: ratingsOf(j),
       // Only for a series started here; see PlexService.unwatchedOf. Jellyfin
       // says a series is partly watched through PlayedPercentage, and that it
       // was played at all, half an episode included, through LastPlayedDate.
@@ -489,6 +512,73 @@ class MediaBrowserService extends MediaServer {
           ? user['UnplayedItemCount'] as int
           : null,
     );
+  }
+
+  /// The two scores a `BaseItemDto` has.
+  ///
+  /// `CommunityRating` does not say where it came from: it is TMDB's with
+  /// Jellyfin's default metadata order and IMDb's when the OMDb fetcher is
+  /// ahead of it, so it is shown as a plain star rather than given a name it
+  /// may not have. `CriticRating` is Rotten Tomatoes' Tomatometer, out of 100,
+  /// which only the OMDb fetcher fills. Emby has the same two fields.
+  static List<SourcedRating> ratingsOf(Map<String, dynamic> j) {
+    final community = j['CommunityRating'];
+    final critic = j['CriticRating'];
+    return [
+      if (community is num && community > 0)
+        SourcedRating(
+          source: RatingSource.unknown,
+          value: community.toDouble(),
+        ),
+      if (critic is num && critic > 0)
+        SourcedRating(
+          source: RatingSource.rottenTomatoes,
+          value: critic / 10,
+          critic: true,
+        ),
+    ];
+  }
+
+  /// The title's own trailer files first, then the links its metadata
+  /// fetchers found (`RemoteTrailers`, nearly always YouTube).
+  ///
+  /// Both through the `/Items/{id}` routes with `userId` as a parameter, the
+  /// form current Jellyfin documents, rather than the older
+  /// `/Users/{id}/Items/...` the rest of this client uses. Never run against a
+  /// signed-in real server (MANUAL_TESTING.md); a failure is no trailer, not
+  /// an error on the page.
+  @override
+  Future<List<MediaTrailer>> trailers(String id) async {
+    try {
+      final data = await _get('/Items/$id', {
+        'userId': _user,
+        'Fields': 'RemoteTrailers,LocalTrailerCount',
+      });
+      if (data is! Map) return const [];
+      final local = data['LocalTrailerCount'];
+      final own = local is int && local > 0
+          ? await _get('/Items/$id/LocalTrailers', {'userId': _user})
+          : null;
+      return [
+        if (own is List)
+          for (final t in own)
+            if (t is Map && t['Id'] is String)
+              MediaTrailer.onServer(
+                t['Id'] as String,
+                title: t['Name'] as String?,
+              ),
+        for (final t in (data['RemoteTrailers'] as List?) ?? const [])
+          if (t is Map &&
+              t['Url'] is String &&
+              (t['Url'] as String).startsWith(RegExp('https?://')))
+            MediaTrailer.elsewhere(
+              t['Url'] as String,
+              title: t['Name'] as String?,
+            ),
+      ];
+    } on MediaServerUnreachable {
+      return const [];
+    }
   }
 
   /// The item's own backdrop, else the one it inherits (an episode's series).

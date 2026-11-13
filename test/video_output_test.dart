@@ -38,4 +38,18 @@ void main() {
     expect(compat.vo, isNull);
     expect(compat.hwdec, isNull);
   });
+
+  // MPEG-4 part 2 must stay out of Android's hardware list: on a Pixel 10a
+  // (2026-11-12) MediaCodec froze the picture of an AVI after every seek, with
+  // the audio playing on. See [androidHardwareCodecs].
+  test('MPEG-4 part 2 is left to software decoding on Android', () {
+    expect(androidHardwareCodecs.split(','), isNot(contains('mpeg4')));
+  });
+
+  test('the codecs that do work in hardware are still allowed', () {
+    final codecs = androidHardwareCodecs.split(',');
+    for (final codec in ['h264', 'hevc', 'vp9', 'av1']) {
+      expect(codecs, contains(codec));
+    }
+  });
 }

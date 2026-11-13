@@ -75,10 +75,61 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
   /// The chosen group: a category id, [favouritesGroupId], or null for All.
   String? _groupId;
 
+  /// A refresh is running; the button shows it and a second press waits.
+  bool _refreshing = false;
+  late final AppLifecycleListener _lifecycle;
+
+  /// How old a channel list may be before coming back to the app fetches it
+  /// again. A guess, not measured: panels change their line-ups rarely, and
+  /// a TV left on its home screen overnight is the case this is for
+  /// (xtreamChannelsFetchedAt).
+  static const staleAfter = Duration(hours: 6);
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _refreshIfStale);
+    // Also on opening the tab, which on a TV may be the first look in hours
+    // at a list fetched when the app started.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshIfStale());
+  }
+
   @override
   void dispose() {
+    _lifecycle.dispose();
     _search.dispose();
     super.dispose();
+  }
+
+  void _refreshIfStale() {
+    if (!mounted) return;
+    final at = xtreamChannelsFetchedAt[widget.account.id];
+    if (at == null || DateTime.now().difference(at) < staleAfter) return;
+    _refresh(quiet: true);
+  }
+
+  /// Fetches the line's channels again, keeping the current list on screen
+  /// until the new one arrives, and keeping it if the fetch fails.
+  ///
+  /// [quiet] is the automatic refresh: a failure there says nothing, since
+  /// nobody asked and the list shown is still the one they had.
+  Future<void> _refresh({bool quiet = false}) async {
+    final account = widget.account;
+    if (_refreshing || account.liveCategoryIds.isEmpty) return;
+    setState(() => _refreshing = true);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      ref.invalidate(xtreamChannelsProvider(account));
+      await ref.read(xtreamChannelsProvider(account).future);
+    } catch (_) {
+      if (!quiet) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text(tr.liveTv.refreshFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
   }
 
   @override
@@ -115,7 +166,11 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
 
     final channels = ref.watch(xtreamChannelsProvider(account));
 
+    // skipError: a refresh that fails leaves the list that was there, and the
+    // snackbar says so; the error page is only for a first load with nothing
+    // to show. A refresh in progress keeps the list too (Riverpod's default).
     return channels.when(
+      skipError: true,
       loading: () => Center(child: CircularProgressIndicator(color: t.accent)),
       error: (e, _) => LibraryEmptyState(
         icon: Icons.cloud_off_outlined,
@@ -192,43 +247,59 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
           children: [
             Padding(
               padding: padding.copyWith(top: 10, bottom: 4),
-              child: RelayFieldTraversal(
-                child: TextField(
-                  controller: _search,
-                  onChanged: (v) => setState(() => _query = v),
-                  autocorrect: false,
-                  style: TextStyle(color: t.ink),
-                  decoration: InputDecoration(
-                    hintText: tr.liveTv.searchHint(n: list.length),
-                    hintStyle: TextStyle(color: t.inkDim),
-                    prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: Icon(Icons.close, color: t.inkDim, size: 18),
-                            onPressed: () {
-                              _search.clear();
-                              setState(() => _query = '');
-                            },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: RelayTypeOnSelect(
+                      builder: (context, readOnly, onTap) => TextField(
+                        readOnly: readOnly,
+                        onTap: onTap,
+                        controller: _search,
+                        onChanged: (v) => setState(() => _query = v),
+                        autocorrect: false,
+                        style: TextStyle(color: t.ink),
+                        decoration: InputDecoration(
+                          hintText: tr.liveTv.searchHint(n: list.length),
+                          hintStyle: TextStyle(color: t.inkDim),
+                          prefixIcon: Icon(Icons.search, color: t.inkDim, size: 19),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: Icon(Icons.close, color: t.inkDim, size: 18),
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() => _query = '');
+                                  },
+                                ),
+                          filled: true,
+                          fillColor: t.surface,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: t.line),
                           ),
-                    filled: true,
-                    fillColor: t.surface,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: t.line),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: t.line),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: t.accent),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: t.line),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: t.accent),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  // Not on a TV: Right from the field moves its caret
+                  // (RelayFieldTraversal leaves Left and Right to the text),
+                  // so a remote could never reach it. The TV's is the last
+                  // row of the category column instead.
+                  if (!tv) ...[
+                    const SizedBox(width: 8),
+                    _RefreshButton(refreshing: _refreshing, onTap: _refresh),
+                  ],
+                ],
               ),
             ),
             if (tv)
@@ -266,6 +337,11 @@ class _ChannelListState extends ConsumerState<_ChannelList> {
                               selected: selected?.id == g.id,
                               onTap: () => select(g.id),
                             ),
+                          const SizedBox(height: 14),
+                          _RefreshRow(
+                            refreshing: _refreshing,
+                            onTap: _refresh,
+                          ),
                         ],
                       ),
                     ),
@@ -406,6 +482,96 @@ class _ChannelRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Refresh beside the search box, on a phone, tablet or desktop. A spinner
+/// replaces the icon while the list is fetched. The label is for screen
+/// readers and a mouse, since there is no room for text.
+class _RefreshButton extends StatelessWidget {
+  const _RefreshButton({required this.refreshing, required this.onTap});
+
+  final bool refreshing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return Tooltip(
+      message: tr.liveTv.refresh,
+      child: Semantics(
+        button: true,
+        label: tr.liveTv.refresh,
+        child: RelayTappable(
+          borderRadius: 10,
+          onTap: onTap,
+          child: Ink(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: t.line),
+            ),
+            child: Center(
+              child: refreshing
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: t.accent,
+                      ),
+                    )
+                  : Icon(Icons.refresh, color: t.inkDim, size: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Refresh on a TV: the last row of the category column, reached with Down
+/// from the groups, in the same shape as them so it reads as part of the
+/// column rather than a stray button. Seen on the Google TV emulator
+/// 2026-11-01: a button beside the search box could not be reached at all.
+class _RefreshRow extends StatelessWidget {
+  const _RefreshRow({required this.refreshing, required this.onTap});
+
+  final bool refreshing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    return RelayTappable(
+      borderRadius: 10,
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: refreshing
+                  ? CircularProgressIndicator(strokeWidth: 2, color: t.accent)
+                  : Icon(Icons.refresh, color: t.inkDim, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                tr.liveTv.refresh,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: t.inkDim, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

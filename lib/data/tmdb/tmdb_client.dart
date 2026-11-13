@@ -222,6 +222,34 @@ class TmdbClient implements TmdbApi {
     );
   }
 
+  /// A YouTube trailer for the title, as a watch URL, or null.
+  ///
+  /// For a title page whose server had no trailer of its own. Only an id goes
+  /// to TMDB, no title. TMDB lists teasers, clips and featurettes beside
+  /// trailers; a trailer is taken, an official one first, and the stream is
+  /// never fetched here: the link goes to the YouTube app (MediaTrailer).
+  /// Not on [TmdbApi], so the test fakes of the matching code need nothing.
+  Future<String?> trailerUrl(int id, {required bool tv}) async {
+    final body = await _get(tv ? '/tv/$id/videos' : '/movie/$id/videos');
+    final trailers =
+        [
+          for (final v in (body['results'] as List? ?? const []))
+            if (v is Map &&
+                v['site'] == 'YouTube' &&
+                v['type'] == 'Trailer' &&
+                v['key'] is String &&
+                (v['key'] as String).isNotEmpty)
+              v,
+        ]..sort(
+          (a, b) =>
+              (b['official'] == true ? 1 : 0) - (a['official'] == true ? 1 : 0),
+        );
+    final key = trailers.firstOrNull?['key'] as String?;
+    return key == null
+        ? null
+        : 'https://www.youtube.com/watch?v=${Uri.encodeQueryComponent(key)}';
+  }
+
   /// Titles TMDB considers close to this one, best first. Used for
   /// "because you watched", and only ever to *look up* things already in the
   /// user's sources, never to suggest something they do not have (§9.2).

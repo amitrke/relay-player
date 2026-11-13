@@ -81,6 +81,90 @@ void main() {
     });
   });
 
+  // Reported 2026-11-12: the copy not kept vanished, and nothing said which
+  // server the kept one was on. Now the kept copy lists the others.
+  group('copies folded into a kept title', () {
+    test('the kept copy lists every other copy, and only merged titles '
+        'carry any', () {
+      final out = dedupeLibrary(
+        [
+          _item('remote', 'Film A'),
+          _item('remote', 'Film B'),
+          _item('lan', 'Film A'),
+          _item('panel', 'Film A', source: CatalogSource.xtream),
+        ],
+        localPlexServers: {'lan'},
+      );
+      final a = out.first;
+      expect(a.sourceId, 'lan');
+      expect(a.alsoOn.map((c) => '${c.source.wire} ${c.sourceId} ${c.id}'), [
+        'plex remote remote-Film A',
+        'xtream panel panel-Film A',
+      ]);
+      expect(out.last.alsoOn, isEmpty);
+    });
+
+    test('copies survive a later metadata rebuild', () {
+      final kept = dedupeLibrary([
+        _item('one', 'Film A'),
+        _item('two', 'Film A'),
+      ], localPlexServers: {}).single;
+      final enriched = kept.withMetadata(genres: const ['Drama']);
+      expect(enriched.alsoOn.single.sourceId, 'two');
+      expect(enriched.withPosterUrl(null).alsoOn, hasLength(1));
+    });
+  });
+
+  group('CatalogCopy in a route', () {
+    test(
+      'round-trips, including ids with the separator and slashes in them',
+      () {
+        const copies = [
+          CatalogCopy(
+            source: CatalogSource.server,
+            sourceId: 'abc,def~ghi',
+            id: '12/34',
+            kind: CatalogKind.movie,
+          ),
+          CatalogCopy(
+            source: CatalogSource.xtream,
+            sourceId: 'acct 1',
+            id: '99',
+            kind: CatalogKind.movie,
+          ),
+        ];
+        final route = CatalogCopy.withCopies('/film/srv/1', copies);
+        final uri = Uri.parse(route);
+        expect(uri.path, '/film/srv/1');
+        final back = CatalogCopy.fromQuery(uri, CatalogKind.movie);
+        expect(back, hasLength(2));
+        expect(back[0].sameAs(copies[0]), isTrue);
+        expect(back[1].sameAs(copies[1]), isTrue);
+        expect(back[1].route, '/vod/acct 1/99');
+      },
+    );
+
+    test('no copies leaves the route bare, and junk is skipped', () {
+      expect(CatalogCopy.withCopies('/film/srv/1', const []), '/film/srv/1');
+      final uri = Uri.parse('/film/srv/1?also=nonsense&also=bogus,x,y');
+      expect(CatalogCopy.fromQuery(uri, CatalogKind.movie), isEmpty);
+    });
+
+    test('a tile opens its page with its copies; route stays bare', () {
+      final kept = dedupeLibrary([
+        _item('one', 'Film A'),
+        _item('two', 'Film A'),
+      ], localPlexServers: {}).single;
+      expect(kept.route, '/film/one/one-Film A');
+      final uri = Uri.parse(kept.routeWithCopies);
+      expect(Uri.decodeFull(uri.path), '/film/one/one-Film A');
+      expect(
+        CatalogCopy.fromQuery(uri, CatalogKind.movie).single.sourceId,
+        'two',
+      );
+    });
+  });
+
   group('plexUrlIsLocal', () {
     test('a private address is local', () {
       expect(plexUrlIsLocal('http://192.168.1.5:32400'), isTrue);

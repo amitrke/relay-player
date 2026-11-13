@@ -33,6 +33,8 @@ List<CatalogItem> dedupeLibrary(
 
   final slotOf = <String, int>{};
   final out = <CatalogItem>[];
+  // Every copy seen per slot, so the kept one can list the others (alsoOn).
+  final copiesOf = <int, List<CatalogItem>>{};
   for (final item in items) {
     final key = _keyOf(item);
     if (key == null) {
@@ -42,10 +44,21 @@ List<CatalogItem> dedupeLibrary(
     final slot = slotOf[key];
     if (slot == null) {
       slotOf[key] = out.length;
+      copiesOf[out.length] = [item];
       out.add(item);
-    } else if (rank(item) < rank(out[slot])) {
-      out[slot] = item;
+    } else {
+      copiesOf[slot]!.add(item);
+      if (rank(item) < rank(out[slot])) out[slot] = item;
     }
+  }
+  // Only merged titles change; a title seen once is returned as it came.
+  for (final MapEntry(key: slot, value: copies) in copiesOf.entries) {
+    if (copies.length < 2) continue;
+    final kept = out[slot];
+    out[slot] = kept.withAlsoOn([
+      for (final c in copies)
+        if (!identical(c, kept)) c.asCopy,
+    ]);
   }
   return out;
 }

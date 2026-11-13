@@ -9,13 +9,13 @@
     "shareGone": "That share is no longer configured.",
     "shareFileGone": "That file is no longer on the share.",
     "deviceFileGone": "That file is no longer on this device.",
-    "lineGone": "That line is no longer configured.",
+    "lineGone": "That subscription is no longer set up.",
     "untitledVideo": "Video",
     "untitledEpisode": "Episode",
     "untitledFilm": "Film",
     "untitledLive": "Live",
     "channelFroze": "This channel stopped and did not come back.",
-    "channelNotResponding": "This channel is not responding. Listings often outrun reality on a panel, so try another, or the same one again.",
+    "channelNotResponding": "This channel is not responding. Providers often list channels that are not broadcasting, so try another, or the same one again.",
     "didNotStart": "This did not start playing. The server may be busy, or the file may need transcoding, which is not supported yet.",
     "released": "Stopped while the app was in the background, so the connection is free for other devices.",
     "rejoin": "Rejoin",
@@ -165,6 +165,8 @@
     "remove": "Remove from continue watching"
   },
   "library": {
+    "sourceOn": "On {name}",
+    "alsoOn": "Also on {name}",
     "placement": {
       "movies": "Movies",
       "series": "Series",
@@ -178,7 +180,7 @@
       "emptyMovies": "No movies on this server.",
       "emptySeries": "No series on this server.",
       "emptyLocalNetwork": "No folders or network shares yet.\nDevice storage and SMB shares are not connectable in this build.",
-      "emptyLiveTv": "No playlist or panel configured.\nAdd one from Settings once Advanced sources is on.",
+      "emptyLiveTv": "No IPTV subscription set up yet.\nAdd one from Add source.",
       "countMovies": {
         "one": "{n} movie",
         "other": "{n} movies"
@@ -236,11 +238,13 @@
       "numbered": "Category {n}",
       "other": "Other"
     },
-    "noPanel": "No playlist or panel configured.",
+    "noPanel": "No IPTV subscription set up yet.",
     "addOne": "Add one",
-    "noCategories": "No categories chosen yet.\nPanels carry tens of thousands of channels, so Subnext Player only fetches the ones you pick.",
+    "noCategories": "No channels chosen yet.\nYour provider has tens of thousands, so Subnext Player only loads the ones you pick.",
     "chooseCategories": "Choose categories",
     "noChannels": "Those categories returned no channels.",
+    "refresh": "Refresh channels",
+    "refreshFailed": "Could not refresh the channel list. Showing the one from before.",
     "noMatch": "No channel matching \"{query}\".",
     "searchHint": {
       "one": "Search {n} channel",
@@ -439,14 +443,18 @@
       "requests": "Requests"
     },
     "advanced": {
-      "dialogTitle": "Turning on advanced sources",
+      "dialogTitle": "Before you turn on Live TV",
       "dialogLead": "You are about to connect a third-party provider using your own credentials.",
       "dialogNoContent": "Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.",
       "dialogRights": "You are responsible for holding the rights to whatever you connect to.",
+      "dialogLogin": "It is kept in this device's secure storage and sent only to the address you enter.",
+      "pointNoContent": "We don't provide or recommend any provider",
+      "pointRights": "The rights are yours",
+      "pointLogin": "Your login stays on this device",
       "dialogConfirm": "I understand, turn on",
-      "toggle": "IPTV provider or playlist",
-      "toggleExplain": "Adds Live TV and Xtream Codes logins.",
-      "offKeeps": "Turning this off later hides Live TV but keeps any accounts you added."
+      "toggle": "Live TV from an IPTV subscription",
+      "toggleExplain": "Adds the Live TV tab, and IPTV subscriptions in Add source.",
+      "offKeeps": "Turning this off later hides Live TV but keeps any subscriptions you added."
     },
     "sources": {
       "noServers": "No Plex servers connected.",
@@ -472,7 +480,7 @@
     "plexTv": "Sign in with your own account on this TV.",
     "plex": "Your personal library, signed in with your own account.",
     "advancedTv": "Off by default. Turn on in Settings.",
-    "advanced": "Off by default. Turn on in Settings to use an IPTV provider or playlist.",
+    "advanced": "Off by default. Turn it on from Add source or Settings to use an IPTV subscription.",
     "localTitle": "Local & Network",
     "advancedTitle": "Advanced sources",
     "addFirst": "Add your first source",
@@ -493,8 +501,8 @@
       "localFilesIos": "Play the videos in your photo library.",
       "smb": "Network share (SMB)",
       "smbSub": "A NAS or Windows share on your home network.",
-      "xtream": "Xtream Codes login",
-      "xtreamSub": "Host, username and password from your provider.",
+      "xtream": "IPTV subscription",
+      "xtreamSub": "The link or login your provider sent you. Also called Xtream Codes.",
       "mediaBrowser": "Jellyfin or Emby server",
       "mediaBrowserSub": "Your own server, signed in with your own account."
     },
@@ -503,8 +511,8 @@
     "title": "Add a source",
     "advanced": "Advanced sources",
     "or": "Or",
-    "advancedHintLead": "Looking for an IPTV provider or playlist? Turn on ",
-    "advancedHintTail": " in Settings.",
+    "advancedHint": "Have an IPTV subscription?",
+    "advancedSetUp": "Set up Live TV",
     "sourceType": "Source type",
     "plexRail": "Link with a code",
     "pcFiles": "Files on this PC",
@@ -576,48 +584,61 @@
     "empty": "No videos or folders here."
   },
   "xtream": {
-    "lineGone": "That line is no longer configured.",
+    "lineGone": "That subscription is no longer set up.",
     "catalogue": {
       "live": "Live TV",
       "vod": "Movies",
       "series": "Series"
     },
     "errors": {
-      "status": "The panel returned {code}. Try again later.",
-      "timeout": "The panel did not respond in time.",
-      "unreachable": "Could not reach that address. Check the host and port.",
-      "other": "Could not talk to the panel ({type}).",
-      "notXtream": "That address did not answer like an Xtream panel.",
-      "rejected": "The panel rejected those credentials.",
+      "status": "Your provider's server answered {code}. Try again later.",
+      "timeout": "Your provider's server did not answer in time.",
+      "unreachable": "Could not reach that address. Check the link, or the server address and port.",
+      "other": "Could not talk to your provider's server ({type}).",
+      "notXtream": "That address did not answer like an IPTV server. Check the link, or the server address.",
+      "rejected": "Your provider did not accept that login.",
       "wrongLogin": "Wrong username or password.",
       "unnamed": "Unnamed",
       "episode": "Episode",
-      "noPassword": "That line has no stored password. Remove it and add it again."
+      "noPassword": "That subscription has no stored password. Remove it and add it again."
     },
     "everythingElse": "Everything else",
     "series": {
       "title": "Series",
-      "noEpisodes": "The panel returned no episodes for this series.",
+      "noEpisodes": "Your provider returned no episodes for this series.",
       "season": "Season {n}"
     },
     "remove": "Remove",
-    "add": "Add a playlist or panel",
+    "add": "Add an IPTV subscription",
     "addLine": {
-      "discardTitle": "Discard this line?",
+      "discardTitle": "Discard what you typed?",
       "discardBody": "What you typed here has not been saved.",
       "discard": "Discard",
       "keepEditing": "Keep editing",
-      "inactive": "The panel says this line is \"{status}\".",
+      "inactive": "Your provider says this subscription is \"{status}\".",
       "noContent": "Subnext Player does not provide, host, or endorse any content or provider. You supply the address and the login, and the app plays whatever that address returns.",
       "host": "Server address",
       "name": "Name (optional)",
-      "nameHint": "What you want to call this line",
+      "nameHint": "What you want to call this subscription",
       "checking": "Checking…",
-      "verify": "Verify and add",
-      "connected": {
-        "one": "Connected. {n} concurrent stream allowed.",
-        "other": "Connected. {n} concurrent streams allowed."
-      }
+      "verify": "Connect",
+      "hostHint": "example.com:8080",
+      "how": "How did your provider send your login?",
+      "howHint": "Look in the email or message you got when you subscribed.",
+      "modeLink": "One long link",
+      "modeLinkSub": "Often called an M3U link or playlist URL.",
+      "modeLogin": "A username and password",
+      "modeLoginSub": "With a server address such as example.com:8080. Sometimes called an Xtream Codes login.",
+      "modeDevice": "It's already on another device",
+      "modeDeviceSub": "Send it from your phone instead of typing it here.",
+      "link": "Link from your provider",
+      "paste": "Paste",
+      "found": "Found your login in this link",
+      "notALink": "This doesn't look like a link with a login in it. Check it, or type the details instead.",
+      "server": "Server",
+      "show": "Show",
+      "hide": "Hide",
+      "defaultName": "TV subscription"
     },
     "picker": {
       "patternNone": "That pattern matched nothing.",
@@ -661,7 +682,11 @@
       "selectShown": "Select shown",
       "clear": "Clear",
       "clearShown": "Clear shown",
-      "none": "The panel lists no channels in this category."
+      "none": "Your provider lists no channels in this category.",
+      "wholeTitle": "Whole category · {n} channels",
+      "wholeSub": "New channels your provider adds show up by themselves.",
+      "someTitle": "Only the ones I tick · {picked} of {total}",
+      "someSub": "Channels added later stay hidden until you tick them."
     },
     "hidden": {
       "title": "Hide words",
@@ -670,6 +695,109 @@
       "add": "Add",
       "none": "Nothing hidden yet.",
       "tapToRemove": "Select a word to stop hiding it."
+    },
+    "setup": {
+      "step": "Step {n} of 3"
+    },
+    "connected": {
+      "title": "You're connected",
+      "status": "Status",
+      "active": "Active",
+      "trial": "Active, trial",
+      "ends": "Ends",
+      "noEnd": "No end date given",
+      "screens": "Screens at once",
+      "oneScreen": "Your subscription plays on one screen at a time. If it is playing somewhere else, it won't start here until that stops.",
+      "liveCategories": {
+        "one": "{n} channel category",
+        "other": "{n} channel categories"
+      },
+      "available": "Channels",
+      "next": "That is more than anyone watches, so next you pick the countries and kinds of channel you want. Only those are loaded.",
+      "choose": "Choose what you watch"
+    },
+    "regions(map)": {
+      "uk": "United Kingdom",
+      "us": "USA",
+      "ca": "Canada",
+      "au": "Australia",
+      "en": "English",
+      "de": "Germany",
+      "at": "Austria",
+      "ch": "Switzerland",
+      "fr": "France",
+      "be": "Belgium",
+      "nl": "Netherlands",
+      "es": "Spain",
+      "latam": "Latin America",
+      "pt": "Portugal",
+      "br": "Brazil",
+      "it": "Italy",
+      "pl": "Poland",
+      "tr": "Turkey",
+      "gr": "Greece",
+      "ro": "Romania",
+      "ru": "Russia",
+      "ar": "Arabic",
+      "in": "India",
+      "pk": "Pakistan",
+      "af": "Africa",
+      "jp": "Japan",
+      "kr": "Korea",
+      "cn": "China"
+    },
+    "kinds(map)": {
+      "news": "News",
+      "sport": "Sport",
+      "kids": "Kids",
+      "films": "Films",
+      "docs": "Documentary",
+      "music": "Music",
+      "entertainment": "Entertainment"
+    },
+    "watch": {
+      "title": "What do you watch?",
+      "sub": "Pick a few. You can change this any time.",
+      "regions": "Countries and languages",
+      "kinds": "Kinds of channel",
+      "more": "Show all {n}",
+      "fewer": "Show fewer",
+      "count": {
+        "one": "{n} category chosen",
+        "other": "{n} categories chosen"
+      },
+      "none": "Pick a country, a language or a kind of channel.",
+      "unplaced": {
+        "one": "Sorted by the names your provider uses. {n} category fits none of these: find it in Fine-tune.",
+        "other": "Sorted by the names your provider uses. {n} categories fit none of these: find them in Fine-tune."
+      },
+      "fineTune": "Fine-tune",
+      "chips": "Back to the choices",
+      "replaceTitle": "Replace your hand-picked choice?",
+      "replaceBody": "You changed the choice by hand in Fine-tune. This replaces it with what these choices reach.",
+      "replace": "Replace",
+      "keep": "Keep mine",
+      "next": "Continue"
+    },
+    "review": {
+      "title": "Here's what you'll see",
+      "live": "Live TV",
+      "movies": "Movies",
+      "series": "Series",
+      "chosen": {
+        "one": "{n} category",
+        "other": "{n} categories"
+      },
+      "notAdded": "Not added yet",
+      "add": "Add",
+      "change": "Change",
+      "neverShow": "Never show",
+      "neverShowSub": "Hide anything with these words",
+      "neverShowNone": "Nothing hidden",
+      "edit": "Edit",
+      "later": "Change any of this later from Settings, Advanced sources.",
+      "open": "Open Live TV",
+      "link": "What you see"
     }
   },
   "transfer": {
@@ -854,6 +982,7 @@
   "seerr": {
     "errors": {
       "notASeerr": "No Overseerr, Jellyseerr or Seerr server answered at that address. Check it, including the port (usually 5055).",
+      "behindAccess": "That address is behind Cloudflare Access, which sends the app to a sign-in page it cannot use. Its owner can add an Access policy that bypasses /api/*, since Seerr signs people in itself.",
       "badKey": "The server did not accept that API key.",
       "refused": "The server did not accept that sign-in.",
       "status": "The server answered {code}.",
@@ -895,7 +1024,10 @@
     "play": "Play",
     "resume": "Resume from {time}",
     "fromStart": "Play from start",
-    "gone": "This film is no longer on the server, or the server cannot be reached."
+    "gone": "This film is no longer on the server, or the server cannot be reached.",
+    "trailer": "Trailer",
+    "trailerNoApp": "Nothing on this device can open the trailer.",
+    "rtAudience": "RT audience {pct}%"
   },
   "errors": {
     "addressHidden": "(address hidden)"

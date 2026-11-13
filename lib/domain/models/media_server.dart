@@ -66,6 +66,54 @@ class ExternalIds {
   static const none = ExternalIds();
 }
 
+/// Who gave a score. A title page names it ("IMDb 7.8") rather than showing
+/// a bare star, because the same film is a 7.8 on IMDb and an 8.4 on TMDB and
+/// a number with no source cannot be compared with anything (§12 screen 5).
+enum RatingSource { imdb, rottenTomatoes, tmdb, unknown }
+
+/// One score for a title, as the server got it from its metadata agent.
+///
+/// Only ever the server's own: the app fetches no rating of its own (no IMDb
+/// API exists to fetch one from, and OMDb's data is non-commercial only), so
+/// IMDb appears exactly when the server's library was set to fetch it
+/// (decided 2026-11-01, architecture.md §12 screen 5).
+class SourcedRating {
+  const SourcedRating({
+    required this.source,
+    required this.value,
+    this.critic = false,
+  });
+
+  final RatingSource source;
+
+  /// Out of 10, as both servers send it. Rotten Tomatoes' percentage is this
+  /// times ten.
+  final double value;
+
+  /// A critics' score (Rotten Tomatoes' Tomatometer) rather than an audience
+  /// one. Only Rotten Tomatoes has both.
+  final bool critic;
+}
+
+/// A trailer for a title.
+///
+/// Either a file on the person's own server, which plays in the app's own
+/// player, or a page elsewhere (a YouTube link), which is handed to whatever
+/// app on the device opens it. The app never pulls a stream out of YouTube to
+/// play itself: that is against YouTube's terms and Play's policy on
+/// third-party content, and the official app plays it better anyway.
+class MediaTrailer {
+  const MediaTrailer.onServer(String this.itemId, {this.title}) : url = null;
+  const MediaTrailer.elsewhere(String this.url, {this.title}) : itemId = null;
+
+  /// The trailer's own id on the server, for the player route.
+  final String? itemId;
+
+  /// An http(s) link for an outside app.
+  final String? url;
+  final String? title;
+}
+
 /// A titled row the server features, from [MediaServer.featuredRows].
 class MediaRow {
   const MediaRow({required this.title, required this.items});
@@ -102,6 +150,7 @@ class MediaItem {
     this.ids = ExternalIds.none,
     this.showIds = ExternalIds.none,
     this.rating,
+    this.ratings = const [],
     this.unwatchedEpisodes,
     this.cast = const [],
   });
@@ -154,6 +203,10 @@ class MediaItem {
 
   /// Out of 10, when the server has one.
   final double? rating;
+
+  /// Every score the server has, each with its source, for a title's page.
+  /// Often empty in a library listing; a title's own fetch carries them.
+  final List<SourcedRating> ratings;
 
   /// For a show this account has started, how many of its episodes it has
   /// not watched; null for anything else, for a show not yet started, and
@@ -286,6 +339,10 @@ abstract class MediaServer {
   /// a seasonal pick), in the server's order. Empty when the server has no
   /// such idea, which is the default; Plex implements it (§12.4).
   Future<List<MediaRow>> featuredRows(MediaSection section) async => const [];
+
+  /// Trailers the server has for the film or show [id], its own files first.
+  /// Empty when it has none, which is the default and the common case.
+  Future<List<MediaTrailer>> trailers(String id) async => const [];
 
   Future<void> setWatched(String id, {required bool watched});
 

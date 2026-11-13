@@ -6,7 +6,7 @@ HOW TO REVIEW WITHOUT ANY ACCOUNT
 - Plex: Add a source > Plex server links the user's own Plex account through Plex's standard browser sign-in.
 
 ADVANCED SOURCES (DISCLOSED, OFF BY DEFAULT)
-Settings > Advanced sources contains a single toggle, off on every new install. Turning it on shows a disclaimer that must be acknowledged, and only then adds options to connect an IPTV provider or M3U playlist using credentials or a URL the user supplies. The app does not provide, recommend, list or link to any provider or playlist, and nothing about this feature appears in the App Store listing or screenshots.
+Settings > Advanced sources contains a single toggle, off on every new install. The same disclaimer can also be opened from a single line at the bottom of Add a source ("Set up Live TV"); while the toggle is off, that line is the only mention of the feature there. Either way, the disclaimer must be acknowledged, and only then are options added to connect an IPTV subscription using credentials or a link the user supplies. The app does not provide, recommend, list or link to any provider or playlist, and nothing about this feature appears in the App Store listing or screenshots.
 The app has no sign-in of its own and ships no demo account: like its users, a reviewer tests it with their own media. If you need to exercise Advanced sources and have no provider of your own, reply to this submission and we will provide test access.
 
 DATA
