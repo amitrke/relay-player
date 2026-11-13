@@ -417,6 +417,37 @@ an error**:
    the 4-character form — so the default hands the user a code they cannot
    enter anywhere. The package's own docstring promises a 4-character code,
    contradicting its own default.
+
+   *The link on the code screen, 2026-11-12.* From user feedback: on a phone
+   at first run, "plex.tv/link" was hard to read, a few dim characters inside
+   a sentence. It is now bold, in full ink, underlined in the accent colour,
+   and on a phone or tablet it opens plex.tv/link in the browser, saying so
+   if nothing can (`plex_link_screen.dart`). On a TV it is bold text and not
+   a control, since many TVs have no browser. **The code cannot be passed in
+   that link.** No documented parameter fills in plex.tv/link's field, so
+   the person still types the 4 characters ("Copy code" helps on the same
+   phone). Plex's `app.plex.tv/auth#?clientID=…&code=…` page does take the
+   code, but only a *strong* PIN, which plex.tv/link refuses (item 1). A
+   phone could use that flow with no code to type at all. Not tried: opening
+   plex.tv/link with a made-up code, which could link a stranger's device if
+   the page auto-submitted.
+
+   *Built the same day: sign in in the browser.* On a phone or tablet the
+   first button is now "Sign in with Plex". It makes a **strong** PIN
+   (`PlexService.startBrowserLink`, the deliberate exception to defect 1,
+   guarded the other way round) and opens the auth page with it. The same
+   2 s poll finds the token, and the screen also checks the moment the app
+   returns to the front, since the person comes back by switching apps and
+   iOS may pause the timer meanwhile. The poll and that check cannot both
+   act on one approval (`_claim`). There is no `forwardUrl`: custom schemes
+   are reported not to redirect, and an https one would leave the person on a
+   web page. "Use a code instead" stays, under the button and on the waiting
+   panel. If nothing can open the page, the app falls back to a code and
+   says why. TVs keep the code only. Checked against real Plex: a strong PIN
+   and its auth page, opened in a signed-in browser, showed "Subnext Player
+   would like to sign in to your Plex account". Approval was deliberately
+   not given, so the step from approval to token is covered only by the
+   shared poll, which the code flow already exercises.
 2. **`universalVideoUrl()` omits `hasMDE=1`, so transcode cannot work at all.**
    PMS 1.43 rejects the universal endpoint with a bare `HTTP 400` without it.
    Append `&hasMDE=1` to the returned URL and add `'hasMDE': '1'` to the

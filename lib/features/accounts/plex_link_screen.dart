@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/relay_theme.dart';
 import '../../core/theme/relay_widgets.dart';
+import '../../data/plex/plex_service.dart' show PlexLinkCode;
 import 'plex_session.dart';
 import '../../i18n/strings.g.dart';
 
@@ -58,6 +60,10 @@ class PlexLinkScreen extends ConsumerWidget {
           const SizedBox(height: 20),
         ],
         switch (state.stage) {
+          // A browser sign-in has nothing to show but how to finish it; its
+          // long PIN is not for typing.
+          PlexStage.awaitingApproval when state.linkCode?.inBrowser ?? false =>
+            _BrowserWaitPanel(code: state.linkCode!),
           PlexStage.awaitingApproval =>
             _LinkCodePanel(code: state.linkCode?.code ?? '····'),
           PlexStage.choosingServer => const _ServerPicker(),
@@ -200,6 +206,36 @@ class _Intro extends StatelessWidget {
   }
 }
 
+/// Opens the Plex sign-in page for a browser PIN. When nothing can open it,
+/// falls back to a typed code, saying why, rather than leaving the person
+/// waiting on a page that never appeared.
+Future<void> _openInBrowser(
+  BuildContext context,
+  WidgetRef ref,
+  PlexLinkCode code,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  var opened = false;
+  try {
+    opened = await launchUrl(
+      code.authUrl!,
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {}
+  if (opened) return;
+  messenger?.showSnackBar(SnackBar(content: Text(tr.plex.browserFailed)));
+  await ref.read(plexSessionProvider.notifier).startLink();
+}
+
+/// How linking starts.
+///
+/// On a TV, the four-character code: the person has a phone or computer to
+/// hand, and the TV often has no browser. On a phone or tablet the first
+/// choice is "Sign in with Plex", which opens Plex's own page with the PIN
+/// already in it, so there is nothing to type (user feedback, 2026-11-12:
+/// the code flow meant reading plex.tv/link, switching to the browser and
+/// typing four characters on the same small screen). The code stays one tap
+/// away, for anyone who would rather approve on another device.
 class _ConnectButton extends ConsumerWidget {
   const _ConnectButton({required this.busy});
 
@@ -208,10 +244,139 @@ class _ConnectButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (busy) return _Spinner(label: tr.plex.contacting);
-    return RelayButton(
-      label: tr.plex.connect,
-      autofocus: true,
-      onPressed: () => ref.read(plexSessionProvider.notifier).startLink(),
+    final session = ref.read(plexSessionProvider.notifier);
+    if (RelayLayout.of(context) == RelayFormFactor.tv) {
+      return RelayButton(
+        label: tr.plex.connect,
+        autofocus: true,
+        onPressed: session.startLink,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RelayButton(
+          label: tr.plex.signInBrowser,
+          autofocus: true,
+          onPressed: () async {
+            final code = await session.startBrowserLink();
+            if (code == null || !context.mounted) return;
+            await _openInBrowser(context, ref, code);
+          },
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: RelayTextButton(
+            label: tr.plex.useCode,
+            onPressed: session.startLink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Waiting on a browser sign-in: how to finish it, and the ways out.
+///
+/// Checks the moment the app comes back to the front: the person returns by
+/// switching apps (there is no redirect, see PlexService.startBrowserLink),
+/// and iOS may have paused the poll while the browser was in front.
+class _BrowserWaitPanel extends ConsumerStatefulWidget {
+  const _BrowserWaitPanel({required this.code});
+
+  final PlexLinkCode code;
+
+  @override
+  ConsumerState<_BrowserWaitPanel> createState() => _BrowserWaitPanelState();
+}
+
+class _BrowserWaitPanelState extends ConsumerState<_BrowserWaitPanel> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.read(plexSessionProvider.notifier).checkNow(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final f = RelayLayout.of(context);
+    final session = ref.read(plexSessionProvider.notifier);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RelaySurface(
+          borderColor: t.accent,
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            children: [
+              Text(
+                tr.plex.finishInBrowser,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: t.ink,
+                  fontSize: RelayLayout.bodySize(f),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: t.accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      tr.plex.waiting,
+                      style: TextStyle(
+                        color: t.ink,
+                        fontSize: RelayLayout.bodySize(f),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        RelayButton(
+          label: tr.plex.openAgain,
+          autofocus: true,
+          onPressed: () => _openInBrowser(context, ref, widget.code),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            RelayTextButton(
+              label: tr.plex.useCode,
+              onPressed: session.startLink,
+            ),
+            RelayTextButton(
+              label: tr.common.cancel,
+              onPressed: session.cancelLink,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -243,13 +408,7 @@ class _LinkCodePanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          tr.plex.enterCode,
-          style: TextStyle(
-            color: t.inkDim,
-            fontSize: RelayLayout.bodySize(f),
-          ),
-        ),
+        _EnterCodeLine(tv: tv),
         const SizedBox(height: 16),
         RelaySurface(
           borderColor: t.accent,
@@ -311,6 +470,82 @@ class _LinkCodePanel extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Where the code is entered, as a link that stands out.
+///
+/// User feedback, 2026-11-12: on a phone, first run, "plex.tv/link" was hard
+/// to read. It was a few characters inside a dim sentence, the one thing on
+/// the screen the person has to act on. It is now bold, in full ink and
+/// underlined in the accent colour. On a phone or tablet it also opens
+/// plex.tv/link in the browser, so the code can be entered on the same
+/// device ("Copy code" sits under the code for that). Not tappable on a TV:
+/// many have no browser to hand a URL to (about_pane.dart), and a link there
+/// would be a focus stop that does nothing.
+class _EnterCodeLine extends StatelessWidget {
+  const _EnterCodeLine({required this.tv});
+
+  final bool tv;
+
+  static const _link = 'plex.tv/link';
+  static final _url = Uri.parse('https://plex.tv/link');
+
+  Future<void> _open(BuildContext context) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    var opened = false;
+    try {
+      opened = await launchUrl(_url, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!opened) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text(tr.plex.linkNoBrowser(link: _link))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RelayTheme.of(context);
+    final size = RelayLayout.bodySize(RelayLayout.of(context));
+    // The translated sentence around the link, split at a marker so each
+    // language keeps its own word order.
+    const marker = '\u0001';
+    final parts = tr.plex.enterCode(link: marker).split(marker);
+    final linkText = Text(
+      _link,
+      style: TextStyle(
+        color: t.ink,
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        decoration: TextDecoration.underline,
+        decorationColor: t.accent,
+        decorationThickness: 2,
+      ),
+    );
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(color: t.inkDim, fontSize: size),
+        children: [
+          TextSpan(text: parts.first),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: tv
+                ? linkText
+                : Semantics(
+                    link: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _open(context),
+                      child: linkText,
+                    ),
+                  ),
+          ),
+          if (parts.length > 1) TextSpan(text: parts.sublist(1).join()),
+        ],
+      ),
     );
   }
 }

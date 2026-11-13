@@ -103,6 +103,17 @@ class PlexSessionController extends Notifier<PlexState> {
   PlexService? _account;
   Timer? _poll;
 
+  /// The PIN whose token has been taken. The periodic poll and [checkNow]
+  /// can both see the approval; only the first may act on it, or the account
+  /// would be set up twice.
+  int? _claimedPin;
+
+  bool _claim(PlexLinkCode code) {
+    if (_claimedPin == code.pinId) return false;
+    _claimedPin = code.pinId;
+    return true;
+  }
+
   @override
   PlexState build() {
     ref.onDispose(() => _poll?.cancel());
@@ -182,6 +193,44 @@ class PlexSessionController extends Notifier<PlexState> {
     }
   }
 
+  /// The browser sign-in (PlexService.startBrowserLink): the screen opens
+  /// [PlexLinkCode.authUrl], and the same poll as a typed code finds the
+  /// token once the person approves there. Returns the code so the screen can
+  /// open its page; null if Plex could not be reached, with the error in
+  /// state as for [startLink].
+  Future<PlexLinkCode?> startBrowserLink() async {
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      final account = await _ensureAccount();
+      final code = await account.startBrowserLink();
+      state = state.copyWith(
+        stage: PlexStage.awaitingApproval,
+        linkCode: code,
+        busy: false,
+      );
+      _startPolling(code);
+      return code;
+    } catch (e) {
+      state = state.copyWith(busy: false, error: '$e');
+      return null;
+    }
+  }
+
+  /// Back from the browser: check now rather than waiting out the poll's
+  /// interval, which on iOS may also have been paused in the background.
+  Future<void> checkNow() async {
+    final code = state.linkCode;
+    if (state.stage != PlexStage.awaitingApproval || code == null) return;
+    try {
+      final token = await _account?.pollLink(code.pinId);
+      if (token == null || !_claim(code)) return;
+      _poll?.cancel();
+      await _onTokenAcquired(token);
+    } catch (_) {
+      // The periodic poll reports failures; this is only a head start.
+    }
+  }
+
   /// Abandons a code that is on screen.
   ///
   /// Nothing is sent to plex.tv: an unclaimed PIN simply expires there. What
@@ -210,6 +259,7 @@ class PlexSessionController extends Notifier<PlexState> {
         final token = await _account?.pollLink(code.pinId);
         if (token == null) return;
         timer.cancel();
+        if (!_claim(code)) return;
         await _onTokenAcquired(token);
       } catch (e) {
         timer.cancel();

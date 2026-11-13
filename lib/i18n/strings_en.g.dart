@@ -754,8 +754,26 @@ class Translations$plex$en {
 	/// en: 'Contacting Plex…'
 	String get contacting => 'Contacting Plex…';
 
-	/// en: 'On any device, open plex.tv/link and enter:'
-	String get enterCode => 'On any device, open plex.tv/link and enter:';
+	/// en: 'On any device, open {link} and enter:'
+	String enterCode({required Object link}) => 'On any device, open ${link} and enter:';
+
+	/// en: 'Nothing on this device can open {link}. Open it on another device.'
+	String linkNoBrowser({required Object link}) => 'Nothing on this device can open ${link}. Open it on another device.';
+
+	/// en: 'Sign in with Plex'
+	String get signInBrowser => 'Sign in with Plex';
+
+	/// en: 'Use a code instead'
+	String get useCode => 'Use a code instead';
+
+	/// en: 'Approve Subnext Player on the Plex page that opened, then come back to this app.'
+	String get finishInBrowser => 'Approve Subnext Player on the Plex page that opened, then come back to this app.';
+
+	/// en: 'Open Plex again'
+	String get openAgain => 'Open Plex again';
+
+	/// en: 'Nothing on this device can open the Plex sign-in page, so here is a code instead.'
+	String get browserFailed => 'Nothing on this device can open the Plex sign-in page, so here is a code instead.';
 
 	/// en: 'Waiting for approval…'
 	String get waiting => 'Waiting for approval…';
@@ -3588,7 +3606,13 @@ extension on Translations {
 			'plex.connect' => 'Connect to Plex',
 			'plex.explain' => 'Subnext Player plays what your own Plex server already holds. Nothing is uploaded, and no account details reach anyone but Plex.',
 			'plex.contacting' => 'Contacting Plex…',
-			'plex.enterCode' => 'On any device, open plex.tv/link and enter:',
+			'plex.enterCode' => ({required Object link}) => 'On any device, open ${link} and enter:',
+			'plex.linkNoBrowser' => ({required Object link}) => 'Nothing on this device can open ${link}. Open it on another device.',
+			'plex.signInBrowser' => 'Sign in with Plex',
+			'plex.useCode' => 'Use a code instead',
+			'plex.finishInBrowser' => 'Approve Subnext Player on the Plex page that opened, then come back to this app.',
+			'plex.openAgain' => 'Open Plex again',
+			'plex.browserFailed' => 'Nothing on this device can open the Plex sign-in page, so here is a code instead.',
 			'plex.waiting' => 'Waiting for approval…',
 			'plex.copyCode' => 'Copy code',
 			'plex.chooseServer' => 'Choose a server',
@@ -3684,14 +3708,14 @@ extension on Translations {
 			'xtream.addLine.hide' => 'Hide',
 			'xtream.addLine.defaultName' => 'TV subscription',
 			'xtream.picker.patternNone' => 'That pattern matched nothing.',
+			_ => null,
+		} ?? switch (path) {
 			'xtream.picker.title' => ({required Object catalogue}) => '${catalogue} categories',
 			'xtream.picker.save' => 'Save',
 			'xtream.picker.noMatch' => ({required Object query}) => 'Nothing matches "${query}".',
 			'xtream.picker.noneChosen' => 'Nothing chosen yet.',
 			'xtream.picker.search' => 'Search all categories',
 			'xtream.picker.chosen' => ({required Object n}) => 'Chosen ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'xtream.picker.hideWords' => 'Hide words',
 			'xtream.picker.hideCount' => ({required Object n}) => 'Hide ${n}',
 			'xtream.picker.pattern' => 'Pattern',

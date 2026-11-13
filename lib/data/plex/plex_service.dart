@@ -14,11 +14,19 @@ class PlexLinkCode {
     required this.pinId,
     required this.code,
     required this.expiresAt,
+    this.authUrl,
   });
 
   final int pinId;
   final String code;
   final DateTime expiresAt;
+
+  /// Set for a sign-in in the browser ([PlexService.startBrowserLink]): the
+  /// Plex page that approves this PIN with nothing to type. Null for the
+  /// four-character code entered at plex.tv/link.
+  final Uri? authUrl;
+
+  bool get inBrowser => authUrl != null;
 }
 
 /// The app's single entry point to Plex.
@@ -42,7 +50,8 @@ class PlexService extends MediaServer {
     required String clientId,
     this.serverId = '',
     this.serverName = '',
-  }) : _client = PlexClient(
+  }) : _clientId = clientId,
+       _client = PlexClient(
          credentials: PlexCredentials(
            clientIdentifier: clientId,
            product: 'Subnext Player',
@@ -54,6 +63,9 @@ class PlexService extends MediaServer {
        );
 
   final PlexClient _client;
+
+  /// This install's Plex client identifier, which the auth page needs.
+  final String _clientId;
 
   /// Empty while this instance is only doing account-level work (the PIN flow
   /// and server discovery), set once it is bound to a server.
@@ -83,6 +95,58 @@ class PlexService extends MediaServer {
       code: pin.code,
       expiresAt: pin.expiresAt,
     );
+  }
+
+  /// A sign-in in the browser, for a phone or tablet: nothing to type.
+  ///
+  /// plex.tv/link has no way to take the code in its address, so on a phone
+  /// the four characters had to be copied or typed in the browser (user
+  /// feedback, 2026-11-12). Plex's own auth page does take one, as
+  /// `app.plex.tv/auth#?clientID=…&code=…`, but only a *strong* PIN, the long
+  /// form plex.tv/link refuses (workaround 1 above), so this is a second
+  /// kind of PIN rather than the same one with a link. It is polled exactly
+  /// like the short one ([pollLink]).
+  ///
+  /// No `forwardUrl`: Plex is reported not to redirect to a custom scheme,
+  /// and an https one would leave the person on a web page, not in the app.
+  /// They come back to the app themselves, and the poll, which resumes with
+  /// the app, finds the token.
+  Future<PlexLinkCode> startBrowserLink() async {
+    final pin = await _client.account.createPin(strong: true);
+    if (pin.code.length <= 4) {
+      // The mirror of startLink's guard: a short code would be refused by the
+      // auth page, which wants the strong form.
+      throw StateError(
+        'Expected a strong PIN for the browser sign-in, got a '
+        '${pin.code.length}-character code. Check the `strong` flag.',
+      );
+    }
+    return PlexLinkCode(
+      pinId: pin.id,
+      code: pin.code,
+      expiresAt: pin.expiresAt,
+      authUrl: authPageFor(clientId: _clientId, code: pin.code),
+    );
+  }
+
+  /// Plex's auth page for [code]. The parameters go in the fragment, after
+  /// `#?`, which is what the page reads; they are never sent to a server as
+  /// a query string.
+  static Uri authPageFor({required String clientId, required String code}) {
+    final params = {
+      'clientID': clientId,
+      'code': code,
+      'context[device][product]': 'Subnext Player',
+    };
+    final fragment = params.entries
+        .map(
+          (e) =>
+              // encodeComponent, not encodeQueryComponent: a space must be
+              // %20, since a fragment reader may keep a `+` as a plus.
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
+        .join('&');
+    return Uri.parse('https://app.plex.tv/auth#?$fragment');
   }
 
   /// Returns the auth token once the user approves, or null while still
