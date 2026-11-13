@@ -434,6 +434,13 @@ class Translations$library$en {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'On {name}'
+	String sourceOn({required Object name}) => 'On ${name}';
+
+	/// en: 'Also on {name}'
+	String alsoOn({required Object name}) => 'Also on ${name}';
+
 	late final Translations$library$placement$en placement = Translations$library$placement$en.internal(_root);
 	late final Translations$library$tab$en tab = Translations$library$tab$en.internal(_root);
 
@@ -3298,6 +3305,8 @@ extension on Translations {
 			'resume.upNext' => 'Up next',
 			'resume.title' => 'Continue watching',
 			'resume.remove' => 'Remove from continue watching',
+			'library.sourceOn' => ({required Object name}) => 'On ${name}',
+			'library.alsoOn' => ({required Object name}) => 'Also on ${name}',
 			'library.placement.movies' => 'Movies',
 			'library.placement.series' => 'Series',
 			'library.placement.hidden' => 'Hidden',
@@ -3681,10 +3690,10 @@ extension on Translations {
 			'xtream.picker.noneChosen' => 'Nothing chosen yet.',
 			'xtream.picker.search' => 'Search all categories',
 			'xtream.picker.chosen' => ({required Object n}) => 'Chosen ${n}',
-			'xtream.picker.hideWords' => 'Hide words',
-			'xtream.picker.hideCount' => ({required Object n}) => 'Hide ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.picker.hideWords' => 'Hide words',
+			'xtream.picker.hideCount' => ({required Object n}) => 'Hide ${n}',
 			'xtream.picker.pattern' => 'Pattern',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => 'Un-ticked "${name}", which "${word}" hides. Save to keep that.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => 'Un-ticked ${n} chosen categories that "${word}" hides. Save to keep that.',

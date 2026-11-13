@@ -165,6 +165,8 @@
     "remove": "Aus Weiterschauen entfernen"
   },
   "library": {
+    "sourceOn": "Auf {name}",
+    "alsoOn": "Auch auf {name}",
     "placement": {
       "movies": "Filme",
       "series": "Serien",

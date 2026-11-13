@@ -56,6 +56,7 @@ class CatalogItem {
     this.unwatchedEpisodes,
     this.cast = const [],
     this.shelf,
+    this.alsoOn = const [],
   });
 
   final CatalogSource source;
@@ -149,6 +150,12 @@ class CatalogItem {
   /// falls back to the source's own name until the next refresh fills it in.
   final String? shelf;
 
+  /// The same title in other sources, which [dedupeLibrary] folded into this
+  /// one. Kept so a title page can say where else it is and open that copy:
+  /// before this, the copy not chosen simply disappeared, and nothing said
+  /// which server the chosen one was on. Empty for an item seen alone.
+  final List<CatalogCopy> alsoOn;
+
   /// Stable across rebuilds, unique across sources. [id] alone is not: a Plex
   /// `ratingKey` and a panel `stream_id` collide freely.
   String get key => '${source.wire}|$sourceId|$id';
@@ -177,6 +184,7 @@ class CatalogItem {
         unwatchedEpisodes: unwatchedEpisodes,
         cast: cast,
         shelf: shelf,
+        alsoOn: alsoOn,
       );
 
   CatalogItem withMetadata({
@@ -207,6 +215,7 @@ class CatalogItem {
         unwatchedEpisodes: unwatchedEpisodes,
         cast: cast,
         shelf: shelf,
+        alsoOn: alsoOn,
       );
 
   /// Where tapping this item leads.
@@ -224,5 +233,106 @@ class CatalogItem {
     (CatalogSource.xtream, CatalogKind.movie) => '/vod/$sourceId/$id',
   };
 
+  /// [route], with [alsoOn] carried along for the title page (`?also=`).
+  /// Only for opening a page from a tile: [route] stays the bare path,
+  /// because it is also an identity elsewhere.
+  String get routeWithCopies => CatalogCopy.withCopies(route, alsoOn);
+
+  /// This item as a copy, for listing it on another copy's page.
+  CatalogCopy get asCopy =>
+      CatalogCopy(source: source, sourceId: sourceId, id: id, kind: kind);
+
+  /// This item with [copies] folded into it.
+  CatalogItem withAlsoOn(List<CatalogCopy> copies) => CatalogItem(
+    source: source,
+    sourceId: sourceId,
+    kind: kind,
+    id: id,
+    title: title,
+    year: year,
+    posterUrl: posterUrl,
+    posterPath: posterPath,
+    artPath: artPath,
+    summary: summary,
+    addedAt: addedAt,
+    viewCount: viewCount,
+    viewOffset: viewOffset,
+    duration: duration,
+    lastViewedAt: lastViewedAt,
+    language: language,
+    genres: genres,
+    rating: rating,
+    originalLanguage: originalLanguage,
+    unwatchedEpisodes: unwatchedEpisodes,
+    cast: cast,
+    shelf: shelf,
+    alsoOn: copies,
+  );
+
   String get sortKey => title.toLowerCase();
+}
+
+/// Where one copy of a title lives: enough to name its source and open it.
+class CatalogCopy {
+  const CatalogCopy({
+    required this.source,
+    required this.sourceId,
+    required this.id,
+    required this.kind,
+  });
+
+  final CatalogSource source;
+  final String sourceId;
+  final String id;
+  final CatalogKind kind;
+
+  /// The page this copy opens, as [CatalogItem.route].
+  String get route => switch ((source, kind)) {
+    (CatalogSource.server, CatalogKind.show) => '/show/$sourceId/$id',
+    (CatalogSource.server, CatalogKind.movie) => '/film/$sourceId/$id',
+    (CatalogSource.xtream, CatalogKind.show) =>
+      '/advanced/xtream/$sourceId/series/$id',
+    (CatalogSource.xtream, CatalogKind.movie) => '/vod/$sourceId/$id',
+  };
+
+  bool sameAs(CatalogCopy other) =>
+      source == other.source && sourceId == other.sourceId && id == other.id;
+
+  /// One `also` query value. Each part is percent-encoded so the separator
+  /// cannot occur inside one. A comma, because encodeComponent escapes it;
+  /// it leaves `~` alone, which made `~` unusable; kind is not carried, since every copy of a
+  /// title has the kind of the page it is listed on.
+  String get _wire =>
+      [source.wire, sourceId, id].map(Uri.encodeComponent).join(',');
+
+  static CatalogCopy? _fromWire(String value, CatalogKind kind) {
+    final parts = value.split(',');
+    if (parts.length != 3) return null;
+    final source = CatalogSource.fromWire(Uri.decodeComponent(parts[0]));
+    if (source == null) return null;
+    return CatalogCopy(
+      source: source,
+      sourceId: Uri.decodeComponent(parts[1]),
+      id: Uri.decodeComponent(parts[2]),
+      kind: kind,
+    );
+  }
+
+  /// [route] with [copies] as repeated `also` parameters.
+  static String withCopies(String route, List<CatalogCopy> copies) =>
+      copies.isEmpty
+      ? route
+      : Uri(
+          path: route,
+          queryParameters: {
+            'also': [for (final c in copies) c._wire],
+          },
+        ).toString();
+
+  /// The copies a page was opened with. Malformed values are skipped: a
+  /// stale or hand-typed link should open the page, not fail it.
+  static List<CatalogCopy> fromQuery(Uri uri, CatalogKind kind) => [
+    for (final v in uri.queryParametersAll['also'] ?? const <String>[])
+      ?_fromWire(v, kind),
+  ];
 }

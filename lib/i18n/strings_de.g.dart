@@ -276,6 +276,8 @@ class _Translations$library$de extends Translations$library$en {
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
+	@override String sourceOn({required Object name}) => 'Auf ${name}';
+	@override String alsoOn({required Object name}) => 'Auch auf ${name}';
 	@override late final _Translations$library$placement$de placement = _Translations$library$placement$de._(_root);
 	@override late final _Translations$library$tab$de tab = _Translations$library$tab$de._(_root);
 	@override String serverTimeout({required Object server, required Object seconds}) => '${server} hat nicht innerhalb von ${seconds} Sekunden geantwortet. Er ist vielleicht im Ruhezustand oder nicht im Netzwerk.';
@@ -1799,6 +1801,8 @@ extension on TranslationsDe {
 			'resume.upNext' => 'Als Nächstes',
 			'resume.title' => 'Weiterschauen',
 			'resume.remove' => 'Aus Weiterschauen entfernen',
+			'library.sourceOn' => ({required Object name}) => 'Auf ${name}',
+			'library.alsoOn' => ({required Object name}) => 'Auch auf ${name}',
 			'library.placement.movies' => 'Filme',
 			'library.placement.series' => 'Serien',
 			'library.placement.hidden' => 'Ausgeblendet',
@@ -2182,10 +2186,10 @@ extension on TranslationsDe {
 			'xtream.picker.noneChosen' => 'Noch nichts ausgewählt.',
 			'xtream.picker.search' => 'Alle Kategorien durchsuchen',
 			'xtream.picker.chosen' => ({required Object n}) => 'Ausgewählt ${n}',
-			'xtream.picker.hideWords' => 'Wörter ausblenden',
-			'xtream.picker.hideCount' => ({required Object n}) => 'Ausgeblendet ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.picker.hideWords' => 'Wörter ausblenden',
+			'xtream.picker.hideCount' => ({required Object n}) => 'Ausgeblendet ${n}',
 			'xtream.picker.pattern' => 'Muster',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => '„${name}“ wurde abgewählt, weil „${word}“ es ausblendet. Speichern, um das zu behalten.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => '${n} ausgewählte Kategorien, die „${word}“ ausblendet, wurden abgewählt. Speichern, um das zu behalten.',

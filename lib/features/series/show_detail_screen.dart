@@ -11,7 +11,9 @@ import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
 import '../library/film_detail_screen.dart' show TitlePillButton;
+import '../../domain/models/catalog_item.dart';
 import '../library/poster_grid.dart';
+import '../library/source_line.dart';
 import '../library/title_extras.dart';
 import '../library/poster_tile.dart';
 import '../../i18n/strings.g.dart';
@@ -54,10 +56,14 @@ class ShowDetailScreen extends ConsumerStatefulWidget {
     super.key,
     required this.serverId,
     required this.ratingKey,
+    this.alsoOn = const [],
   });
 
   final String serverId;
   final String ratingKey;
+
+  /// Other copies of this show, from a merged tile (source_line.dart).
+  final List<CatalogCopy> alsoOn;
 
   @override
   ConsumerState<ShowDetailScreen> createState() => _ShowDetailScreenState();
@@ -104,7 +110,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
             return ListView(
               padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
               children: [
-                _ShowHeader(show: show.value, serverId: widget.serverId),
+                _ShowHeader(show: show.value, serverId: widget.serverId, alsoOn: widget.alsoOn),
                 const SizedBox(height: 18),
                 for (final episode in list)
                   _EpisodeRow(serverId: widget.serverId, episode: episode),
@@ -119,7 +125,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           return ListView(
             padding: RelayLayout.pagePadding(f).copyWith(bottom: 32),
             children: [
-              _ShowHeader(show: show.value, serverId: widget.serverId),
+              _ShowHeader(show: show.value, serverId: widget.serverId, alsoOn: widget.alsoOn),
               const SizedBox(height: 18),
               _SeasonChips(
                 seasons: list,
@@ -137,10 +143,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 }
 
 class _ShowHeader extends ConsumerWidget {
-  const _ShowHeader({required this.show, required this.serverId});
+  const _ShowHeader({
+    required this.show,
+    required this.serverId,
+    required this.alsoOn,
+  });
 
   final MediaItem? show;
   final String serverId;
+  final List<CatalogCopy> alsoOn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -197,6 +208,18 @@ class _ShowHeader extends ConsumerWidget {
                   ...item.genres.take(3),
                 ].join(' · '),
                 style: TextStyle(color: t.inkDim, fontSize: 13),
+              ),
+              // Which server this copy is on, and the others, as on a film's
+              // page (source_line.dart).
+              const SizedBox(height: 6),
+              SourceLine(
+                here: CatalogCopy(
+                  source: CatalogSource.server,
+                  sourceId: serverId,
+                  id: item.id,
+                  kind: CatalogKind.show,
+                ),
+                alsoOn: alsoOn,
               ),
               // As on a film's page: each score named by its source.
               if (item.ratings.isNotEmpty) ...[

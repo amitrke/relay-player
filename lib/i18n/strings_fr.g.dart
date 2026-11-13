@@ -276,6 +276,8 @@ class _Translations$library$fr extends Translations$library$en {
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
+	@override String sourceOn({required Object name}) => 'Sur ${name}';
+	@override String alsoOn({required Object name}) => 'Aussi sur ${name}';
 	@override late final _Translations$library$placement$fr placement = _Translations$library$placement$fr._(_root);
 	@override late final _Translations$library$tab$fr tab = _Translations$library$tab$fr._(_root);
 	@override String serverTimeout({required Object server, required Object seconds}) => '${server} n\'a pas répondu en ${seconds} secondes. Il est peut-être en veille ou hors du réseau.';
@@ -1799,6 +1801,8 @@ extension on TranslationsFr {
 			'resume.upNext' => 'À suivre',
 			'resume.title' => 'Reprendre la lecture',
 			'resume.remove' => 'Retirer de Reprendre la lecture',
+			'library.sourceOn' => ({required Object name}) => 'Sur ${name}',
+			'library.alsoOn' => ({required Object name}) => 'Aussi sur ${name}',
 			'library.placement.movies' => 'Films',
 			'library.placement.series' => 'Séries',
 			'library.placement.hidden' => 'Masqué',
@@ -2182,10 +2186,10 @@ extension on TranslationsFr {
 			'xtream.picker.noneChosen' => 'Rien de choisi pour l\'instant.',
 			'xtream.picker.search' => 'Rechercher dans toutes les catégories',
 			'xtream.picker.chosen' => ({required Object n}) => 'Choisies ${n}',
-			'xtream.picker.hideWords' => 'Masquer des mots',
-			'xtream.picker.hideCount' => ({required Object n}) => 'Masqués ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.picker.hideWords' => 'Masquer des mots',
+			'xtream.picker.hideCount' => ({required Object n}) => 'Masqués ${n}',
 			'xtream.picker.pattern' => 'Motif',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => '« ${name} » a été décochée, car « ${word} » la masque. Enregistrez pour le conserver.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => '${n} catégories choisies que « ${word} » masque ont été décochées. Enregistrez pour le conserver.',

@@ -1413,6 +1413,36 @@ Whichever is chosen, write the reasoning down before the iOS submission (§8.4,
    > caught action labels overflowing; seen on the Google TV and Pixel Tablet
    > emulators against a real Plex server.
    >
+   > **Which server, and the other copies, 2026-11-12.** Reported: with
+   > several Plex servers, nothing on a poster or a title page said which
+   > server a title was on. The poster badge appeared only when a grid mixed
+   > *kinds* of source (Plex and a panel), and said only "Plex". And when two
+   > servers had the same film, `dedupeLibrary` kept one copy and dropped the
+   > other without a trace. Now:
+   > - **Title pages say "On DS220plus"** under the facts line, film and show
+   >   alike (`source_line.dart`). A panel copy is only ever "IPTV", as on the
+   >   badge, so a provider's label never reaches a screenshot (§1).
+   > - **Dedupe keeps the copies it folds** on the kept item
+   >   (`CatalogItem.alsoOn`), and a tile opens its page with them as repeated
+   >   `?also=` parameters. `CatalogItem.route` stays the bare path, since it
+   >   is also an identity elsewhere. The page lists each as "Also on …".
+   >   Tapping one replaces the page, so Back still goes to where the person
+   >   came from, and the replaced page lists the first copy in turn. The copy
+   >   chosen first is unchanged: LAN server, then any server, then a panel.
+   > - **The badge counts sources, not kinds of source**, so results from two
+   >   Plex servers are labelled. It names the server, cut to fit, with "+1"
+   >   for a merged title.
+   > **Tradeoffs:** the copies travel only in the link a tile opens. A page
+   > reached any other way (Continue watching's Details, a favourite, a deep
+   > link) names its server but lists no other copies. Panel title pages
+   > (`/vod`, xtream series) do not have the line yet. Pinned by
+   > `library_dedupe_test.dart` (copies kept, carried through the metadata
+   > rebuilds, round-tripped through the link, including ids containing the
+   > separator) and `film_detail_screen_test.dart` (the line, and opening the
+   > other copy). Not seen on a device: driving the iOS Simulator failed that
+   > day (taps and typing lost), and that Simulator had one server connected,
+   > so the badge and "Also on" were not visible there anyway.
+   >
    > **Ratings by source and a Trailer button, 2026-11-01.** Both title
    > pages (film and show) gained a line of scores, each named by its source
    > ("IMDb 6.8 · Rotten Tomatoes 60% · RT audience 86% · TMDB 7.5"), and a

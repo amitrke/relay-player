@@ -16,8 +16,10 @@ import '../favorites_history/favorites_controller.dart';
 import '../favorites_history/history_controller.dart';
 import '../favorites_history/watch_actions.dart';
 import '../favorites_history/watch_state.dart';
+import '../../domain/models/catalog_item.dart';
 import 'library_hero.dart' show HeroInfo;
 import 'poster_grid.dart' show LibraryEmptyState;
+import 'source_line.dart';
 import 'title_extras.dart';
 
 /// A film's own page (§12 screen 5), between its poster and the player.
@@ -50,10 +52,14 @@ class FilmDetailScreen extends ConsumerWidget {
     super.key,
     required this.serverId,
     required this.ratingKey,
+    this.alsoOn = const [],
   });
 
   final String serverId;
   final String ratingKey;
+
+  /// Other copies of this film, from a merged tile (source_line.dart).
+  final List<CatalogCopy> alsoOn;
 
   /// Where a film from a server opens. The player is `/play/...`.
   static String routeOf(String serverId, String ratingKey) =>
@@ -89,17 +95,22 @@ class FilmDetailScreen extends ConsumerWidget {
                 icon: Icons.movie_outlined,
                 message: tr.film.gone,
               )
-            : _FilmPage(serverId: serverId, item: item),
+            : _FilmPage(serverId: serverId, item: item, alsoOn: alsoOn),
       ),
     );
   }
 }
 
 class _FilmPage extends ConsumerWidget {
-  const _FilmPage({required this.serverId, required this.item});
+  const _FilmPage({
+    required this.serverId,
+    required this.item,
+    required this.alsoOn,
+  });
 
   final String serverId;
   final MediaItem item;
+  final List<CatalogCopy> alsoOn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -166,6 +177,9 @@ class _FilmPage extends ConsumerWidget {
             style: TextStyle(color: t.inkDim, fontSize: tv ? 15 : 13),
           ),
         ],
+        // Which server this copy is on, and the others (source_line.dart).
+        const SizedBox(height: 8),
+        SourceLine(here: catalog.asCopy, alsoOn: alsoOn),
         // Each score named by its source, on a line of its own so they read
         // as a group rather than as more facts about the film (title_extras).
         if (item.ratings.isNotEmpty) ...[

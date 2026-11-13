@@ -21,8 +21,12 @@ import 'package:relay_player/features/library/film_detail_screen.dart';
 /// the player, which names where it will start and offers to start over.
 
 class _Server extends PlexService {
-  _Server(this.film, {this.trailerList = const []})
-    : super(clientId: 'test', serverId: 'srv');
+  _Server(
+    this.film, {
+    this.trailerList = const [],
+    super.serverId = 'srv',
+    super.serverName,
+  }) : super(clientId: 'test');
 
   final MediaItem film;
   final List<MediaTrailer> trailerList;
@@ -67,16 +71,19 @@ void main() {
     WidgetTester tester,
     MediaItem film, {
     List<MediaTrailer> trailers = const [],
+    String location = '/film/srv/f1',
+    List<ConnectedServer>? servers,
   }) async {
     pushed = [];
     final router = GoRouter(
-      initialLocation: '/film/srv/f1',
+      initialLocation: location,
       routes: [
         GoRoute(
           path: '/film/:serverId/:ratingKey',
           builder: (_, s) => FilmDetailScreen(
             serverId: s.pathParameters['serverId']!,
             ratingKey: s.pathParameters['ratingKey']!,
+            alsoOn: CatalogCopy.fromQuery(s.uri, CatalogKind.movie),
           ),
         ),
         GoRoute(
@@ -91,9 +98,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          connectedServersProvider.overrideWithValue([
-            ConnectedServer(service: _Server(film, trailerList: trailers)),
-          ]),
+          connectedServersProvider.overrideWithValue(
+            servers ??
+                [ConnectedServer(service: _Server(film, trailerList: trailers))],
+          ),
           downloadsProvider.overrideWith(_NoDownloads.new),
           favoritesProvider.overrideWith(_NoFavourites.new),
           historyProvider.overrideWith(_NoHistory.new),
@@ -122,6 +130,58 @@ void main() {
     expect(item(CatalogSource.server, CatalogKind.movie).route, '/film/s/x');
     expect(item(CatalogSource.server, CatalogKind.show).route, '/show/s/x');
     expect(item(CatalogSource.xtream, CatalogKind.movie).route, '/vod/s/x');
+  });
+
+  // Reported 2026-11-12: nothing on the page said which server the film was
+  // on, and the copy on a second server was not reachable at all.
+  testWidgets('names its server, and opens another copy in its place', (
+    tester,
+  ) async {
+    final other = MediaItem(
+      id: 'f9',
+      type: MediaItemType.movie,
+      title: 'A Film',
+      year: 2009,
+      viewCount: 0,
+    );
+    await pump(
+      tester,
+      _film(),
+      location: CatalogCopy.withCopies('/film/srv/f1', const [
+        CatalogCopy(
+          source: CatalogSource.server,
+          sourceId: 'srv2',
+          id: 'f9',
+          kind: CatalogKind.movie,
+        ),
+      ]),
+      servers: [
+        ConnectedServer(service: _Server(_film(), serverName: 'Home NAS')),
+        ConnectedServer(
+          service: _Server(other, serverId: 'srv2', serverName: 'Friend'),
+        ),
+      ],
+    );
+    expect(find.text('On Home NAS'), findsOneWidget);
+    await tester.tap(find.text('Also on Friend'));
+    await tester.pumpAndSettle();
+    // The other copy's page, which lists this one in turn.
+    expect(find.text('On Friend'), findsOneWidget);
+    expect(find.text('Also on Home NAS'), findsOneWidget);
+  });
+
+  testWidgets('a film seen on one server only names that server', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      _film(),
+      servers: [
+        ConnectedServer(service: _Server(_film(), serverName: 'Home NAS')),
+      ],
+    );
+    expect(find.text('On Home NAS'), findsOneWidget);
+    expect(find.textContaining('Also on'), findsNothing);
   });
 
   testWidgets('not started: Play, with nothing to start over from', (

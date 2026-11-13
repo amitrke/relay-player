@@ -68,7 +68,8 @@ class PosterTile extends ConsumerWidget {
       autofocus: autofocus,
       focusNode: focusNode,
       borderRadius: 10,
-      onTap: () => context.push(item.route),
+      // With the copies dedupe folded in, so the page can list them.
+      onTap: () => context.push(item.routeWithCopies),
       // Every title gets the sheet, for the star; only Plex adds the watched
       // and download actions, since a panel has no watched state to set.
       onLongPress: () => showWatchActions(
@@ -132,9 +133,15 @@ class PosterTile extends ConsumerWidget {
                     left: 6,
                     // Clear of the progress bar when there is one.
                     bottom: watch.inProgress ? 14 : 6,
-                    child: SourceBadge(
-                      source: item.source,
-                      sourceId: item.sourceId,
+                    right: 6,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      heightFactor: 1,
+                      child: SourceBadge(
+                        source: item.source,
+                        sourceId: item.sourceId,
+                        alsoOn: item.alsoOn.length,
+                      ),
                     ),
                   ),
                 Positioned(
@@ -329,14 +336,24 @@ class WatchProgressBar extends StatelessWidget {
 /// panel's own name: a provider label on a poster belongs to the user, but it
 /// would also turn up in anything shot from a screen (§1).
 ///
-/// A server item names its product (Plex, Jellyfin, Emby), looked up from the
-/// connected server; one that is no longer connected falls back to "Plex",
-/// which was the only kind before §6.2.
+/// A server item names the server itself ("DS220plus"), since 2026-11-12:
+/// the product name (Plex, Jellyfin, Emby) told several Plex servers apart
+/// not at all. A server that is no longer connected falls back to its
+/// product, and to "Plex", the only kind before §6.2. [alsoOn] adds "+1"
+/// for a title merged from other sources; its page lists them (SourceLine).
 class SourceBadge extends ConsumerWidget {
-  const SourceBadge({super.key, required this.source, this.sourceId});
+  const SourceBadge({
+    super.key,
+    required this.source,
+    this.sourceId,
+    this.alsoOn = 0,
+  });
 
   final CatalogSource source;
   final String? sourceId;
+
+  /// How many other copies were folded into this one.
+  final int alsoOn;
 
   static String labelFor(CatalogSource source, {ServerKind? kind}) =>
       switch (source) {
@@ -346,13 +363,14 @@ class SourceBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final kind = sourceId == null
+    final server = sourceId == null || source != CatalogSource.server
         ? null
         : ref
               .watch(connectedServersProvider)
               .where((s) => s.id == sourceId)
-              .firstOrNull
-              ?.kind;
+              .firstOrNull;
+    final name = server?.name ?? labelFor(source, kind: server?.kind);
+    final label = alsoOn > 0 ? '$name +$alsoOn' : name;
     final t = RelayTheme.of(context);
     final tv = RelayLayout.of(context) == RelayFormFactor.tv;
     return DecoratedBox(
@@ -365,7 +383,10 @@ class SourceBadge extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         child: Text(
-          labelFor(source, kind: kind),
+          label,
+          // Server names are the owner's and can be long; a tile is narrow.
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: t.ink,
             fontSize: tv ? 12 : 9.5,

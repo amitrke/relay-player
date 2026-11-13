@@ -165,6 +165,8 @@
     "remove": "Retirer de Reprendre la lecture"
   },
   "library": {
+    "sourceOn": "Sur {name}",
+    "alsoOn": "Aussi sur {name}",
     "placement": {
       "movies": "Films",
       "series": "Séries",

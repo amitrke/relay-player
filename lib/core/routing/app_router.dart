@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/models/catalog_item.dart';
 import '../../features/_debug/debug_menu_screen.dart';
 import '../../features/_gallery/design_gallery.dart';
 import '../../features/_spike/spike_app.dart';
@@ -293,6 +294,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => ShowDetailScreen(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
+          // Other copies of the title, from a merged tile (source_line.dart).
+          alsoOn: CatalogCopy.fromQuery(state.uri, CatalogKind.show),
         ),
       ),
       GoRoute(
@@ -300,6 +303,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => FilmDetailScreen(
           serverId: state.pathParameters['serverId']!,
           ratingKey: state.pathParameters['ratingKey']!,
+          // Other copies of the title, from a merged tile (source_line.dart).
+          alsoOn: CatalogCopy.fromQuery(state.uri, CatalogKind.movie),
         ),
       ),
       GoRoute(

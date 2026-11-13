@@ -165,6 +165,8 @@
     "remove": "Remove from continue watching"
   },
   "library": {
+    "sourceOn": "On {name}",
+    "alsoOn": "Also on {name}",
     "placement": {
       "movies": "Movies",
       "series": "Series",

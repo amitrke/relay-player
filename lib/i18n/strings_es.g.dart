@@ -276,6 +276,8 @@ class _Translations$library$es extends Translations$library$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override String sourceOn({required Object name}) => 'En ${name}';
+	@override String alsoOn({required Object name}) => 'También en ${name}';
 	@override late final _Translations$library$placement$es placement = _Translations$library$placement$es._(_root);
 	@override late final _Translations$library$tab$es tab = _Translations$library$tab$es._(_root);
 	@override String serverTimeout({required Object server, required Object seconds}) => '${server} no respondió en ${seconds} segundos. Puede que esté en reposo o fuera de la red.';
@@ -1799,6 +1801,8 @@ extension on TranslationsEs {
 			'resume.upNext' => 'A continuación',
 			'resume.title' => 'Seguir viendo',
 			'resume.remove' => 'Quitar de Seguir viendo',
+			'library.sourceOn' => ({required Object name}) => 'En ${name}',
+			'library.alsoOn' => ({required Object name}) => 'También en ${name}',
 			'library.placement.movies' => 'Películas',
 			'library.placement.series' => 'Series',
 			'library.placement.hidden' => 'Oculto',
@@ -2182,10 +2186,10 @@ extension on TranslationsEs {
 			'xtream.picker.noneChosen' => 'Aún no has elegido nada.',
 			'xtream.picker.search' => 'Buscar en todas las categorías',
 			'xtream.picker.chosen' => ({required Object n}) => 'Elegidas ${n}',
-			'xtream.picker.hideWords' => 'Ocultar palabras',
-			'xtream.picker.hideCount' => ({required Object n}) => 'Ocultas ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'xtream.picker.hideWords' => 'Ocultar palabras',
+			'xtream.picker.hideCount' => ({required Object n}) => 'Ocultas ${n}',
 			'xtream.picker.pattern' => 'Patrón',
 			'xtream.picker.untickedOne' => ({required Object name, required Object word}) => 'Se desmarcó «${name}», que oculta «${word}». Guarda para conservarlo.',
 			'xtream.picker.untickedMany' => ({required Object n, required Object word}) => 'Se desmarcaron ${n} categorías elegidas que oculta «${word}». Guarda para conservarlo.',
