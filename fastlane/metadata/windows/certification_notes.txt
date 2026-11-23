@@ -1,0 +1,15 @@
+Subnext Player is a media player for content the user already has. It hosts no content, has no catalogue, and has no backend or account system of its own.
+
+WHY THE PACKAGE DECLARES runFullTrust
+The app is a Flutter desktop application packaged as MSIX. Its runtime and its video player (libmpv with FFmpeg, built LGPL-only) are native Win32 DLLs loaded in the app's own process, and they cannot run inside the UWP app container. runFullTrust is therefore required for the app to start at all. The app uses it only for what a normal desktop media player does: connecting to servers the user chooses over the network, decoding and rendering video, and storing the user's settings and credentials for the signed-in Windows user. It does not install services, change system settings, run elevated, or read files outside what the user points it at.
+
+HOW TO REVIEW WITHOUT ANY ACCOUNT
+- Plex: Settings > Add a source > Plex server links the user's own Plex account through Plex's standard browser sign-in.
+- Jellyfin or Emby: Settings > Add a source > Jellyfin or Emby server, then the server address.
+The app has no sign-in of its own and ships no demo account: like its users, a reviewer tests it with their own server and media.
+
+ADVANCED SOURCES (DISCLOSED, OFF BY DEFAULT)
+Settings > Advanced sources contains a single toggle, off on every new install. Turning it on shows a disclaimer that must be acknowledged, and only then adds options to connect an IPTV provider or M3U playlist using credentials or a URL the user supplies. The app does not provide, recommend, list or link to any provider or playlist, and nothing about this feature appears in the Store listing or screenshots. If you need to exercise it and have no provider of your own, tell us and we will provide test access.
+
+DATA
+No data is collected by the developer. Credentials the user enters are stored on the device and are sent only to the service the user connected. Privacy policy: https://amitrke.github.io/relay-player/privacy.html
